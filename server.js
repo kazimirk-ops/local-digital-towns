@@ -1,15 +1,14 @@
 const express = require("express");
 const path = require("path");
 const app = express();
-
 const data = require("./data");
 
-// Serve frontend files
 app.use(express.static(path.join(__dirname, "public")));
 
 // Pages
 app.get("/ui", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/signup", (req, res) => res.sendFile(path.join(__dirname, "public", "signup.html")));
+app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
 
 // Cookie helpers
 function parseCookies(req) {
@@ -32,7 +31,7 @@ function setCookie(res, name, value, opts = {}) {
   res.setHeader("Set-Cookie", parts.join("; "));
 }
 
-// Auth endpoints
+// Auth
 app.post("/auth/request-link", express.json(), (req, res) => {
   const email = (req.body?.email || "").toString().trim().toLowerCase();
   if (!email) return res.status(400).json({ error: "email required" });
@@ -53,13 +52,11 @@ app.get("/auth/magic", (req, res) => {
 
   const sess = data.createSession(consumed.userId);
   setCookie(res, "sid", sess.sid, { httpOnly: true, maxAge: 60 * 60 * 24 * 30 });
-
   res.redirect("/ui");
 });
 
 app.post("/auth/logout", (req, res) => {
-  const cookies = parseCookies(req);
-  const sid = cookies.sid;
+  const sid = parseCookies(req).sid;
   if (sid) data.deleteSession(sid);
   setCookie(res, "sid", "", { httpOnly: true, maxAge: 0 });
   res.json({ ok: true });
@@ -73,12 +70,62 @@ app.get("/me", (req, res) => {
   res.json(result);
 });
 
+function getUserIdFromRequest(req) {
+  const sid = parseCookies(req).sid;
+  if (!sid) return null;
+  const result = data.getUserBySession(sid);
+  return result?.user?.id ?? null;
+}
+
 // Basic
 app.get("/", (req, res) => res.json({ message: "Sebastian Digital Town API", status: "running" }));
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 
-// Town Health
+// Metrics
 app.get("/metrics/town", (req, res) => res.json(data.getTownMetrics()));
+
+// Admin analytics endpoints (soft-protected: must be logged in)
+app.get("/api/admin/pulse", (req, res) => {
+  const uid = getUserIdFromRequest(req);
+  if (!uid) return res.status(401).json({ error: "Login required" });
+  const hours = Number(req.query.hours || 24);
+  res.json(data.townPulse(hours));
+});
+app.get("/api/admin/places", (req, res) => {
+  const uid = getUserIdFromRequest(req);
+  if (!uid) return res.status(401).json({ error: "Login required" });
+  const hours = Number(req.query.hours || 24);
+  res.json(data.placeLeaderboard(hours, 10));
+});
+app.get("/api/admin/events", (req, res) => {
+  const uid = getUserIdFromRequest(req);
+  if (!uid) return res.status(401).json({ error: "Login required" });
+  res.json(data.recentEvents(80));
+});
+
+// ✅ Event logging endpoint (server enriches userId)
+app.post("/events", express.json(), (req, res) => {
+  const payload = req.body || {};
+  const clientSessionId = (payload.clientSessionId || "").toString();
+  const eventType = (payload.eventType || "").toString();
+  if (!clientSessionId || !eventType) return res.status(400).json({ error: "clientSessionId and eventType required" });
+
+  const userId = getUserIdFromRequest(req);
+
+  data.logEvent({
+    eventType,
+    townId: 1,
+    districtId: payload.districtId ?? null,
+    placeId: payload.placeId ?? null,
+    listingId: payload.listingId ?? null,
+    conversationId: payload.conversationId ?? null,
+    userId,
+    clientSessionId,
+    meta: payload.meta || {},
+  });
+
+  res.json({ ok: true });
+});
 
 // Signup
 app.post("/api/signup", express.json(), (req, res) => {
@@ -88,18 +135,14 @@ app.post("/api/signup", express.json(), (req, res) => {
 });
 app.get("/api/signups", (req, res) => res.json(data.listSignups(100)));
 
-// Places (including new seller fields)
+// Places + settings
 app.get("/districts/:id/places", (req, res) => {
   const districtId = Number(req.params.id);
   res.json(data.places.filter((p) => p.districtId === districtId));
 });
-
-// ✅ Update place settings (visibility/seller type)
-// For now: require login (waitlist allowed to edit their own style later; ownership comes next step).
 app.patch("/places/:id/settings", express.json(), (req, res) => {
-  const sid = parseCookies(req).sid;
-  if (!sid) return res.status(401).json({ error: "Login required" });
-
+  const uid = getUserIdFromRequest(req);
+  if (!uid) return res.status(401).json({ error: "Login required" });
   const updated = data.updatePlaceSettings(req.params.id, req.body || {});
   if (updated?.error) return res.status(404).json(updated);
   res.json(updated);
@@ -114,7 +157,6 @@ app.post("/places/:id/listings", express.json(), (req, res) => {
   const placeId = Number(req.params.id);
   const { title, description, quantity, price } = req.body || {};
   if (!title || typeof title !== "string") return res.status(400).json({ error: "title is required" });
-
   const listing = data.addListing({
     placeId,
     title,
@@ -123,7 +165,6 @@ app.post("/places/:id/listings", express.json(), (req, res) => {
     price: Number.isFinite(Number(price)) ? Number(price) : 0,
     status: "active",
   });
-
   res.status(201).json(listing);
 });
 app.patch("/listings/:id/sold", (req, res) => {

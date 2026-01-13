@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Metrics – Sebastian</title>
+    <style>
+      body{ font-family: Arial, sans-serif; margin:0; background:#0b0f14; color:#e8eef6; }
+      .wrap{ max-width:1200px; margin:0 auto; padding:16px; }
+      .card{ background:#0f1722; border:1px solid #223149; border-radius:14px; padding:14px; margin-bottom:12px; }
+      .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+      .muted{ color:#9fb0c3; font-size:12px; }
+      table{ width:100%; border-collapse:collapse; }
+      th,td{ padding:8px; border-bottom:1px solid rgba(255,255,255,.08); text-align:left; font-size:13px; }
+      .pill{ display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); font-size:12px; }
+      a{ color:#cfe3ff; }
+      .mono{ font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; white-space:pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <h2 style="margin:0;">Admin Metrics – Sebastian</h2>
+          <div class="muted">You must be logged in. Data source: append-only events.</div>
+        </div>
+        <div class="row">
+          <a href="/ui" class="pill">Back to Town</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <strong>Town Pulse (last 24h)</strong>
+            <div class="muted" id="pulseMeta">—</div>
+          </div>
+          <div class="row">
+            <span class="pill" id="pulseSessions">Sessions: —</span>
+          </div>
+        </div>
+        <div id="pulseCounts" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="card">
+        <strong>Place Leaderboard (last 24h)</strong>
+        <div class="muted">Views, messages, listing creates per place.</div>
+        <div style="margin-top:10px;">
+          <table>
+            <thead>
+              <tr><th>Place</th><th>Views</th><th>Messages</th><th>Listing Creates</th><th>Total Events</th></tr>
+            </thead>
+            <tbody id="placeRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>Recent Events</strong>
+        <div class="muted">Most recent 80 events (raw).</div>
+        <div class="mono" id="recentEvents" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
+    <script src="/admin.js?v=1"></script>
+  </body>
+</html>
+

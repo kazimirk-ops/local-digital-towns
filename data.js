@@ -93,20 +93,38 @@ CREATE TABLE IF NOT EXISTS sessions (
   expiresAt TEXT NOT NULL,
   createdAt TEXT NOT NULL
 );
+
+-- ✅ Analytics: append-only events table (the truth source)
+CREATE TABLE IF NOT EXISTS events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  createdAt TEXT NOT NULL,
+  eventType TEXT NOT NULL,
+  townId INTEGER NOT NULL,
+  districtId INTEGER,
+  placeId INTEGER,
+  listingId INTEGER,
+  conversationId INTEGER,
+  userId INTEGER,
+  clientSessionId TEXT NOT NULL,
+  metaJson TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_createdAt ON events(createdAt);
+CREATE INDEX IF NOT EXISTS idx_events_type ON events(eventType);
+CREATE INDEX IF NOT EXISTS idx_events_place ON events(placeId);
 `);
 
-// ---------- Simple migration for new Place fields ----------
+function nowISO() { return new Date().toISOString(); }
+function normalizeEmail(e) { return (e || "").toString().trim().toLowerCase(); }
+function randToken(bytes = 24) { return crypto.randomBytes(bytes).toString("hex"); }
+
+// ---------- Migration for Place fields (seller type + visibility) ----------
 function columnExists(table, col) {
   const rows = db.prepare(`PRAGMA table_info(${table})`).all();
   return rows.some((r) => r.name === col);
 }
-
-function addColumn(table, colDef) {
-  db.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`);
-}
-
+function addColumn(table, colDef) { db.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`); }
 function migratePlaces() {
-  // seller type + visibility
   if (!columnExists("places", "sellerType")) addColumn("places", "sellerType TEXT NOT NULL DEFAULT 'individual'");
   if (!columnExists("places", "visibilityLevel")) addColumn("places", "visibilityLevel TEXT NOT NULL DEFAULT 'town_only'");
   if (!columnExists("places", "pickupZone")) addColumn("places", "pickupZone TEXT NOT NULL DEFAULT ''");
@@ -147,7 +165,7 @@ if (townCount === 0) {
   const insP = db.prepare("INSERT INTO places (id, townId, districtId, name, category, status) VALUES (?, ?, ?, ?, ?, ?)");
   for (const r of placeSeed) insP.run(...r);
 
-  const now = new Date().toISOString();
+  const now = nowISO();
   const insL = db.prepare("INSERT INTO listings (placeId, title, description, quantity, price, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)");
   insL.run(102, "Bell Peppers (5 lb bag)", "Fresh, local. Pickup today.", 10, 12, "active", now);
 
@@ -158,16 +176,9 @@ if (townCount === 0) {
   insM.run(convoId, "buyer", "Hi, are the bell peppers still available?", now, JSON.stringify(["buyer"]));
 }
 
-// ---------- Helpers ----------
-function nowISO() { return new Date().toISOString(); }
-function normalizeEmail(e) { return (e || "").toString().trim().toLowerCase(); }
-function randToken(bytes = 24) { return crypto.randomBytes(bytes).toString("hex"); }
-
 // ---------- Live getters ----------
 function getTown() { return db.prepare("SELECT * FROM towns WHERE id=1").get(); }
 function getDistricts() { return db.prepare("SELECT * FROM districts WHERE townId=1 ORDER BY id").all(); }
-
-// ✅ include new place columns
 function getPlaces() {
   return db.prepare(`
     SELECT id, townId, districtId, name, category, status,
@@ -178,7 +189,6 @@ function getPlaces() {
     ORDER BY id
   `).all();
 }
-
 function getListings() { return db.prepare("SELECT * FROM listings ORDER BY id").all(); }
 function getConversations() { return db.prepare("SELECT * FROM conversations ORDER BY id").all(); }
 function getMessages() {
@@ -186,46 +196,38 @@ function getMessages() {
     .map((m) => ({ ...m, readBy: JSON.parse(m.readBy || "[]") }));
 }
 
-// ---------- Place settings update ----------
+// ---------- Place settings ----------
 function updatePlaceSettings(placeId, patch) {
   const id = Number(placeId);
   const exists = db.prepare("SELECT id FROM places WHERE id=?").get(id);
   if (!exists) return { error: "Place not found" };
 
-  // Allowed enums
-  const sellerType = (patch.sellerType || "").toString();
-  const visibilityLevel = (patch.visibilityLevel || "").toString();
   const allowedSeller = ["individual", "business"];
   const allowedVis = ["town_only", "zone", "exact_address", "meetup_only"];
+  const allowedVer = ["unverified", "pending", "verified", "rejected"];
 
-  const nextSeller = allowedSeller.includes(sellerType) ? sellerType : null;
-  const nextVis = allowedVis.includes(visibilityLevel) ? visibilityLevel : null;
+  const sellerType = allowedSeller.includes(String(patch.sellerType || "")) ? String(patch.sellerType) : null;
+  const visibilityLevel = allowedVis.includes(String(patch.visibilityLevel || "")) ? String(patch.visibilityLevel) : null;
 
-  // text fields
   const pickupZone = (patch.pickupZone ?? "").toString();
   const addressPublic = (patch.addressPublic ?? "").toString();
   const addressPrivate = (patch.addressPrivate ?? "").toString();
   const meetupInstructions = (patch.meetupInstructions ?? "").toString();
   const hours = (patch.hours ?? "").toString();
 
-  // verified status only settable later (admin flow); for now keep as-is
-  // but allow setting to pending if business wants to request verification later
-  const verifiedStatus = (patch.verifiedStatus || "").toString();
-  const allowedVer = ["unverified", "pending", "verified", "rejected"];
-  const nextVer = allowedVer.includes(verifiedStatus) ? verifiedStatus : null;
+  const verifiedStatus = allowedVer.includes(String(patch.verifiedStatus || "")) ? String(patch.verifiedStatus) : null;
 
-  // Build update dynamically
   const sets = [];
   const vals = [];
 
-  if (nextSeller) { sets.push("sellerType=?"); vals.push(nextSeller); }
-  if (nextVis) { sets.push("visibilityLevel=?"); vals.push(nextVis); }
+  if (sellerType) { sets.push("sellerType=?"); vals.push(sellerType); }
+  if (visibilityLevel) { sets.push("visibilityLevel=?"); vals.push(visibilityLevel); }
   sets.push("pickupZone=?"); vals.push(pickupZone);
   sets.push("addressPublic=?"); vals.push(addressPublic);
   sets.push("addressPrivate=?"); vals.push(addressPrivate);
   sets.push("meetupInstructions=?"); vals.push(meetupInstructions);
   sets.push("hours=?"); vals.push(hours);
-  if (nextVer) { sets.push("verifiedStatus=?"); vals.push(nextVer); }
+  if (verifiedStatus) { sets.push("verifiedStatus=?"); vals.push(verifiedStatus); }
 
   vals.push(id);
   db.prepare(`UPDATE places SET ${sets.join(", ")} WHERE id=?`).run(...vals);
@@ -280,7 +282,6 @@ function addMessage(message) {
 function getConversationsForPlace(placeId) {
   return db.prepare("SELECT * FROM conversations WHERE placeId=? ORDER BY id").all(Number(placeId));
 }
-
 function getUnreadCount(conversationId, viewer = "buyer") {
   const rows = db.prepare("SELECT readBy FROM messages WHERE conversationId=?").all(Number(conversationId));
   let unread = 0;
@@ -290,7 +291,6 @@ function getUnreadCount(conversationId, viewer = "buyer") {
   }
   return unread;
 }
-
 function markConversationRead(conversationId, viewer = "buyer") {
   const rows = db.prepare("SELECT id, readBy FROM messages WHERE conversationId=?").all(Number(conversationId));
   const upd = db.prepare("UPDATE messages SET readBy=? WHERE id=?");
@@ -371,7 +371,7 @@ function getLatestSignupByEmail(email) {
   return db.prepare("SELECT * FROM signups WHERE email=? ORDER BY id DESC LIMIT 1").get(e) || null;
 }
 
-// ---------- Magic link auth (B) ----------
+// ---------- Magic link auth ----------
 function upsertUserByEmail(email) {
   const e = normalizeEmail(email);
   if (!e) return null;
@@ -430,6 +430,79 @@ function getUserBySession(sid) {
   return { user, signup };
 }
 
+// ---------- ✅ Events ----------
+function logEvent(evt) {
+  const metaJson = JSON.stringify(evt.meta || {});
+  db.prepare(`
+    INSERT INTO events (
+      createdAt, eventType, townId, districtId, placeId, listingId, conversationId,
+      userId, clientSessionId, metaJson
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    nowISO(),
+    evt.eventType,
+    evt.townId ?? 1,
+    evt.districtId ?? null,
+    evt.placeId ?? null,
+    evt.listingId ?? null,
+    evt.conversationId ?? null,
+    evt.userId ?? null,
+    evt.clientSessionId,
+    metaJson
+  );
+}
+
+function recentEvents(limit = 50) {
+  return db.prepare(`
+    SELECT id, createdAt, eventType, townId, districtId, placeId, listingId, conversationId, userId, clientSessionId, metaJson
+    FROM events
+    ORDER BY id DESC
+    LIMIT ?
+  `).all(Number(limit)).map((e) => ({ ...e, meta: safeParse(e.metaJson) }));
+}
+
+function safeParse(s) {
+  try { return JSON.parse(s || "{}"); } catch { return {}; }
+}
+
+function townPulse(hours = 24) {
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
+  const rows = db.prepare(`
+    SELECT eventType, COUNT(*) AS c
+    FROM events
+    WHERE createdAt >= ?
+    GROUP BY eventType
+    ORDER BY c DESC
+  `).all(since);
+
+  // Unique sessions
+  const sessions = db.prepare(`
+    SELECT COUNT(DISTINCT clientSessionId) AS c
+    FROM events
+    WHERE createdAt >= ?
+  `).get(since).c;
+
+  return { since, hours, sessions, counts: rows };
+}
+
+function placeLeaderboard(hours = 24, limit = 10) {
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+  return db.prepare(`
+    SELECT p.id AS placeId, p.name AS placeName,
+           COUNT(e.id) AS events,
+           SUM(CASE WHEN e.eventType='place_view' THEN 1 ELSE 0 END) AS views,
+           SUM(CASE WHEN e.eventType='message_send' THEN 1 ELSE 0 END) AS messages,
+           SUM(CASE WHEN e.eventType='listing_create' THEN 1 ELSE 0 END) AS listingCreates
+    FROM events e
+    JOIN places p ON p.id = e.placeId
+    WHERE e.createdAt >= ? AND e.placeId IS NOT NULL
+    GROUP BY e.placeId
+    ORDER BY views DESC, events DESC
+    LIMIT ?
+  `).all(since, Number(limit));
+}
+
 module.exports = {
   get town() { return getTown(); },
   get districts() { return getDistricts(); },
@@ -460,4 +533,11 @@ module.exports = {
   createSession,
   deleteSession,
   getUserBySession,
+
+  // analytics
+  logEvent,
+  recentEvents,
+  townPulse,
+  placeLeaderboard,
 };
+

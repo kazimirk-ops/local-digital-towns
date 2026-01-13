@@ -9,8 +9,19 @@ let state = {
 };
 
 let access = { loggedIn:false, eligible:false, email:null, reason:null };
-
 let map, markersLayer, boundaryLayer;
+
+// Anonymous client session id (persistent)
+function getClientSessionId() {
+  const key = "mct_session_id";
+  let v = localStorage.getItem(key);
+  if (!v) {
+    v = (crypto?.randomUUID?.() || (Date.now().toString(16) + Math.random().toString(16).slice(2)));
+    localStorage.setItem(key, v);
+  }
+  return v;
+}
+const clientSessionId = getClientSessionId();
 
 function debug(msg) { $("debug").textContent = msg || ""; }
 
@@ -21,6 +32,26 @@ async function api(path, opts) {
   try { data = JSON.parse(text); } catch { data = text; }
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
   return data;
+}
+
+// ✅ Event logger (fire-and-forget)
+async function logEvent(eventType, fields = {}, meta = {}) {
+  try {
+    await fetch("/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientSessionId,
+        eventType,
+        townId: 1,
+        districtId: fields.districtId ?? null,
+        placeId: fields.placeId ?? null,
+        listingId: fields.listingId ?? null,
+        conversationId: fields.conversationId ?? null,
+        meta,
+      }),
+    });
+  } catch {}
 }
 
 function setViewer(viewer) {
@@ -40,7 +71,7 @@ function setControlsEnabled() {
   $("sendMsg").disabled = !access.loggedIn;
   $("msgText").disabled = !access.loggedIn;
 
-  $("savePlaceSettings").disabled = !access.loggedIn; // settings allowed for any logged-in (ownership later)
+  $("savePlaceSettings").disabled = !access.loggedIn;
   ["sellerType","visibilityLevel","pickupZone","addressPublic","meetupInstructions","hours"]
     .forEach((id)=> $(id).disabled = !access.loggedIn);
 
@@ -49,10 +80,10 @@ function setControlsEnabled() {
     $("authTag").innerHTML = `Go to <a href="/signup" style="color:#cfe3ff;">/signup</a> to log in.`;
   } else if (access.eligible) {
     $("authTitle").textContent = `Logged in: ${access.email}`;
-    $("authTag").innerHTML = `<span class="eligible">✅ Eligible</span> • ${access.reason || ""}`;
+    $("authTag").innerHTML = `<span style="color:#00ffae;">✅ Eligible</span> • ${access.reason || ""}`;
   } else {
     $("authTitle").textContent = `Logged in: ${access.email}`;
-    $("authTag").innerHTML = `<span class="waitlist">🟡 Waitlist</span> • ${access.reason || ""}`;
+    $("authTag").innerHTML = `<span style="color:#ffcc00;">🟡 Waitlist</span> • ${access.reason || ""}`;
   }
 }
 
@@ -99,6 +130,8 @@ async function loadPlacesForDistrict(districtId) {
   const btn = document.querySelector(`.dBtn[data-district="${districtId}"]`);
   if (btn) btn.classList.add("active");
 
+  await logEvent("district_enter", { districtId }, { path: location.pathname });
+
   const places = await api(`/districts/${districtId}/places`);
   renderList($("places"), places, (p) => {
     const div = mkItem(p.name, `${p.category} • ${p.status} • id=${p.id}`);
@@ -136,6 +169,9 @@ async function selectPlace(p) {
   state.place = p;
   debug(`Place selected: ${p.name} (id=${p.id})`);
   loadPlaceSettingsIntoForm(p);
+
+  await logEvent("place_view", { districtId: p.districtId, placeId: p.id }, { placeName: p.name });
+
   await loadListings(p.id);
   await loadPlaceConversations(p.id);
 }
@@ -160,11 +196,11 @@ async function savePlaceSettings() {
       body: JSON.stringify(payload),
     });
 
-    debug("Place settings saved.");
-    // Update local place object
     state.place = updated;
+    debug("Place settings saved.");
 
-    // Refresh places list for current district to show updated settings if needed
+    await logEvent("place_settings_update", { placeId: state.placeId, districtId: state.districtId }, payload);
+
     if (state.districtId) await loadPlacesForDistrict(state.districtId);
   } catch (e) {
     debug(`ERROR: ${e.message}`);
@@ -209,11 +245,13 @@ async function createListing() {
   const price = Number($("newPrice").value);
   if (!title) return alert("Title required");
 
-  await api(`/places/${state.placeId}/listings`, {
+  const created = await api(`/places/${state.placeId}/listings`, {
     method:"POST",
     headers: { "Content-Type":"application/json" },
     body: JSON.stringify({ title, description, quantity, price }),
   });
+
+  await logEvent("listing_create", { placeId: state.placeId, districtId: state.districtId, listingId: created.id }, { title });
 
   $("newTitle").value=""; $("newDesc").value="";
   await loadListings(state.placeId);
@@ -223,6 +261,9 @@ async function createListing() {
 async function markSold(listingId) {
   if (!access.eligible) return alert("Waitlist users cannot mark sold yet.");
   await api(`/listings/${listingId}/sold`, { method:"PATCH" });
+
+  await logEvent("listing_mark_sold", { placeId: state.placeId, districtId: state.districtId, listingId: Number(listingId) }, {});
+
   await loadListings(state.placeId);
   await loadTownMetrics();
 }
@@ -231,7 +272,11 @@ async function loadPlaceConversations(placeId) {
   const convos = await api(`/places/${placeId}/conversations?viewer=${state.viewer}`);
   renderList($("conversations"), convos, (c) => {
     const div = mkItem(`Conversation ${c.id}`, `unread=${c.unreadCount}`);
-    div.onclick = async () => { state.conversationId = c.id; await loadMessages(c.id); };
+    div.onclick = async () => {
+      state.conversationId = c.id;
+      await logEvent("conversation_open", { placeId: placeId, conversationId: c.id }, {});
+      await loadMessages(c.id);
+    };
     return div;
   });
   if (!state.conversationId && convos[0]) state.conversationId = convos[0].id;
@@ -249,11 +294,15 @@ async function sendMessage() {
   const sender = $("sender").value.trim() || "buyer";
   const text = $("msgText").value.trim();
   if (!text) return;
+
   await api(`/conversations/${state.conversationId}/messages`, {
     method:"POST",
     headers: { "Content-Type":"application/json" },
     body: JSON.stringify({ sender, text }),
   });
+
+  await logEvent("message_send", { placeId: state.placeId, districtId: state.districtId, conversationId: state.conversationId }, { sender });
+
   $("msgText").value="";
   if (state.placeId) await loadPlaceConversations(state.placeId);
 }
@@ -262,6 +311,7 @@ async function markRead() {
   if (!access.loggedIn) return alert("Login required");
   if (!state.conversationId) return;
   await api(`/conversations/${state.conversationId}/read?viewer=${state.viewer}`, { method:"PATCH" });
+  await logEvent("mark_read", { placeId: state.placeId, districtId: state.districtId, conversationId: state.conversationId }, { viewer: state.viewer });
   if (state.placeId) await loadPlaceConversations(state.placeId);
 }
 
@@ -329,7 +379,9 @@ async function main() {
   initMap();
   bindDistrictButtons();
 
-  debug("Select a district → select a place → edit seller type & visibility.");
+  await logEvent("town_view", { townId: 1 }, { path: location.pathname });
+
+  debug("Shadow analytics running. Check /admin after interactions.");
 }
 
 main().catch((e)=> debug(`BOOT ERROR: ${e.message}`));
