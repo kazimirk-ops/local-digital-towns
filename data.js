@@ -4,7 +4,17 @@ const crypto = require("crypto");
 const db = new Database("town.db");
 db.pragma("journal_mode = WAL");
 
-// ---------- Schema ----------
+function nowISO() { return new Date().toISOString(); }
+function normalizeEmail(e) { return (e || "").toString().trim().toLowerCase(); }
+function randToken(bytes = 24) { return crypto.randomBytes(bytes).toString("hex"); }
+function todayKey() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 db.exec(`
 CREATE TABLE IF NOT EXISTS towns (
   id INTEGER PRIMARY KEY,
@@ -57,7 +67,6 @@ CREATE TABLE IF NOT EXISTS messages (
   readBy TEXT NOT NULL
 );
 
--- Signup gate
 CREATE TABLE IF NOT EXISTS signups (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -67,13 +76,12 @@ CREATE TABLE IF NOT EXISTS signups (
   city TEXT NOT NULL,
   state TEXT NOT NULL,
   zip TEXT NOT NULL,
-  status TEXT NOT NULL,          -- eligible | waitlist
+  status TEXT NOT NULL,
   reason TEXT NOT NULL,
   createdAt TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_signups_email ON signups(email);
 
--- Auth: users + magic links + sessions
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT NOT NULL UNIQUE,
@@ -94,7 +102,6 @@ CREATE TABLE IF NOT EXISTS sessions (
   createdAt TEXT NOT NULL
 );
 
--- ✅ Analytics: append-only events table (the truth source)
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   createdAt TEXT NOT NULL,
@@ -108,23 +115,39 @@ CREATE TABLE IF NOT EXISTS events (
   clientSessionId TEXT NOT NULL,
   metaJson TEXT NOT NULL
 );
-
 CREATE INDEX IF NOT EXISTS idx_events_createdAt ON events(createdAt);
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(eventType);
 CREATE INDEX IF NOT EXISTS idx_events_place ON events(placeId);
+
+CREATE TABLE IF NOT EXISTS sweep_ledger (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  createdAt TEXT NOT NULL,
+  userId INTEGER NOT NULL,
+  amount INTEGER NOT NULL,
+  reason TEXT NOT NULL,
+  eventId INTEGER,
+  metaJson TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sweep_user ON sweep_ledger(userId);
+CREATE INDEX IF NOT EXISTS idx_sweep_createdAt ON sweep_ledger(createdAt);
+
+CREATE TABLE IF NOT EXISTS raffle_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  createdAt TEXT NOT NULL,
+  userId INTEGER NOT NULL,
+  dayKey TEXT NOT NULL,
+  cost INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_raffle_unique_day ON raffle_entries(userId, dayKey);
 `);
 
-function nowISO() { return new Date().toISOString(); }
-function normalizeEmail(e) { return (e || "").toString().trim().toLowerCase(); }
-function randToken(bytes = 24) { return crypto.randomBytes(bytes).toString("hex"); }
-
-// ---------- Migration for Place fields (seller type + visibility) ----------
+// Migration for place settings fields
 function columnExists(table, col) {
   const rows = db.prepare(`PRAGMA table_info(${table})`).all();
   return rows.some((r) => r.name === col);
 }
 function addColumn(table, colDef) { db.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`); }
-function migratePlaces() {
+(function migratePlaces(){
   if (!columnExists("places", "sellerType")) addColumn("places", "sellerType TEXT NOT NULL DEFAULT 'individual'");
   if (!columnExists("places", "visibilityLevel")) addColumn("places", "visibilityLevel TEXT NOT NULL DEFAULT 'town_only'");
   if (!columnExists("places", "pickupZone")) addColumn("places", "pickupZone TEXT NOT NULL DEFAULT ''");
@@ -133,10 +156,9 @@ function migratePlaces() {
   if (!columnExists("places", "meetupInstructions")) addColumn("places", "meetupInstructions TEXT NOT NULL DEFAULT ''");
   if (!columnExists("places", "hours")) addColumn("places", "hours TEXT NOT NULL DEFAULT ''");
   if (!columnExists("places", "verifiedStatus")) addColumn("places", "verifiedStatus TEXT NOT NULL DEFAULT 'unverified'");
-}
-migratePlaces();
+})();
 
-// ---------- Seed (only if empty) ----------
+// Seed if empty
 const townCount = db.prepare("SELECT COUNT(*) AS c FROM towns").get().c;
 if (townCount === 0) {
   db.prepare("INSERT INTO towns (id, name, state, region, status) VALUES (1, ?, ?, ?, ?)")
@@ -165,49 +187,41 @@ if (townCount === 0) {
   const insP = db.prepare("INSERT INTO places (id, townId, districtId, name, category, status) VALUES (?, ?, ?, ?, ?, ?)");
   for (const r of placeSeed) insP.run(...r);
 
-  const now = nowISO();
   const insL = db.prepare("INSERT INTO listings (placeId, title, description, quantity, price, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)");
-  insL.run(102, "Bell Peppers (5 lb bag)", "Fresh, local. Pickup today.", 10, 12, "active", now);
-
-  const insC = db.prepare("INSERT INTO conversations (placeId, participant, createdAt) VALUES (?, ?, ?)");
-  const convoId = insC.run(102, "buyer", now).lastInsertRowid;
-
-  const insM = db.prepare("INSERT INTO messages (conversationId, sender, text, createdAt, readBy) VALUES (?, ?, ?, ?, ?)");
-  insM.run(convoId, "buyer", "Hi, are the bell peppers still available?", now, JSON.stringify(["buyer"]));
+  insL.run(102, "Bell Peppers (5 lb bag)", "Fresh, local. Pickup today.", 10, 12, "active", nowISO());
 }
 
-// ---------- Live getters ----------
-function getTown() { return db.prepare("SELECT * FROM towns WHERE id=1").get(); }
-function getDistricts() { return db.prepare("SELECT * FROM districts WHERE townId=1 ORDER BY id").all(); }
-function getPlaces() {
+// Getters
+function getTown(){ return db.prepare("SELECT * FROM towns WHERE id=1").get(); }
+function getDistricts(){ return db.prepare("SELECT * FROM districts WHERE townId=1 ORDER BY id").all(); }
+function getPlaces(){
   return db.prepare(`
     SELECT id, townId, districtId, name, category, status,
            sellerType, visibilityLevel, pickupZone, addressPublic, addressPrivate,
            meetupInstructions, hours, verifiedStatus
-    FROM places
-    WHERE townId=1
-    ORDER BY id
+    FROM places WHERE townId=1 ORDER BY id
   `).all();
 }
-function getListings() { return db.prepare("SELECT * FROM listings ORDER BY id").all(); }
-function getConversations() { return db.prepare("SELECT * FROM conversations ORDER BY id").all(); }
-function getMessages() {
+function getListings(){ return db.prepare("SELECT * FROM listings ORDER BY id").all(); }
+function getMessages(){
   return db.prepare("SELECT * FROM messages ORDER BY id").all()
-    .map((m) => ({ ...m, readBy: JSON.parse(m.readBy || "[]") }));
+    .map(m => ({...m, readBy: JSON.parse(m.readBy || "[]")}));
+}
+function getConversationsForPlace(placeId){
+  return db.prepare("SELECT * FROM conversations WHERE placeId=? ORDER BY id").all(Number(placeId));
 }
 
-// ---------- Place settings ----------
-function updatePlaceSettings(placeId, patch) {
+// Place settings update
+function updatePlaceSettings(placeId, patch){
   const id = Number(placeId);
   const exists = db.prepare("SELECT id FROM places WHERE id=?").get(id);
   if (!exists) return { error: "Place not found" };
 
-  const allowedSeller = ["individual", "business"];
-  const allowedVis = ["town_only", "zone", "exact_address", "meetup_only"];
-  const allowedVer = ["unverified", "pending", "verified", "rejected"];
+  const allowedSeller = ["individual","business"];
+  const allowedVis = ["town_only","zone","exact_address","meetup_only"];
 
-  const sellerType = allowedSeller.includes(String(patch.sellerType || "")) ? String(patch.sellerType) : null;
-  const visibilityLevel = allowedVis.includes(String(patch.visibilityLevel || "")) ? String(patch.visibilityLevel) : null;
+  const sellerType = allowedSeller.includes(String(patch.sellerType||"")) ? String(patch.sellerType) : null;
+  const visibilityLevel = allowedVis.includes(String(patch.visibilityLevel||"")) ? String(patch.visibilityLevel) : null;
 
   const pickupZone = (patch.pickupZone ?? "").toString();
   const addressPublic = (patch.addressPublic ?? "").toString();
@@ -215,11 +229,7 @@ function updatePlaceSettings(placeId, patch) {
   const meetupInstructions = (patch.meetupInstructions ?? "").toString();
   const hours = (patch.hours ?? "").toString();
 
-  const verifiedStatus = allowedVer.includes(String(patch.verifiedStatus || "")) ? String(patch.verifiedStatus) : null;
-
-  const sets = [];
-  const vals = [];
-
+  const sets=[]; const vals=[];
   if (sellerType) { sets.push("sellerType=?"); vals.push(sellerType); }
   if (visibilityLevel) { sets.push("visibilityLevel=?"); vals.push(visibilityLevel); }
   sets.push("pickupZone=?"); vals.push(pickupZone);
@@ -227,11 +237,9 @@ function updatePlaceSettings(placeId, patch) {
   sets.push("addressPrivate=?"); vals.push(addressPrivate);
   sets.push("meetupInstructions=?"); vals.push(meetupInstructions);
   sets.push("hours=?"); vals.push(hours);
-  if (verifiedStatus) { sets.push("verifiedStatus=?"); vals.push(verifiedStatus); }
 
   vals.push(id);
   db.prepare(`UPDATE places SET ${sets.join(", ")} WHERE id=?`).run(...vals);
-
   return db.prepare(`
     SELECT id, townId, districtId, name, category, status,
            sellerType, visibilityLevel, pickupZone, addressPublic, addressPrivate,
@@ -240,23 +248,14 @@ function updatePlaceSettings(placeId, patch) {
   `).get(id);
 }
 
-// ---------- Listings ----------
-function addListing(listing) {
+// Listings
+function addListing(listing){
   const info = db.prepare(
     "INSERT INTO listings (placeId, title, description, quantity, price, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  ).run(
-    listing.placeId,
-    listing.title,
-    listing.description || "",
-    listing.quantity ?? 1,
-    listing.price ?? 0,
-    listing.status || "active",
-    nowISO()
-  );
+  ).run(listing.placeId, listing.title, listing.description||"", listing.quantity??1, listing.price??0, listing.status||"active", nowISO());
   return db.prepare("SELECT * FROM listings WHERE id=?").get(info.lastInsertRowid);
 }
-
-function markListingSold(listingId) {
+function markListingSold(listingId){
   const id = Number(listingId);
   const exists = db.prepare("SELECT * FROM listings WHERE id=?").get(id);
   if (!exists) return null;
@@ -264,249 +263,160 @@ function markListingSold(listingId) {
   return db.prepare("SELECT * FROM listings WHERE id=?").get(id);
 }
 
-// ---------- Conversations & Messages ----------
-function addConversation(conversation) {
+// ✅ Conversations + messages (this was missing before)
+function addConversation({ placeId, participant = "buyer" }){
   const info = db.prepare("INSERT INTO conversations (placeId, participant, createdAt) VALUES (?, ?, ?)")
-    .run(conversation.placeId, conversation.participant || "buyer", nowISO());
+    .run(Number(placeId), participant, nowISO());
   return db.prepare("SELECT * FROM conversations WHERE id=?").get(info.lastInsertRowid);
 }
-
-function addMessage(message) {
-  const readBy = message.readBy ? message.readBy : [message.sender || "buyer"];
+function addMessage({ conversationId, sender = "buyer", text, readBy }){
+  const rb = readBy ? readBy : [sender];
   const info = db.prepare("INSERT INTO messages (conversationId, sender, text, createdAt, readBy) VALUES (?, ?, ?, ?, ?)")
-    .run(message.conversationId, message.sender || "buyer", message.text, nowISO(), JSON.stringify(readBy));
+    .run(Number(conversationId), sender, text, nowISO(), JSON.stringify(rb));
   const row = db.prepare("SELECT * FROM messages WHERE id=?").get(info.lastInsertRowid);
   return { ...row, readBy: JSON.parse(row.readBy || "[]") };
 }
-
-function getConversationsForPlace(placeId) {
-  return db.prepare("SELECT * FROM conversations WHERE placeId=? ORDER BY id").all(Number(placeId));
-}
-function getUnreadCount(conversationId, viewer = "buyer") {
+function getUnreadCount(conversationId, viewer="buyer"){
   const rows = db.prepare("SELECT readBy FROM messages WHERE conversationId=?").all(Number(conversationId));
-  let unread = 0;
-  for (const r of rows) {
-    const rb = JSON.parse(r.readBy || "[]");
-    if (!rb.includes(viewer)) unread += 1;
+  let unread=0;
+  for(const r of rows){
+    const rb=JSON.parse(r.readBy||"[]");
+    if(!rb.includes(viewer)) unread++;
   }
   return unread;
 }
-function markConversationRead(conversationId, viewer = "buyer") {
+function markConversationRead(conversationId, viewer="buyer"){
   const rows = db.prepare("SELECT id, readBy FROM messages WHERE conversationId=?").all(Number(conversationId));
   const upd = db.prepare("UPDATE messages SET readBy=? WHERE id=?");
-  for (const r of rows) {
-    const rb = JSON.parse(r.readBy || "[]");
-    if (!rb.includes(viewer)) rb.push(viewer);
+  for(const r of rows){
+    const rb=JSON.parse(r.readBy||"[]");
+    if(!rb.includes(viewer)) rb.push(viewer);
     upd.run(JSON.stringify(rb), r.id);
   }
   return true;
 }
 
-// ---------- Town Metrics ----------
-function getTownMetrics() {
-  const placesCount = db.prepare("SELECT COUNT(*) AS c FROM places WHERE townId=1").get().c;
-  const totalListings = db.prepare("SELECT COUNT(*) AS c FROM listings").get().c;
-  const activeListings = db.prepare("SELECT COUNT(*) AS c FROM listings WHERE status='active'").get().c;
-  const soldListings = db.prepare("SELECT COUNT(*) AS c FROM listings WHERE status='sold'").get().c;
-  const conversationsCount = db.prepare("SELECT COUNT(*) AS c FROM conversations").get().c;
-  const messagesCount = db.prepare("SELECT COUNT(*) AS c FROM messages").get().c;
-
-  const healthIndex = Math.min(100, (placesCount * 2) + (activeListings * 3) + (conversationsCount * 4) + Math.min(30, messagesCount));
-
-  return {
-    townId: 1,
-    townName: getTown().name,
-    placesCount,
-    totalListings,
-    activeListings,
-    soldListings,
-    conversationsCount,
-    messagesCount,
-    healthIndex,
-    updatedAt: nowISO(),
-  };
+// Signup gate
+function classifySignup({city,zip}){
+  const c=(city||"").toString().trim().toLowerCase();
+  const z=(zip||"").toString().trim();
+  if(c.includes("sebastian")) return {status:"eligible", reason:"City contains 'Sebastian' (pilot zone)"};
+  if(z==="32958") return {status:"eligible", reason:"ZIP is 32958 (Sebastian pilot zone)"};
+  return {status:"waitlist", reason:"Outside Sebastian pilot zone (address gate)"};
 }
-
-// ---------- Signup gate ----------
-function classifySignup({ city, zip }) {
-  const c = (city || "").toString().trim().toLowerCase();
-  const z = (zip || "").toString().trim();
-  if (c.includes("sebastian")) return { status: "eligible", reason: "City contains 'Sebastian' (pilot zone)" };
-  if (z === "32958") return { status: "eligible", reason: "ZIP is 32958 (Sebastian pilot zone)" };
-  return { status: "waitlist", reason: "Outside Sebastian pilot zone (address gate)" };
-}
-
-function addSignup(payload) {
-  const name = (payload.name || "").toString().trim();
-  const email = normalizeEmail(payload.email);
-  const address1 = (payload.address1 || "").toString().trim();
-  const address2 = (payload.address2 || "").toString().trim();
-  const city = (payload.city || "").toString().trim();
-  const state = (payload.state || "").toString().trim();
-  const zip = (payload.zip || "").toString().trim();
-  if (!name || !email || !address1 || !city || !state || !zip) return { error: "Missing required fields" };
-
-  const { status, reason } = classifySignup({ city, zip });
-
-  const existing = db.prepare("SELECT * FROM signups WHERE email=? ORDER BY id DESC LIMIT 1").get(email);
-  if (existing) {
+function addSignup(payload){
+  const name=(payload.name||"").toString().trim();
+  const email=normalizeEmail(payload.email);
+  const address1=(payload.address1||"").toString().trim();
+  const address2=(payload.address2||"").toString().trim();
+  const city=(payload.city||"").toString().trim();
+  const state=(payload.state||"").toString().trim();
+  const zip=(payload.zip||"").toString().trim();
+  if(!name||!email||!address1||!city||!state||!zip) return {error:"Missing required fields"};
+  const {status,reason}=classifySignup({city,zip});
+  const existing=db.prepare("SELECT * FROM signups WHERE email=? ORDER BY id DESC LIMIT 1").get(email);
+  if(existing){
     db.prepare("UPDATE signups SET name=?, address1=?, address2=?, city=?, state=?, zip=?, status=?, reason=? WHERE id=?")
-      .run(name, address1, address2, city, state, zip, status, reason, existing.id);
+      .run(name,address1,address2,city,state,zip,status,reason,existing.id);
     return db.prepare("SELECT * FROM signups WHERE id=?").get(existing.id);
   }
-
-  const info = db.prepare(
-    "INSERT INTO signups (name, email, address1, address2, city, state, zip, status, reason, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(name, email, address1, address2, city, state, zip, status, reason, nowISO());
-
+  const info=db.prepare("INSERT INTO signups (name,email,address1,address2,city,state,zip,status,reason,createdAt) VALUES (?,?,?,?,?,?,?,?,?,?)")
+    .run(name,email,address1,address2,city,state,zip,status,reason,nowISO());
   return db.prepare("SELECT * FROM signups WHERE id=?").get(info.lastInsertRowid);
 }
-
-function listSignups(limit = 100) {
-  return db.prepare("SELECT * FROM signups ORDER BY id DESC LIMIT ?").all(Number(limit));
-}
-
-function getLatestSignupByEmail(email) {
-  const e = normalizeEmail(email);
+function getLatestSignupByEmail(email){
+  const e=normalizeEmail(email);
   return db.prepare("SELECT * FROM signups WHERE email=? ORDER BY id DESC LIMIT 1").get(e) || null;
 }
 
-// ---------- Magic link auth ----------
-function upsertUserByEmail(email) {
-  const e = normalizeEmail(email);
-  if (!e) return null;
-  const existing = db.prepare("SELECT * FROM users WHERE email=?").get(e);
-  if (existing) return existing;
-  const info = db.prepare("INSERT INTO users (email, createdAt) VALUES (?, ?)").run(e, nowISO());
+// Auth
+function upsertUserByEmail(email){
+  const e=normalizeEmail(email);
+  if(!e) return null;
+  const existing=db.prepare("SELECT * FROM users WHERE email=?").get(e);
+  if(existing) return existing;
+  const info=db.prepare("INSERT INTO users (email, createdAt) VALUES (?,?)").run(e, nowISO());
   return db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
 }
-
-function createMagicLink(email) {
-  const user = upsertUserByEmail(email);
-  if (!user) return { error: "Invalid email" };
-
-  const token = randToken(24);
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-
-  db.prepare("INSERT INTO magic_links (token, userId, expiresAt, createdAt) VALUES (?, ?, ?, ?)")
-    .run(token, user.id, expiresAt, nowISO());
-
-  return { token, userId: user.id, expiresAt };
+function createMagicLink(email){
+  const user=upsertUserByEmail(email);
+  if(!user) return {error:"Invalid email"};
+  const token=randToken(24);
+  const expiresAt=new Date(Date.now()+15*60*1000).toISOString();
+  db.prepare("INSERT INTO magic_links (token,userId,expiresAt,createdAt) VALUES (?,?,?,?)").run(token,user.id,expiresAt,nowISO());
+  return {token,userId:user.id,expiresAt};
 }
-
-function consumeMagicToken(token) {
-  const row = db.prepare("SELECT * FROM magic_links WHERE token=?").get(token);
-  if (!row) return { error: "Invalid token" };
-  if (new Date(row.expiresAt).getTime() < Date.now()) {
+function consumeMagicToken(token){
+  const row=db.prepare("SELECT * FROM magic_links WHERE token=?").get(token);
+  if(!row) return {error:"Invalid token"};
+  if(new Date(row.expiresAt).getTime()<Date.now()){
     db.prepare("DELETE FROM magic_links WHERE token=?").run(token);
-    return { error: "Token expired" };
+    return {error:"Token expired"};
   }
   db.prepare("DELETE FROM magic_links WHERE token=?").run(token);
-  return { userId: row.userId };
+  return {userId:row.userId};
+}
+function createSession(userId){
+  const sid=randToken(24);
+  const expiresAt=new Date(Date.now()+30*24*60*60*1000).toISOString();
+  db.prepare("INSERT INTO sessions (sid,userId,expiresAt,createdAt) VALUES (?,?,?,?)").run(sid,userId,expiresAt,nowISO());
+  return {sid,expiresAt};
+}
+function deleteSession(sid){ db.prepare("DELETE FROM sessions WHERE sid=?").run(sid); }
+function getUserBySession(sid){
+  const sess=db.prepare("SELECT * FROM sessions WHERE sid=?").get(sid);
+  if(!sess) return null;
+  if(new Date(sess.expiresAt).getTime()<Date.now()){ deleteSession(sid); return null; }
+  const user=db.prepare("SELECT * FROM users WHERE id=?").get(sess.userId);
+  if(!user) return null;
+  const signup=getLatestSignupByEmail(user.email);
+  return {user,signup};
 }
 
-function createSession(userId) {
-  const sid = randToken(24);
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-  db.prepare("INSERT INTO sessions (sid, userId, expiresAt, createdAt) VALUES (?, ?, ?, ?)")
-    .run(sid, userId, expiresAt, nowISO());
-  return { sid, expiresAt };
+// Events + sweep
+function logEvent(evt){
+  const metaJson=JSON.stringify(evt.meta||{});
+  const info=db.prepare(`
+    INSERT INTO events (createdAt,eventType,townId,districtId,placeId,listingId,conversationId,userId,clientSessionId,metaJson)
+    VALUES (?,?,?,?,?,?,?,?,?,?)
+  `).run(nowISO(),evt.eventType,evt.townId??1,evt.districtId??null,evt.placeId??null,evt.listingId??null,evt.conversationId??null,evt.userId??null,evt.clientSessionId,metaJson);
+  return info.lastInsertRowid;
 }
-
-function deleteSession(sid) {
-  db.prepare("DELETE FROM sessions WHERE sid=?").run(sid);
+function getSweepBalance(userId){
+  const row=db.prepare("SELECT COALESCE(SUM(amount),0) AS bal FROM sweep_ledger WHERE userId=?").get(Number(userId));
+  return row.bal||0;
 }
-
-function getUserBySession(sid) {
-  const sess = db.prepare("SELECT * FROM sessions WHERE sid=?").get(sid);
-  if (!sess) return null;
-  if (new Date(sess.expiresAt).getTime() < Date.now()) {
-    deleteSession(sid);
-    return null;
-  }
-  const user = db.prepare("SELECT * FROM users WHERE id=?").get(sess.userId);
-  if (!user) return null;
-  const signup = getLatestSignupByEmail(user.email);
-  return { user, signup };
+function creditSweep({userId,amount,reason,eventId=null,meta={}}){
+  const uid=Number(userId);
+  if(!uid||!Number.isFinite(Number(amount))||Number(amount)===0) return;
+  db.prepare("INSERT INTO sweep_ledger (createdAt,userId,amount,reason,eventId,metaJson) VALUES (?,?,?,?,?,?)")
+    .run(nowISO(),uid,Number(amount),reason,eventId,JSON.stringify(meta||{}));
 }
-
-// ---------- ✅ Events ----------
-function logEvent(evt) {
-  const metaJson = JSON.stringify(evt.meta || {});
-  db.prepare(`
-    INSERT INTO events (
-      createdAt, eventType, townId, districtId, placeId, listingId, conversationId,
-      userId, clientSessionId, metaJson
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    nowISO(),
-    evt.eventType,
-    evt.townId ?? 1,
-    evt.districtId ?? null,
-    evt.placeId ?? null,
-    evt.listingId ?? null,
-    evt.conversationId ?? null,
-    evt.userId ?? null,
-    evt.clientSessionId,
-    metaJson
-  );
+function applySweepRewardForEvent({eventType,userId,eventId,meta}){
+  if(!userId) return null;
+  const rules={ district_enter:1, place_view:1, message_send:2, listing_create:5, listing_mark_sold:3 };
+  const amt=rules[eventType]||0;
+  if(amt<=0) return null;
+  creditSweep({ userId, amount:amt, reason:`Earned for ${eventType}`, eventId, meta });
+  return { amount:amt, reason:`Earned for ${eventType}` };
 }
-
-function recentEvents(limit = 50) {
-  return db.prepare(`
-    SELECT id, createdAt, eventType, townId, districtId, placeId, listingId, conversationId, userId, clientSessionId, metaJson
-    FROM events
-    ORDER BY id DESC
-    LIMIT ?
-  `).all(Number(limit)).map((e) => ({ ...e, meta: safeParse(e.metaJson) }));
-}
-
-function safeParse(s) {
-  try { return JSON.parse(s || "{}"); } catch { return {}; }
-}
-
-function townPulse(hours = 24) {
-  const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-
-  const rows = db.prepare(`
-    SELECT eventType, COUNT(*) AS c
-    FROM events
-    WHERE createdAt >= ?
-    GROUP BY eventType
-    ORDER BY c DESC
-  `).all(since);
-
-  // Unique sessions
-  const sessions = db.prepare(`
-    SELECT COUNT(DISTINCT clientSessionId) AS c
-    FROM events
-    WHERE createdAt >= ?
-  `).get(since).c;
-
-  return { since, hours, sessions, counts: rows };
-}
-
-function placeLeaderboard(hours = 24, limit = 10) {
-  const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-  return db.prepare(`
-    SELECT p.id AS placeId, p.name AS placeName,
-           COUNT(e.id) AS events,
-           SUM(CASE WHEN e.eventType='place_view' THEN 1 ELSE 0 END) AS views,
-           SUM(CASE WHEN e.eventType='message_send' THEN 1 ELSE 0 END) AS messages,
-           SUM(CASE WHEN e.eventType='listing_create' THEN 1 ELSE 0 END) AS listingCreates
-    FROM events e
-    JOIN places p ON p.id = e.placeId
-    WHERE e.createdAt >= ? AND e.placeId IS NOT NULL
-    GROUP BY e.placeId
-    ORDER BY views DESC, events DESC
-    LIMIT ?
-  `).all(since, Number(limit));
+function enterDailyRaffle(userId,cost=10){
+  const uid=Number(userId);
+  if(!uid) return {error:"Login required"};
+  const day=todayKey();
+  const existing=db.prepare("SELECT id FROM raffle_entries WHERE userId=? AND dayKey=?").get(uid,day);
+  if(existing) return {error:"Already entered today"};
+  const bal=getSweepBalance(uid);
+  if(bal<cost) return {error:"Insufficient sweep balance"};
+  creditSweep({ userId:uid, amount:-cost, reason:`Daily raffle entry (${day})`, meta:{day} });
+  db.prepare("INSERT INTO raffle_entries (createdAt,userId,dayKey,cost) VALUES (?,?,?,?)").run(nowISO(),uid,day,cost);
+  return { ok:true, dayKey:day, cost, balance:getSweepBalance(uid) };
 }
 
 module.exports = {
-  get town() { return getTown(); },
-  get districts() { return getDistricts(); },
-  get places() { return getPlaces(); },
+  get town(){ return getTown(); },
+  get districts(){ return getDistricts(); },
+  get places(){ return getPlaces(); },
 
   updatePlaceSettings,
 
@@ -514,30 +424,25 @@ module.exports = {
   addListing,
   markListingSold,
 
-  getConversations,
+  // chat
   addConversation,
-  getMessages,
   addMessage,
-
+  getMessages,
   getConversationsForPlace,
   getUnreadCount,
   markConversationRead,
 
-  getTownMetrics,
-
+  // signup + auth
   addSignup,
-  listSignups,
-
   createMagicLink,
   consumeMagicToken,
   createSession,
   deleteSession,
   getUserBySession,
 
-  // analytics
+  // sweep
   logEvent,
-  recentEvents,
-  townPulse,
-  placeLeaderboard,
+  applySweepRewardForEvent,
+  getSweepBalance,
+  enterDailyRaffle,
 };
-

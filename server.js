@@ -30,38 +30,37 @@ function setCookie(res, name, value, opts = {}) {
   if (opts.maxAge !== undefined) parts.push(`Max-Age=${opts.maxAge}`);
   res.setHeader("Set-Cookie", parts.join("; "));
 }
+function getUserId(req) {
+  const sid = parseCookies(req).sid;
+  if (!sid) return null;
+  const result = data.getUserBySession(sid);
+  return result?.user?.id ?? null;
+}
 
 // Auth
 app.post("/auth/request-link", express.json(), (req, res) => {
   const email = (req.body?.email || "").toString().trim().toLowerCase();
   if (!email) return res.status(400).json({ error: "email required" });
-
   const created = data.createMagicLink(email);
   if (created.error) return res.status(400).json(created);
-
   const magicUrl = `http://localhost:3000/auth/magic?token=${created.token}`;
   res.json({ ok: true, magicUrl, expiresAt: created.expiresAt });
 });
-
 app.get("/auth/magic", (req, res) => {
   const token = (req.query.token || "").toString();
   if (!token) return res.status(400).send("Missing token");
-
   const consumed = data.consumeMagicToken(token);
   if (consumed.error) return res.status(400).send(consumed.error);
-
   const sess = data.createSession(consumed.userId);
   setCookie(res, "sid", sess.sid, { httpOnly: true, maxAge: 60 * 60 * 24 * 30 });
   res.redirect("/ui");
 });
-
 app.post("/auth/logout", (req, res) => {
   const sid = parseCookies(req).sid;
   if (sid) data.deleteSession(sid);
   setCookie(res, "sid", "", { httpOnly: true, maxAge: 0 });
   res.json({ ok: true });
 });
-
 app.get("/me", (req, res) => {
   const sid = parseCookies(req).sid;
   if (!sid) return res.json({ user: null, signup: null });
@@ -70,49 +69,54 @@ app.get("/me", (req, res) => {
   res.json(result);
 });
 
-function getUserIdFromRequest(req) {
-  const sid = parseCookies(req).sid;
-  if (!sid) return null;
-  const result = data.getUserBySession(sid);
-  return result?.user?.id ?? null;
-}
-
 // Basic
-app.get("/", (req, res) => res.json({ message: "Sebastian Digital Town API", status: "running" }));
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 
-// Metrics
-app.get("/metrics/town", (req, res) => res.json(data.getTownMetrics()));
+// ✅ Sweep endpoints
+app.get("/sweep/balance", (req, res) => {
+  const uid = getUserId(req);
+  if (!uid) return res.json({ loggedIn: false, balance: 0 });
+  const bal = data.getSweepBalance(uid);
+  res.json({ loggedIn: true, balance: bal });
+});
+app.post("/sweep/raffle/enter", (req, res) => {
+  const uid = getUserId(req);
+  const result = data.enterDailyRaffle(uid, 10);
+  if (result.error) return res.status(400).json(result);
+  res.json(result);
+});
 
-// Admin analytics endpoints (soft-protected: must be logged in)
+// Signup
+app.post("/api/signup", express.json(), (req, res) => {
+  const result = data.addSignup(req.body || {});
+  if (result?.error) return res.status(400).json(result);
+  res.status(201).json(result);
+});
+
+// Admin analytics (login required)
 app.get("/api/admin/pulse", (req, res) => {
-  const uid = getUserIdFromRequest(req);
+  const uid = getUserId(req);
   if (!uid) return res.status(401).json({ error: "Login required" });
   const hours = Number(req.query.hours || 24);
   res.json(data.townPulse(hours));
 });
 app.get("/api/admin/places", (req, res) => {
-  const uid = getUserIdFromRequest(req);
+  const uid = getUserId(req);
   if (!uid) return res.status(401).json({ error: "Login required" });
   const hours = Number(req.query.hours || 24);
   res.json(data.placeLeaderboard(hours, 10));
 });
-app.get("/api/admin/events", (req, res) => {
-  const uid = getUserIdFromRequest(req);
-  if (!uid) return res.status(401).json({ error: "Login required" });
-  res.json(data.recentEvents(80));
-});
 
-// ✅ Event logging endpoint (server enriches userId)
+// ✅ Events endpoint: log + reward sweep
 app.post("/events", express.json(), (req, res) => {
   const payload = req.body || {};
   const clientSessionId = (payload.clientSessionId || "").toString();
   const eventType = (payload.eventType || "").toString();
   if (!clientSessionId || !eventType) return res.status(400).json({ error: "clientSessionId and eventType required" });
 
-  const userId = getUserIdFromRequest(req);
+  const userId = getUserId(req);
 
-  data.logEvent({
+  const eventId = data.logEvent({
     eventType,
     townId: 1,
     districtId: payload.districtId ?? null,
@@ -124,16 +128,10 @@ app.post("/events", express.json(), (req, res) => {
     meta: payload.meta || {},
   });
 
-  res.json({ ok: true });
-});
+  const reward = data.applySweepRewardForEvent({ eventType, userId, eventId, meta: payload.meta || {} });
 
-// Signup
-app.post("/api/signup", express.json(), (req, res) => {
-  const result = data.addSignup(req.body || {});
-  if (result?.error) return res.status(400).json(result);
-  res.status(201).json(result);
+  res.json({ ok: true, reward: reward || null });
 });
-app.get("/api/signups", (req, res) => res.json(data.listSignups(100)));
 
 // Places + settings
 app.get("/districts/:id/places", (req, res) => {
@@ -141,7 +139,7 @@ app.get("/districts/:id/places", (req, res) => {
   res.json(data.places.filter((p) => p.districtId === districtId));
 });
 app.patch("/places/:id/settings", express.json(), (req, res) => {
-  const uid = getUserIdFromRequest(req);
+  const uid = getUserId(req);
   if (!uid) return res.status(401).json({ error: "Login required" });
   const updated = data.updatePlaceSettings(req.params.id, req.body || {});
   if (updated?.error) return res.status(404).json(updated);
@@ -154,20 +152,20 @@ app.get("/places/:id/listings", (req, res) => {
   res.json(data.getListings().filter((l) => l.placeId === placeId));
 });
 app.post("/places/:id/listings", express.json(), (req, res) => {
+  const uid = getUserId(req);
+  if (!uid) return res.status(401).json({ error: "Login required" });
+
   const placeId = Number(req.params.id);
   const { title, description, quantity, price } = req.body || {};
   if (!title || typeof title !== "string") return res.status(400).json({ error: "title is required" });
-  const listing = data.addListing({
-    placeId,
-    title,
-    description: typeof description === "string" ? description : "",
-    quantity: Number.isFinite(Number(quantity)) ? Number(quantity) : 1,
-    price: Number.isFinite(Number(price)) ? Number(price) : 0,
-    status: "active",
-  });
+
+  const listing = data.addListing({ placeId, title, description, quantity, price, status: "active" });
   res.status(201).json(listing);
 });
 app.patch("/listings/:id/sold", (req, res) => {
+  const uid = getUserId(req);
+  if (!uid) return res.status(401).json({ error: "Login required" });
+
   const updated = data.markListingSold(req.params.id);
   if (!updated) return res.status(404).json({ error: "Listing not found" });
   res.json(updated);
@@ -188,13 +186,20 @@ app.get("/conversations/:id/messages", (req, res) => {
   res.json(data.getMessages().filter((m) => m.conversationId === conversationId));
 });
 app.post("/conversations/:id/messages", express.json(), (req, res) => {
+  const uid = getUserId(req);
+  if (!uid) return res.status(401).json({ error: "Login required" });
+
   const conversationId = Number(req.params.id);
   const { sender, text } = req.body || {};
   if (!text) return res.status(400).json({ error: "text required" });
+
   const msg = data.addMessage({ conversationId, sender: sender || "buyer", text });
   res.status(201).json(msg);
 });
 app.patch("/conversations/:id/read", (req, res) => {
+  const uid = getUserId(req);
+  if (!uid) return res.status(401).json({ error: "Login required" });
+
   const conversationId = Number(req.params.id);
   const viewer = (req.query.viewer || "buyer").toString();
   data.markConversationRead(conversationId, viewer);
