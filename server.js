@@ -28,7 +28,7 @@ function setCookie(res, name, value, opts = {}) {
   if (opts.httpOnly) parts.push("HttpOnly");
   parts.push("Path=/");
   parts.push("SameSite=Lax");
-  if (opts.maxAge) parts.push(`Max-Age=${opts.maxAge}`);
+  if (opts.maxAge !== undefined) parts.push(`Max-Age=${opts.maxAge}`);
   res.setHeader("Set-Cookie", parts.join("; "));
 }
 
@@ -40,7 +40,6 @@ app.post("/auth/request-link", express.json(), (req, res) => {
   const created = data.createMagicLink(email);
   if (created.error) return res.status(400).json(created);
 
-  // Dev mode: return link to user directly
   const magicUrl = `http://localhost:3000/auth/magic?token=${created.token}`;
   res.json({ ok: true, magicUrl, expiresAt: created.expiresAt });
 });
@@ -66,15 +65,11 @@ app.post("/auth/logout", (req, res) => {
   res.json({ ok: true });
 });
 
-// Who am I
 app.get("/me", (req, res) => {
-  const cookies = parseCookies(req);
-  const sid = cookies.sid;
+  const sid = parseCookies(req).sid;
   if (!sid) return res.json({ user: null, signup: null });
-
   const result = data.getUserBySession(sid);
   if (!result) return res.json({ user: null, signup: null });
-
   res.json(result);
 });
 
@@ -93,12 +88,21 @@ app.post("/api/signup", express.json(), (req, res) => {
 });
 app.get("/api/signups", (req, res) => res.json(data.listSignups(100)));
 
-// Town
-app.get("/town", (req, res) => res.json(data.town));
-app.get("/districts", (req, res) => res.json(data.districts));
+// Places (including new seller fields)
 app.get("/districts/:id/places", (req, res) => {
   const districtId = Number(req.params.id);
   res.json(data.places.filter((p) => p.districtId === districtId));
+});
+
+// ✅ Update place settings (visibility/seller type)
+// For now: require login (waitlist allowed to edit their own style later; ownership comes next step).
+app.patch("/places/:id/settings", express.json(), (req, res) => {
+  const sid = parseCookies(req).sid;
+  if (!sid) return res.status(401).json({ error: "Login required" });
+
+  const updated = data.updatePlaceSettings(req.params.id, req.body || {});
+  if (updated?.error) return res.status(404).json(updated);
+  res.json(updated);
 });
 
 // Listings

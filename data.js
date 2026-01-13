@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS signups (
 );
 CREATE INDEX IF NOT EXISTS idx_signups_email ON signups(email);
 
--- ✅ Auth: users + magic links + sessions (passwordless)
+-- Auth: users + magic links + sessions
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT NOT NULL UNIQUE,
@@ -94,6 +94,29 @@ CREATE TABLE IF NOT EXISTS sessions (
   createdAt TEXT NOT NULL
 );
 `);
+
+// ---------- Simple migration for new Place fields ----------
+function columnExists(table, col) {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all();
+  return rows.some((r) => r.name === col);
+}
+
+function addColumn(table, colDef) {
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`);
+}
+
+function migratePlaces() {
+  // seller type + visibility
+  if (!columnExists("places", "sellerType")) addColumn("places", "sellerType TEXT NOT NULL DEFAULT 'individual'");
+  if (!columnExists("places", "visibilityLevel")) addColumn("places", "visibilityLevel TEXT NOT NULL DEFAULT 'town_only'");
+  if (!columnExists("places", "pickupZone")) addColumn("places", "pickupZone TEXT NOT NULL DEFAULT ''");
+  if (!columnExists("places", "addressPublic")) addColumn("places", "addressPublic TEXT NOT NULL DEFAULT ''");
+  if (!columnExists("places", "addressPrivate")) addColumn("places", "addressPrivate TEXT NOT NULL DEFAULT ''");
+  if (!columnExists("places", "meetupInstructions")) addColumn("places", "meetupInstructions TEXT NOT NULL DEFAULT ''");
+  if (!columnExists("places", "hours")) addColumn("places", "hours TEXT NOT NULL DEFAULT ''");
+  if (!columnExists("places", "verifiedStatus")) addColumn("places", "verifiedStatus TEXT NOT NULL DEFAULT 'unverified'");
+}
+migratePlaces();
 
 // ---------- Seed (only if empty) ----------
 const townCount = db.prepare("SELECT COUNT(*) AS c FROM towns").get().c;
@@ -127,7 +150,6 @@ if (townCount === 0) {
   const now = new Date().toISOString();
   const insL = db.prepare("INSERT INTO listings (placeId, title, description, quantity, price, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)");
   insL.run(102, "Bell Peppers (5 lb bag)", "Fresh, local. Pickup today.", 10, 12, "active", now);
-  insL.run(301, "Coastal Hat", "One size fits most.", 5, 20, "active", now);
 
   const insC = db.prepare("INSERT INTO conversations (placeId, participant, createdAt) VALUES (?, ?, ?)");
   const convoId = insC.run(102, "buyer", now).lastInsertRowid;
@@ -144,12 +166,76 @@ function randToken(bytes = 24) { return crypto.randomBytes(bytes).toString("hex"
 // ---------- Live getters ----------
 function getTown() { return db.prepare("SELECT * FROM towns WHERE id=1").get(); }
 function getDistricts() { return db.prepare("SELECT * FROM districts WHERE townId=1 ORDER BY id").all(); }
-function getPlaces() { return db.prepare("SELECT * FROM places WHERE townId=1 ORDER BY id").all(); }
+
+// ✅ include new place columns
+function getPlaces() {
+  return db.prepare(`
+    SELECT id, townId, districtId, name, category, status,
+           sellerType, visibilityLevel, pickupZone, addressPublic, addressPrivate,
+           meetupInstructions, hours, verifiedStatus
+    FROM places
+    WHERE townId=1
+    ORDER BY id
+  `).all();
+}
+
 function getListings() { return db.prepare("SELECT * FROM listings ORDER BY id").all(); }
 function getConversations() { return db.prepare("SELECT * FROM conversations ORDER BY id").all(); }
 function getMessages() {
   return db.prepare("SELECT * FROM messages ORDER BY id").all()
     .map((m) => ({ ...m, readBy: JSON.parse(m.readBy || "[]") }));
+}
+
+// ---------- Place settings update ----------
+function updatePlaceSettings(placeId, patch) {
+  const id = Number(placeId);
+  const exists = db.prepare("SELECT id FROM places WHERE id=?").get(id);
+  if (!exists) return { error: "Place not found" };
+
+  // Allowed enums
+  const sellerType = (patch.sellerType || "").toString();
+  const visibilityLevel = (patch.visibilityLevel || "").toString();
+  const allowedSeller = ["individual", "business"];
+  const allowedVis = ["town_only", "zone", "exact_address", "meetup_only"];
+
+  const nextSeller = allowedSeller.includes(sellerType) ? sellerType : null;
+  const nextVis = allowedVis.includes(visibilityLevel) ? visibilityLevel : null;
+
+  // text fields
+  const pickupZone = (patch.pickupZone ?? "").toString();
+  const addressPublic = (patch.addressPublic ?? "").toString();
+  const addressPrivate = (patch.addressPrivate ?? "").toString();
+  const meetupInstructions = (patch.meetupInstructions ?? "").toString();
+  const hours = (patch.hours ?? "").toString();
+
+  // verified status only settable later (admin flow); for now keep as-is
+  // but allow setting to pending if business wants to request verification later
+  const verifiedStatus = (patch.verifiedStatus || "").toString();
+  const allowedVer = ["unverified", "pending", "verified", "rejected"];
+  const nextVer = allowedVer.includes(verifiedStatus) ? verifiedStatus : null;
+
+  // Build update dynamically
+  const sets = [];
+  const vals = [];
+
+  if (nextSeller) { sets.push("sellerType=?"); vals.push(nextSeller); }
+  if (nextVis) { sets.push("visibilityLevel=?"); vals.push(nextVis); }
+  sets.push("pickupZone=?"); vals.push(pickupZone);
+  sets.push("addressPublic=?"); vals.push(addressPublic);
+  sets.push("addressPrivate=?"); vals.push(addressPrivate);
+  sets.push("meetupInstructions=?"); vals.push(meetupInstructions);
+  sets.push("hours=?"); vals.push(hours);
+  if (nextVer) { sets.push("verifiedStatus=?"); vals.push(nextVer); }
+
+  vals.push(id);
+  db.prepare(`UPDATE places SET ${sets.join(", ")} WHERE id=?`).run(...vals);
+
+  return db.prepare(`
+    SELECT id, townId, districtId, name, category, status,
+           sellerType, visibilityLevel, pickupZone, addressPublic, addressPrivate,
+           meetupInstructions, hours, verifiedStatus
+    FROM places WHERE id=?
+  `).get(id);
 }
 
 // ---------- Listings ----------
@@ -194,6 +280,7 @@ function addMessage(message) {
 function getConversationsForPlace(placeId) {
   return db.prepare("SELECT * FROM conversations WHERE placeId=? ORDER BY id").all(Number(placeId));
 }
+
 function getUnreadCount(conversationId, viewer = "buyer") {
   const rows = db.prepare("SELECT readBy FROM messages WHERE conversationId=?").all(Number(conversationId));
   let unread = 0;
@@ -203,6 +290,7 @@ function getUnreadCount(conversationId, viewer = "buyer") {
   }
   return unread;
 }
+
 function markConversationRead(conversationId, viewer = "buyer") {
   const rows = db.prepare("SELECT id, readBy FROM messages WHERE conversationId=?").all(Number(conversationId));
   const upd = db.prepare("UPDATE messages SET readBy=? WHERE id=?");
@@ -239,11 +327,10 @@ function getTownMetrics() {
   };
 }
 
-// ---------- Signup Gate ----------
+// ---------- Signup gate ----------
 function classifySignup({ city, zip }) {
   const c = (city || "").toString().trim().toLowerCase();
   const z = (zip || "").toString().trim();
-
   if (c.includes("sebastian")) return { status: "eligible", reason: "City contains 'Sebastian' (pilot zone)" };
   if (z === "32958") return { status: "eligible", reason: "ZIP is 32958 (Sebastian pilot zone)" };
   return { status: "waitlist", reason: "Outside Sebastian pilot zone (address gate)" };
@@ -257,7 +344,6 @@ function addSignup(payload) {
   const city = (payload.city || "").toString().trim();
   const state = (payload.state || "").toString().trim();
   const zip = (payload.zip || "").toString().trim();
-
   if (!name || !email || !address1 || !city || !state || !zip) return { error: "Missing required fields" };
 
   const { status, reason } = classifySignup({ city, zip });
@@ -285,14 +371,12 @@ function getLatestSignupByEmail(email) {
   return db.prepare("SELECT * FROM signups WHERE email=? ORDER BY id DESC LIMIT 1").get(e) || null;
 }
 
-// ---------- ✅ Magic Link Auth (B: everyone can login; waitlist limited) ----------
+// ---------- Magic link auth (B) ----------
 function upsertUserByEmail(email) {
   const e = normalizeEmail(email);
   if (!e) return null;
-
   const existing = db.prepare("SELECT * FROM users WHERE email=?").get(e);
   if (existing) return existing;
-
   const info = db.prepare("INSERT INTO users (email, createdAt) VALUES (?, ?)").run(e, nowISO());
   return db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
 }
@@ -302,11 +386,10 @@ function createMagicLink(email) {
   if (!user) return { error: "Invalid email" };
 
   const token = randToken(24);
-  const createdAt = nowISO();
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutes
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
   db.prepare("INSERT INTO magic_links (token, userId, expiresAt, createdAt) VALUES (?, ?, ?, ?)")
-    .run(token, user.id, expiresAt, createdAt);
+    .run(token, user.id, expiresAt, nowISO());
 
   return { token, userId: user.id, expiresAt };
 }
@@ -314,24 +397,19 @@ function createMagicLink(email) {
 function consumeMagicToken(token) {
   const row = db.prepare("SELECT * FROM magic_links WHERE token=?").get(token);
   if (!row) return { error: "Invalid token" };
-
   if (new Date(row.expiresAt).getTime() < Date.now()) {
     db.prepare("DELETE FROM magic_links WHERE token=?").run(token);
     return { error: "Token expired" };
   }
-
   db.prepare("DELETE FROM magic_links WHERE token=?").run(token);
   return { userId: row.userId };
 }
 
 function createSession(userId) {
   const sid = randToken(24);
-  const createdAt = nowISO();
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
-
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
   db.prepare("INSERT INTO sessions (sid, userId, expiresAt, createdAt) VALUES (?, ?, ?, ?)")
-    .run(sid, userId, expiresAt, createdAt);
-
+    .run(sid, userId, expiresAt, nowISO());
   return { sid, expiresAt };
 }
 
@@ -348,7 +426,6 @@ function getUserBySession(sid) {
   }
   const user = db.prepare("SELECT * FROM users WHERE id=?").get(sess.userId);
   if (!user) return null;
-
   const signup = getLatestSignupByEmail(user.email);
   return { user, signup };
 }
@@ -357,6 +434,8 @@ module.exports = {
   get town() { return getTown(); },
   get districts() { return getDistricts(); },
   get places() { return getPlaces(); },
+
+  updatePlaceSettings,
 
   getListings,
   addListing,
@@ -376,11 +455,9 @@ module.exports = {
   addSignup,
   listSignups,
 
-  // auth
   createMagicLink,
   consumeMagicToken,
   createSession,
   deleteSession,
   getUserBySession,
 };
-
