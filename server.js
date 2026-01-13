@@ -1,12 +1,13 @@
 const express = require("express");
 const path = require("path");
 const app = express();
+
 const data = require("./data");
 
-// ✅ Serve frontend files
+// Serve frontend files
 app.use(express.static(path.join(__dirname, "public")));
 
-// ✅ UI route
+// UI route
 app.get("/ui", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
@@ -14,6 +15,11 @@ app.get("/ui", (req, res) => {
 // Basic
 app.get("/", (req, res) => res.json({ message: "Sebastian Digital Town API", status: "running" }));
 app.get("/health", (req, res) => res.json({ status: "ok" }));
+
+// Town Health Metrics
+app.get("/metrics/town", (req, res) => {
+  res.json(data.getTownMetrics());
+});
 
 // Town
 app.get("/town", (req, res) => res.json(data.town));
@@ -45,8 +51,10 @@ app.get("/places/:id/listings", (req, res) => {
   const placeId = Number(req.params.id);
   const place = data.places.find((p) => p.id === placeId);
   if (!place) return res.status(404).json({ error: "Place not found" });
+
   res.json(data.getListings().filter((l) => l.placeId === placeId));
 });
+
 app.post("/places/:id/listings", express.json(), (req, res) => {
   const placeId = Number(req.params.id);
   const place = data.places.find((p) => p.id === placeId);
@@ -55,28 +63,26 @@ app.post("/places/:id/listings", express.json(), (req, res) => {
   const { title, description, quantity, price } = req.body || {};
   if (!title || typeof title !== "string") return res.status(400).json({ error: "title is required" });
 
-  const listing = {
-    id: data.nextListingId(),
+  const listing = data.addListing({
     placeId,
     title,
     description: typeof description === "string" ? description : "",
     quantity: Number.isFinite(Number(quantity)) ? Number(quantity) : 1,
     price: Number.isFinite(Number(price)) ? Number(price) : 0,
     status: "active",
-  };
+  });
 
-  data.addListing(listing);
   res.status(201).json(listing);
 });
+
+// ✅ SOLD endpoint (SQLite-backed)
 app.patch("/listings/:id/sold", (req, res) => {
-  const listingId = Number(req.params.id);
-  const listing = data.getListings().find((l) => l.id === listingId);
-  if (!listing) return res.status(404).json({ error: "Listing not found" });
-  listing.status = "sold";
-  res.json(listing);
+  const updated = data.markListingSold(req.params.id);
+  if (!updated) return res.status(404).json({ error: "Listing not found" });
+  res.json(updated);
 });
 
-// Messaging
+// Conversations
 app.get("/conversations", (req, res) => res.json(data.getConversations()));
 app.get("/conversations/:id", (req, res) => {
   const conversationId = Number(req.params.id);
@@ -90,11 +96,11 @@ app.post("/conversations", express.json(), (req, res) => {
   const place = data.places.find((p) => p.id === Number(placeId));
   if (!place) return res.status(404).json({ error: "Place not found" });
 
-  const conversation = { id: data.nextConversationId(), placeId: Number(placeId), participant: "buyer" };
-  data.addConversation(conversation);
-  res.status(201).json(conversation);
+  const convo = data.addConversation({ placeId: Number(placeId), participant: "buyer" });
+  res.status(201).json(convo);
 });
 
+// Messages
 app.get("/conversations/:id/messages", (req, res) => {
   const conversationId = Number(req.params.id);
   res.json(data.getMessages().filter((m) => m.conversationId === conversationId));
@@ -104,16 +110,8 @@ app.post("/conversations/:id/messages", express.json(), (req, res) => {
   const { sender, text } = req.body || {};
   if (!text) return res.status(400).json({ error: "text required" });
 
-  const message = {
-    id: data.nextMessageId(),
-    conversationId,
-    sender: sender || "buyer",
-    text,
-    createdAt: new Date().toISOString(),
-  };
-
-  data.addMessage(message);
-  res.status(201).json(message);
+  const msg = data.addMessage({ conversationId, sender: sender || "buyer", text });
+  res.status(201).json(msg);
 });
 
 // Place conversations + unread

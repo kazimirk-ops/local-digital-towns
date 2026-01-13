@@ -3,28 +3,37 @@ const $ = (id) => document.getElementById(id);
 let state = {
   districtId: null,
   placeId: null,
-  conversationId: 1,
+  placeName: null,
+  conversationId: null,
   viewer: "buyer",
 };
 
 function debug(msg) {
   $("debug").textContent = msg || "";
+  console.log("[DEBUG]", msg);
 }
 
 async function api(path, opts) {
   const res = await fetch(path, opts);
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`${res.status} ${res.statusText}: ${text}`);
-  }
-  const ct = res.headers.get("content-type") || "";
-  if (ct.includes("application/json")) return res.json();
-  return res.text();
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = text; }
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
+  return data;
 }
 
-function renderList(el, items, renderer) {
-  el.innerHTML = "";
-  items.forEach((item) => el.appendChild(renderer(item)));
+function clearActiveDistrict() {
+  ["d-market","d-service","d-retail","d-live","d-civic"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("active");
+  });
+}
+
+function setActiveDistrictById(did) {
+  const map = { 1:"d-market", 2:"d-service", 3:"d-retail", 4:"d-live", 5:"d-civic" };
+  clearActiveDistrict();
+  const elId = map[did];
+  if (elId) document.getElementById(elId).classList.add("active");
 }
 
 function mkItem(title, subtitle) {
@@ -34,143 +43,274 @@ function mkItem(title, subtitle) {
   return div;
 }
 
+function renderList(el, items, renderer) {
+  el.innerHTML = "";
+  items.forEach((i) => el.appendChild(renderer(i)));
+}
+
+function setViewer(viewer) {
+  state.viewer = viewer;
+  $("viewerLabel").textContent = `Viewer: ${viewer} (affects unreadCount)`;
+  debug(`Viewer set to: ${viewer}`);
+}
+
 async function loadStatus() {
-  try {
-    const s = await api("/health");
-    $("apiStatus").textContent = `API: ${s.status}`;
-  } catch (e) {
-    $("apiStatus").textContent = "API: down";
+  const s = await api("/health");
+  $("apiStatus").textContent = `API: ${s.status}`;
+}
+
+// Town metrics
+async function loadTownMetrics() {
+  const m = await api("/metrics/town");
+
+  $("mPlaces").textContent = m.placesCount;
+  $("mTotalListings").textContent = m.totalListings;
+  $("mActiveListings").textContent = m.activeListings;
+  $("mSoldListings").textContent = m.soldListings;
+  $("mConversations").textContent = m.conversationsCount;
+  $("mMessages").textContent = m.messagesCount;
+
+  $("healthIndex").textContent = m.healthIndex;
+  $("metricsTime").textContent = `Updated: ${m.updatedAt}`;
+
+  const pct = Math.max(0, Math.min(100, Number(m.healthIndex)));
+  $("healthBar").style.width = `${pct}%`;
+}
+
+async function loadDistrictBadges() {
+  const marketPlaces = await api("/districts/1/places");
+  const servicePlaces = await api("/districts/2/places");
+  const retailPlaces = await api("/districts/3/places");
+
+  $("badge-market-places").textContent = `Places: ${marketPlaces.length}`;
+  $("badge-service-places").textContent = `Places: ${servicePlaces.length}`;
+  $("badge-retail-places").textContent = `Places: ${retailPlaces.length}`;
+
+  let listingCount = 0;
+  for (const p of marketPlaces) {
+    const ls = await api(`/places/${p.id}/listings`);
+    listingCount += ls.length;
   }
+  $("badge-market-listings").textContent = `Listings: ${listingCount}`;
 }
 
-async function loadDistricts() {
-  const districts = await api("/districts");
-  renderList($("districts"), districts, (d) => {
-    const div = mkItem(d.name, `${d.type} • id=${d.id}`);
-    div.onclick = async () => {
-      state.districtId = d.id;
-      $("placesHint").textContent = `District: ${d.name}`;
-      await loadPlaces(d.id);
-    };
-    return div;
-  });
-}
+async function loadPlacesForDistrict(districtId) {
+  state.districtId = districtId;
+  state.placeId = null;
+  state.placeName = null;
+  state.conversationId = null;
 
-async function loadPlaces(districtId) {
+  setActiveDistrictById(districtId);
+  $("rightHint").textContent = "Pick a place.";
+
   const places = await api(`/districts/${districtId}/places`);
   renderList($("places"), places, (p) => {
     const div = mkItem(p.name, `${p.category} • ${p.status} • id=${p.id}`);
     div.onclick = async () => {
       state.placeId = p.id;
-      $("placeTitle").textContent = `Place: ${p.name} (id=${p.id})`;
+      state.placeName = p.name;
+      debug(`Place selected: ${p.name} (id=${p.id})`);
       await loadListings(p.id);
       await loadPlaceConversations(p.id);
     };
     return div;
   });
+
+  $("listings").innerHTML = `<div class="muted">Select a place to load listings.</div>`;
+  $("conversations").innerHTML = `<div class="muted">Select a place to load conversations.</div>`;
+  $("messages").innerHTML = `<div class="muted">Select a conversation.</div>`;
+}
+
+async function markSold(listingId) {
+  try {
+    debug(`Marking listing ${listingId} as SOLD...`);
+    await api(`/listings/${listingId}/sold`, { method: "PATCH" });
+    debug(`Listing ${listingId} marked SOLD.`);
+    if (state.placeId) await loadListings(state.placeId);
+    await loadTownMetrics();
+  } catch (e) {
+    debug(`ERROR: ${e.message}`);
+    alert(e.message);
+  }
 }
 
 async function loadListings(placeId) {
   const listings = await api(`/places/${placeId}/listings`);
-  if (listings.length === 0) {
+  if (!Array.isArray(listings) || listings.length === 0) {
     $("listings").innerHTML = `<div class="muted">No listings yet.</div>`;
     return;
   }
-  renderList($("listings"), listings, (l) => {
-    const div = mkItem(l.title, `$${l.price} • qty ${l.quantity} • ${l.status} • id=${l.id}`);
-    return div;
+
+  $("listings").innerHTML = "";
+  for (const l of listings) {
+    const div = document.createElement("div");
+    div.className = "item";
+
+    const subtitle = `$${l.price} • qty ${l.quantity} • ${l.status} • id=${l.id}`;
+    div.innerHTML = `
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <div><strong>${l.title}</strong></div>
+          <div class="muted">${subtitle}</div>
+        </div>
+        <div>
+          ${l.status === "active" ? `<button data-sold="${l.id}">Mark Sold</button>` : `<span class="pill">SOLD</span>`}
+        </div>
+      </div>
+    `;
+
+    $("listings").appendChild(div);
+  }
+
+  // Wire buttons
+  document.querySelectorAll("button[data-sold]").forEach((btn) => {
+    btn.onclick = () => markSold(btn.getAttribute("data-sold"));
   });
 }
 
-function setViewer(viewer) {
-  state.viewer = viewer;
-  $("viewerLabel").textContent = `Viewer is: ${viewer} (affects unreadCount)`;
+async function createListing() {
+  try {
+    if (!state.placeId) {
+      debug("ERROR: Select a place first.");
+      alert("Select a place first (click a Place).");
+      return;
+    }
+
+    const title = $("newTitle").value.trim();
+    const description = $("newDesc").value.trim();
+    const quantity = Number($("newQty").value);
+    const price = Number($("newPrice").value);
+
+    if (!title) {
+      debug("ERROR: Title is required.");
+      alert("Title is required.");
+      return;
+    }
+
+    debug(`Creating listing for placeId=${state.placeId}…`);
+    const created = await api(`/places/${state.placeId}/listings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        description,
+        quantity: Number.isFinite(quantity) ? quantity : 1,
+        price: Number.isFinite(price) ? price : 0,
+      }),
+    });
+
+    debug(`Listing created: ${created.title} (id=${created.id}).`);
+    $("newTitle").value = "";
+    $("newDesc").value = "";
+
+    await loadListings(state.placeId);
+    await loadDistrictBadges();
+    await loadTownMetrics();
+  } catch (e) {
+    debug(`ERROR: ${e.message}`);
+    alert(e.message);
+  }
 }
 
 async function loadPlaceConversations(placeId) {
   const convos = await api(`/places/${placeId}/conversations?viewer=${state.viewer}`);
-  if (convos.length === 0) {
+  if (!Array.isArray(convos) || convos.length === 0) {
     $("conversations").innerHTML = `<div class="muted">No conversations yet.</div>`;
+    $("messages").innerHTML = `<div class="muted">No messages.</div>`;
+    state.conversationId = null;
     return;
   }
+
   renderList($("conversations"), convos, (c) => {
-    const div = mkItem(
-      `Conversation ${c.id}`,
-      `placeId=${c.placeId} • unread=${c.unreadCount}`
-    );
+    const div = mkItem(`Conversation ${c.id}`, `unread=${c.unreadCount}`);
     div.onclick = async () => {
       state.conversationId = c.id;
+      debug(`Conversation selected: ${c.id}`);
       await loadMessages(c.id);
     };
     return div;
   });
 
-  // auto-select first conversation if none selected
-  if (!state.conversationId && convos[0]) {
-    state.conversationId = convos[0].id;
-  }
-  if (state.conversationId) await loadMessages(state.conversationId);
+  if (!state.conversationId) state.conversationId = convos[0].id;
+  await loadMessages(state.conversationId);
 }
 
 async function loadMessages(conversationId) {
   const msgs = await api(`/conversations/${conversationId}/messages`);
-  if (msgs.length === 0) {
+  if (!Array.isArray(msgs) || msgs.length === 0) {
     $("messages").innerHTML = `<div class="muted">No messages.</div>`;
     return;
   }
   renderList($("messages"), msgs, (m) => {
     const rb = Array.isArray(m.readBy) ? m.readBy.join(",") : "";
-    const div = mkItem(`${m.sender}: ${m.text}`, `${m.createdAt} • readBy [${rb}]`);
-    return div;
+    return mkItem(`${m.sender}: ${m.text}`, `${m.createdAt} • readBy [${rb}]`);
   });
 }
 
 async function sendMessage() {
-  const cid = state.conversationId;
-  if (!cid) return debug("Pick a conversation first.");
-  const sender = $("sender").value.trim() || "buyer";
-  const text = $("msgText").value.trim();
-  if (!text) return debug("Type a message first.");
+  try {
+    if (!state.conversationId) return;
 
-  await api(`/conversations/${cid}/messages`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sender, text }),
-  });
+    const sender = $("sender").value.trim() || "buyer";
+    const text = $("msgText").value.trim();
+    if (!text) return;
 
-  $("msgText").value = "";
-  debug("");
-  if (state.placeId) await loadPlaceConversations(state.placeId);
-  await loadMessages(cid);
+    await api(`/conversations/${state.conversationId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sender, text }),
+    });
+
+    $("msgText").value = "";
+    debug("Message sent.");
+    if (state.placeId) await loadPlaceConversations(state.placeId);
+    await loadTownMetrics();
+  } catch (e) {
+    debug(`ERROR: ${e.message}`);
+    alert(e.message);
+  }
 }
 
 async function markRead() {
-  const cid = state.conversationId;
-  if (!cid) return debug("Pick a conversation first.");
-  await api(`/conversations/${cid}/read?viewer=${state.viewer}`, { method: "PATCH" });
-  debug(`Marked conversation ${cid} read as ${state.viewer}`);
-  if (state.placeId) await loadPlaceConversations(state.placeId);
-  await loadMessages(cid);
+  try {
+    if (!state.conversationId) return;
+    await api(`/conversations/${state.conversationId}/read?viewer=${state.viewer}`, { method: "PATCH" });
+    debug(`Marked read for ${state.viewer}.`);
+    if (state.placeId) await loadPlaceConversations(state.placeId);
+    await loadTownMetrics();
+  } catch (e) {
+    debug(`ERROR: ${e.message}`);
+    alert(e.message);
+  }
+}
+
+function bindMapClicks() {
+  document.querySelectorAll(".district").forEach((el) => {
+    el.onclick = async () => {
+      const did = Number(el.getAttribute("data-district"));
+      debug(`Entering district ${did}…`);
+      await loadPlacesForDistrict(did);
+    };
+  });
 }
 
 async function main() {
   setViewer("buyer");
-  $("viewerBuyer").onclick = async () => {
-    setViewer("buyer");
-    if (state.placeId) await loadPlaceConversations(state.placeId);
-  };
-  $("viewerSeller").onclick = async () => {
-    setViewer("seller");
-    if (state.placeId) await loadPlaceConversations(state.placeId);
-  };
+  $("viewerBuyer").onclick = async () => { setViewer("buyer"); if (state.placeId) await loadPlaceConversations(state.placeId); };
+  $("viewerSeller").onclick = async () => { setViewer("seller"); if (state.placeId) await loadPlaceConversations(state.placeId); };
+
+  $("createListingBtn").onclick = createListing;
   $("sendMsg").onclick = sendMessage;
   $("markReadBtn").onclick = markRead;
 
+  bindMapClicks();
+
   await loadStatus();
-  await loadDistricts();
+  await loadDistrictBadges();
+  await loadTownMetrics();
+
+  debug("Click a district → click a place → mark items sold.");
 }
 
-main().catch((e) => debug(e.message));
-
-
+main().catch((e) => debug(`BOOT ERROR: ${e.message}`));
 
