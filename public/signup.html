@@ -6,7 +6,7 @@
     <title>Join Sebastian Pilot</title>
     <style>
       body { font-family: Arial, sans-serif; background:#0b0f14; color:#e8eef6; margin:0; }
-      .wrap { max-width: 680px; margin: 0 auto; padding: 18px; }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 18px; }
       .card { background:#0f1722; border:1px solid #223149; border-radius:14px; padding:14px; }
       input { width:100%; padding:10px; border-radius:10px; border:1px solid #223149; background:#0b1220; color:#e8eef6; margin-top:8px;}
       button { margin-top:12px; padding:10px 12px; border-radius:10px; border:1px solid #223149; background:#0b1220; color:#e8eef6; cursor:pointer;}
@@ -15,14 +15,16 @@
       .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; white-space: pre-wrap; }
       .ok { border:1px solid rgba(0,255,170,.35); background:rgba(0,255,170,.06); padding:10px; border-radius:12px; margin-top:12px;}
       .warn { border:1px solid rgba(255,204,0,.35); background:rgba(255,204,0,.06); padding:10px; border-radius:12px; margin-top:12px;}
+      a { color:#cfe3ff; }
     </style>
   </head>
   <body>
     <div class="wrap">
       <h2>Join the Sebastian Pilot</h2>
-      <div class="muted">Soft address gate: City contains “Sebastian” OR ZIP = 32958.</div>
+      <div class="muted">Soft address gate: City contains “Sebastian” OR ZIP = 32958. Everyone can log in; waitlist has limited access.</div>
 
       <div class="card">
+        <h3>Request Access</h3>
         <input id="name" placeholder="Full name" />
         <input id="email" placeholder="Email" />
         <input id="address1" placeholder="Address line 1" />
@@ -30,15 +32,23 @@
         <input id="city" placeholder="City" />
         <input id="state" placeholder="State (e.g. FL)" value="FL" />
         <input id="zip" placeholder="ZIP" />
+        <button id="submitSignup">Submit</button>
+        <div id="signupResult"></div>
 
-        <button id="submit">Request Access</button>
+        <hr />
 
-        <div id="result"></div>
+        <h3>Login (Magic Link)</h3>
+        <div class="muted">Dev mode: we will show the link here. Later we email it.</div>
+        <input id="loginEmail" placeholder="Email for login link" />
+        <button id="requestLink">Send Login Link</button>
+        <div id="loginResult"></div>
+
         <div class="mono" id="debug"></div>
+        <div class="muted" style="margin-top:10px;"><a href="/ui">Back to Town</a></div>
       </div>
     </div>
 
-    <script src="/signup.js"></script>
+    <script src="/signup.js?v=magic1"></script>
   </body>
 </html>
 

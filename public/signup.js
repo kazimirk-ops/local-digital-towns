@@ -1,28 +1,25 @@
 const $ = (id) => document.getElementById(id);
 
-function show(html) {
-  $("result").innerHTML = html;
-}
+function showSignup(html) { $("signupResult").innerHTML = html; }
+function showLogin(html) { $("loginResult").innerHTML = html; }
+function dbg(msg) { $("debug").textContent = msg || ""; }
 
-async function postSignup(payload) {
-  const res = await fetch("/api/signup", {
+async function postJSON(url, payload) {
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-
   const text = await res.text();
   let data;
   try { data = JSON.parse(text); } catch { data = { raw: text }; }
-
   if (!res.ok) throw new Error(`${res.status}: ${JSON.stringify(data)}`);
   return data;
 }
 
-$("submit").onclick = async () => {
+$("submitSignup").onclick = async () => {
   try {
-    $("debug").textContent = "";
-
+    dbg("");
     const payload = {
       name: $("name").value,
       email: $("email").value,
@@ -33,15 +30,38 @@ $("submit").onclick = async () => {
       zip: $("zip").value,
     };
 
-    const data = await postSignup(payload);
+    const data = await postJSON("/api/signup", payload);
 
     if (data.status === "eligible") {
-      show(`<div class="ok"><strong>✅ Eligible for Sebastian Pilot</strong><div class="muted">${data.reason}</div></div>`);
+      showSignup(`<div class="ok"><strong>✅ Eligible</strong><div class="muted">${data.reason}</div></div>`);
     } else {
-      show(`<div class="warn"><strong>🟡 Added to Waitlist</strong><div class="muted">${data.reason}</div></div>`);
+      showSignup(`<div class="warn"><strong>🟡 Waitlist</strong><div class="muted">${data.reason}</div></div>`);
     }
+
+    // Encourage login using same email
+    $("loginEmail").value = payload.email || "";
   } catch (e) {
-    $("debug").textContent = `ERROR: ${e.message}`;
+    dbg(`ERROR: ${e.message}`);
+  }
+};
+
+$("requestLink").onclick = async () => {
+  try {
+    dbg("");
+    const email = $("loginEmail").value.trim();
+    if (!email) return dbg("Enter email for login.");
+
+    const data = await postJSON("/auth/request-link", { email });
+
+    showLogin(`
+      <div class="ok">
+        <strong>✅ Magic link created</strong>
+        <div class="muted">Expires: ${data.expiresAt}</div>
+        <div style="margin-top:8px;"><a href="${data.magicUrl}">Click here to log in</a></div>
+      </div>
+    `);
+  } catch (e) {
+    dbg(`ERROR: ${e.message}`);
   }
 };
 

@@ -8,6 +8,13 @@ let state = {
   viewer: "buyer",
 };
 
+let access = {
+  loggedIn: false,
+  eligible: false,
+  email: null,
+  reason: null,
+};
+
 let map;
 let markersLayer;
 let boundaryLayer;
@@ -29,7 +36,52 @@ async function api(path, opts) {
 function setViewer(viewer) {
   state.viewer = viewer;
   $("viewerLabel").textContent = `Viewer: ${viewer} (affects unreadCount)`;
-  debug(`Viewer set to: ${viewer}`);
+}
+
+function setControlsEnabled() {
+  const canWrite = access.loggedIn && access.eligible;
+
+  $("createListingBtn").disabled = !canWrite;
+  $("newTitle").disabled = !canWrite;
+  $("newDesc").disabled = !canWrite;
+  $("newQty").disabled = !canWrite;
+  $("newPrice").disabled = !canWrite;
+
+  $("sendMsg").disabled = !(access.loggedIn); // allow waitlist to message? choose NO for now:
+  $("msgText").disabled = !(access.loggedIn);
+
+  if (!access.loggedIn) {
+    $("authTitle").textContent = "Not logged in";
+    $("authTag").innerHTML = `Go to <a href="/signup" style="color:#cfe3ff;">/signup</a> to log in.`;
+  } else if (access.eligible) {
+    $("authTitle").textContent = `Logged in: ${access.email}`;
+    $("authTag").innerHTML = `<span class="eligible">✅ Eligible</span> • ${access.reason || "Pilot access granted"}`;
+  } else {
+    $("authTitle").textContent = `Logged in: ${access.email}`;
+    $("authTag").innerHTML = `<span class="waitlist">🟡 Waitlist</span> • ${access.reason || "Limited access"}`;
+  }
+}
+
+async function loadMe() {
+  const me = await api("/me");
+  if (!me.user) {
+    access = { loggedIn:false, eligible:false, email:null, reason:null };
+    setControlsEnabled();
+    return;
+  }
+
+  const email = me.user.email;
+  const status = me.signup?.status || "waitlist";
+  const reason = me.signup?.reason || "No signup record yet. Submit signup to be evaluated.";
+  const eligible = status === "eligible";
+
+  access = { loggedIn:true, eligible, email, reason };
+  setControlsEnabled();
+}
+
+async function logout() {
+  await api("/auth/logout", { method: "POST" });
+  window.location.href = "/signup";
 }
 
 async function loadStatus() {
@@ -37,23 +89,10 @@ async function loadStatus() {
   $("apiStatus").textContent = `API: ${s.status}`;
 }
 
-// Town metrics
 async function loadTownMetrics() {
   const m = await api("/metrics/town");
-
-  $("mPlaces").textContent = m.placesCount;
-  $("mTotalListings").textContent = m.totalListings;
-  $("mActiveListings").textContent = m.activeListings;
-  $("mSoldListings").textContent = m.soldListings;
-  $("mConversations").textContent = m.conversationsCount;
-  $("mMessages").textContent = m.messagesCount;
-
-  $("healthIndex").textContent = m.healthIndex;
   $("healthIndexInline").textContent = m.healthIndex;
   $("metricsTime").textContent = `Updated: ${m.updatedAt}`;
-
-  const pct = Math.max(0, Math.min(100, Number(m.healthIndex)));
-  $("healthBar").style.width = `${pct}%`;
 }
 
 function mkItem(title, subtitle) {
@@ -78,10 +117,8 @@ async function loadPlacesForDistrict(districtId) {
   const btn = document.querySelector(`.dBtn[data-district="${districtId}"]`);
   if (btn) btn.classList.add("active");
 
-  $("rightHint").textContent = `District ${districtId} selected. Pick a place.`;
-
+  $("places").innerHTML = "";
   const places = await api(`/districts/${districtId}/places`);
-
   renderList($("places"), places, (p) => {
     const div = mkItem(p.name, `${p.category} • ${p.status} • id=${p.id}`);
     div.onclick = async () => selectPlace(p);
@@ -89,7 +126,6 @@ async function loadPlacesForDistrict(districtId) {
   });
 
   setPlaceMarkers(places);
-
   $("listings").innerHTML = `<div class="muted">Select a place to load listings.</div>`;
   $("conversations").innerHTML = `<div class="muted">Select a place to load conversations.</div>`;
   $("messages").innerHTML = `<div class="muted">Select a conversation.</div>`;
@@ -99,7 +135,6 @@ async function selectPlace(p) {
   state.placeId = p.id;
   state.placeName = p.name;
   debug(`Place selected: ${p.name} (id=${p.id})`);
-
   await loadListings(p.id);
   await loadPlaceConversations(p.id);
 }
@@ -123,7 +158,7 @@ async function loadListings(placeId) {
           <div class="muted">${subtitle}</div>
         </div>
         <div>
-          ${l.status === "active" ? `<button data-sold="${l.id}">Mark Sold</button>` : `<span class="pill">SOLD</span>`}
+          ${l.status === "active" && access.eligible ? `<button data-sold="${l.id}">Mark Sold</button>` : `<span class="pill">${l.status.toUpperCase()}</span>`}
         </div>
       </div>
     `;
@@ -137,21 +172,17 @@ async function loadListings(placeId) {
 
 async function createListing() {
   try {
-    if (!state.placeId) {
-      debug("ERROR: Select a place first.");
-      alert("Select a place first (click a Place).");
-      return;
-    }
+    if (!access.loggedIn) return alert("Login required.");
+    if (!access.eligible) return alert("Waitlist users cannot create listings yet.");
+
+    if (!state.placeId) return alert("Select a place first.");
+
     const title = $("newTitle").value.trim();
     const description = $("newDesc").value.trim();
     const quantity = Number($("newQty").value);
     const price = Number($("newPrice").value);
 
-    if (!title) {
-      debug("ERROR: Title is required.");
-      alert("Title is required.");
-      return;
-    }
+    if (!title) return alert("Title is required.");
 
     const created = await api(`/places/${state.placeId}/listings`, {
       method: "POST",
@@ -177,15 +208,11 @@ async function createListing() {
 }
 
 async function markSold(listingId) {
-  try {
-    await api(`/listings/${listingId}/sold`, { method: "PATCH" });
-    debug(`Listing ${listingId} marked SOLD.`);
-    if (state.placeId) await loadListings(state.placeId);
-    await loadTownMetrics();
-  } catch (e) {
-    debug(`ERROR: ${e.message}`);
-    alert(e.message);
-  }
+  if (!access.eligible) return alert("Waitlist users cannot mark sold yet.");
+  await api(`/listings/${listingId}/sold`, { method: "PATCH" });
+  debug(`Listing ${listingId} marked SOLD.`);
+  if (state.placeId) await loadListings(state.placeId);
+  await loadTownMetrics();
 }
 
 async function loadPlaceConversations(placeId) {
@@ -224,7 +251,9 @@ async function loadMessages(conversationId) {
 
 async function sendMessage() {
   try {
+    if (!access.loggedIn) return alert("Login required.");
     if (!state.conversationId) return;
+
     const sender = $("sender").value.trim() || "buyer";
     const text = $("msgText").value.trim();
     if (!text) return;
@@ -246,23 +275,16 @@ async function sendMessage() {
 }
 
 async function markRead() {
-  try {
-    if (!state.conversationId) return;
-    await api(`/conversations/${state.conversationId}/read?viewer=${state.viewer}`, { method: "PATCH" });
-    debug(`Marked read for ${state.viewer}.`);
-    if (state.placeId) await loadPlaceConversations(state.placeId);
-    await loadTownMetrics();
-  } catch (e) {
-    debug(`ERROR: ${e.message}`);
-    alert(e.message);
-  }
+  if (!access.loggedIn) return alert("Login required.");
+  if (!state.conversationId) return;
+  await api(`/conversations/${state.conversationId}/read?viewer=${state.viewer}`, { method: "PATCH" });
+  if (state.placeId) await loadPlaceConversations(state.placeId);
 }
 
-// ------- Leaflet map setup -------
+// Leaflet setup (keep your current map logic minimal)
 function initMap() {
-  // Center on Sebastian, FL (approx)
-  const sebastian = [27.816, -80.470];
-  map = L.map("map", { zoomControl: true }).setView(sebastian, 13);
+  const center = [27.816, -80.470];
+  map = L.map("map", { zoomControl: true }).setView(center, 13);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -271,32 +293,16 @@ function initMap() {
 
   markersLayer = L.layerGroup().addTo(map);
 
-  // Approx boundary polygon (starter, not legal)
-  // You will replace this later with a real city-limit GeoJSON.
-    // Approx boundary polygon (starter, "locals consider Sebastian")
-  // Based loosely on ZIP 32958 center and area, expanded to feel local. :contentReference[oaicite:1]{index=1}
-    // Approx boundary polygon (starter, "locals consider Sebastian")
-  // Natural-ish shape: lagoon/riverfront corridor + broader Sebastian area.
-  // NOT legal city limits (placeholder for later official GeoJSON).
   const approxBoundary = [
-    [27.872, -80.555], // NW
-    [27.872, -80.505], // north-west interior
-    [27.865, -80.472], // north near US-1
-    [27.860, -80.445], // north-east (near barrier direction)
-    [27.845, -80.430], // NE
-    [27.828, -80.425], // east edge
-    [27.812, -80.430], // southeast turn
-    [27.795, -80.440], // SE
-    [27.780, -80.450], // south-east interior
-    [27.770, -80.470], // south near lagoon bend
-    [27.765, -80.500], // south-west interior
-    [27.770, -80.525], // SW
-    [27.785, -80.545], // west return
-    [27.810, -80.555], // west mid
-    [27.840, -80.560], // west-north
-    [27.860, -80.560], // back toward NW
+    [27.872, -80.555],
+    [27.865, -80.472],
+    [27.845, -80.430],
+    [27.812, -80.430],
+    [27.780, -80.450],
+    [27.765, -80.500],
+    [27.785, -80.545],
+    [27.840, -80.560],
   ];
-
   boundaryLayer = L.polygon(approxBoundary, {
     color: "#00ffae",
     weight: 3,
@@ -304,28 +310,17 @@ function initMap() {
     fillColor: "#00ffae",
     fillOpacity: 0.08,
   }).addTo(map);
-
-  boundaryLayer.bindPopup("Sebastian Starter Boundary (approx)");
-
-  // Zoom to boundary
   map.fitBounds(boundaryLayer.getBounds(), { padding: [20, 20] });
-
-  // Add a label marker at center
-  const center = boundaryLayer.getBounds().getCenter();
-  L.marker([center.lat, center.lng]).addTo(map).bindPopup("Sebastian, FL (approx boundary center)");
 }
 
 function setPlaceMarkers(places) {
-  if (!markersLayer) return;
+  if (!markersLayer || !boundaryLayer) return;
   markersLayer.clearLayers();
 
-  // For now, scatter around polygon center (placeholder)
-  const center = boundaryLayer ? boundaryLayer.getBounds().getCenter() : { lat: 27.816, lng: -80.470 };
-
+  const center = boundaryLayer.getBounds().getCenter();
   places.forEach((p, idx) => {
     const lat = center.lat + (idx * 0.002) - 0.006;
     const lng = center.lng + (idx * 0.002) - 0.006;
-
     const marker = L.circleMarker([lat, lng], {
       radius: 8,
       color: "#2e93ff",
@@ -343,17 +338,16 @@ function bindDistrictButtons() {
   document.querySelectorAll(".dBtn").forEach((btn) => {
     btn.onclick = async () => {
       const did = Number(btn.getAttribute("data-district"));
-      debug(`Entering district ${did}…`);
       await loadPlacesForDistrict(did);
     };
   });
 }
 
 async function main() {
-  setViewer("buyer");
+  $("logoutBtn").onclick = logout;
 
-  $("viewerBuyer").onclick = async () => { setViewer("buyer"); if (state.placeId) await loadPlaceConversations(state.placeId); };
-  $("viewerSeller").onclick = async () => { setViewer("seller"); if (state.placeId) await loadPlaceConversations(state.placeId); };
+  $("viewerBuyer").onclick = () => setViewer("buyer");
+  $("viewerSeller").onclick = () => setViewer("seller");
 
   $("createListingBtn").onclick = createListing;
   $("sendMsg").onclick = sendMessage;
@@ -362,10 +356,12 @@ async function main() {
   await loadStatus();
   await loadTownMetrics();
 
+  await loadMe();
+
   initMap();
   bindDistrictButtons();
 
-  debug("Approx boundary drawn. We'll enforce signup by address for now.");
+  debug("Login status loaded. Waitlist is read-only.");
 }
 
 main().catch((e) => debug(`BOOT ERROR: ${e.message}`));

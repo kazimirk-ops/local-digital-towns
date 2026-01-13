@@ -1,4 +1,6 @@
 const Database = require("better-sqlite3");
+const crypto = require("crypto");
+
 const db = new Database("town.db");
 db.pragma("journal_mode = WAL");
 
@@ -55,7 +57,7 @@ CREATE TABLE IF NOT EXISTS messages (
   readBy TEXT NOT NULL
 );
 
--- ✅ NEW: Signup table (address-based gate + status)
+-- Signup gate
 CREATE TABLE IF NOT EXISTS signups (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -66,16 +68,35 @@ CREATE TABLE IF NOT EXISTS signups (
   state TEXT NOT NULL,
   zip TEXT NOT NULL,
   status TEXT NOT NULL,          -- eligible | waitlist
-  reason TEXT NOT NULL,          -- why eligible/waitlist
+  reason TEXT NOT NULL,
+  createdAt TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_signups_email ON signups(email);
+
+-- ✅ Auth: users + magic links + sessions (passwordless)
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,
   createdAt TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_signups_email ON signups(email);
+CREATE TABLE IF NOT EXISTS magic_links (
+  token TEXT PRIMARY KEY,
+  userId INTEGER NOT NULL,
+  expiresAt TEXT NOT NULL,
+  createdAt TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  sid TEXT PRIMARY KEY,
+  userId INTEGER NOT NULL,
+  expiresAt TEXT NOT NULL,
+  createdAt TEXT NOT NULL
+);
 `);
 
 // ---------- Seed (only if empty) ----------
 const townCount = db.prepare("SELECT COUNT(*) AS c FROM towns").get().c;
-
 if (townCount === 0) {
   db.prepare("INSERT INTO towns (id, name, state, region, status) VALUES (1, ?, ?, ?, ?)")
     .run("Sebastian", "FL", "Treasure Coast", "active");
@@ -115,6 +136,11 @@ if (townCount === 0) {
   insM.run(convoId, "buyer", "Hi, are the bell peppers still available?", now, JSON.stringify(["buyer"]));
 }
 
+// ---------- Helpers ----------
+function nowISO() { return new Date().toISOString(); }
+function normalizeEmail(e) { return (e || "").toString().trim().toLowerCase(); }
+function randToken(bytes = 24) { return crypto.randomBytes(bytes).toString("hex"); }
+
 // ---------- Live getters ----------
 function getTown() { return db.prepare("SELECT * FROM towns WHERE id=1").get(); }
 function getDistricts() { return db.prepare("SELECT * FROM districts WHERE townId=1 ORDER BY id").all(); }
@@ -128,7 +154,6 @@ function getMessages() {
 
 // ---------- Listings ----------
 function addListing(listing) {
-  const now = new Date().toISOString();
   const info = db.prepare(
     "INSERT INTO listings (placeId, title, description, quantity, price, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)"
   ).run(
@@ -138,7 +163,7 @@ function addListing(listing) {
     listing.quantity ?? 1,
     listing.price ?? 0,
     listing.status || "active",
-    now
+    nowISO()
   );
   return db.prepare("SELECT * FROM listings WHERE id=?").get(info.lastInsertRowid);
 }
@@ -153,17 +178,15 @@ function markListingSold(listingId) {
 
 // ---------- Conversations & Messages ----------
 function addConversation(conversation) {
-  const now = new Date().toISOString();
   const info = db.prepare("INSERT INTO conversations (placeId, participant, createdAt) VALUES (?, ?, ?)")
-    .run(conversation.placeId, conversation.participant || "buyer", now);
+    .run(conversation.placeId, conversation.participant || "buyer", nowISO());
   return db.prepare("SELECT * FROM conversations WHERE id=?").get(info.lastInsertRowid);
 }
 
 function addMessage(message) {
-  const now = new Date().toISOString();
   const readBy = message.readBy ? message.readBy : [message.sender || "buyer"];
   const info = db.prepare("INSERT INTO messages (conversationId, sender, text, createdAt, readBy) VALUES (?, ?, ?, ?, ?)")
-    .run(message.conversationId, message.sender || "buyer", message.text, now, JSON.stringify(readBy));
+    .run(message.conversationId, message.sender || "buyer", message.text, nowISO(), JSON.stringify(readBy));
   const row = db.prepare("SELECT * FROM messages WHERE id=?").get(info.lastInsertRowid);
   return { ...row, readBy: JSON.parse(row.readBy || "[]") };
 }
@@ -200,10 +223,7 @@ function getTownMetrics() {
   const conversationsCount = db.prepare("SELECT COUNT(*) AS c FROM conversations").get().c;
   const messagesCount = db.prepare("SELECT COUNT(*) AS c FROM messages").get().c;
 
-  const healthIndex = Math.min(
-    100,
-    (placesCount * 2) + (activeListings * 3) + (conversationsCount * 4) + Math.min(30, messagesCount)
-  );
+  const healthIndex = Math.min(100, (placesCount * 2) + (activeListings * 3) + (conversationsCount * 4) + Math.min(30, messagesCount));
 
   return {
     townId: 1,
@@ -215,65 +235,122 @@ function getTownMetrics() {
     conversationsCount,
     messagesCount,
     healthIndex,
-    updatedAt: new Date().toISOString(),
+    updatedAt: nowISO(),
   };
 }
 
-// ---------- ✅ Signup Gate ----------
-function normalize(s) {
-  return (s || "").toString().trim().toLowerCase();
-}
-
+// ---------- Signup Gate ----------
 function classifySignup({ city, zip }) {
-  const c = normalize(city);
+  const c = (city || "").toString().trim().toLowerCase();
   const z = (zip || "").toString().trim();
 
-  // Soft “locals Sebastian” gate:
-  // - city contains 'sebastian' OR zip == 32958
-  if (c.includes("sebastian")) {
-    return { status: "eligible", reason: "City contains 'Sebastian' (pilot zone)" };
-  }
-  if (z === "32958") {
-    return { status: "eligible", reason: "ZIP is 32958 (Sebastian pilot zone)" };
-  }
+  if (c.includes("sebastian")) return { status: "eligible", reason: "City contains 'Sebastian' (pilot zone)" };
+  if (z === "32958") return { status: "eligible", reason: "ZIP is 32958 (Sebastian pilot zone)" };
   return { status: "waitlist", reason: "Outside Sebastian pilot zone (address gate)" };
 }
 
 function addSignup(payload) {
-  const now = new Date().toISOString();
-
   const name = (payload.name || "").toString().trim();
-  const email = (payload.email || "").toString().trim().toLowerCase();
+  const email = normalizeEmail(payload.email);
   const address1 = (payload.address1 || "").toString().trim();
   const address2 = (payload.address2 || "").toString().trim();
   const city = (payload.city || "").toString().trim();
   const state = (payload.state || "").toString().trim();
   const zip = (payload.zip || "").toString().trim();
 
-  if (!name || !email || !address1 || !city || !state || !zip) {
-    return { error: "Missing required fields" };
-  }
+  if (!name || !email || !address1 || !city || !state || !zip) return { error: "Missing required fields" };
 
   const { status, reason } = classifySignup({ city, zip });
 
-  // Prevent duplicate email spam (keep latest status if re-submitted)
   const existing = db.prepare("SELECT * FROM signups WHERE email=? ORDER BY id DESC LIMIT 1").get(email);
-
   if (existing) {
-    const upd = db.prepare("UPDATE signups SET name=?, address1=?, address2=?, city=?, state=?, zip=?, status=?, reason=? WHERE id=?");
-    upd.run(name, address1, address2, city, state, zip, status, reason, existing.id);
+    db.prepare("UPDATE signups SET name=?, address1=?, address2=?, city=?, state=?, zip=?, status=?, reason=? WHERE id=?")
+      .run(name, address1, address2, city, state, zip, status, reason, existing.id);
     return db.prepare("SELECT * FROM signups WHERE id=?").get(existing.id);
   }
 
   const info = db.prepare(
     "INSERT INTO signups (name, email, address1, address2, city, state, zip, status, reason, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-  ).run(name, email, address1, address2, city, state, zip, status, reason, now);
+  ).run(name, email, address1, address2, city, state, zip, status, reason, nowISO());
 
   return db.prepare("SELECT * FROM signups WHERE id=?").get(info.lastInsertRowid);
 }
 
-function listSignups(limit = 50) {
+function listSignups(limit = 100) {
   return db.prepare("SELECT * FROM signups ORDER BY id DESC LIMIT ?").all(Number(limit));
+}
+
+function getLatestSignupByEmail(email) {
+  const e = normalizeEmail(email);
+  return db.prepare("SELECT * FROM signups WHERE email=? ORDER BY id DESC LIMIT 1").get(e) || null;
+}
+
+// ---------- ✅ Magic Link Auth (B: everyone can login; waitlist limited) ----------
+function upsertUserByEmail(email) {
+  const e = normalizeEmail(email);
+  if (!e) return null;
+
+  const existing = db.prepare("SELECT * FROM users WHERE email=?").get(e);
+  if (existing) return existing;
+
+  const info = db.prepare("INSERT INTO users (email, createdAt) VALUES (?, ?)").run(e, nowISO());
+  return db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
+}
+
+function createMagicLink(email) {
+  const user = upsertUserByEmail(email);
+  if (!user) return { error: "Invalid email" };
+
+  const token = randToken(24);
+  const createdAt = nowISO();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutes
+
+  db.prepare("INSERT INTO magic_links (token, userId, expiresAt, createdAt) VALUES (?, ?, ?, ?)")
+    .run(token, user.id, expiresAt, createdAt);
+
+  return { token, userId: user.id, expiresAt };
+}
+
+function consumeMagicToken(token) {
+  const row = db.prepare("SELECT * FROM magic_links WHERE token=?").get(token);
+  if (!row) return { error: "Invalid token" };
+
+  if (new Date(row.expiresAt).getTime() < Date.now()) {
+    db.prepare("DELETE FROM magic_links WHERE token=?").run(token);
+    return { error: "Token expired" };
+  }
+
+  db.prepare("DELETE FROM magic_links WHERE token=?").run(token);
+  return { userId: row.userId };
+}
+
+function createSession(userId) {
+  const sid = randToken(24);
+  const createdAt = nowISO();
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
+
+  db.prepare("INSERT INTO sessions (sid, userId, expiresAt, createdAt) VALUES (?, ?, ?, ?)")
+    .run(sid, userId, expiresAt, createdAt);
+
+  return { sid, expiresAt };
+}
+
+function deleteSession(sid) {
+  db.prepare("DELETE FROM sessions WHERE sid=?").run(sid);
+}
+
+function getUserBySession(sid) {
+  const sess = db.prepare("SELECT * FROM sessions WHERE sid=?").get(sid);
+  if (!sess) return null;
+  if (new Date(sess.expiresAt).getTime() < Date.now()) {
+    deleteSession(sid);
+    return null;
+  }
+  const user = db.prepare("SELECT * FROM users WHERE id=?").get(sess.userId);
+  if (!user) return null;
+
+  const signup = getLatestSignupByEmail(user.email);
+  return { user, signup };
 }
 
 module.exports = {
@@ -296,8 +373,14 @@ module.exports = {
 
   getTownMetrics,
 
-  // Signup gate
   addSignup,
   listSignups,
+
+  // auth
+  createMagicLink,
+  consumeMagicToken,
+  createSession,
+  deleteSession,
+  getUserBySession,
 };
 
