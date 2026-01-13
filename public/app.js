@@ -8,6 +8,10 @@ let state = {
   viewer: "buyer",
 };
 
+let map;
+let markersLayer;
+let boundaryLayer;
+
 function debug(msg) {
   $("debug").textContent = msg || "";
   console.log("[DEBUG]", msg);
@@ -20,32 +24,6 @@ async function api(path, opts) {
   try { data = JSON.parse(text); } catch { data = text; }
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
   return data;
-}
-
-function clearActiveDistrict() {
-  ["d-market","d-service","d-retail","d-live","d-civic"].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove("active");
-  });
-}
-
-function setActiveDistrictById(did) {
-  const map = { 1:"d-market", 2:"d-service", 3:"d-retail", 4:"d-live", 5:"d-civic" };
-  clearActiveDistrict();
-  const elId = map[did];
-  if (elId) document.getElementById(elId).classList.add("active");
-}
-
-function mkItem(title, subtitle) {
-  const div = document.createElement("div");
-  div.className = "item";
-  div.innerHTML = `<div><strong>${title}</strong></div><div class="muted">${subtitle || ""}</div>`;
-  return div;
-}
-
-function renderList(el, items, renderer) {
-  el.innerHTML = "";
-  items.forEach((i) => el.appendChild(renderer(i)));
 }
 
 function setViewer(viewer) {
@@ -71,27 +49,23 @@ async function loadTownMetrics() {
   $("mMessages").textContent = m.messagesCount;
 
   $("healthIndex").textContent = m.healthIndex;
+  $("healthIndexInline").textContent = m.healthIndex;
   $("metricsTime").textContent = `Updated: ${m.updatedAt}`;
 
   const pct = Math.max(0, Math.min(100, Number(m.healthIndex)));
   $("healthBar").style.width = `${pct}%`;
 }
 
-async function loadDistrictBadges() {
-  const marketPlaces = await api("/districts/1/places");
-  const servicePlaces = await api("/districts/2/places");
-  const retailPlaces = await api("/districts/3/places");
+function mkItem(title, subtitle) {
+  const div = document.createElement("div");
+  div.className = "item";
+  div.innerHTML = `<div><strong>${title}</strong></div><div class="muted">${subtitle || ""}</div>`;
+  return div;
+}
 
-  $("badge-market-places").textContent = `Places: ${marketPlaces.length}`;
-  $("badge-service-places").textContent = `Places: ${servicePlaces.length}`;
-  $("badge-retail-places").textContent = `Places: ${retailPlaces.length}`;
-
-  let listingCount = 0;
-  for (const p of marketPlaces) {
-    const ls = await api(`/places/${p.id}/listings`);
-    listingCount += ls.length;
-  }
-  $("badge-market-listings").textContent = `Listings: ${listingCount}`;
+function renderList(el, items, renderer) {
+  el.innerHTML = "";
+  items.forEach((i) => el.appendChild(renderer(i)));
 }
 
 async function loadPlacesForDistrict(districtId) {
@@ -100,38 +74,34 @@ async function loadPlacesForDistrict(districtId) {
   state.placeName = null;
   state.conversationId = null;
 
-  setActiveDistrictById(districtId);
-  $("rightHint").textContent = "Pick a place.";
+  document.querySelectorAll(".dBtn").forEach((b) => b.classList.remove("active"));
+  const btn = document.querySelector(`.dBtn[data-district="${districtId}"]`);
+  if (btn) btn.classList.add("active");
+
+  $("rightHint").textContent = `District ${districtId} selected. Pick a place.`;
 
   const places = await api(`/districts/${districtId}/places`);
+
   renderList($("places"), places, (p) => {
     const div = mkItem(p.name, `${p.category} • ${p.status} • id=${p.id}`);
-    div.onclick = async () => {
-      state.placeId = p.id;
-      state.placeName = p.name;
-      debug(`Place selected: ${p.name} (id=${p.id})`);
-      await loadListings(p.id);
-      await loadPlaceConversations(p.id);
-    };
+    div.onclick = async () => selectPlace(p);
     return div;
   });
+
+  setPlaceMarkers(places);
 
   $("listings").innerHTML = `<div class="muted">Select a place to load listings.</div>`;
   $("conversations").innerHTML = `<div class="muted">Select a place to load conversations.</div>`;
   $("messages").innerHTML = `<div class="muted">Select a conversation.</div>`;
 }
 
-async function markSold(listingId) {
-  try {
-    debug(`Marking listing ${listingId} as SOLD...`);
-    await api(`/listings/${listingId}/sold`, { method: "PATCH" });
-    debug(`Listing ${listingId} marked SOLD.`);
-    if (state.placeId) await loadListings(state.placeId);
-    await loadTownMetrics();
-  } catch (e) {
-    debug(`ERROR: ${e.message}`);
-    alert(e.message);
-  }
+async function selectPlace(p) {
+  state.placeId = p.id;
+  state.placeName = p.name;
+  debug(`Place selected: ${p.name} (id=${p.id})`);
+
+  await loadListings(p.id);
+  await loadPlaceConversations(p.id);
 }
 
 async function loadListings(placeId) {
@@ -145,7 +115,6 @@ async function loadListings(placeId) {
   for (const l of listings) {
     const div = document.createElement("div");
     div.className = "item";
-
     const subtitle = `$${l.price} • qty ${l.quantity} • ${l.status} • id=${l.id}`;
     div.innerHTML = `
       <div class="row" style="justify-content:space-between;">
@@ -158,11 +127,9 @@ async function loadListings(placeId) {
         </div>
       </div>
     `;
-
     $("listings").appendChild(div);
   }
 
-  // Wire buttons
   document.querySelectorAll("button[data-sold]").forEach((btn) => {
     btn.onclick = () => markSold(btn.getAttribute("data-sold"));
   });
@@ -175,7 +142,6 @@ async function createListing() {
       alert("Select a place first (click a Place).");
       return;
     }
-
     const title = $("newTitle").value.trim();
     const description = $("newDesc").value.trim();
     const quantity = Number($("newQty").value);
@@ -187,7 +153,6 @@ async function createListing() {
       return;
     }
 
-    debug(`Creating listing for placeId=${state.placeId}…`);
     const created = await api(`/places/${state.placeId}/listings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -204,7 +169,18 @@ async function createListing() {
     $("newDesc").value = "";
 
     await loadListings(state.placeId);
-    await loadDistrictBadges();
+    await loadTownMetrics();
+  } catch (e) {
+    debug(`ERROR: ${e.message}`);
+    alert(e.message);
+  }
+}
+
+async function markSold(listingId) {
+  try {
+    await api(`/listings/${listingId}/sold`, { method: "PATCH" });
+    debug(`Listing ${listingId} marked SOLD.`);
+    if (state.placeId) await loadListings(state.placeId);
     await loadTownMetrics();
   } catch (e) {
     debug(`ERROR: ${e.message}`);
@@ -225,7 +201,6 @@ async function loadPlaceConversations(placeId) {
     const div = mkItem(`Conversation ${c.id}`, `unread=${c.unreadCount}`);
     div.onclick = async () => {
       state.conversationId = c.id;
-      debug(`Conversation selected: ${c.id}`);
       await loadMessages(c.id);
     };
     return div;
@@ -250,7 +225,6 @@ async function loadMessages(conversationId) {
 async function sendMessage() {
   try {
     if (!state.conversationId) return;
-
     const sender = $("sender").value.trim() || "buyer";
     const text = $("msgText").value.trim();
     if (!text) return;
@@ -284,10 +258,91 @@ async function markRead() {
   }
 }
 
-function bindMapClicks() {
-  document.querySelectorAll(".district").forEach((el) => {
-    el.onclick = async () => {
-      const did = Number(el.getAttribute("data-district"));
+// ------- Leaflet map setup -------
+function initMap() {
+  // Center on Sebastian, FL (approx)
+  const sebastian = [27.816, -80.470];
+  map = L.map("map", { zoomControl: true }).setView(sebastian, 13);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap contributors",
+  }).addTo(map);
+
+  markersLayer = L.layerGroup().addTo(map);
+
+  // Approx boundary polygon (starter, not legal)
+  // You will replace this later with a real city-limit GeoJSON.
+    // Approx boundary polygon (starter, "locals consider Sebastian")
+  // Based loosely on ZIP 32958 center and area, expanded to feel local. :contentReference[oaicite:1]{index=1}
+    // Approx boundary polygon (starter, "locals consider Sebastian")
+  // Natural-ish shape: lagoon/riverfront corridor + broader Sebastian area.
+  // NOT legal city limits (placeholder for later official GeoJSON).
+  const approxBoundary = [
+    [27.872, -80.555], // NW
+    [27.872, -80.505], // north-west interior
+    [27.865, -80.472], // north near US-1
+    [27.860, -80.445], // north-east (near barrier direction)
+    [27.845, -80.430], // NE
+    [27.828, -80.425], // east edge
+    [27.812, -80.430], // southeast turn
+    [27.795, -80.440], // SE
+    [27.780, -80.450], // south-east interior
+    [27.770, -80.470], // south near lagoon bend
+    [27.765, -80.500], // south-west interior
+    [27.770, -80.525], // SW
+    [27.785, -80.545], // west return
+    [27.810, -80.555], // west mid
+    [27.840, -80.560], // west-north
+    [27.860, -80.560], // back toward NW
+  ];
+
+  boundaryLayer = L.polygon(approxBoundary, {
+    color: "#00ffae",
+    weight: 3,
+    opacity: 0.85,
+    fillColor: "#00ffae",
+    fillOpacity: 0.08,
+  }).addTo(map);
+
+  boundaryLayer.bindPopup("Sebastian Starter Boundary (approx)");
+
+  // Zoom to boundary
+  map.fitBounds(boundaryLayer.getBounds(), { padding: [20, 20] });
+
+  // Add a label marker at center
+  const center = boundaryLayer.getBounds().getCenter();
+  L.marker([center.lat, center.lng]).addTo(map).bindPopup("Sebastian, FL (approx boundary center)");
+}
+
+function setPlaceMarkers(places) {
+  if (!markersLayer) return;
+  markersLayer.clearLayers();
+
+  // For now, scatter around polygon center (placeholder)
+  const center = boundaryLayer ? boundaryLayer.getBounds().getCenter() : { lat: 27.816, lng: -80.470 };
+
+  places.forEach((p, idx) => {
+    const lat = center.lat + (idx * 0.002) - 0.006;
+    const lng = center.lng + (idx * 0.002) - 0.006;
+
+    const marker = L.circleMarker([lat, lng], {
+      radius: 8,
+      color: "#2e93ff",
+      weight: 2,
+      fillColor: "#0f1722",
+      fillOpacity: 0.85,
+    }).addTo(markersLayer);
+
+    marker.bindPopup(`${p.name} (id=${p.id})`);
+    marker.on("click", () => selectPlace(p));
+  });
+}
+
+function bindDistrictButtons() {
+  document.querySelectorAll(".dBtn").forEach((btn) => {
+    btn.onclick = async () => {
+      const did = Number(btn.getAttribute("data-district"));
       debug(`Entering district ${did}…`);
       await loadPlacesForDistrict(did);
     };
@@ -296,6 +351,7 @@ function bindMapClicks() {
 
 async function main() {
   setViewer("buyer");
+
   $("viewerBuyer").onclick = async () => { setViewer("buyer"); if (state.placeId) await loadPlaceConversations(state.placeId); };
   $("viewerSeller").onclick = async () => { setViewer("seller"); if (state.placeId) await loadPlaceConversations(state.placeId); };
 
@@ -303,13 +359,13 @@ async function main() {
   $("sendMsg").onclick = sendMessage;
   $("markReadBtn").onclick = markRead;
 
-  bindMapClicks();
-
   await loadStatus();
-  await loadDistrictBadges();
   await loadTownMetrics();
 
-  debug("Click a district → click a place → mark items sold.");
+  initMap();
+  bindDistrictButtons();
+
+  debug("Approx boundary drawn. We'll enforce signup by address for now.");
 }
 
 main().catch((e) => debug(`BOOT ERROR: ${e.message}`));

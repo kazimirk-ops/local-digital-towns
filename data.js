@@ -2,6 +2,7 @@ const Database = require("better-sqlite3");
 const db = new Database("town.db");
 db.pragma("journal_mode = WAL");
 
+// ---------- Schema ----------
 db.exec(`
 CREATE TABLE IF NOT EXISTS towns (
   id INTEGER PRIMARY KEY,
@@ -53,9 +54,28 @@ CREATE TABLE IF NOT EXISTS messages (
   createdAt TEXT NOT NULL,
   readBy TEXT NOT NULL
 );
+
+-- ✅ NEW: Signup table (address-based gate + status)
+CREATE TABLE IF NOT EXISTS signups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  address1 TEXT NOT NULL,
+  address2 TEXT,
+  city TEXT NOT NULL,
+  state TEXT NOT NULL,
+  zip TEXT NOT NULL,
+  status TEXT NOT NULL,          -- eligible | waitlist
+  reason TEXT NOT NULL,          -- why eligible/waitlist
+  createdAt TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_signups_email ON signups(email);
 `);
 
+// ---------- Seed (only if empty) ----------
 const townCount = db.prepare("SELECT COUNT(*) AS c FROM towns").get().c;
+
 if (townCount === 0) {
   db.prepare("INSERT INTO towns (id, name, state, region, status) VALUES (1, ?, ?, ?, ?)")
     .run("Sebastian", "FL", "Treasure Coast", "active");
@@ -95,18 +115,18 @@ if (townCount === 0) {
   insM.run(convoId, "buyer", "Hi, are the bell peppers still available?", now, JSON.stringify(["buyer"]));
 }
 
-function getTown() {
-  return db.prepare("SELECT * FROM towns WHERE id=1").get();
+// ---------- Live getters ----------
+function getTown() { return db.prepare("SELECT * FROM towns WHERE id=1").get(); }
+function getDistricts() { return db.prepare("SELECT * FROM districts WHERE townId=1 ORDER BY id").all(); }
+function getPlaces() { return db.prepare("SELECT * FROM places WHERE townId=1 ORDER BY id").all(); }
+function getListings() { return db.prepare("SELECT * FROM listings ORDER BY id").all(); }
+function getConversations() { return db.prepare("SELECT * FROM conversations ORDER BY id").all(); }
+function getMessages() {
+  return db.prepare("SELECT * FROM messages ORDER BY id").all()
+    .map((m) => ({ ...m, readBy: JSON.parse(m.readBy || "[]") }));
 }
-function getDistricts() {
-  return db.prepare("SELECT * FROM districts WHERE townId=1 ORDER BY id").all();
-}
-function getPlaces() {
-  return db.prepare("SELECT * FROM places WHERE townId=1 ORDER BY id").all();
-}
-function getListings() {
-  return db.prepare("SELECT * FROM listings ORDER BY id").all();
-}
+
+// ---------- Listings ----------
 function addListing(listing) {
   const now = new Date().toISOString();
   const info = db.prepare(
@@ -123,19 +143,15 @@ function addListing(listing) {
   return db.prepare("SELECT * FROM listings WHERE id=?").get(info.lastInsertRowid);
 }
 
-// ✅ NEW: mark listing sold (SQLite update)
 function markListingSold(listingId) {
   const id = Number(listingId);
   const exists = db.prepare("SELECT * FROM listings WHERE id=?").get(id);
   if (!exists) return null;
-
   db.prepare("UPDATE listings SET status='sold' WHERE id=?").run(id);
   return db.prepare("SELECT * FROM listings WHERE id=?").get(id);
 }
 
-function getConversations() {
-  return db.prepare("SELECT * FROM conversations ORDER BY id").all();
-}
+// ---------- Conversations & Messages ----------
 function addConversation(conversation) {
   const now = new Date().toISOString();
   const info = db.prepare("INSERT INTO conversations (placeId, participant, createdAt) VALUES (?, ?, ?)")
@@ -143,10 +159,6 @@ function addConversation(conversation) {
   return db.prepare("SELECT * FROM conversations WHERE id=?").get(info.lastInsertRowid);
 }
 
-function getMessages() {
-  return db.prepare("SELECT * FROM messages ORDER BY id").all()
-    .map((m) => ({ ...m, readBy: JSON.parse(m.readBy || "[]") }));
-}
 function addMessage(message) {
   const now = new Date().toISOString();
   const readBy = message.readBy ? message.readBy : [message.sender || "buyer"];
@@ -179,6 +191,7 @@ function markConversationRead(conversationId, viewer = "buyer") {
   return true;
 }
 
+// ---------- Town Metrics ----------
 function getTownMetrics() {
   const placesCount = db.prepare("SELECT COUNT(*) AS c FROM places WHERE townId=1").get().c;
   const totalListings = db.prepare("SELECT COUNT(*) AS c FROM listings").get().c;
@@ -189,10 +202,7 @@ function getTownMetrics() {
 
   const healthIndex = Math.min(
     100,
-    (placesCount * 2) +
-      (activeListings * 3) +
-      (conversationsCount * 4) +
-      Math.min(30, messagesCount)
+    (placesCount * 2) + (activeListings * 3) + (conversationsCount * 4) + Math.min(30, messagesCount)
   );
 
   return {
@@ -209,6 +219,63 @@ function getTownMetrics() {
   };
 }
 
+// ---------- ✅ Signup Gate ----------
+function normalize(s) {
+  return (s || "").toString().trim().toLowerCase();
+}
+
+function classifySignup({ city, zip }) {
+  const c = normalize(city);
+  const z = (zip || "").toString().trim();
+
+  // Soft “locals Sebastian” gate:
+  // - city contains 'sebastian' OR zip == 32958
+  if (c.includes("sebastian")) {
+    return { status: "eligible", reason: "City contains 'Sebastian' (pilot zone)" };
+  }
+  if (z === "32958") {
+    return { status: "eligible", reason: "ZIP is 32958 (Sebastian pilot zone)" };
+  }
+  return { status: "waitlist", reason: "Outside Sebastian pilot zone (address gate)" };
+}
+
+function addSignup(payload) {
+  const now = new Date().toISOString();
+
+  const name = (payload.name || "").toString().trim();
+  const email = (payload.email || "").toString().trim().toLowerCase();
+  const address1 = (payload.address1 || "").toString().trim();
+  const address2 = (payload.address2 || "").toString().trim();
+  const city = (payload.city || "").toString().trim();
+  const state = (payload.state || "").toString().trim();
+  const zip = (payload.zip || "").toString().trim();
+
+  if (!name || !email || !address1 || !city || !state || !zip) {
+    return { error: "Missing required fields" };
+  }
+
+  const { status, reason } = classifySignup({ city, zip });
+
+  // Prevent duplicate email spam (keep latest status if re-submitted)
+  const existing = db.prepare("SELECT * FROM signups WHERE email=? ORDER BY id DESC LIMIT 1").get(email);
+
+  if (existing) {
+    const upd = db.prepare("UPDATE signups SET name=?, address1=?, address2=?, city=?, state=?, zip=?, status=?, reason=? WHERE id=?");
+    upd.run(name, address1, address2, city, state, zip, status, reason, existing.id);
+    return db.prepare("SELECT * FROM signups WHERE id=?").get(existing.id);
+  }
+
+  const info = db.prepare(
+    "INSERT INTO signups (name, email, address1, address2, city, state, zip, status, reason, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(name, email, address1, address2, city, state, zip, status, reason, now);
+
+  return db.prepare("SELECT * FROM signups WHERE id=?").get(info.lastInsertRowid);
+}
+
+function listSignups(limit = 50) {
+  return db.prepare("SELECT * FROM signups ORDER BY id DESC LIMIT ?").all(Number(limit));
+}
+
 module.exports = {
   get town() { return getTown(); },
   get districts() { return getDistricts(); },
@@ -216,7 +283,7 @@ module.exports = {
 
   getListings,
   addListing,
-  markListingSold, // ✅ export it
+  markListingSold,
 
   getConversations,
   addConversation,
@@ -228,5 +295,9 @@ module.exports = {
   markConversationRead,
 
   getTownMetrics,
+
+  // Signup gate
+  addSignup,
+  listSignups,
 };
 

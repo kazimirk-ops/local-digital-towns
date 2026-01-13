@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Join Sebastian Pilot</title>
+    <style>
+      body { font-family: Arial, sans-serif; background:#0b0f14; color:#e8eef6; margin:0; }
+      .wrap { max-width: 680px; margin: 0 auto; padding: 18px; }
+      .card { background:#0f1722; border:1px solid #223149; border-radius:14px; padding:14px; }
+      input { width:100%; padding:10px; border-radius:10px; border:1px solid #223149; background:#0b1220; color:#e8eef6; margin-top:8px;}
+      button { margin-top:12px; padding:10px 12px; border-radius:10px; border:1px solid #223149; background:#0b1220; color:#e8eef6; cursor:pointer;}
+      button:hover { background:#0f1722; }
+      .muted { color:#9fb0c3; font-size:12px; }
+      .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; white-space: pre-wrap; }
+      .ok { border:1px solid rgba(0,255,170,.35); background:rgba(0,255,170,.06); padding:10px; border-radius:12px; margin-top:12px;}
+      .warn { border:1px solid rgba(255,204,0,.35); background:rgba(255,204,0,.06); padding:10px; border-radius:12px; margin-top:12px;}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h2>Join the Sebastian Pilot</h2>
+      <div class="muted">Soft address gate: City contains “Sebastian” OR ZIP = 32958.</div>
+
+      <div class="card">
+        <input id="name" placeholder="Full name" />
+        <input id="email" placeholder="Email" />
+        <input id="address1" placeholder="Address line 1" />
+        <input id="address2" placeholder="Address line 2 (optional)" />
+        <input id="city" placeholder="City" />
+        <input id="state" placeholder="State (e.g. FL)" value="FL" />
+        <input id="zip" placeholder="ZIP" />
+
+        <button id="submit">Request Access</button>
+
+        <div id="result"></div>
+        <div class="mono" id="debug"></div>
+      </div>
+    </div>
+
+    <script src="/signup.js"></script>
+  </body>
+</html>
+
