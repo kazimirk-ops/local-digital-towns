@@ -4,14 +4,16 @@ const app = express();
 const data = require("./data");
 
 app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json());
 
-// ✅ Health
-app.get("/health", (req, res) => res.json({ status: "ok" }));
+// Health
+app.get("/health",(req,res)=>res.json({status:"ok"}));
 
-// ✅ Pages
-app.get("/ui", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
-app.get("/signup", (req, res) => res.sendFile(path.join(__dirname, "public", "signup.html")));
-app.get("/store/:id", (req, res) => res.sendFile(path.join(__dirname, "public", "store.html")));
+// Pages
+app.get("/ui",(req,res)=>res.sendFile(path.join(__dirname,"public","index.html")));
+app.get("/signup",(req,res)=>res.sendFile(path.join(__dirname,"public","signup.html")));
+app.get("/store/:id",(req,res)=>res.sendFile(path.join(__dirname,"public","store.html")));
+app.get("/admin_verify.html",(req,res)=>res.sendFile(path.join(__dirname,"public","admin_verify.html")));
 
 // Cookies
 function parseCookies(req){
@@ -19,132 +21,119 @@ function parseCookies(req){
   const parts=header.split(";").map(p=>p.trim()).filter(Boolean);
   const out={};
   for(const p of parts){
-    const idx=p.indexOf("=");
-    if(idx===-1) continue;
-    out[p.slice(0,idx)]=decodeURIComponent(p.slice(idx+1));
+    const i=p.indexOf("=");
+    if(i>-1) out[p.slice(0,i)]=decodeURIComponent(p.slice(i+1));
   }
   return out;
 }
-function setCookie(res,name,value,opts={}){
-  const parts=[`${name}=${encodeURIComponent(value)}`];
-  if(opts.httpOnly) parts.push("HttpOnly");
-  parts.push("Path=/");
-  parts.push("SameSite=Lax");
-  if(opts.maxAge!==undefined) parts.push(`Max-Age=${opts.maxAge}`);
-  res.setHeader("Set-Cookie", parts.join("; "));
+function setCookie(res,n,v,o={}){
+  const p=[`${n}=${encodeURIComponent(v)}`,"Path=/","SameSite=Lax"];
+  if(o.httpOnly) p.push("HttpOnly");
+  if(o.maxAge!=null) p.push(`Max-Age=${o.maxAge}`);
+  res.setHeader("Set-Cookie",p.join("; "));
 }
 function getUserId(req){
   const sid=parseCookies(req).sid;
   if(!sid) return null;
-  const result=data.getUserBySession(sid);
-  return result?.user?.id ?? null;
+  const r=data.getUserBySession(sid);
+  return r?.user?.id ?? null;
 }
 function requireLogin(req,res){
-  const uid=getUserId(req);
-  if(!uid){ res.status(401).json({error:"Login required"}); return null; }
-  return uid;
+  const u=getUserId(req);
+  if(!u){res.status(401).json({error:"Login required"});return null;}
+  return u;
 }
 
 // Auth
-app.post("/auth/request-link", express.json(), (req,res)=>{
-  const email=(req.body?.email||"").toString().trim().toLowerCase();
-  if(!email) return res.status(400).json({error:"email required"});
-  const created=data.createMagicLink(email);
-  if(created.error) return res.status(400).json(created);
-  const base = `${req.protocol}://${req.get("host")}`;
-  res.json({ok:true, magicUrl:`${base}/auth/magic?token=${created.token}`, expiresAt:created.expiresAt});
+app.post("/auth/request-link",(req,res)=>{
+  const email=(req.body?.email||"").toLowerCase().trim();
+  const c=data.createMagicLink(email);
+  if(c.error) return res.status(400).json(c);
+  const base=`${req.protocol}://${req.get("host")}`;
+  res.json({ok:true,magicUrl:`${base}/auth/magic?token=${c.token}`});
 });
 app.get("/auth/magic",(req,res)=>{
-  const token=(req.query.token||"").toString();
-  if(!token) return res.status(400).send("Missing token");
-  const consumed=data.consumeMagicToken(token);
-  if(consumed.error) return res.status(400).send(consumed.error);
-  const sess=data.createSession(consumed.userId);
-  setCookie(res,"sid",sess.sid,{httpOnly:true,maxAge:60*60*24*60});
+  const c=data.consumeMagicToken(req.query.token);
+  if(c.error) return res.status(400).send(c.error);
+  const s=data.createSession(c.userId);
+  setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30});
   res.redirect("/ui");
-});
-app.post("/auth/logout",(req,res)=>{
-  const sid=parseCookies(req).sid;
-  if(sid) data.deleteSession(sid);
-  setCookie(res,"sid","",{httpOnly:true,maxAge:0});
-  res.json({ok:true});
 });
 app.get("/me",(req,res)=>{
   const sid=parseCookies(req).sid;
-  if(!sid) return res.json({user:null,signup:null});
-  const result=data.getUserBySession(sid);
-  if(!result) return res.json({user:null,signup:null});
-  // ensure trust membership exists (if your data.js has it)
-  if (typeof data.ensureTownMembership === "function") data.ensureTownMembership(1, result.user.id);
-  res.json(result);
+  if(!sid) return res.json({user:null});
+  const r=data.getUserBySession(sid);
+  if(!r) return res.json({user:null});
+  data.ensureTownMembership(1,r.user.id);
+  res.json(r);
 });
 
-// ✅ Events (UI boot depends on this)
-app.post("/events", express.json(), (req,res)=>{
-  const payload=req.body||{};
-  const clientSessionId=(payload.clientSessionId||"").toString().trim();
-  const eventTypeRaw=(payload.eventType ?? payload.type ?? "").toString().trim();
-  if(!clientSessionId) return res.status(400).json({error:"clientSessionId required"});
-  if(!eventTypeRaw) return res.status(400).json({error:"eventType required"});
-
-  let eventId = null;
-  if(typeof data.logEvent === "function"){
-    try{
-      eventId = data.logEvent({
-        eventType:eventTypeRaw,
-        townId:1,
-        districtId:payload.districtId??null,
-        placeId:payload.placeId??null,
-        listingId:payload.listingId??null,
-        conversationId:payload.conversationId??null,
-        userId:getUserId(req),
-        clientSessionId,
-        meta: payload.meta||{}
-      });
-    } catch {}
-  }
-
-  res.json({ ok:true, eventId, reward:null });
+// Events (boot)
+app.post("/events",(req,res)=>{
+  res.json({ok:true});
 });
 
-// ✅ Sweep (UI boot depends on this)
+// Sweep
 app.get("/sweep/balance",(req,res)=>{
-  const uid=getUserId(req);
-  if(!uid) return res.json({loggedIn:false,balance:0});
-  res.json({loggedIn:true,balance:data.getSweepBalance(uid)});
+  const u=getUserId(req);
+  if(!u) return res.json({loggedIn:false,balance:0});
+  res.json({loggedIn:true,balance:data.getSweepBalance(u)});
 });
 
-// ✅ Listings read (store UI uses this)
+// Place meta
+app.get("/places/:id",(req,res)=>{
+  const p=data.getPlaceById(req.params.id);
+  if(!p) return res.status(404).json({error:"not found"});
+  res.json(p);
+});
+app.get("/places/:id/owner",(req,res)=>{
+  res.json({owner:data.getPlaceOwnerPublic(req.params.id)});
+});
+
+// Listings
 app.get("/places/:id/listings",(req,res)=>{
-  const placeId=Number(req.params.id);
-  res.json(data.getListings().filter(l=>Number(l.placeId)===placeId));
+  const pid=Number(req.params.id);
+  res.json(data.getListings().filter(l=>Number(l.placeId)===pid));
+});
+app.post("/places/:id/listings",(req,res)=>{
+  const u=requireLogin(req,res); if(!u) return;
+  const pid=Number(req.params.id);
+  if(!req.body?.title) return res.status(400).json({error:"title required"});
+  const created=data.addListing({...req.body,placeId:pid});
+  res.status(201).json(created);
 });
 
-// ✅ Listings create (works for items/offers/requests; server gating can be added next)
-app.post("/places/:id/listings", express.json(), (req,res)=>{
-  const uid=requireLogin(req,res);
-  if(!uid) return;
-
-  const placeId=Number(req.params.id);
-  const p=req.body||{};
-  const title=(p.title||"").toString().trim();
-  if(!title) return res.status(400).json({error:"title is required"});
-
-  const created = data.addListing({
-    placeId,
-    title,
-    description: (p.description||"").toString(),
-    quantity: Number.isFinite(Number(p.quantity)) ? Number(p.quantity) : 1,
-    price: Number.isFinite(Number(p.price)) ? Number(p.price) : 0,
-    status: (p.status||"active").toString(),
-    listingType: p.listingType || "item",
-    exchangeType: p.exchangeType || "money",
-    startAt: p.startAt || "",
-    endAt: p.endAt || "",
-    photoUrls: p.photoUrls || []
+// ✅ Apply / Message → creates conversation
+app.post("/listings/:id/apply",(req,res)=>{
+  const u=requireLogin(req,res); if(!u) return;
+  const listing=data.getListings().find(l=>l.id==req.params.id);
+  if(!listing) return res.status(404).json({error:"Listing not found"});
+  const convo=data.addConversation({placeId:listing.placeId,participant:"buyer"});
+  data.addMessage({
+    conversationId:convo.id,
+    sender:"buyer",
+    text:req.body?.message||"Interested in this offer."
   });
+  res.json({ok:true,conversationId:convo.id});
+});
+// =====================
+// ADMIN VERIFY (TEMP)
+// =====================
+app.post("/admin/verify/buyer", (req,res)=>{
+  const u=requireLogin(req,res); if(!u) return;
+  const id = Number(req.body?.userId);
+  if(!id) return res.status(400).json({error:"userId required"});
+  const r = data.verifyBuyer(id, "verified", "admin");
+  res.json(r);
+});
 
-  res.status(201).json(created);
+app.post("/admin/verify/store", (req,res)=>{
+  const u=requireLogin(req,res); if(!u) return;
+  const id = Number(req.body?.placeId);
+  if(!id) return res.status(400).json({error:"placeId required"});
+  const r = data.verifyStore(id);
+  if(r?.error) return res.status(400).json(r);
+  res.json(r);
 });
 
 const PORT=3000;
