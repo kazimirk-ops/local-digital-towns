@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Storefront • Sebastian Digital Town</title>
+  <style>
+    :root { --bg:#070b10; --panel:#0f1722; --text:#e8eef6; --muted:#9fb0c3; --mint:#00ffae; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif; background:linear-gradient(180deg,#070b10,#05070b); color:var(--text); }
+    header { padding:12px 16px; background:rgba(10,14,20,.9); border-bottom:1px solid rgba(255,255,255,.08); position:sticky; top:0; z-index:10; backdrop-filter: blur(10px); }
+    a { color:#cfe3ff; text-decoration:none; }
+    .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.10); background:rgba(15,23,34,.65); font-size:12px; color:#cfe3ff; }
+    .wrap { max-width:1100px; margin:0 auto; padding:16px; }
+    .card { background:rgba(15,23,34,.78); border:1px solid rgba(255,255,255,.10); border-radius:14px; overflow:hidden; }
+    .head { padding:14px; border-bottom:1px solid rgba(255,255,255,.07); display:flex; justify-content:space-between; gap:10px; }
+    .body { padding:14px; }
+    .title { font-size:20px; font-weight:900; letter-spacing:.2px; }
+    .muted { color:var(--muted); font-size:13px; }
+    button { padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0b1220; color:var(--text); cursor:pointer; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    input, textarea { width:100%; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.10); background:#0b1220; color:var(--text); }
+    textarea { min-height:70px; resize:vertical; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:12px; margin-top:14px; }
+    .item { border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:12px; background:rgba(10,14,20,.35); }
+    .price { font-weight:900; margin-top:6px; }
+    .hr { height:1px; background:rgba(255,255,255,.08); margin:14px 0; }
+    .tag { display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); font-size:12px; }
+    .thumbRow { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+    .thumb { width:78px; height:78px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(10,14,20,.5); object-fit:cover; }
+    .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; white-space: pre-wrap; }
+    .small { font-size:12px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="row" style="justify-content:space-between;">
+    <div class="row">
+      <a class="pill" href="/ui">← Back to Town</a>
+      <span class="pill">Storefront</span>
+      <span class="pill">Followers: <span id="followersCount">0</span></span>
+      <span class="pill">Sweep: <span id="sweepBal">0</span></span>
+    </div>
+    <div class="row">
+      <a class="pill" href="/signup">Login / Join</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="head">
+      <div>
+        <div class="title" id="storeName">Loading…</div>
+        <div class="muted" id="storeMeta">—</div>
+      </div>
+      <div class="row">
+        <span class="tag" id="verifiedTag">—</span>
+        <span class="tag" id="claimedTag">—</span>
+        <button id="followBtn" disabled>Follow</button>
+        <button id="messageBtn" disabled>Message Seller</button>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="muted">Seller</div>
+      <div style="font-weight:900;" id="ownerName">—</div>
+      <div class="muted" id="ownerBio"></div>
+
+      <div class="hr"></div>
+
+      <div class="row" style="justify-content:space-between;">
+        <div style="flex:1; min-width:220px;">
+          <input id="searchBox" placeholder="Search listings in this store…" />
+        </div>
+        <div class="row">
+          <span class="pill">Listings: <span id="countLbl">0</span></span>
+        </div>
+      </div>
+
+      <div class="grid" id="listingGrid"></div>
+
+      <div class="hr"></div>
+
+      <!-- Seller Tools (Owner Only) -->
+      <div class="item" id="sellerTools" style="display:none;">
+        <div style="font-weight:900;">Seller Tools (Owner)</div>
+        <div class="muted small">Select a listing to edit. Changes are server-enforced owner-only.</div>
+
+        <div class="row" style="margin-top:10px;">
+          <span class="pill">Selected listing: <span id="selListing">none</span></span>
+          <span class="pill">Status: <span id="selStatus">—</span></span>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div style="flex:1; min-width:220px;">
+            <div class="muted small">Title</div>
+            <input id="editTitle" />
+          </div>
+          <div style="width:140px;">
+            <div class="muted small">Price</div>
+            <input id="editPrice" />
+          </div>
+          <div style="width:140px;">
+            <div class="muted small">Qty</div>
+            <input id="editQty" />
+          </div>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div class="muted small">Description</div>
+          <textarea id="editDesc"></textarea>
+        </div>
+
+        <div class="row" style="justify-content:flex-end; margin-top:10px;">
+          <button id="saveListingBtn" disabled>Save Listing</button>
+          <button id="toggleActiveBtn" disabled>Deactivate</button>
+          <button id="markSoldBtn" disabled>Mark Sold</button>
+        </div>
+
+        <div class="hr"></div>
+
+        <div style="font-weight:900;">Listing Photos (URLs)</div>
+        <div class="muted small">Paste up to 5 HTTPS image URLs, one per line.</div>
+        <textarea id="photoUrlsBox" placeholder="https://...\nhttps://...\nhttps://..."></textarea>
+        <div class="row" style="justify-content:flex-end; margin-top:8px;">
+          <button id="savePhotosBtn" disabled>Save Photos</button>
+        </div>
+      </div>
+
+      <div class="mono" id="debug"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/store.js?v=seller_tools_1"></script>
+</body>
+</html>
