@@ -16,21 +16,24 @@
     .card { background:rgba(15,23,34,.78); border:1px solid rgba(255,255,255,.10); border-radius:14px; overflow:hidden; }
     .head { padding:14px; border-bottom:1px solid rgba(255,255,255,.07); display:flex; justify-content:space-between; gap:10px; }
     .body { padding:14px; }
-    .title { font-size:20px; font-weight:900; letter-spacing:.2px; }
+    .title { font-size:20px; font-weight:900; }
     .muted { color:var(--muted); font-size:13px; }
     button { padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0b1220; color:var(--text); cursor:pointer; }
     button:disabled { opacity:.55; cursor:not-allowed; }
-    input, textarea { width:100%; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.10); background:#0b1220; color:var(--text); }
+    input, textarea, select { width:100%; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.10); background:#0b1220; color:var(--text); }
     textarea { min-height:70px; resize:vertical; }
     .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:12px; margin-top:14px; }
     .item { border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:12px; background:rgba(10,14,20,.35); }
     .price { font-weight:900; margin-top:6px; }
     .hr { height:1px; background:rgba(255,255,255,.08); margin:14px 0; }
-    .tag { display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); font-size:12px; }
+    .tabs { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .tabBtn { padding:8px 10px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(10,14,20,.45); cursor:pointer; font-weight:800; font-size:12px; }
+    .tabBtn.active { border-color: var(--mint); box-shadow: 0 10px 30px rgba(0,255,170,.12); }
     .thumbRow { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-    .thumb { width:78px; height:78px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(10,14,20,.5); object-fit:cover; }
+    .thumb { width:78px; height:78px; border-radius:12px; border:1px solid rgba(255,255,255,.12); object-fit:cover; background:rgba(10,14,20,.5); }
     .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; white-space: pre-wrap; }
-    .small { font-size:12px; }
+    .twoCol { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    @media (max-width:900px){ .twoCol{ grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -40,7 +43,6 @@
     <div class="row">
       <a class="pill" href="/ui">← Back to Town</a>
       <span class="pill">Storefront</span>
-      <span class="pill">Followers: <span id="followersCount">0</span></span>
       <span class="pill">Sweep: <span id="sweepBal">0</span></span>
     </div>
     <div class="row">
@@ -55,78 +57,92 @@
       <div>
         <div class="title" id="storeName">Loading…</div>
         <div class="muted" id="storeMeta">—</div>
+        <div class="muted">Seller: <span id="ownerName">—</span></div>
       </div>
       <div class="row">
-        <span class="tag" id="verifiedTag">—</span>
-        <span class="tag" id="claimedTag">—</span>
-        <button id="followBtn" disabled>Follow</button>
-        <button id="messageBtn" disabled>Message Seller</button>
+        <button id="createToggleBtn" disabled>Create Offer/Request</button>
       </div>
     </div>
 
     <div class="body">
-      <div class="muted">Seller</div>
-      <div style="font-weight:900;" id="ownerName">—</div>
-      <div class="muted" id="ownerBio"></div>
-
-      <div class="hr"></div>
-
       <div class="row" style="justify-content:space-between;">
         <div style="flex:1; min-width:220px;">
-          <input id="searchBox" placeholder="Search listings in this store…" />
+          <input id="searchBox" placeholder="Search in this store…" />
         </div>
         <div class="row">
-          <span class="pill">Listings: <span id="countLbl">0</span></span>
+          <span class="pill">Shown: <span id="countLbl">0</span></span>
         </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tabBtn active" id="tabItems">Items</button>
+        <button class="tabBtn" id="tabOffers">Offers</button>
+        <button class="tabBtn" id="tabRequests">Requests</button>
       </div>
 
       <div class="grid" id="listingGrid"></div>
 
       <div class="hr"></div>
 
-      <!-- Seller Tools (Owner Only) -->
-      <div class="item" id="sellerTools" style="display:none;">
-        <div style="font-weight:900;">Seller Tools (Owner)</div>
-        <div class="muted small">Select a listing to edit. Changes are server-enforced owner-only.</div>
+      <!-- Create Offer/Request (owner only; server enforces too) -->
+      <div class="item" id="createBox" style="display:none;">
+        <div style="font-weight:900;">Create Offer / Request</div>
+        <div class="muted">This posts under this store. Server will enforce verification/trust.</div>
 
-        <div class="row" style="margin-top:10px;">
-          <span class="pill">Selected listing: <span id="selListing">none</span></span>
-          <span class="pill">Status: <span id="selStatus">—</span></span>
-        </div>
-
-        <div class="row" style="margin-top:10px;">
-          <div style="flex:1; min-width:220px;">
-            <div class="muted small">Title</div>
-            <input id="editTitle" />
+        <div class="twoCol" style="margin-top:10px;">
+          <div>
+            <div class="muted">Type</div>
+            <select id="newType">
+              <option value="offer">offer</option>
+              <option value="request">request</option>
+            </select>
           </div>
-          <div style="width:140px;">
-            <div class="muted small">Price</div>
-            <input id="editPrice" />
-          </div>
-          <div style="width:140px;">
-            <div class="muted small">Qty</div>
-            <input id="editQty" />
+          <div>
+            <div class="muted">Exchange</div>
+            <select id="newExchange">
+              <option value="money">money</option>
+              <option value="education">education</option>
+              <option value="volunteer">volunteer</option>
+              <option value="barter">barter</option>
+              <option value="hybrid">hybrid</option>
+            </select>
           </div>
         </div>
 
         <div style="margin-top:10px;">
-          <div class="muted small">Description</div>
-          <textarea id="editDesc"></textarea>
+          <div class="muted">Title</div>
+          <input id="newTitle" placeholder="Dog sitting this weekend…" />
+        </div>
+
+        <div style="margin-top:10px;">
+          <div class="muted">Description</div>
+          <textarea id="newDesc" placeholder="Details, expectations, what’s offered in return…"></textarea>
+        </div>
+
+        <div class="twoCol" style="margin-top:10px;">
+          <div>
+            <div class="muted">Start (optional ISO or date)</div>
+            <input id="newStartAt" placeholder="2026-01-20T15:00:00Z" />
+          </div>
+          <div>
+            <div class="muted">End (optional ISO or date)</div>
+            <input id="newEndAt" placeholder="2026-01-21T15:00:00Z" />
+          </div>
+        </div>
+
+        <div class="twoCol" style="margin-top:10px;">
+          <div>
+            <div class="muted">Price (0 if none)</div>
+            <input id="newPrice" value="0" />
+          </div>
+          <div>
+            <div class="muted">Quantity (usually 1)</div>
+            <input id="newQty" value="1" />
+          </div>
         </div>
 
         <div class="row" style="justify-content:flex-end; margin-top:10px;">
-          <button id="saveListingBtn" disabled>Save Listing</button>
-          <button id="toggleActiveBtn" disabled>Deactivate</button>
-          <button id="markSoldBtn" disabled>Mark Sold</button>
-        </div>
-
-        <div class="hr"></div>
-
-        <div style="font-weight:900;">Listing Photos (URLs)</div>
-        <div class="muted small">Paste up to 5 HTTPS image URLs, one per line.</div>
-        <textarea id="photoUrlsBox" placeholder="https://...\nhttps://...\nhttps://..."></textarea>
-        <div class="row" style="justify-content:flex-end; margin-top:8px;">
-          <button id="savePhotosBtn" disabled>Save Photos</button>
+          <button id="publishBtn">Publish</button>
         </div>
       </div>
 
@@ -135,6 +151,6 @@
   </div>
 </div>
 
-<script src="/store.js?v=seller_tools_1"></script>
+<script src="/store.js?v=offers_ui_1"></script>
 </body>
 </html>

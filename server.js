@@ -5,10 +5,13 @@ const data = require("./data");
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// Pages
-app.get("/ui", (req,res) => res.sendFile(path.join(__dirname, "public", "index.html")));
-app.get("/signup", (req,res) => res.sendFile(path.join(__dirname, "public", "signup.html")));
-app.get("/store/:id", (req,res) => res.sendFile(path.join(__dirname, "public", "store.html")));
+// ✅ Health
+app.get("/health", (req, res) => res.json({ status: "ok" }));
+
+// ✅ Pages
+app.get("/ui", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.get("/signup", (req, res) => res.sendFile(path.join(__dirname, "public", "signup.html")));
+app.get("/store/:id", (req, res) => res.sendFile(path.join(__dirname, "public", "store.html")));
 
 // Cookies
 function parseCookies(req){
@@ -57,7 +60,7 @@ app.get("/auth/magic",(req,res)=>{
   const consumed=data.consumeMagicToken(token);
   if(consumed.error) return res.status(400).send(consumed.error);
   const sess=data.createSession(consumed.userId);
-  setCookie(res,"sid",sess.sid,{httpOnly:true,maxAge:60*60*24*30});
+  setCookie(res,"sid",sess.sid,{httpOnly:true,maxAge:60*60*24*60});
   res.redirect("/ui");
 });
 app.post("/auth/logout",(req,res)=>{
@@ -71,45 +74,77 @@ app.get("/me",(req,res)=>{
   if(!sid) return res.json({user:null,signup:null});
   const result=data.getUserBySession(sid);
   if(!result) return res.json({user:null,signup:null});
+  // ensure trust membership exists (if your data.js has it)
+  if (typeof data.ensureTownMembership === "function") data.ensureTownMembership(1, result.user.id);
   res.json(result);
 });
 
-// Store data
-app.get("/places/:id",(req,res)=>{
-  const id = Number(req.params.id);
-  const place = data.places.find(p=>p.id===id);
-  if(!place) return res.status(404).json({error:"Place not found"});
-  res.json(place);
+// ✅ Events (UI boot depends on this)
+app.post("/events", express.json(), (req,res)=>{
+  const payload=req.body||{};
+  const clientSessionId=(payload.clientSessionId||"").toString().trim();
+  const eventTypeRaw=(payload.eventType ?? payload.type ?? "").toString().trim();
+  if(!clientSessionId) return res.status(400).json({error:"clientSessionId required"});
+  if(!eventTypeRaw) return res.status(400).json({error:"eventType required"});
+
+  let eventId = null;
+  if(typeof data.logEvent === "function"){
+    try{
+      eventId = data.logEvent({
+        eventType:eventTypeRaw,
+        townId:1,
+        districtId:payload.districtId??null,
+        placeId:payload.placeId??null,
+        listingId:payload.listingId??null,
+        conversationId:payload.conversationId??null,
+        userId:getUserId(req),
+        clientSessionId,
+        meta: payload.meta||{}
+      });
+    } catch {}
+  }
+
+  res.json({ ok:true, eventId, reward:null });
 });
-app.get("/places/:id/owner",(req,res)=>{
-  const owner = data.getPlaceOwner(req.params.id);
-  res.json({ owner: owner ? { id:owner.id, displayName:owner.displayName, bio:owner.bio, avatarUrl:owner.avatarUrl } : null });
+
+// ✅ Sweep (UI boot depends on this)
+app.get("/sweep/balance",(req,res)=>{
+  const uid=getUserId(req);
+  if(!uid) return res.json({loggedIn:false,balance:0});
+  res.json({loggedIn:true,balance:data.getSweepBalance(uid)});
 });
+
+// ✅ Listings read (store UI uses this)
 app.get("/places/:id/listings",(req,res)=>{
   const placeId=Number(req.params.id);
-  res.json(data.getListings().filter(l=>l.placeId===placeId));
+  res.json(data.getListings().filter(l=>Number(l.placeId)===placeId));
 });
-app.get("/places/:id/followers",(req,res)=>{
-  const placeId = Number(req.params.id);
-  const count = data.storeFollowersCount(placeId);
-  const uid = getUserId(req);
-  const following = uid ? data.isFollowingStore(uid, placeId) : false;
-  res.json({ count, following });
-});
-app.post("/places/:id/follow",(req,res)=>{
+
+// ✅ Listings create (works for items/offers/requests; server gating can be added next)
+app.post("/places/:id/listings", express.json(), (req,res)=>{
   const uid=requireLogin(req,res);
   if(!uid) return;
-  const placeId = Number(req.params.id);
-  const r = data.followStore(uid, placeId);
-  if(r.error) return res.status(400).json(r);
-  res.json({ok:true});
-});
-app.delete("/places/:id/follow",(req,res)=>{
-  const uid=requireLogin(req,res);
-  if(!uid) return;
-  const placeId = Number(req.params.id);
-  data.unfollowStore(uid, placeId);
-  res.json({ok:true});
+
+  const placeId=Number(req.params.id);
+  const p=req.body||{};
+  const title=(p.title||"").toString().trim();
+  if(!title) return res.status(400).json({error:"title is required"});
+
+  const created = data.addListing({
+    placeId,
+    title,
+    description: (p.description||"").toString(),
+    quantity: Number.isFinite(Number(p.quantity)) ? Number(p.quantity) : 1,
+    price: Number.isFinite(Number(p.price)) ? Number(p.price) : 0,
+    status: (p.status||"active").toString(),
+    listingType: p.listingType || "item",
+    exchangeType: p.exchangeType || "money",
+    startAt: p.startAt || "",
+    endAt: p.endAt || "",
+    photoUrls: p.photoUrls || []
+  });
+
+  res.status(201).json(created);
 });
 
 const PORT=3000;

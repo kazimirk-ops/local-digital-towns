@@ -31,282 +31,145 @@ function safeMoney(n){
   return x.toFixed(2).replace(/\.00$/, "");
 }
 
-function renderThumbs(urls){
-  const u = Array.isArray(urls) ? urls : [];
-  if(!u.length) return `<div class="muted" style="margin-top:8px;">No photos yet.</div>`;
-  const imgs = u.slice(0,5).map(src=>`<img class="thumb" src="${escapeHtml(src)}" />`).join("");
-  return `<div class="thumbRow">${imgs}</div>`;
+let PLACE_ID = null;
+let LISTINGS = [];
+let TAB = "item";
+let SEARCH = "";
+
+function setTab(next){
+  TAB = next;
+  ["tabItems","tabOffers","tabRequests"].forEach(id=>$(id).classList.remove("active"));
+  if(next==="item") $("tabItems").classList.add("active");
+  if(next==="offer") $("tabOffers").classList.add("active");
+  if(next==="request") $("tabRequests").classList.add("active");
+  render();
 }
 
-let PLACE = null;
-let LISTINGS = [];
-let ME = null;
-let LOGGED_IN = false;
-let FOLLOWING = false;
+function matches(l){
+  if((l.listingType||"item") !== TAB) return false;
+  const q = SEARCH.trim().toLowerCase();
+  if(!q) return true;
+  const t = `${l.title||""} ${l.description||""}`.toLowerCase();
+  return t.includes(q);
+}
 
-let IS_OWNER = false;
-let SELECTED = null;
+function cardLabel(l){
+  const lt = (l.listingType||"item").toUpperCase();
+  const ex = (l.exchangeType||"money").toUpperCase();
+  const w = (l.startAt || l.endAt) ? ` • ${l.startAt||"?"} → ${l.endAt||"?"}` : "";
+  return `${lt} • ${ex}${w}`;
+}
 
-function renderListings(listings, q){
+function render(){
   const grid = $("listingGrid");
   grid.innerHTML = "";
 
-  const query = (q || "").trim().toLowerCase();
-  const filtered = !query ? listings : listings.filter(l=>{
-    const t = `${l.title||""} ${l.description||""}`.toLowerCase();
-    return t.includes(query);
-  });
-
+  const filtered = LISTINGS.filter(matches);
   $("countLbl").textContent = String(filtered.length);
 
   if(filtered.length === 0){
-    grid.innerHTML = `<div class="item"><div style="font-weight:900;">No matches</div><div class="muted">Try another search.</div></div>`;
+    grid.innerHTML = `<div class="item"><div style="font-weight:900;">No ${TAB}s found</div><div class="muted">Try a different search or create one.</div></div>`;
     return;
   }
 
   for(const l of filtered){
     const div = document.createElement("div");
     div.className = "item";
-    div.style.cursor = "pointer";
-    div.onclick = ()=>selectListing(l.id);
-
     div.innerHTML = `
-      <div style="display:flex; justify-content:space-between; gap:10px;">
-        <div style="flex:1;">
-          <div style="font-weight:900;">${escapeHtml(l.title || "")}</div>
-          <div class="muted" style="margin-top:6px;">${escapeHtml(l.description || "")}</div>
-          ${renderThumbs(l.photoUrls)}
-        </div>
-        <div style="text-align:right;">
-          <div class="price">$${safeMoney(l.price)}</div>
-          <div class="muted">qty ${Number(l.quantity||0)}</div>
-          <div class="muted">${escapeHtml((l.status||"").toUpperCase())}</div>
-          <div class="muted" style="margin-top:6px;">id=${l.id}</div>
-        </div>
-      </div>
+      <div class="muted">${escapeHtml(cardLabel(l))}</div>
+      <div style="font-weight:900; margin-top:6px;">${escapeHtml(l.title||"")}</div>
+      <div class="muted" style="margin-top:6px;">${escapeHtml(l.description||"")}</div>
+      <div class="price">$${safeMoney(l.price)}</div>
+      <div class="muted">qty ${Number(l.quantity||0)} • status ${escapeHtml((l.status||"").toUpperCase())} • id=${l.id}</div>
     `;
     grid.appendChild(div);
   }
 }
 
-async function refreshSweep(){
+function toggleCreateBox(){
+  const el = $("createBox");
+  el.style.display = (el.style.display === "none" || !el.style.display) ? "block" : "none";
+}
+
+async function publish(){
+  const payload = {
+    listingType: $("newType").value,
+    exchangeType: $("newExchange").value,
+    title: $("newTitle").value.trim(),
+    description: $("newDesc").value,
+    startAt: $("newStartAt").value,
+    endAt: $("newEndAt").value,
+    price: Number($("newPrice").value),
+    quantity: Number($("newQty").value),
+    status: "active",
+    photoUrls: [],
+  };
+
+  if(!payload.title) return alert("Title required.");
+
+  try{
+    const created = await api(`/places/${PLACE_ID}/listings`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    LISTINGS = [created, ...LISTINGS];
+    debug(`✅ Published ${created.listingType} (#${created.id}).`);
+    setTab(created.listingType);
+
+    $("newTitle").value = "";
+    $("newDesc").value = "";
+    $("newStartAt").value = "";
+    $("newEndAt").value = "";
+    $("newPrice").value = "0";
+    $("newQty").value = "1";
+  } catch(e){
+    alert(e.message);
+    debug(`❌ Publish error: ${e.message}`);
+  }
+}
+
+async function main(){
+  PLACE_ID = getPlaceIdFromPath();
+  if(!PLACE_ID) return debug("Invalid store URL.");
+
+  // Prove JS is running immediately:
+  $("storeName").textContent = `Store ${PLACE_ID}`;
+  $("storeMeta").textContent = `Items / Offers / Requests • placeId=${PLACE_ID}`;
+  $("ownerName").textContent = "(owner info not wired yet)";
+
+  // Wire UI
+  $("tabItems").onclick = ()=>setTab("item");
+  $("tabOffers").onclick = ()=>setTab("offer");
+  $("tabRequests").onclick = ()=>setTab("request");
+
+  $("searchBox").addEventListener("input", (e)=>{
+    SEARCH = e.target.value || "";
+    render();
+  });
+
+  $("createToggleBtn").disabled = false;
+  $("createToggleBtn").onclick = toggleCreateBox;
+  $("publishBtn").onclick = publish;
+
+  // Load sweep (optional)
   try{
     const s = await api("/sweep/balance");
     $("sweepBal").textContent = s.balance ?? 0;
   } catch {}
-}
 
-async function refreshFollowUI(){
-  const r = await api(`/places/${PLACE.id}/followers`);
-  $("followersCount").textContent = String(r.count ?? 0);
-  FOLLOWING = !!r.following;
-
-  const btn = $("followBtn");
-  btn.disabled = false;
-  btn.textContent = FOLLOWING ? "Unfollow" : "Follow";
-}
-
-async function toggleFollow(){
-  if(!LOGGED_IN){
-    window.location.href = "/signup";
-    return;
-  }
-  if(!PLACE) return;
-
-  if(FOLLOWING){
-    await api(`/places/${PLACE.id}/follow`, { method:"DELETE" });
-  } else {
-    await api(`/places/${PLACE.id}/follow`, { method:"POST" });
-  }
-  await refreshFollowUI();
-}
-
-async function openChat(){
-  if(!LOGGED_IN){
-    window.location.href = "/signup";
-    return;
-  }
-  // keep existing chat system minimal here; you already validated chat works
-  alert("Chat is available from the current store version; we can merge chat UI into this seller-tools layout next if you want.");
-}
-
-function showSellerTools(show){
-  $("sellerTools").style.display = show ? "block" : "none";
-}
-
-function setSellerButtonsEnabled(enabled){
-  $("saveListingBtn").disabled = !enabled;
-  $("toggleActiveBtn").disabled = !enabled;
-  $("markSoldBtn").disabled = !enabled;
-  $("savePhotosBtn").disabled = !enabled;
-}
-
-function fillSellerForm(l){
-  $("selListing").textContent = String(l.id);
-  $("selStatus").textContent = (l.status || "").toUpperCase();
-  $("editTitle").value = l.title || "";
-  $("editDesc").value = l.description || "";
-  $("editPrice").value = String(l.price ?? "");
-  $("editQty").value = String(l.quantity ?? "");
-  $("photoUrlsBox").value = (l.photoUrls || []).join("\n");
-
-  // button label
-  $("toggleActiveBtn").textContent = (l.status === "inactive") ? "Activate" : "Deactivate";
-}
-
-function selectListing(listingId){
-  const l = LISTINGS.find(x=>Number(x.id)===Number(listingId));
-  if(!l) return;
-  SELECTED = l;
-
-  debug(`Selected listing ${l.id}`);
-  if(IS_OWNER){
-    showSellerTools(true);
-    fillSellerForm(l);
-    setSellerButtonsEnabled(true);
-  }
-}
-
-async function saveListing(){
-  if(!IS_OWNER || !SELECTED) return;
-
-  const payload = {
-    title: $("editTitle").value.trim(),
-    description: $("editDesc").value,
-    price: Number($("editPrice").value),
-    quantity: Number($("editQty").value),
-  };
-
-  const updated = await api(`/listings/${SELECTED.id}`, {
-    method: "PATCH",
-    headers: { "Content-Type":"application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  LISTINGS = LISTINGS.map(x => x.id === updated.id ? updated : x);
-  SELECTED = updated;
-
-  renderListings(LISTINGS, $("searchBox").value);
-  fillSellerForm(updated);
-  debug(`Saved listing ${updated.id}`);
-}
-
-async function toggleActive(){
-  if(!IS_OWNER || !SELECTED) return;
-
-  const next = (SELECTED.status === "inactive") ? "active" : "inactive";
-  const updated = await api(`/listings/${SELECTED.id}/status`, {
-    method: "PATCH",
-    headers: { "Content-Type":"application/json" },
-    body: JSON.stringify({ status: next }),
-  });
-
-  LISTINGS = LISTINGS.map(x => x.id === updated.id ? updated : x);
-  SELECTED = updated;
-
-  renderListings(LISTINGS, $("searchBox").value);
-  fillSellerForm(updated);
-  debug(`Set status ${next} for listing ${updated.id}`);
-}
-
-async function markSold(){
-  if(!IS_OWNER || !SELECTED) return;
-
-  const updated = await api(`/listings/${SELECTED.id}/status`, {
-    method: "PATCH",
-    headers: { "Content-Type":"application/json" },
-    body: JSON.stringify({ status: "sold" }),
-  });
-
-  LISTINGS = LISTINGS.map(x => x.id === updated.id ? updated : x);
-  SELECTED = updated;
-
-  renderListings(LISTINGS, $("searchBox").value);
-  fillSellerForm(updated);
-  debug(`Marked sold listing ${updated.id}`);
-}
-
-async function savePhotos(){
-  if(!IS_OWNER || !SELECTED) return;
-
-  const urls = $("photoUrlsBox").value.split("\n").map(s=>s.trim()).filter(Boolean);
-
-  const updated = await api(`/listings/${SELECTED.id}/photos`, {
-    method: "PATCH",
-    headers: { "Content-Type":"application/json" },
-    body: JSON.stringify({ photoUrls: urls }),
-  });
-
-  LISTINGS = LISTINGS.map(x => x.id === updated.id ? updated : x);
-  SELECTED = updated;
-
-  renderListings(LISTINGS, $("searchBox").value);
-  fillSellerForm(updated);
-  debug(`Saved photos for listing ${updated.id}`);
-}
-
-async function main(){
-  const placeId = getPlaceIdFromPath();
-  if(!placeId){
-    debug("Invalid store URL. Expected /store/:placeId");
-    return;
-  }
-
-  await refreshSweep();
-
-  // Login state
+  // Load listings (required)
   try{
-    const meWrap = await api("/me");
-    ME = meWrap.user || null;
-    LOGGED_IN = !!ME;
-  } catch {
-    ME = null;
-    LOGGED_IN = false;
+    LISTINGS = await api(`/places/${PLACE_ID}/listings`);
+    LISTINGS = LISTINGS.slice().sort((a,b)=>Number(b.id)-Number(a.id));
+    debug("✅ Store loaded.");
+  } catch(e){
+    debug(`❌ Could not load listings: ${e.message}`);
+    LISTINGS = [];
   }
 
-  PLACE = await api(`/places/${placeId}`);
-  const ownerWrap = await api(`/places/${placeId}/owner`);
-  LISTINGS = await api(`/places/${placeId}/listings`);
-
-  $("storeName").textContent = PLACE.name || `Store ${PLACE.id}`;
-  $("storeMeta").textContent = `${PLACE.category} • ${PLACE.status} • district ${PLACE.districtId} • placeId=${PLACE.id}`;
-
-  const verified = PLACE.verifiedStatus === "verified" ? "✅ Verified" : (PLACE.verifiedStatus || "unverified");
-  $("verifiedTag").textContent = verified;
-  $("claimedTag").textContent = PLACE.ownerUserId ? "claimed" : "unclaimed";
-
-  if(ownerWrap.owner){
-    $("ownerName").textContent = ownerWrap.owner.displayName || `User ${ownerWrap.owner.id}`;
-    $("ownerBio").textContent = ownerWrap.owner.bio || "";
-  } else {
-    $("ownerName").textContent = "—";
-    $("ownerBio").textContent = "";
-  }
-
-  // Owner logic
-  IS_OWNER = LOGGED_IN && Number(PLACE.ownerUserId || 0) === Number(ME.id || 0);
-  showSellerTools(false);
-  setSellerButtonsEnabled(false);
-
-  $("saveListingBtn").onclick = saveListing;
-  $("toggleActiveBtn").onclick = toggleActive;
-  $("markSoldBtn").onclick = markSold;
-  $("savePhotosBtn").onclick = savePhotos;
-
-  // Follow
-  $("followBtn").onclick = toggleFollow;
-  await refreshFollowUI();
-
-  // Message
-  $("messageBtn").disabled = false;
-  $("messageBtn").onclick = openChat;
-
-  $("searchBox").addEventListener("input", (e)=>{
-    renderListings(LISTINGS, e.target.value);
-  });
-
-  renderListings(LISTINGS, "");
-  debug(IS_OWNER ? "Owner mode enabled. Select a listing to edit." : (LOGGED_IN ? "Viewing store." : "Login to follow/message."));
+  setTab("item");
 }
 
-main().catch(e=>debug(`ERROR: ${e.message}`));
+main().catch(e=>debug(`BOOT ERROR: ${e.message}`));
