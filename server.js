@@ -13,7 +13,6 @@ app.get("/health",(req,res)=>res.json({status:"ok"}));
 app.get("/ui",(req,res)=>res.sendFile(path.join(__dirname,"public","index.html")));
 app.get("/signup",(req,res)=>res.sendFile(path.join(__dirname,"public","signup.html")));
 app.get("/store/:id",(req,res)=>res.sendFile(path.join(__dirname,"public","store.html")));
-app.get("/admin_verify.html",(req,res)=>res.sendFile(path.join(__dirname,"public","admin_verify.html")));
 
 // Cookies
 function parseCookies(req){
@@ -59,12 +58,24 @@ app.get("/auth/magic",(req,res)=>{
   setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30});
   res.redirect("/ui");
 });
+app.post("/auth/logout",(req,res)=>{
+  const sid=parseCookies(req).sid;
+  if(sid) data.deleteSession(sid);
+  setCookie(res,"sid","",{httpOnly:true,maxAge:0});
+  res.json({ok:true});
+});
 app.get("/me",(req,res)=>{
   const sid=parseCookies(req).sid;
   if(!sid) return res.json({user:null});
   const r=data.getUserBySession(sid);
   if(!r) return res.json({user:null});
   data.ensureTownMembership(1,r.user.id);
+  res.json(r);
+});
+
+app.post("/api/signup",(req,res)=>{
+  const r=data.addSignup(req.body||{});
+  if(r?.error) return res.status(400).json(r);
   res.json(r);
 });
 

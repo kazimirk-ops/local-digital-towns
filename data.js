@@ -302,6 +302,29 @@ function getUserBySession(sid){
   return {user,signup};
 }
 
+function addSignup(payload){
+  const name=(payload?.name||"").toString().trim();
+  const email=normalizeEmail(payload?.email);
+  const address1=(payload?.address1||"").toString().trim();
+  const address2=(payload?.address2||"").toString().trim();
+  const city=(payload?.city||"").toString().trim();
+  const state=(payload?.state||"").toString().trim();
+  const zip=(payload?.zip||"").toString().trim();
+  if(!name||!email||!address1||!city||!state||!zip){
+    return {error:"Missing required fields"};
+  }
+  const cityMatch=city.toLowerCase().includes("sebastian");
+  const zipMatch=zip==="32958";
+  const status=(cityMatch||zipMatch) ? "eligible" : "waitlist";
+  const reason=(status==="eligible")
+    ? "Address matches Sebastian pilot."
+    : "Outside Sebastian/32958; added to waitlist.";
+
+  db.prepare("INSERT INTO signups (name,email,address1,address2,city,state,zip,status,reason,createdAt) VALUES (?,?,?,?,?,?,?,?,?,?)")
+    .run(name,email,address1,address2,city,state,zip,status,reason,nowISO());
+  return {status,reason};
+}
+
 // ---------- Events + sweep ----------
 function logEvent(evt){
   const metaJson = JSON.stringify(evt.meta || {});
@@ -370,6 +393,7 @@ module.exports = {
   createSession,
   deleteSession,
   getUserBySession,
+  addSignup,
 
   // events + sweep
   logEvent,
