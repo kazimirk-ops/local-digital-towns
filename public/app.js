@@ -2,7 +2,6 @@ const $ = (id) => document.getElementById(id);
 
 let state = { districtId:null, placeId:null, place:null, conversationId:null, viewer:"buyer" };
 let access = { loggedIn:false, eligible:false, email:null, reason:null };
-
 let map, markersLayer, boundaryLayer;
 
 function getClientSessionId() {
@@ -47,9 +46,9 @@ async function logEvent(eventType, fields = {}, meta = {}) {
     })
   });
 
-  // If a reward happened, pop it and refresh balance
-  if (res.reward && res.reward.amount) {
-    debug(`+${res.reward.amount} SWEEP • ${res.reward.reason}`);
+  if (res.reward && res.reward.credited) {
+    const total = res.reward.credited.reduce((a,x)=>a + (x.amount||0), 0);
+    debug(`+${total} SWEEP • ${res.reward.matchEventType}`);
     await refreshSweep();
   }
 }
@@ -60,10 +59,7 @@ function setControlsEnabled() {
   const canWrite = access.loggedIn && access.eligible;
 
   $("createListingBtn").disabled = !canWrite;
-  $("newTitle").disabled = !canWrite;
-  $("newDesc").disabled = !canWrite;
-  $("newQty").disabled = !canWrite;
-  $("newPrice").disabled = !canWrite;
+  ["newTitle","newDesc","newQty","newPrice"].forEach(id => $(id).disabled = !canWrite);
 
   $("sendMsg").disabled = !access.loggedIn;
   $("msgText").disabled = !access.loggedIn;
@@ -89,23 +85,13 @@ async function loadMe() {
   if (!me.user) { access = { loggedIn:false, eligible:false, email:null, reason:null }; setControlsEnabled(); await refreshSweep(); return; }
   const email = me.user.email;
   const status = me.signup?.status || "waitlist";
-  const reason = me.signup?.reason || "No signup record yet. Submit signup to be evaluated.";
+  const reason = me.signup?.reason || "No signup record yet.";
   access = { loggedIn:true, eligible: status==="eligible", email, reason };
   setControlsEnabled();
   await refreshSweep();
 }
 
 async function logout(){ await api("/auth/logout",{method:"POST"}); window.location.href="/signup"; }
-
-async function enterRaffle() {
-  try {
-    const res = await api("/sweep/raffle/enter", { method:"POST" });
-    debug(`Raffle entered (${res.dayKey}) • -${res.cost} SWEEP`);
-    await refreshSweep();
-  } catch(e) {
-    alert(e.message);
-  }
-}
 
 async function loadStatus() {
   const s = await api("/health");
@@ -184,15 +170,14 @@ async function savePlaceSettings(){
     hours: $("hours").value
   };
 
-  const updated=await api(`/places/${state.placeId}/settings`,{
+  await api(`/places/${state.placeId}/settings`,{
     method:"PATCH",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify(payload)
   });
 
-  state.place=updated;
   debug("Place settings saved.");
-  await logEvent("place_settings_update", { placeId: state.placeId, districtId: state.districtId }, payload);
+  await logEvent("place_settings_update", { placeId: state.placeId, districtId: state.districtId }, {});
 }
 
 async function loadListings(placeId){
@@ -223,7 +208,7 @@ async function loadListings(placeId){
 
 async function createListing(){
   if(!access.loggedIn) return alert("Login required");
-  if(!access.eligible) return alert("Waitlist users cannot create listings yet.");
+  if(!access.eligible) return alert("Waitlist cannot create listings yet.");
   if(!state.placeId) return alert("Select a place first");
 
   const title=$("newTitle").value.trim();
@@ -238,19 +223,19 @@ async function createListing(){
     body: JSON.stringify({ title, description, quantity, price })
   });
 
-  await logEvent("listing_create", { districtId: state.districtId, placeId: state.placeId, listingId: created.id }, { title });
-
+  await logEvent("listing_create", { districtId: state.districtId, placeId: state.placeId, listingId: created.id }, { actorRole: "seller" });
+  await refreshSweep();
   $("newTitle").value=""; $("newDesc").value="";
   await loadListings(state.placeId);
-  await refreshSweep();
 }
 
 async function markSold(listingId){
-  if(!access.eligible) return alert("Waitlist users cannot mark sold yet.");
+  if(!access.loggedIn) return alert("Login required");
+  if(!access.eligible) return alert("Waitlist cannot mark sold yet.");
+  // ✅ trusted server event + reward happens inside this endpoint now
   await api(`/listings/${listingId}/sold`,{ method:"PATCH" });
-  await logEvent("listing_mark_sold", { districtId: state.districtId, placeId: state.placeId, listingId: Number(listingId) }, {});
-  await loadListings(state.placeId);
   await refreshSweep();
+  await loadListings(state.placeId);
 }
 
 async function loadPlaceConversations(placeId){
@@ -286,17 +271,16 @@ async function sendMessage(){
     body: JSON.stringify({ sender, text })
   });
 
-  await logEvent("message_send", { placeId: state.placeId, districtId: state.districtId, conversationId: state.conversationId }, { sender });
-
-  $("msgText").value="";
+  await logEvent("message_send", { placeId: state.placeId, districtId: state.districtId, conversationId: state.conversationId }, { actorRole: "buyer" });
   await refreshSweep();
+  $("msgText").value="";
 }
 
 async function markRead(){
   if(!access.loggedIn) return alert("Login required");
   if(!state.conversationId) return;
   await api(`/conversations/${state.conversationId}/read?viewer=${state.viewer}`,{ method:"PATCH" });
-  await logEvent("mark_read", { placeId: state.placeId, districtId: state.districtId, conversationId: state.conversationId }, { viewer: state.viewer });
+  await logEvent("mark_read", { placeId: state.placeId, districtId: state.districtId, conversationId: state.conversationId }, {});
 }
 
 function initMap(){
@@ -306,14 +290,8 @@ function initMap(){
   markersLayer=L.layerGroup().addTo(map);
 
   const approxBoundary=[
-    [27.872,-80.555],
-    [27.865,-80.472],
-    [27.845,-80.430],
-    [27.812,-80.430],
-    [27.780,-80.450],
-    [27.765,-80.500],
-    [27.785,-80.545],
-    [27.840,-80.560]
+    [27.872,-80.555],[27.865,-80.472],[27.845,-80.430],[27.812,-80.430],
+    [27.780,-80.450],[27.765,-80.500],[27.785,-80.545],[27.840,-80.560]
   ];
   boundaryLayer=L.polygon(approxBoundary,{ color:"#00ffae", weight:3, fillOpacity:0.08 }).addTo(map);
   map.fitBounds(boundaryLayer.getBounds(),{ padding:[20,20] });
@@ -341,7 +319,6 @@ function bindDistrictButtons(){
 async function main(){
   $("logoutBtn").onclick=logout;
   $("savePlaceSettings").onclick=savePlaceSettings;
-  $("raffleBtn").onclick=enterRaffle;
 
   $("viewerBuyer").onclick=()=>setViewer("buyer");
   $("viewerSeller").onclick=()=>setViewer("seller");
@@ -356,9 +333,8 @@ async function main(){
   initMap();
   bindDistrictButtons();
 
-  await logEvent("town_view", { townId:1 }, { path: location.pathname });
-
-  debug("Sweep Coin v1 live: earn by using the town. Spend: daily raffle.");
+  await logEvent("town_view", {}, {});
+  debug("Trusted server events enabled for sweepstake_enter + listing_mark_sold.");
 }
 
 main().catch(e=>debug(`BOOT ERROR: ${e.message}`));

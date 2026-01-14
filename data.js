@@ -14,7 +14,15 @@ function todayKey() {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+function columnExists(table, col) {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all();
+  return rows.some((r) => r.name === col);
+}
+function addColumn(table, colDef) {
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`);
+}
 
+// ---------- Schema ----------
 db.exec(`
 CREATE TABLE IF NOT EXISTS towns (
   id INTEGER PRIMARY KEY,
@@ -102,6 +110,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   createdAt TEXT NOT NULL
 );
 
+-- Events: older DBs may have column 'type' instead of 'eventType'.
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   createdAt TEXT NOT NULL,
@@ -116,8 +125,6 @@ CREATE TABLE IF NOT EXISTS events (
   metaJson TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_events_createdAt ON events(createdAt);
-CREATE INDEX IF NOT EXISTS idx_events_type ON events(eventType);
-CREATE INDEX IF NOT EXISTS idx_events_place ON events(placeId);
 
 CREATE TABLE IF NOT EXISTS sweep_ledger (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,25 +136,46 @@ CREATE TABLE IF NOT EXISTS sweep_ledger (
   metaJson TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sweep_user ON sweep_ledger(userId);
-CREATE INDEX IF NOT EXISTS idx_sweep_createdAt ON sweep_ledger(createdAt);
 
-CREATE TABLE IF NOT EXISTS raffle_entries (
+-- Sweep rules v2 (buyer vs seller)
+CREATE TABLE IF NOT EXISTS sweep_rules_v2 (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  matchEventType TEXT NOT NULL UNIQUE,
+  buyerAmount INTEGER NOT NULL,
+  sellerAmount INTEGER NOT NULL,
+  dailyCap INTEGER NOT NULL,
+  cooldownSeconds INTEGER NOT NULL,
+  enabled INTEGER NOT NULL
+);
+
+-- Sweepstakes
+CREATE TABLE IF NOT EXISTS sweepstakes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  status TEXT NOT NULL,
+  title TEXT NOT NULL,
+  prize TEXT NOT NULL,
+  entryCost INTEGER NOT NULL,
+  startAt TEXT NOT NULL,
+  endAt TEXT NOT NULL,
+  drawAt TEXT NOT NULL,
+  maxEntriesPerUserPerDay INTEGER NOT NULL,
+  createdAt TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sweepstake_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sweepstakeId INTEGER NOT NULL,
   createdAt TEXT NOT NULL,
   userId INTEGER NOT NULL,
   dayKey TEXT NOT NULL,
   cost INTEGER NOT NULL
 );
-CREATE UNIQUE INDEX IF NOT EXISTS idx_raffle_unique_day ON raffle_entries(userId, dayKey);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sweepstake_unique_user_day
+ON sweepstake_entries(sweepstakeId, userId, dayKey);
 `);
 
-// Migration for place settings fields
-function columnExists(table, col) {
-  const rows = db.prepare(`PRAGMA table_info(${table})`).all();
-  return rows.some((r) => r.name === col);
-}
-function addColumn(table, colDef) { db.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`); }
-(function migratePlaces(){
+// ---------- Migrations: place fields ----------
+(function migratePlaces() {
   if (!columnExists("places", "sellerType")) addColumn("places", "sellerType TEXT NOT NULL DEFAULT 'individual'");
   if (!columnExists("places", "visibilityLevel")) addColumn("places", "visibilityLevel TEXT NOT NULL DEFAULT 'town_only'");
   if (!columnExists("places", "pickupZone")) addColumn("places", "pickupZone TEXT NOT NULL DEFAULT ''");
@@ -158,7 +186,7 @@ function addColumn(table, colDef) { db.exec(`ALTER TABLE ${table} ADD COLUMN ${c
   if (!columnExists("places", "verifiedStatus")) addColumn("places", "verifiedStatus TEXT NOT NULL DEFAULT 'unverified'");
 })();
 
-// Seed if empty
+// ---------- Seed town if empty ----------
 const townCount = db.prepare("SELECT COUNT(*) AS c FROM towns").get().c;
 if (townCount === 0) {
   db.prepare("INSERT INTO towns (id, name, state, region, status) VALUES (1, ?, ?, ?, ?)")
@@ -187,14 +215,28 @@ if (townCount === 0) {
   const insP = db.prepare("INSERT INTO places (id, townId, districtId, name, category, status) VALUES (?, ?, ?, ?, ?, ?)");
   for (const r of placeSeed) insP.run(...r);
 
-  const insL = db.prepare("INSERT INTO listings (placeId, title, description, quantity, price, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)");
-  insL.run(102, "Bell Peppers (5 lb bag)", "Fresh, local. Pickup today.", 10, 12, "active", nowISO());
+  db.prepare("INSERT INTO listings (placeId, title, description, quantity, price, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .run(102, "Bell Peppers (5 lb bag)", "Fresh, local. Pickup today.", 10, 12, "active", nowISO());
 }
 
-// Getters
-function getTown(){ return db.prepare("SELECT * FROM towns WHERE id=1").get(); }
-function getDistricts(){ return db.prepare("SELECT * FROM districts WHERE townId=1 ORDER BY id").all(); }
-function getPlaces(){
+// ---------- Seed sweep rules v2 if missing ----------
+function ensureRuleV2(matchEventType, buyerAmount, sellerAmount, dailyCap, cooldownSeconds, enabled) {
+  const existing = db.prepare("SELECT id FROM sweep_rules_v2 WHERE matchEventType=?").get(matchEventType);
+  if (existing) return;
+  db.prepare(`
+    INSERT INTO sweep_rules_v2 (matchEventType, buyerAmount, sellerAmount, dailyCap, cooldownSeconds, enabled)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(matchEventType, buyerAmount, sellerAmount, dailyCap, cooldownSeconds, enabled ? 1 : 0);
+}
+ensureRuleV2("district_enter", 0, 0, 0, 0, false);
+ensureRuleV2("place_view", 0, 0, 0, 0, false);
+ensureRuleV2("message_send", 1, 1, 30, 10, true);
+ensureRuleV2("listing_create", 0, 5, 50, 30, true);
+ensureRuleV2("listing_mark_sold", 10, 5, 60, 30, true);
+
+// ---------- Core getters ----------
+function getDistricts() { return db.prepare("SELECT * FROM districts WHERE townId=1 ORDER BY id").all(); }
+function getPlaces() {
   return db.prepare(`
     SELECT id, townId, districtId, name, category, status,
            sellerType, visibilityLevel, pickupZone, addressPublic, addressPrivate,
@@ -202,17 +244,17 @@ function getPlaces(){
     FROM places WHERE townId=1 ORDER BY id
   `).all();
 }
-function getListings(){ return db.prepare("SELECT * FROM listings ORDER BY id").all(); }
-function getMessages(){
+function getListings() { return db.prepare("SELECT * FROM listings ORDER BY id").all(); }
+function getMessages() {
   return db.prepare("SELECT * FROM messages ORDER BY id").all()
-    .map(m => ({...m, readBy: JSON.parse(m.readBy || "[]")}));
+    .map(m => ({ ...m, readBy: JSON.parse(m.readBy || "[]") }));
 }
-function getConversationsForPlace(placeId){
+function getConversationsForPlace(placeId) {
   return db.prepare("SELECT * FROM conversations WHERE placeId=? ORDER BY id").all(Number(placeId));
 }
 
-// Place settings update
-function updatePlaceSettings(placeId, patch){
+// ---------- Place settings ----------
+function updatePlaceSettings(placeId, patch) {
   const id = Number(placeId);
   const exists = db.prepare("SELECT id FROM places WHERE id=?").get(id);
   if (!exists) return { error: "Place not found" };
@@ -240,6 +282,7 @@ function updatePlaceSettings(placeId, patch){
 
   vals.push(id);
   db.prepare(`UPDATE places SET ${sets.join(", ")} WHERE id=?`).run(...vals);
+
   return db.prepare(`
     SELECT id, townId, districtId, name, category, status,
            sellerType, visibilityLevel, pickupZone, addressPublic, addressPrivate,
@@ -248,14 +291,22 @@ function updatePlaceSettings(placeId, patch){
   `).get(id);
 }
 
-// Listings
-function addListing(listing){
+// ---------- Listings ----------
+function addListing(listing) {
   const info = db.prepare(
     "INSERT INTO listings (placeId, title, description, quantity, price, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  ).run(listing.placeId, listing.title, listing.description||"", listing.quantity??1, listing.price??0, listing.status||"active", nowISO());
+  ).run(
+    listing.placeId,
+    listing.title,
+    listing.description || "",
+    listing.quantity ?? 1,
+    listing.price ?? 0,
+    listing.status || "active",
+    nowISO()
+  );
   return db.prepare("SELECT * FROM listings WHERE id=?").get(info.lastInsertRowid);
 }
-function markListingSold(listingId){
+function markListingSold(listingId) {
   const id = Number(listingId);
   const exists = db.prepare("SELECT * FROM listings WHERE id=?").get(id);
   if (!exists) return null;
@@ -263,48 +314,48 @@ function markListingSold(listingId){
   return db.prepare("SELECT * FROM listings WHERE id=?").get(id);
 }
 
-// ✅ Conversations + messages (this was missing before)
-function addConversation({ placeId, participant = "buyer" }){
-  const info = db.prepare("INSERT INTO conversations (placeId, participant, createdAt) VALUES (?, ?, ?)")
+// ---------- Conversations + messages ----------
+function addConversation({ placeId, participant="buyer" }) {
+  const info = db.prepare("INSERT INTO conversations (placeId, participant, createdAt) VALUES (?,?,?)")
     .run(Number(placeId), participant, nowISO());
   return db.prepare("SELECT * FROM conversations WHERE id=?").get(info.lastInsertRowid);
 }
-function addMessage({ conversationId, sender = "buyer", text, readBy }){
+function addMessage({ conversationId, sender="buyer", text, readBy }) {
   const rb = readBy ? readBy : [sender];
-  const info = db.prepare("INSERT INTO messages (conversationId, sender, text, createdAt, readBy) VALUES (?, ?, ?, ?, ?)")
+  const info = db.prepare("INSERT INTO messages (conversationId, sender, text, createdAt, readBy) VALUES (?,?,?,?,?)")
     .run(Number(conversationId), sender, text, nowISO(), JSON.stringify(rb));
   const row = db.prepare("SELECT * FROM messages WHERE id=?").get(info.lastInsertRowid);
   return { ...row, readBy: JSON.parse(row.readBy || "[]") };
 }
-function getUnreadCount(conversationId, viewer="buyer"){
+function getUnreadCount(conversationId, viewer="buyer") {
   const rows = db.prepare("SELECT readBy FROM messages WHERE conversationId=?").all(Number(conversationId));
-  let unread=0;
-  for(const r of rows){
-    const rb=JSON.parse(r.readBy||"[]");
-    if(!rb.includes(viewer)) unread++;
+  let unread = 0;
+  for (const r of rows) {
+    const rb = JSON.parse(r.readBy || "[]");
+    if (!rb.includes(viewer)) unread++;
   }
   return unread;
 }
-function markConversationRead(conversationId, viewer="buyer"){
+function markConversationRead(conversationId, viewer="buyer") {
   const rows = db.prepare("SELECT id, readBy FROM messages WHERE conversationId=?").all(Number(conversationId));
   const upd = db.prepare("UPDATE messages SET readBy=? WHERE id=?");
-  for(const r of rows){
-    const rb=JSON.parse(r.readBy||"[]");
-    if(!rb.includes(viewer)) rb.push(viewer);
+  for (const r of rows) {
+    const rb = JSON.parse(r.readBy || "[]");
+    if (!rb.includes(viewer)) rb.push(viewer);
     upd.run(JSON.stringify(rb), r.id);
   }
   return true;
 }
 
-// Signup gate
-function classifySignup({city,zip}){
+// ---------- Signup + auth ----------
+function classifySignup({city,zip}) {
   const c=(city||"").toString().trim().toLowerCase();
   const z=(zip||"").toString().trim();
   if(c.includes("sebastian")) return {status:"eligible", reason:"City contains 'Sebastian' (pilot zone)"};
   if(z==="32958") return {status:"eligible", reason:"ZIP is 32958 (Sebastian pilot zone)"};
   return {status:"waitlist", reason:"Outside Sebastian pilot zone (address gate)"};
 }
-function addSignup(payload){
+function addSignup(payload) {
   const name=(payload.name||"").toString().trim();
   const email=normalizeEmail(payload.email);
   const address1=(payload.address1||"").toString().trim();
@@ -328,8 +379,6 @@ function getLatestSignupByEmail(email){
   const e=normalizeEmail(email);
   return db.prepare("SELECT * FROM signups WHERE email=? ORDER BY id DESC LIMIT 1").get(e) || null;
 }
-
-// Auth
 function upsertUserByEmail(email){
   const e=normalizeEmail(email);
   if(!e) return null;
@@ -373,15 +422,31 @@ function getUserBySession(sid){
   return {user,signup};
 }
 
-// Events + sweep
-function logEvent(evt){
-  const metaJson=JSON.stringify(evt.meta||{});
-  const info=db.prepare(`
-    INSERT INTO events (createdAt,eventType,townId,districtId,placeId,listingId,conversationId,userId,clientSessionId,metaJson)
-    VALUES (?,?,?,?,?,?,?,?,?,?)
-  `).run(nowISO(),evt.eventType,evt.townId??1,evt.districtId??null,evt.placeId??null,evt.listingId??null,evt.conversationId??null,evt.userId??null,evt.clientSessionId,metaJson);
-  return info.lastInsertRowid;
+// ---------- Events logging (compat old schema type vs eventType) ----------
+function logEvent(evt) {
+  const metaJson = JSON.stringify(evt.meta || {});
+  const createdAt = nowISO();
+  const hasEventType = columnExists("events", "eventType");
+  const hasType = columnExists("events", "type");
+
+  if (hasEventType) {
+    const info = db.prepare(`
+      INSERT INTO events (createdAt, eventType, townId, districtId, placeId, listingId, conversationId, userId, clientSessionId, metaJson)
+      VALUES (?,?,?,?,?,?,?,?,?,?)
+    `).run(createdAt, evt.eventType, evt.townId ?? 1, evt.districtId ?? null, evt.placeId ?? null, evt.listingId ?? null, evt.conversationId ?? null, evt.userId ?? null, evt.clientSessionId, metaJson);
+    return info.lastInsertRowid;
+  }
+  if (hasType) {
+    const info = db.prepare(`
+      INSERT INTO events (createdAt, type, townId, districtId, placeId, listingId, conversationId, userId, clientSessionId, metaJson)
+      VALUES (?,?,?,?,?,?,?,?,?,?)
+    `).run(createdAt, evt.eventType, evt.townId ?? 1, evt.districtId ?? null, evt.placeId ?? null, evt.listingId ?? null, evt.conversationId ?? null, evt.userId ?? null, evt.clientSessionId, metaJson);
+    return info.lastInsertRowid;
+  }
+  throw new Error("events table missing both eventType and type columns");
 }
+
+// ---------- Sweep ----------
 function getSweepBalance(userId){
   const row=db.prepare("SELECT COALESCE(SUM(amount),0) AS bal FROM sweep_ledger WHERE userId=?").get(Number(userId));
   return row.bal||0;
@@ -392,39 +457,146 @@ function creditSweep({userId,amount,reason,eventId=null,meta={}}){
   db.prepare("INSERT INTO sweep_ledger (createdAt,userId,amount,reason,eventId,metaJson) VALUES (?,?,?,?,?,?)")
     .run(nowISO(),uid,Number(amount),reason,eventId,JSON.stringify(meta||{}));
 }
+function getRuleV2(matchEventType){
+  return db.prepare("SELECT * FROM sweep_rules_v2 WHERE matchEventType=?").get(matchEventType) || null;
+}
 function applySweepRewardForEvent({eventType,userId,eventId,meta}){
   if(!userId) return null;
-  const rules={ district_enter:1, place_view:1, message_send:2, listing_create:5, listing_mark_sold:3 };
-  const amt=rules[eventType]||0;
-  if(amt<=0) return null;
-  creditSweep({ userId, amount:amt, reason:`Earned for ${eventType}`, eventId, meta });
-  return { amount:amt, reason:`Earned for ${eventType}` };
+  const rule = getRuleV2(eventType);
+  if(!rule || rule.enabled !== 1) return null;
+
+  const actorRole = (meta?.actorRole || "").toString(); // buyer|seller
+  const buyerAmt = Number(rule.buyerAmount) || 0;
+  const sellerAmt = Number(rule.sellerAmount) || 0;
+
+  const credited = [];
+  if(actorRole === "buyer" && buyerAmt > 0){
+    creditSweep({ userId, amount: buyerAmt, reason: `Buyer reward for ${eventType}`, eventId, meta });
+    credited.push({ role:"buyer", amount: buyerAmt });
+  }
+  if(actorRole === "seller" && sellerAmt > 0){
+    creditSweep({ userId, amount: sellerAmt, reason: `Seller reward for ${eventType}`, eventId, meta });
+    credited.push({ role:"seller", amount: sellerAmt });
+  }
+  if(credited.length === 0) return null;
+  return { credited, matchEventType: rule.matchEventType };
 }
-function enterDailyRaffle(userId,cost=10){
-  const uid=Number(userId);
-  if(!uid) return {error:"Login required"};
-  const day=todayKey();
-  const existing=db.prepare("SELECT id FROM raffle_entries WHERE userId=? AND dayKey=?").get(uid,day);
-  if(existing) return {error:"Already entered today"};
-  const bal=getSweepBalance(uid);
-  if(bal<cost) return {error:"Insufficient sweep balance"};
-  creditSweep({ userId:uid, amount:-cost, reason:`Daily raffle entry (${day})`, meta:{day} });
-  db.prepare("INSERT INTO raffle_entries (createdAt,userId,dayKey,cost) VALUES (?,?,?,?)").run(nowISO(),uid,day,cost);
-  return { ok:true, dayKey:day, cost, balance:getSweepBalance(uid) };
+
+// ---------- Sweep rules CRUD ----------
+function listSweepRulesV2(){
+  return db.prepare("SELECT * FROM sweep_rules_v2 ORDER BY matchEventType").all();
+}
+function createSweepRuleV2(payload){
+  const matchEventType = (payload.matchEventType || "").toString().trim();
+  if(!matchEventType) return { error: "matchEventType required" };
+  const buyerAmount = Number(payload.buyerAmount || 0);
+  const sellerAmount = Number(payload.sellerAmount || 0);
+  const dailyCap = Number(payload.dailyCap || 0);
+  const cooldownSeconds = Number(payload.cooldownSeconds || 0);
+  const enabled = payload.enabled ? 1 : 0;
+
+  try{
+    const info = db.prepare(`
+      INSERT INTO sweep_rules_v2 (matchEventType,buyerAmount,sellerAmount,dailyCap,cooldownSeconds,enabled)
+      VALUES (?,?,?,?,?,?)
+    `).run(matchEventType, buyerAmount, sellerAmount, dailyCap, cooldownSeconds, enabled);
+    return db.prepare("SELECT * FROM sweep_rules_v2 WHERE id=?").get(info.lastInsertRowid);
+  } catch {
+    return { error: "matchEventType must be unique" };
+  }
+}
+function updateSweepRuleV2(id, patch){
+  const rid = Number(id);
+  const rule = db.prepare("SELECT * FROM sweep_rules_v2 WHERE id=?").get(rid);
+  if(!rule) return { error:"Rule not found" };
+
+  const matchEventType = (patch.matchEventType ?? rule.matchEventType).toString().trim();
+  const buyerAmount = Number.isFinite(Number(patch.buyerAmount)) ? Number(patch.buyerAmount) : rule.buyerAmount;
+  const sellerAmount = Number.isFinite(Number(patch.sellerAmount)) ? Number(patch.sellerAmount) : rule.sellerAmount;
+  const dailyCap = Number.isFinite(Number(patch.dailyCap)) ? Number(patch.dailyCap) : rule.dailyCap;
+  const cooldownSeconds = Number.isFinite(Number(patch.cooldownSeconds)) ? Number(patch.cooldownSeconds) : rule.cooldownSeconds;
+  const enabled = patch.enabled ? 1 : 0;
+
+  try {
+    db.prepare(`
+      UPDATE sweep_rules_v2
+      SET matchEventType=?, buyerAmount=?, sellerAmount=?, dailyCap=?, cooldownSeconds=?, enabled=?
+      WHERE id=?
+    `).run(matchEventType, buyerAmount, sellerAmount, dailyCap, cooldownSeconds, enabled, rid);
+  } catch {
+    return { error: "matchEventType must be unique" };
+  }
+
+  return db.prepare("SELECT * FROM sweep_rules_v2 WHERE id=?").get(rid);
+}
+
+// ---------- Sweepstakes ----------
+function getActiveSweepstake(){
+  const now = nowISO();
+  return db.prepare(`
+    SELECT * FROM sweepstakes
+    WHERE status='active' AND startAt <= ? AND endAt >= ?
+    ORDER BY id DESC LIMIT 1
+  `).get(now, now) || null;
+}
+function upsertSweepstake(payload){
+  const info = db.prepare(`
+    INSERT INTO sweepstakes (status,title,prize,entryCost,startAt,endAt,drawAt,maxEntriesPerUserPerDay,createdAt)
+    VALUES (?,?,?,?,?,?,?,?,?)
+  `).run(
+    payload.status,
+    payload.title,
+    payload.prize,
+    Number(payload.entryCost),
+    payload.startAt,
+    payload.endAt,
+    payload.drawAt,
+    Number(payload.maxEntriesPerUserPerDay),
+    nowISO()
+  );
+  return db.prepare("SELECT * FROM sweepstakes WHERE id=?").get(info.lastInsertRowid);
+}
+function sweepstakeStats(sweepstakeId){
+  const sid = Number(sweepstakeId);
+  const totalEntries = db.prepare("SELECT COUNT(*) AS c FROM sweepstake_entries WHERE sweepstakeId=?").get(sid).c;
+  const uniqueUsers = db.prepare("SELECT COUNT(DISTINCT userId) AS c FROM sweepstake_entries WHERE sweepstakeId=?").get(sid).c;
+  const pot = db.prepare("SELECT COALESCE(SUM(cost),0) AS c FROM sweepstake_entries WHERE sweepstakeId=?").get(sid).c;
+  return { totalEntries, uniqueUsers, pot };
+}
+function enterActiveSweepstake(userId){
+  const uid = Number(userId);
+  if(!uid) return { error:"Login required" };
+  const s = getActiveSweepstake();
+  if(!s) return { error:"No active sweepstake" };
+
+  const day = todayKey();
+  const maxPerDay = Number(s.maxEntriesPerUserPerDay) || 1;
+
+  const count = db.prepare("SELECT COUNT(*) AS c FROM sweepstake_entries WHERE sweepstakeId=? AND userId=? AND dayKey=?")
+    .get(s.id, uid, day).c;
+  if(count >= maxPerDay) return { error:`Max entries reached today (${maxPerDay})` };
+
+  const cost = Number(s.entryCost);
+  const bal = getSweepBalance(uid);
+  if(bal < cost) return { error:"Insufficient sweep balance" };
+
+  creditSweep({ userId: uid, amount: -cost, reason: `Sweepstake entry: ${s.title}`, meta: { sweepstakeId: s.id } });
+
+  db.prepare("INSERT INTO sweepstake_entries (sweepstakeId, createdAt, userId, dayKey, cost) VALUES (?,?,?,?,?)")
+    .run(s.id, nowISO(), uid, day, cost);
+
+  const stats = sweepstakeStats(s.id);
+  return { ok:true, sweepstake:s, balance:getSweepBalance(uid), ...stats };
 }
 
 module.exports = {
-  get town(){ return getTown(); },
   get districts(){ return getDistricts(); },
   get places(){ return getPlaces(); },
-
-  updatePlaceSettings,
-
   getListings,
+  updatePlaceSettings,
   addListing,
   markListingSold,
 
-  // chat
   addConversation,
   addMessage,
   getMessages,
@@ -432,7 +604,6 @@ module.exports = {
   getUnreadCount,
   markConversationRead,
 
-  // signup + auth
   addSignup,
   createMagicLink,
   consumeMagicToken,
@@ -440,9 +611,17 @@ module.exports = {
   deleteSession,
   getUserBySession,
 
-  // sweep
   logEvent,
   applySweepRewardForEvent,
   getSweepBalance,
-  enterDailyRaffle,
+
+  listSweepRulesV2,
+  createSweepRuleV2,
+  updateSweepRuleV2,
+
+  getActiveSweepstake,
+  upsertSweepstake,
+  sweepstakeStats,
+  enterActiveSweepstake,
 };
+
