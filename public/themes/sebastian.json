@@ -1,0 +1,20 @@
+{
+  "name": "Sebastian",
+  "fonts": {
+    "display": "Space Grotesk",
+    "body": "Sora"
+  },
+  "colors": {
+    "bg": "#070b10",
+    "panel": "#0f1722",
+    "panel2": "#0b1220",
+    "text": "#e8eef6",
+    "muted": "#9fb0c3",
+    "accent": "#00ffae",
+    "accent2": "#2e93ff",
+    "border": "rgba(255,255,255,.10)",
+    "card": "rgba(15,23,34,.78)",
+    "sidebar": "#0a0f14",
+    "rail": "#0c1118"
+  }
+}

@@ -61,6 +61,7 @@
       </div>
       <div class="row">
         <button id="createToggleBtn" disabled>Create Offer/Request</button>
+        <button id="testAuctionBtn" style="display:none;">Create Test Auction</button>
       </div>
     </div>
 
@@ -117,6 +118,21 @@
         <div style="margin-top:10px;">
           <div class="muted">Description</div>
           <textarea id="newDesc" placeholder="Details, expectations, what’s offered in return…"></textarea>
+        </div>
+
+        <div class="twoCol" style="margin-top:10px;">
+          <div>
+            <div class="muted">Offer Category</div>
+            <input id="newOfferCategory" placeholder="e.g. lodging, childcare, repair" />
+          </div>
+          <div>
+            <div class="muted">Availability Window</div>
+            <input id="newAvailability" placeholder="Weeknights, 9–5, weekends" />
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="muted">Compensation Type</div>
+          <input id="newCompensation" placeholder="money, barter, volunteer, hybrid" />
         </div>
 
         <div class="twoCol" style="margin-top:10px;">

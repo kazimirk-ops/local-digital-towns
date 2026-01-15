@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trust Moderation</title>
+  <style>
+    body{font-family:Arial;background:#0b0f14;color:#e8eef6;margin:0}
+    .wrap{max-width:960px;margin:0 auto;padding:16px}
+    .card{background:#0f1722;border:1px solid #223149;border-radius:14px;padding:14px;margin-bottom:14px}
+    .muted{color:#9fb0c3;font-size:12px}
+    .item{border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;margin-top:8px;background:rgba(10,14,20,.3)}
+    a{color:#cfe3ff;text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div><strong>Trust Moderation</strong></div>
+      <div class="muted">Reviews and disputes (admin only).</div>
+      <div class="muted" style="margin-top:6px;"><a href="/ui">Back to Town</a></div>
+    </div>
+    <div class="card">
+      <div><strong>Disputes</strong></div>
+      <div id="disputes"></div>
+    </div>
+    <div class="card">
+      <div><strong>Reviews</strong></div>
+      <div id="reviews"></div>
+    </div>
+  </div>
+  <script src="/admin_trust.js?v=1"></script>
+</body>
+</html>
