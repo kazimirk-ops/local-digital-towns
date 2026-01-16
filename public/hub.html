@@ -1,0 +1,219 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>My Profile / Hub</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <style>
+      * { box-sizing:border-box; }
+      body { margin:0; font-family:var(--font-sans); background:var(--bg); color:var(--text); }
+      .wrap { max-width:1100px; margin:0 auto; padding:20px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+      .card { background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:16px; }
+      .pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--panel2); font-size:12px; color:var(--text); text-decoration:none; }
+      .title { font-family:var(--font-display); font-weight:700; font-size:18px; }
+      .muted { color:var(--muted); font-size:12px; }
+      .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+      input, textarea, select { width:100%; padding:10px; border-radius:12px; border:1px solid var(--border); background:var(--panel2); color:var(--text); }
+      textarea { min-height:80px; }
+      button { padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--panel2); color:var(--text); cursor:pointer; }
+      .list { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+      @media (max-width:1000px){ .wrap { grid-template-columns:1fr; } }
+    </style>
+  </head>
+  <body data-town="sebastian">
+    <div class="wrap">
+      <div class="row" style="grid-column:1 / -1;">
+        <a class="pill" href="/ui">Back to Town</a>
+      </div>
+      <div class="card">
+        <div class="title">My Profile</div>
+        <div class="muted" id="hubLoginNote"></div>
+        <label class="muted">Display Name</label>
+        <input id="displayName" />
+        <label class="muted">Bio</label>
+        <textarea id="bio"></textarea>
+        <label class="muted">Avatar URL</label>
+        <input id="avatarUrl" />
+        <label class="muted">Interests (comma-separated)</label>
+        <input id="interests" />
+        <label class="muted">Age Range (optional)</label>
+        <input id="ageRange" />
+        <div class="row" style="margin-top:8px;">
+          <label><input type="checkbox" id="showAvatar" /> Show avatar</label>
+          <label><input type="checkbox" id="showBio" /> Show bio</label>
+          <label><input type="checkbox" id="showInterests" /> Show interests</label>
+          <label><input type="checkbox" id="showAgeRange" /> Show age range</label>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <button id="saveProfileBtn">Save Profile</button>
+          <span class="muted" id="profileMsg"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="title">Owned Stores</div>
+        <div class="list" id="ownedStores"></div>
+      </div>
+
+      <div class="card">
+        <div class="title">Create Store</div>
+        <label class="muted">Store Type</label>
+        <select id="storeType">
+          <option value="individual">individual seller</option>
+          <option value="business">registered business</option>
+        </select>
+        <label class="muted">District</label>
+        <select id="storeDistrict">
+          <option value="1">Market Square</option>
+          <option value="2">Service Row</option>
+          <option value="3">Retail Way</option>
+          <option value="4">Marina / Live Hall</option>
+          <option value="5">Town Hall</option>
+        </select>
+        <label class="muted">Store Name</label>
+        <input id="storeName" />
+        <label class="muted">Category</label>
+        <input id="storeCategory" />
+        <label class="muted">Description</label>
+        <textarea id="storeDescription"></textarea>
+        <label class="muted">Address (private)</label>
+        <input id="storeAddress" />
+        <label class="muted">Website / Social (IG or FB)</label>
+        <input id="storeWebsite" />
+        <label class="muted">How long in Sebastian</label>
+        <input id="storeYears" />
+        <div class="row" style="margin-top:10px;">
+          <button id="createStoreBtn">Submit Store Application</button>
+          <span class="muted" id="storeMsg"></span>
+        </div>
+      </div>
+
+      <div class="card" id="storefrontCard" style="display:none;">
+        <div class="title">Storefront</div>
+        <label class="muted">Store</label>
+        <select id="storefrontStore"></select>
+        <label class="muted">Name</label>
+        <input id="storefrontName" />
+        <label class="muted">Category</label>
+        <input id="storefrontCategory" />
+        <label class="muted">Description</label>
+        <textarea id="storefrontDescription"></textarea>
+        <label class="muted">Banner Image URL</label>
+        <input id="storefrontBannerUrl" />
+        <div class="row" style="margin-top:6px;">
+          <input id="storefrontBannerFile" type="file" accept="image/*" />
+          <button id="uploadBannerBtn" type="button">Upload Banner</button>
+        </div>
+        <label class="muted">Profile Image URL</label>
+        <input id="storefrontAvatarUrl" />
+        <div class="row" style="margin-top:6px;">
+          <input id="storefrontAvatarFile" type="file" accept="image/*" />
+          <button id="uploadAvatarBtn" type="button">Upload Avatar</button>
+        </div>
+        <label class="muted">Visibility</label>
+        <select id="storefrontVisibility">
+          <option value="town_only">town_only</option>
+          <option value="zone">zone</option>
+          <option value="exact_address">exact_address</option>
+          <option value="meetup_only">meetup_only</option>
+        </select>
+        <label class="muted">Pickup Zone</label>
+        <input id="storefrontPickup" />
+        <label class="muted">Meetup Instructions</label>
+        <textarea id="storefrontMeetup"></textarea>
+        <label class="muted">Hours</label>
+        <input id="storefrontHours" />
+        <div class="row" style="margin-top:10px;">
+          <button id="saveStorefrontBtn">Save Storefront</button>
+          <span class="muted" id="storefrontMsg"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="title">Create Listing</div>
+        <label class="muted">Store</label>
+        <select id="listingStore"></select>
+        <label class="muted">Listing Type</label>
+        <select id="listingType">
+          <option value="item">item</option>
+          <option value="offer">offer</option>
+          <option value="request">request</option>
+          <option value="auction">auction</option>
+        </select>
+        <label class="muted">Title</label>
+        <input id="listingTitle" />
+        <label class="muted">Description</label>
+        <textarea id="listingDesc"></textarea>
+        <label class="muted">Quantity</label>
+        <input id="listingQty" value="1" />
+        <label class="muted">Price</label>
+        <input id="listingPrice" value="0" />
+
+        <div class="item" id="auctionPanel" style="display:none; margin-top:10px;">
+          <div class="title" style="font-size:14px;">Auction Setup</div>
+
+          <label class="muted">Photos (up to 5)</label>
+          <input id="auctionPhotosInput" type="file" accept="image/*" multiple />
+          <div class="muted" id="auctionPhotosHelp">Images only, max 2MB each.</div>
+          <div id="auctionPhotoList" class="row" style="margin-top:8px; flex-wrap:wrap;"></div>
+
+          <label class="muted">Start Time</label>
+          <input id="auctionStartLocal" type="datetime-local" />
+
+          <label class="muted">Duration</label>
+          <select id="auctionDuration">
+            <option value="">Select duration</option>
+            <option value="24">24 hours</option>
+            <option value="48">48 hours</option>
+            <option value="72">72 hours</option>
+          </select>
+          <div class="muted">End time: <span id="auctionEndDisplay">—</span></div>
+
+          <div class="twoCol" style="margin-top:8px;">
+            <div>
+              <label class="muted">Start Bid ($)</label>
+              <input id="auctionStartBid" type="number" min="0" step="0.01" value="1.00" />
+            </div>
+            <div>
+              <label class="muted">Min Increment ($)</label>
+              <input id="auctionMinIncrement" type="number" min="0" step="0.01" value="0.50" />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <button id="auctionPublishBtn">Publish Auction</button>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button id="createListingBtn">Create Listing</button>
+          <span class="muted" id="listingMsg"></span>
+          <a class="pill" id="listingLink" href="#" style="display:none;">View Auction</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="title">Direct Messages</div>
+        <div class="row">
+          <div style="flex:1;">
+            <div class="muted">Inbox</div>
+            <div class="list" id="dmList"></div>
+          </div>
+          <div style="flex:2;">
+            <div class="muted">Messages</div>
+            <div class="list" id="dmMessages"></div>
+            <textarea id="dmInput" placeholder="Write a message…"></textarea>
+            <div class="row" style="margin-top:8px;">
+              <button id="dmSendBtn">Send</button>
+              <span class="muted" id="dmMsg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="/theme.js?v=1"></script>
+    <script src="/hub.js"></script>
+  </body>
+</html>

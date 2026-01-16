@@ -4,51 +4,86 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Join Sebastian Pilot</title>
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
     <style>
-      body { font-family: Arial, sans-serif; background:#0b0f14; color:#e8eef6; margin:0; }
+      body { font-family: var(--font-sans, ui-sans-serif, system-ui); background:var(--bg); color:var(--text); margin:0; }
       .wrap { max-width: 720px; margin: 0 auto; padding: 18px; }
-      .card { background:#0f1722; border:1px solid #223149; border-radius:14px; padding:14px; }
-      input { width:100%; padding:10px; border-radius:10px; border:1px solid #223149; background:#0b1220; color:#e8eef6; margin-top:8px;}
-      button { margin-top:12px; padding:10px 12px; border-radius:10px; border:1px solid #223149; background:#0b1220; color:#e8eef6; cursor:pointer;}
-      button:hover { background:#0f1722; }
-      .muted { color:#9fb0c3; font-size:12px; }
+      .card { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px; }
+      input { width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); color:var(--text); margin-top:8px;}
+      button { margin-top:12px; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); color:var(--text); cursor:pointer;}
+      button:hover { background:var(--panel); }
+      .muted { color:var(--muted); font-size:12px; }
       .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; white-space: pre-wrap; }
-      .ok { border:1px solid rgba(0,255,170,.35); background:rgba(0,255,170,.06); padding:10px; border-radius:12px; margin-top:12px;}
-      .warn { border:1px solid rgba(255,204,0,.35); background:rgba(255,204,0,.06); padding:10px; border-radius:12px; margin-top:12px;}
-      a { color:#cfe3ff; }
+      .ok { border:1px solid var(--border); background:var(--panel2); padding:10px; border-radius:12px; margin-top:12px;}
+      .warn { border:1px solid var(--border); background:var(--panel2); padding:10px; border-radius:12px; margin-top:12px;}
+      a { color:var(--accent2); }
     </style>
   </head>
-  <body>
+  <body data-town="sebastian">
     <div class="wrap">
       <h2>Join the Sebastian Pilot</h2>
-      <div class="muted">Soft address gate: City contains “Sebastian” OR ZIP = 32958. Everyone can log in; waitlist has limited access.</div>
+      <div class="muted">New accounts start at Tier 0 (Map-only). Verify to unlock more access.</div>
 
       <div class="card">
-        <h3>Request Access</h3>
-        <input id="name" placeholder="Full name" />
+        <h3>Trust Tiers & Permissions</h3>
+        <div class="muted">Know what each tier unlocks.</div>
+        <div class="mono" style="margin-top:8px;">
+Tier 0: Visitor — map only
+Tier 1: Verified Remote — browse marketplace, bid, DM stores
+Tier 2: Verified In‑Town Visitor — chat posting + chat images
+Tier 3: Local Resident — create listings (Sebastian address + admin approval)
+Tier 4: Trusted Local — host auctions
+Tier 5: Verified Business — business‑verified access
+Tier 6: Admin — full access
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Login / Signup (Magic Link)</h3>
+        <div class="muted">New accounts default to Tier 0. Log in to apply for higher tiers.</div>
+        <input id="loginEmail" placeholder="Email for login link" />
+        <button id="requestLink">Send Login Link</button>
+        <div id="loginResult"></div>
+        <div class="mono" id="debug"></div>
+      </div>
+
+      <div class="card" id="trustApplyCard" style="display:none;">
+        <h3>Apply for Verification</h3>
+        <div class="muted" id="tierBadge">Tier 0: Visitor</div>
+        <label class="muted">Requested Tier</label>
+        <select id="requestedTier">
+          <option value="1">Tier 1 — Verified Remote</option>
+          <option value="2">Tier 2 — Verified In‑Town Visitor</option>
+          <option value="3">Tier 3 — Local Resident</option>
+        </select>
         <input id="email" placeholder="Email" />
+        <input id="phone" placeholder="Phone" />
         <input id="address1" placeholder="Address line 1" />
         <input id="address2" placeholder="Address line 2 (optional)" />
         <input id="city" placeholder="City" />
         <input id="state" placeholder="State (e.g. FL)" value="FL" />
         <input id="zip" placeholder="ZIP" />
-        <button id="submitSignup">Submit</button>
+        <label class="muted">Identity Method</label>
+        <select id="identityMethod">
+          <option value="id">Government ID</option>
+          <option value="payment">Payment Method</option>
+          <option value="manual">Manual Review</option>
+        </select>
+        <div class="row" style="margin-top:8px;">
+          <button id="verifyPresenceBtn" type="button">Verify I’m In Town (GPS)</button>
+          <span class="muted" id="presenceStatus">Tier 2 requires GPS verification.</span>
+        </div>
+        <button id="submitTrust">Submit Application</button>
         <div id="signupResult"></div>
+        <div class="muted" id="trustStatus" style="margin-top:8px;"></div>
 
         <hr />
 
-        <h3>Login (Magic Link)</h3>
-        <div class="muted">Dev mode: we will show the link here. Later we email it.</div>
-        <input id="loginEmail" placeholder="Email for login link" />
-        <button id="requestLink">Send Login Link</button>
-        <div id="loginResult"></div>
-
-        <div class="mono" id="debug"></div>
         <div class="muted" style="margin-top:10px;"><a href="/ui">Back to Town</a></div>
       </div>
     </div>
 
+    <script src="/theme.js?v=1"></script>
     <script src="/signup.js?v=magic1"></script>
   </body>
 </html>
-

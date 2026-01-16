@@ -1,20 +1,61 @@
 {
   "name": "Sebastian",
+  "defaultMode": "light",
   "fonts": {
-    "display": "Space Grotesk",
-    "body": "Sora"
+    "display": "Sora",
+    "body": "Inter"
   },
-  "colors": {
-    "bg": "#070b10",
-    "panel": "#0f1722",
-    "panel2": "#0b1220",
-    "text": "#e8eef6",
-    "muted": "#9fb0c3",
-    "accent": "#00ffae",
-    "accent2": "#2e93ff",
-    "border": "rgba(255,255,255,.10)",
-    "card": "rgba(15,23,34,.78)",
-    "sidebar": "#0a0f14",
-    "rail": "#0c1118"
+  "ui": {
+    "radius": {
+      "sm": "6px",
+      "md": "12px",
+      "lg": "18px",
+      "pill": "999px"
+    },
+    "shadow": {
+      "sm": "0 2px 6px rgba(0,0,0,.08)",
+      "md": "0 6px 18px rgba(0,0,0,.12)",
+      "lg": "0 14px 40px rgba(0,0,0,.16)"
+    },
+    "borderWidth": "1px",
+    "blurStrength": "6px"
+  },
+  "background": {
+    "style": "gradient",
+    "heroImageUrl": "/images/sebastian-main-map.png"
+  },
+  "modes": {
+    "dark": {
+      "colors": {
+        "bg": "#0e1620",
+        "panel": "#141f2b",
+        "panel2": "#0f1924",
+        "text": "#e6eef6",
+        "muted": "#9aa6b2",
+        "accent": "#4db6c6",
+        "accent2": "#7bd4b4",
+        "highlight": "#f2a86d",
+        "border": "rgba(255,255,255,.12)",
+        "card": "rgba(20,31,43,.92)",
+        "sidebar": "#101a24",
+        "rail": "#0f1924"
+      }
+    },
+    "light": {
+      "colors": {
+        "bg": "#f4f6f8",
+        "panel": "#ffffff",
+        "panel2": "#f0f3f6",
+        "text": "#1f2933",
+        "muted": "#6b7280",
+        "accent": "#2fa4b9",
+        "accent2": "#6cc4a1",
+        "highlight": "#f5b97a",
+        "border": "rgba(0,0,0,.08)",
+        "card": "rgba(255,255,255,.94)",
+        "sidebar": "#ffffff",
+        "rail": "#f6f8fa"
+      }
+    }
   }
 }

@@ -1,42 +1,15 @@
 const $ = (id) => document.getElementById(id);
 
-let state = { districtId:null, placeId:null, place:null, conversationId:null, viewer:"buyer" };
-let market = { places:[], listingsByPlace:{}, categories:[], districts:[] };
-let channels = { list:[], messages:[], selectedId:null, replyToId:null };
-let eventsState = { list:[], selectedId:null, range:"week" };
-let access = { loggedIn:false, eligible:false, email:null, reason:null };
+let state = { districtId:null, placeId:null, place:null, conversationId:null, viewer:"buyer", trustTier:0, trustTierLabel:"Visitor" };
+let market = { listings:[], categories:[], districts:[], selectedCategory:null };
+let channels = { list:[], messages:[], selectedId:null, replyToId:null, pendingImageUrl:"" };
+let eventsState = { list:[], selectedId:null, range:"week", bound:false };
+let localBizState = { list:[], bound:false };
+let scheduledState = { list:[], selectedId:null, thumbnailUrl:"" };
+let pulseState = { latest:null };
+let access = { loggedIn:false, eligible:false, email:null, reason:null, isAdmin:false };
+let currentUser = { id:null, displayName:"" };
 let map, markersLayer, boundaryLayer;
-
-function applyTheme(cfg){
-  if(!cfg) return;
-  const root=document.documentElement;
-  const colors=cfg.colors||{};
-  const fonts=cfg.fonts||{};
-  if(colors.bg) root.style.setProperty("--bg", colors.bg);
-  if(colors.panel) root.style.setProperty("--panel", colors.panel);
-  if(colors.panel2) root.style.setProperty("--panel-2", colors.panel2);
-  if(colors.text) root.style.setProperty("--text", colors.text);
-  if(colors.muted) root.style.setProperty("--muted", colors.muted);
-  if(colors.accent) root.style.setProperty("--accent", colors.accent);
-  if(colors.accent2) root.style.setProperty("--accent-2", colors.accent2);
-  if(colors.border) root.style.setProperty("--border", colors.border);
-  if(colors.card) root.style.setProperty("--card", colors.card);
-  if(colors.sidebar) root.style.setProperty("--sidebar", colors.sidebar);
-  if(colors.rail) root.style.setProperty("--rail", colors.rail);
-  if(fonts.body) root.style.setProperty("--font-sans", `"${fonts.body}", ui-sans-serif, system-ui`);
-  if(fonts.display) root.style.setProperty("--font-display", `"${fonts.display}", ui-sans-serif, system-ui`);
-  if(cfg.name) document.title = `${cfg.name} Digital Town`;
-}
-async function loadTheme(){
-  const town=(document.body?.dataset?.town||"sebastian").toLowerCase();
-  try{
-    const res=await fetch(`/themes/${town}.json`);
-    if(res.ok){
-      const theme=await res.json();
-      applyTheme(theme);
-    }
-  }catch{}
-}
 
 async function loadNeighborTowns(){
   try{
@@ -68,24 +41,164 @@ function setView(view){
   if(view==="marketplace"){
     initMarketplace().catch(()=>{});
   }
+  if(view==="auctions"){
+    initAuctions().catch(()=>{});
+  }
   if(view==="channels"){
     initChannels().catch(()=>{});
   }
   if(view==="events"){
     initEvents().catch(()=>{});
   }
+  if(view==="scheduled"){
+    initScheduledShows().catch(()=>{});
+  }
+  if(view==="archive"){
+    initArchive().catch(()=>{});
+  }
+  if(view==="localbiz"){
+    initLocalBiz().catch(()=>{});
+  }
   if(view==="map" && map){
     setTimeout(()=>map.invalidateSize(), 50);
   }
 }
 
+function initChannelsPlaceholder(){
+  const map = [
+    { name: "Sebastian Neighbors & Friends", first: "First post: Welcome neighbors! Introduce yourself and your street." },
+    { name: "Sebastian Community Chat", first: "First post: What’s your favorite local spot this week?" },
+    { name: "Fun Activities & Events", first: "First post: Share upcoming events and weekend ideas." },
+    { name: "Sebastian Lifestyle & Wellness", first: "First post: Morning walks, yoga, and wellness tips here." },
+    { name: "Local Meetups & Walking Groups", first: "First post: Who wants to start a sunrise walk group?" },
+    { name: "Sebastian Culture & Memories", first: "First post: Post old photos or stories from Sebastian’s past." },
+    { name: "County Events & Happenings", first: "First post: County fairs, markets, and regional updates." },
+    { name: "Ladies Social Club", first: "First post: Ladies’ night ideas and meetups." },
+    { name: "Reflections on the River", first: "First post: Best spots to watch the river at sunset?" }
+  ];
+  map.forEach((entry, idx)=>{
+    const el = $(`channelsCard${idx+1}`);
+    if(!el) return;
+    el.onclick = () => {
+      const match = channels.list.find(c => c.name === entry.name);
+      if(match){
+        selectChannel(match.id).catch(()=>{});
+        return;
+      }
+      const wrap = $("channelsPlaceholder");
+      if(wrap) wrap.style.display = "block";
+      $("channelsPlaceholderTitle").textContent = `Welcome to ${entry.name}`;
+      $("channelsPlaceholderBody").textContent = "Welcome to " + entry.name + " — posts load here.";
+      $("channelsPlaceholderPost").textContent = entry.first;
+    };
+  });
+}
+
 async function initChannels(){
-  if(!channels.list.length){
+  initChannelsPlaceholder();
+  try{
     await loadChannels();
     renderChannelsList();
-  }
-  bindChannels();
+    const listEl = $("channelsList");
+    const stackEl = $("channelsStack");
+    if(listEl) listEl.style.display = channels.list.length ? "block" : "none";
+    if(stackEl) stackEl.style.display = channels.list.length ? "none" : "block";
+  }catch{}
 }
+
+async function initScheduledShows(){
+  await loadScheduledShows();
+  renderScheduledShows();
+}
+
+async function loadScheduledShows(){
+  scheduledState.list = await api("/api/live/scheduled");
+}
+
+function renderScheduledShows(){
+  const list = $("scheduledShowList");
+  if(!list) return;
+  if(!scheduledState.list.length){
+    list.innerHTML = `<div class="muted">No scheduled shows.</div>`;
+    return;
+  }
+  list.innerHTML = "";
+  scheduledState.list.forEach((s)=>{
+    const div = document.createElement("div");
+    div.className = "item";
+    const hostLabel = s.hostType === "place" ? "Store" : (s.hostType === "event" ? "Event" : "Individual");
+    const timeLabel = s.startAt ? new Date(s.startAt).toLocaleString() : "";
+    const star = s.bookmarked ? "★" : "☆";
+    const avatar = s.hostAvatarUrl ? `<img src="${s.hostAvatarUrl}" alt="" style="width:28px;height:28px;border-radius:999px;object-fit:cover;border:1px solid rgba(255,255,255,.12);" />` : "";
+    const hostLine = s.hostType === "place"
+      ? `${s.hostName || ""}${s.hostStoreName ? ` • ${s.hostStoreName}` : ""}`
+      : s.hostType === "event"
+        ? `${s.hostName || ""} • ${s.hostLabel || ""}`
+        : `${s.hostName || ""}`;
+    div.innerHTML = `
+      <div class="row" style="justify-content:space-between;">
+        <div style="display:flex; gap:10px;">
+          <img src="${s.thumbnailUrl || ""}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.12);" />
+          <div>
+            <div><strong>${s.title}</strong></div>
+            <div class="muted">${timeLabel}</div>
+            <div class="row" style="gap:8px; align-items:center; margin-top:4px;">
+              ${avatar}
+              <div class="muted">${hostLabel}: ${hostLine}</div>
+            </div>
+            <div class="muted" style="margin-top:4px;">${s.description || ""}</div>
+          </div>
+        </div>
+        <button data-star="${s.id}" style="font-size:18px;">${star}</button>
+      </div>
+    `;
+    div.onclick = (e)=>{
+      if(e.target?.dataset?.star) return;
+      showScheduledDetail(s);
+    };
+    div.querySelector("button[data-star]").onclick = async (e)=>{
+      e.stopPropagation();
+      if(!access.loggedIn){
+        alert("Login required to bookmark.");
+        window.location.href = "/signup";
+        return;
+      }
+      try{
+        await api(`/api/live/scheduled/${s.id}/bookmark`, { method:"POST" });
+        await loadScheduledShows();
+        renderScheduledShows();
+      }catch(err){
+        alert(err.message);
+      }
+    };
+    list.appendChild(div);
+  });
+}
+
+function showScheduledDetail(s){
+  const detail = $("scheduledDetail");
+  if(!detail) return;
+  const timeLabel = s.startAt ? new Date(s.startAt).toLocaleString() : "";
+  const join = s.joinUrl ? `<a class="pill" href="${s.joinUrl}">Join Live</a>` : "";
+  const avatar = s.hostAvatarUrl ? `<img src="${s.hostAvatarUrl}" alt="" style="width:36px;height:36px;border-radius:999px;object-fit:cover;border:1px solid rgba(255,255,255,.12);" />` : "";
+  const hostLine = s.hostType === "place"
+    ? `${s.hostName || ""}${s.hostStoreName ? ` • ${s.hostStoreName}` : ""}`
+    : s.hostType === "event"
+      ? `${s.hostName || ""} • ${s.hostLabel || ""}`
+      : `${s.hostName || ""}`;
+  detail.style.display = "block";
+  detail.innerHTML = `
+    <div><strong>${s.title}</strong></div>
+    <div class="muted">${timeLabel}</div>
+    <div class="row" style="gap:10px; align-items:center; margin-top:8px;">
+      ${avatar}
+      <div class="muted">${hostLine}</div>
+    </div>
+    <div class="muted" style="margin-top:6px;">${s.description || ""}</div>
+    <div class="row" style="margin-top:8px;">${join}</div>
+  `;
+}
+
 function getRouteView(){
   const hash=(location.hash||"").replace(/^#/,"");
   return hash || "map";
@@ -146,10 +259,12 @@ function renderChannelMessages(){
     div.className="item";
     const parent=m.replyToId ? byId.get(m.replyToId) : null;
     const prefix=parent ? `↳ ${parent.text.slice(0,60)}` : "";
+    const imageHtml = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" rel="noopener"><img src="${m.imageUrl}" alt="" style="max-width:260px;border-radius:10px;border:1px solid rgba(255,255,255,.12);margin-top:6px;" /></a>` : "";
     div.innerHTML=`
       <div class="muted">${prefix}</div>
       <div>${m.text}</div>
-      <div class="muted">User ${m.userId} · ${m.createdAt}</div>
+      ${imageHtml}
+      <div class="muted">${m.user?.displayName || `User ${m.userId}`}${m.user?.trustTierLabel ? ` · ${m.user.trustTierLabel}` : ""} · ${m.createdAt}</div>
       <div class="row" style="margin-top:6px;">
         <button data-reply="${m.id}">Reply</button>
       </div>
@@ -166,13 +281,17 @@ async function sendChannelMessage(){
   if(!channels.selectedId) return alert("Select a channel first");
   if(!access.loggedIn) return alert("Login required");
   const text=$("channelMessageInput").value.trim();
-  if(!text) return;
+  const imageUrl = channels.pendingImageUrl || "";
+  if(!text && !imageUrl) return;
   await api(`/channels/${channels.selectedId}/messages`,{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ text, replyToId: channels.replyToId })
+    body: JSON.stringify({ text, imageUrl, replyToId: channels.replyToId })
   });
   $("channelMessageInput").value="";
+  channels.pendingImageUrl = "";
+  const preview = $("channelsImagePreview");
+  if(preview) preview.style.display="none";
   channels.replyToId=null;
   $("replyToBar").style.display="none";
   await loadChannelMessages(channels.selectedId);
@@ -183,11 +302,53 @@ function bindChannels(){
     channels.replyToId=null;
     $("replyToBar").style.display="none";
   };
+  const uploadBtn = $("channelsUploadBtn");
+  const fileInput = $("channelsImageInput");
+  const preview = $("channelsImagePreview");
+  const thumb = $("channelsImageThumb");
+  const clearBtn = $("channelsImageClear");
+  if(uploadBtn && fileInput){
+    uploadBtn.onclick = () => fileInput.click();
+    fileInput.onchange = async () => {
+      const file = fileInput.files?.[0];
+      if(!file) return;
+      if(!["image/png","image/jpeg","image/webp"].includes(file.type)) return alert("PNG/JPG/WebP only.");
+      if(file.size > 5 * 1024 * 1024) return alert("Max 5MB.");
+      const form = new FormData();
+      form.append("file", file);
+      form.append("kind", "chat_image");
+      try{
+        const res = await api("/api/uploads", { method:"POST", body: form });
+        channels.pendingImageUrl = res.url;
+        if(thumb) thumb.src = res.url;
+        if(preview) preview.style.display="block";
+      }catch(e){
+        alert(e.message);
+      }finally{
+        fileInput.value = "";
+      }
+    };
+  }
+  if(clearBtn){
+    clearBtn.onclick = () => {
+      channels.pendingImageUrl = "";
+      if(preview) preview.style.display="none";
+      if(thumb) thumb.src = "";
+    };
+  }
 }
 
 async function loadEvents(range){
   eventsState.range = range || "week";
-  eventsState.list = await api(`/events?range=${eventsState.range}`);
+  const now = new Date();
+  const days = eventsState.range === "month" ? 30 : 7;
+  const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  const params = new URLSearchParams({
+    status: "approved",
+    from: now.toISOString(),
+    to: end.toISOString()
+  });
+  eventsState.list = await api(`/api/events?${params.toString()}`);
 }
 function renderEventsList(){
   const el=$("eventsList");
@@ -199,8 +360,8 @@ function renderEventsList(){
   eventsState.list.forEach(ev=>{
     const div=document.createElement("div");
     div.className="item";
-    div.innerHTML=`<div><strong>${ev.title}</strong></div><div class="muted">${ev.startsAt}</div>`;
-    div.onclick=()=>selectEvent(ev.id);
+    const tier = ev.organizerTrustTierLabel ? ` • ${ev.organizerTrustTierLabel}` : "";
+    div.innerHTML=`<div><strong>${ev.title || "Event"}</strong></div><div class="muted">${ev.startAt || ""}${tier}</div>`;
     el.appendChild(div);
   });
 }
@@ -212,86 +373,345 @@ function renderEventsCalendar(){
   for(let i=0;i<days;i++){
     const d=new Date(now.getTime()+i*24*60*60*1000);
     const iso=d.toISOString().slice(0,10);
-    const count=eventsState.list.filter(ev=>ev.startsAt?.slice(0,10)===iso).length;
+    const count=eventsState.list.filter(ev=>ev.startAt?.slice(0,10)===iso).length;
     const cell=document.createElement("div");
     cell.className="calendarCell";
     cell.innerHTML=`<strong>${d.getMonth()+1}/${d.getDate()}</strong><div class="muted">${count} events</div>`;
     el.appendChild(cell);
   }
 }
-function updateEventDetails(ev){
-  const title=$("eventDetailTitle");
-  const meta=$("eventDetailMeta");
-  const showBtn=$("eventShowMapBtn");
-  const rsvpBtn=$("eventRsvpBtn");
-  if(!ev){
-    title.textContent="No event selected";
-    meta.textContent="Select an event to see details.";
-    showBtn.disabled=true;
-    rsvpBtn.disabled=true;
-    return;
-  }
-  title.textContent=ev.title || "Event";
-  meta.textContent=`${ev.startsAt || ""}${ev.endsAt ? " → " + ev.endsAt : ""}${ev.locationName ? " • " + ev.locationName : ""}`;
-  showBtn.disabled = !ev.placeId;
-  rsvpBtn.disabled = false;
-  showBtn.onclick=async ()=>{
-    if(!ev.placeId) return;
-    location.hash="map";
-    setView("map");
-    try{
-      const place=await api(`/places/${ev.placeId}`);
-      await loadPlacesForDistrict(place.districtId);
-      selectPlace(place);
-    }catch(e){ alert(e.message); }
-  };
-  rsvpBtn.onclick=async ()=>{
-    try{
-      await api(`/events/${ev.id}/rsvp`,{method:"POST",headers:{ "Content-Type":"application/json" },body:JSON.stringify({status:"going"})});
-      alert("RSVP saved.");
-    }catch(e){ alert(e.message); }
-  };
-}
-async function selectEvent(id){
-  eventsState.selectedId=id;
-  const ev=eventsState.list.find(e=>e.id==id);
-  updateEventDetails(ev);
-}
 async function initEvents(){
+  if(!eventsState.bound){
+    const form=$("eventsSubmitWrap");
+    const openBtn=$("eventsOpenSubmit");
+    const closeBtn=$("eventsSubmitClose");
+    const wrap=$("eventsSubmitWrap");
+    if(openBtn && wrap){
+      openBtn.onclick=()=>{
+        wrap.style.display="block";
+        wrap.scrollIntoView({ behavior:"smooth", block:"start" });
+      };
+    }
+    if(closeBtn && wrap){
+      closeBtn.onclick=()=>{ wrap.style.display="none"; };
+    }
+    if(form){
+      form.onsubmit=async (e)=>{
+        e.preventDefault();
+        const msg=$("eventsSubmitMsg");
+        msg.textContent="Submitting...";
+        const startRaw=$("eventsStartAt").value;
+        const endRaw=$("eventsEndAt").value;
+        const payload={
+          title:$("eventsTitle").value.trim(),
+          category:$("eventsCategory").value,
+          description:$("eventsDescription").value.trim(),
+          startAt:startRaw ? new Date(startRaw).toISOString() : "",
+          endAt:endRaw ? new Date(endRaw).toISOString() : "",
+          locationName:$("eventsLocationName").value.trim(),
+          address:$("eventsAddress").value.trim(),
+          website:$("eventsWebsite").value.trim(),
+          imageUrl:$("eventsImageUrl").value.trim(),
+          organizerName:$("eventsOrganizerName").value.trim(),
+          organizerEmail:$("eventsOrganizerEmail").value.trim(),
+          organizerPhone:$("eventsOrganizerPhone").value.trim(),
+          notesToAdmin:$("eventsNotesToAdmin").value.trim()
+        };
+        try{
+          await api("/api/events/submit",{
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify(payload)
+          });
+          msg.textContent="Submitted for approval.";
+          form.reset();
+          if(wrap) wrap.style.display="none";
+        }catch(e){
+          msg.textContent=`ERROR: ${e.message}`;
+        }
+      };
+    }
+    eventsState.bound=true;
+  }
   await loadEvents(eventsState.range || "week");
   renderEventsList();
   renderEventsCalendar();
 }
 
+function escapeHtml(s){
+  return (s ?? "").toString()
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;");
+}
+function renderInline(text){
+  let out = escapeHtml(text);
+  out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  out = out.replace(/\*(.+?)\*/g, "<em>$1</em>");
+  return out;
+}
+function renderMarkdown(md){
+  const lines = (md || "").split(/\r?\n/);
+  let html = "";
+  let para = [];
+  let list = null;
+  const flushPara = ()=>{
+    if(!para.length) return;
+    html += `<p>${renderInline(para.join(" "))}</p>`;
+    para = [];
+  };
+  const flushList = ()=>{
+    if(!list || !list.length) return;
+    html += `<ul>${list.map(item=>`<li>${renderInline(item)}</li>`).join("")}</ul>`;
+    list = null;
+  };
+  for(const line of lines){
+    const trimmed = line.trim();
+    if(!trimmed){
+      flushPara();
+      flushList();
+      continue;
+    }
+    if(trimmed.startsWith("# ")){
+      flushPara();
+      flushList();
+      html += `<h1>${renderInline(trimmed.slice(2))}</h1>`;
+      continue;
+    }
+    if(trimmed.startsWith("## ")){
+      flushPara();
+      flushList();
+      html += `<h2>${renderInline(trimmed.slice(3))}</h2>`;
+      continue;
+    }
+    if(trimmed.startsWith("### ")){
+      flushPara();
+      flushList();
+      html += `<h3>${renderInline(trimmed.slice(4))}</h3>`;
+      continue;
+    }
+    if(trimmed.startsWith("- ")){
+      flushPara();
+      list = list || [];
+      list.push(trimmed.slice(2));
+      continue;
+    }
+    if(list){
+      flushList();
+    }
+    para.push(trimmed);
+  }
+  flushPara();
+  flushList();
+  return html;
+}
+function safeJsonArray(text){
+  try{
+    const arr = JSON.parse(text || "[]");
+    return Array.isArray(arr) ? arr : [];
+  }catch{
+    return [];
+  }
+}
+function renderArchiveEntries(entries){
+  const pinnedEl = $("archivePinned");
+  const listEl = $("archiveList");
+  const emptyEl = $("archiveEmpty");
+  if(!pinnedEl || !listEl || !emptyEl) return;
+  pinnedEl.innerHTML = "";
+  listEl.innerHTML = "";
+  if(!entries.length){
+    emptyEl.style.display = "block";
+    return;
+  }
+  emptyEl.style.display = "none";
+  const pinned = entries.filter(e=>Number(e.pinned)===1);
+  const rest = entries.filter(e=>Number(e.pinned)!==1);
+  const renderEntry = (entry)=>{
+    const tags = safeJsonArray(entry.tagsJson || "[]");
+    const tagHtml = tags.length ? `<div class="muted">Tags: ${tags.map(escapeHtml).join(", ")}</div>` : "";
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div class="contextTitle">${escapeHtml(entry.title || "")}</div>
+      ${tagHtml}
+      <div style="margin-top:8px;">${renderMarkdown(entry.bodyMarkdown || "")}</div>
+    `;
+    return div;
+  };
+  pinned.forEach(e=>pinnedEl.appendChild(renderEntry(e)));
+  rest.forEach(e=>listEl.appendChild(renderEntry(e)));
+}
+async function initArchive(){
+  const entries = await api("/api/archive");
+  renderArchiveEntries(entries);
+}
+
+function renderPulseCard(pulse){
+  const panel=$("panelPulse");
+  const list=$("pulseHighlights");
+  const empty=$("pulseEmpty");
+  const day=$("pulseDay");
+  if(!panel || !list || !empty || !day) return;
+  if(!pulse){
+    panel.style.display="none";
+    return;
+  }
+  panel.style.display="block";
+  day.textContent = pulse.dayKey || "—";
+  list.innerHTML = "";
+  const highlights = pulse.highlights || {};
+  const items = [];
+  if(highlights.topChannels?.length){
+    items.push(`Top channels: ${highlights.topChannels.map(c=>`${c.name} (${c.c})`).join(", ")}`);
+  }
+  if(highlights.topStores?.length){
+    items.push(`Most followed stores: ${highlights.topStores.map(s=>`${s.name} (${s.c})`).join(", ")}`);
+  }
+  if(highlights.topListings?.length){
+    items.push(`New listings: ${highlights.topListings.map(l=>l.title).join(", ")}`);
+  }
+  if(!items.length && pulse.metrics){
+    items.push(`Listings: ${pulse.metrics.listingTotal || 0} • Messages: ${pulse.metrics.messagesSentCount || 0}`);
+  }
+  if(!items.length){
+    empty.style.display="block";
+    return;
+  }
+  empty.style.display="none";
+  items.slice(0,3).forEach(line=>{
+    const div=document.createElement("div");
+    div.className="item";
+    div.textContent=line;
+    list.appendChild(div);
+  });
+}
+function renderArchivePulse(pulse){
+  const body=$("archivePulseBody");
+  const empty=$("archivePulseEmpty");
+  if(!body || !empty) return;
+  if(!pulse){
+    body.innerHTML="";
+    empty.style.display="block";
+    return;
+  }
+  empty.style.display="none";
+  body.innerHTML = `<div class="item">${renderMarkdown(pulse.markdownBody || "")}</div>`;
+}
+async function loadPulseLatest(){
+  try{
+    const pulse = await api("/api/pulse/latest");
+    pulseState.latest = pulse;
+    renderPulseCard(pulse);
+    renderArchivePulse(pulse);
+  }catch(e){
+    const msg = (e.message || "").toLowerCase();
+    if(msg.includes("404")){
+      renderPulseCard(null);
+      renderArchivePulse(null);
+    }
+  }
+}
+
+function renderLocalBizMy(apps){
+  const list=$("localBizMyList");
+  const loginMsg=$("localBizLoginMsg");
+  if(!list || !loginMsg) return;
+  if(!access.loggedIn){
+    loginMsg.style.display="block";
+    list.style.display="none";
+    return;
+  }
+  loginMsg.style.display="none";
+  list.style.display="flex";
+  list.innerHTML = "";
+  if(!apps.length){
+    list.innerHTML = `<div class="muted">(no applications yet)</div>`;
+    return;
+  }
+  apps.forEach(app=>{
+    const div=document.createElement("div");
+    div.className="item";
+    div.innerHTML = `<div><strong>${app.businessName}</strong></div><div class="muted">Status: ${app.status}</div>`;
+    list.appendChild(div);
+  });
+}
+
+async function initLocalBiz(){
+  if(!localBizState.bound){
+    const form=$("localBizForm");
+    if(form){
+      form.onsubmit=async (e)=>{
+        e.preventDefault();
+        const msg=$("localBizSubmitMsg");
+        const status=$("localBizStatus");
+        msg.textContent="Submitting...";
+        const payload={
+          businessName: $("localBizName").value.trim(),
+          ownerName: $("localBizOwner").value.trim(),
+          email: $("localBizEmail").value.trim(),
+          phone: $("localBizPhone").value.trim(),
+          address: $("localBizAddress").value.trim(),
+          city: $("localBizCity").value.trim(),
+          state: $("localBizState").value.trim(),
+          zip: $("localBizZip").value.trim(),
+          category: $("localBizCategory").value,
+          website: $("localBizWebsite").value.trim(),
+          instagram: $("localBizInstagram").value.trim(),
+          description: $("localBizDescription").value.trim(),
+          sustainabilityNotes: $("localBizSustainability").value.trim(),
+          confirmSebastian: $("localBizConfirm").checked ? 1 : 0
+        };
+        try{
+          const created = await api("/api/localbiz/apply",{
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify(payload)
+          });
+          msg.textContent="Submitted for review.";
+          status.textContent=`Status: ${created.status || "pending"}`;
+          form.reset();
+          $("localBizCity").value="Sebastian";
+          $("localBizState").value="FL";
+          if(access.loggedIn){
+            const apps = await api("/api/localbiz/my");
+            renderLocalBizMy(apps);
+          }
+        }catch(e){
+          msg.textContent=`ERROR: ${e.message}`;
+        }
+      };
+    }
+    localBizState.bound=true;
+  }
+  if(access.loggedIn){
+    const apps = await api("/api/localbiz/my");
+    renderLocalBizMy(apps);
+  }else{
+    renderLocalBizMy([]);
+  }
+}
+
 function getDistrictOptions(){
-  const buttons=[...document.querySelectorAll(".dBtn")];
-  const list=buttons.map(b=>({
-    id:Number(b.getAttribute("data-district")),
-    name:b.textContent.trim()
-  }));
-  return list;
+  return [
+    { id:1, name:"Market Square" },
+    { id:2, name:"Service Row" },
+    { id:3, name:"Retail Way" },
+    { id:4, name:"Marina / Live Hall" },
+    { id:5, name:"Town Hall" },
+  ];
 }
 
 async function loadMarketplaceData(){
   const districts=getDistrictOptions();
   market.districts=districts;
-  const allPlaces=[];
-  for(const d of districts){
-    const places=await api(`/districts/${d.id}/places`);
-    places.forEach(p=>allPlaces.push({...p, districtName:d.name}));
-  }
-  market.places=allPlaces;
-  market.listingsByPlace={};
-  for(const p of allPlaces){
-    try{
-      const listings=await api(`/places/${p.id}/listings`);
-      market.listingsByPlace[p.id]=listings;
-    }catch{
-      market.listingsByPlace[p.id]=[];
-    }
-  }
+  const listings=await api("/market/listings?townId=1");
+  market.listings=listings;
   const cats=new Set();
-  allPlaces.forEach(p=>{ if(p.category) cats.add(p.category); });
+  listings.forEach(l=>{
+    const c = l.category || l.placeCategory || "";
+    if(c) cats.add(c);
+  });
   market.categories=[...cats].sort();
 }
 
@@ -314,81 +734,100 @@ function renderMarketplaceCategories(){
   });
 }
 
-function listingTypeSetForPlace(placeId){
-  const listings=market.listingsByPlace[placeId] || [];
-  const set=new Set(listings.map(l=>l.listingType||"item"));
-  return set;
-}
-
-function filterPlaces(){
-  const q=($("marketSearch").value||"").toLowerCase().trim();
-  const district=$("marketDistrict").value;
-  const category=$("marketCategory").value;
-  const listingType=$("marketListingType").value;
-  return market.places.filter(p=>{
-    if(q && !(p.name||"").toLowerCase().includes(q)) return false;
-    if(district!=="all" && String(p.districtId)!==String(district)) return false;
-    if(category!=="all" && String(p.category)!==String(category)) return false;
-    if(listingType!=="all"){
-      const set=listingTypeSetForPlace(p.id);
-      if(!set.has(listingType)) return false;
-    }
-    return true;
-  });
-}
-
-function renderStoreCard(p, compact=false){
+function renderListingCard(l){
   const div=document.createElement("div");
   div.className="item";
-  const listings=market.listingsByPlace[p.id] || [];
-  const types=[...new Set(listings.map(l=>l.listingType||"item"))];
+  const price = Number.isFinite(Number(l.price)) ? `$${Number(l.price).toFixed(2)}` : "—";
+  const desc = (l.description || "").toString().trim();
+  const shortDesc = desc.length > 80 ? `${desc.slice(0,77)}...` : desc;
   div.innerHTML=`
-    <div><strong>${p.name || "Store"}</strong></div>
-    <div class="muted">${p.category || "category"} • ${p.districtName || ""} • id=${p.id}</div>
-    <div class="muted">${types.length ? `Listings: ${types.join(", ")}` : "No listings yet"}</div>
+    <div><strong>${l.title || "Listing"}</strong></div>
+    <div class="muted">${shortDesc || "No description"}</div>
+    <div class="muted">${l.placeName || "Store"} • ${price}</div>
     <div class="row" style="margin-top:8px;">
-      <a class="btn" href="/store/${p.id}">Open Store</a>
-      <button data-open-map="${p.id}">Open on Map</button>
+      <a class="btn" href="/store/${l.placeId}">Open Store</a>
     </div>
   `;
-  div.querySelector("button[data-open-map]").onclick=async ()=>{
-    location.hash="map";
-    setView("map");
-    await loadPlacesForDistrict(p.districtId);
-    selectPlace(p);
-  };
-  div.onclick=(e)=>{
-    if(e.target.tagName.toLowerCase()==="button" || e.target.tagName.toLowerCase()==="a") return;
-    updateContextPanel(p);
-  };
-  if(compact){
-    div.style.padding="8px";
-  }
   return div;
 }
 
 function renderMarketplace(){
-  const featured=$("marketFeatured");
-  const grid=$("marketGrid");
-  const filtered=filterPlaces();
-  featured.innerHTML="";
-  grid.innerHTML="";
-  filtered.slice(0,3).forEach(p=>featured.appendChild(renderStoreCard(p, true)));
-  filtered.forEach(p=>grid.appendChild(renderStoreCard(p)));
+  const q=($("marketSearch").value||"").toLowerCase().trim();
+  const district=$("marketDistrict").value;
+  const category=$("marketCategory").value;
+  const listingType=$("marketListingType").value;
+
+  const filtered = market.listings.filter(l=>{
+    if(q){
+      const hay = `${l.title||""} ${l.description||""} ${l.placeName||""}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    if(district!=="all" && String(l.districtId)!==String(district)) return false;
+    const c = l.category || l.placeCategory || "";
+    if(category!=="all" && String(c)!==String(category)) return false;
+    if(listingType!=="all" && (l.listingType||"item")!==listingType) return false;
+    return true;
+  });
+
+  const items=$("marketItems");
+  const offers=$("marketOffers");
+  const requests=$("marketRequests");
+  items.innerHTML=""; offers.innerHTML=""; requests.innerHTML="";
+
+  filtered.filter(l=>(l.listingType||"item")==="item").forEach(l=>items.appendChild(renderListingCard(l)));
+  filtered.filter(l=>(l.listingType||"item")==="offer").forEach(l=>offers.appendChild(renderListingCard(l)));
+  filtered.filter(l=>(l.listingType||"item")==="request").forEach(l=>requests.appendChild(renderListingCard(l)));
 }
 
 async function initMarketplace(){
-  if(!market.places.length){
+  const tabs = [
+    "marketTabLocalProducers",
+    "marketTabLocalCrafters",
+    "marketTabResellers",
+    "marketTabValueExchange"
+  ];
+  tabs.forEach(id=>{
+    const el = $(id);
+    if(!el) return;
+    el.onclick = () => {
+      const category = el.getAttribute("data-category") || "";
+      market.selectedCategory = category;
+      const wrap = $("marketSelectedWrap");
+      if(wrap) wrap.style.display = "block";
+      $("marketSelectedLabel").textContent = `Showing: ${category}`;
+      $("marketSelectedNote").textContent = "(Listings will load here next)";
+    };
+  });
+}
+
+function renderAuctionCard(l){
+  const div=document.createElement("div");
+  div.className="item";
+  const current = Number.isFinite(Number(l.highestBidCents)) && Number(l.highestBidCents) > 0
+    ? `$${(Number(l.highestBidCents)/100).toFixed(2)}`
+    : `$${(Number(l.startBidCents||0)/100).toFixed(2)}`;
+  const ends = l.auctionEndAt || l.endsAt || "—";
+  div.innerHTML=`
+    <div><strong>${l.title || "Auction"}</strong></div>
+    <div class="muted">Current bid: ${current}</div>
+    <div class="muted">Ends: ${ends}</div>
+    <div class="row" style="margin-top:8px;">
+      <a class="btn" href="/store/${l.placeId}">Open Auction</a>
+    </div>
+  `;
+  return div;
+}
+
+async function initAuctions(){
+  if(!market.listings.length){
     await loadMarketplaceData();
     setMarketplaceFilters();
     renderMarketplaceCategories();
   }
-  ["marketSearch","marketDistrict","marketCategory","marketListingType"].forEach(id=>{
-    const el=$(id);
-    el.oninput=renderMarketplace;
-    el.onchange=renderMarketplace;
-  });
-  renderMarketplace();
+  const grid=$("auctionGrid");
+  const auctions=market.listings.filter(l=>(l.listingType||"item")==="auction");
+  grid.innerHTML="";
+  auctions.forEach(l=>grid.appendChild(renderAuctionCard(l)));
 }
 
 function getClientSessionId() {
@@ -416,6 +855,205 @@ async function api(path, opts) {
 async function refreshSweep() {
   const s = await api("/sweep/balance");
   $("sweepBal").textContent = s.balance ?? 0;
+}
+
+function formatISO(iso){
+  if(!iso) return "—";
+  const t = Date.parse(iso);
+  if(Number.isNaN(t)) return iso;
+  return new Date(t).toLocaleString();
+}
+async function loadTrustContext(){
+  const ctx = await api("/town/context");
+  window.TOWN_CTX = ctx;
+  state.trustTier = Number(ctx.trustTier || 0);
+  state.trustTierLabel = ctx.tierName || ctx.trustTierLabel || "Visitor";
+  applyPermissions(ctx);
+  updatePrizeOfferCta();
+}
+
+async function loadLiveNow(){
+  const pill = $("liveNowPill");
+  if(!pill) return;
+  try{
+    const res = await fetch("/api/live/rooms/active");
+    if(res.status === 401 || res.status === 403){
+      pill.style.display="none";
+      return;
+    }
+    const rooms = await res.json();
+    if(rooms.length){
+      const r = rooms[0];
+      const label = r.hostType === "place" ? "Live Sale" : (r.hostType === "event" ? "Live Class" : "Live");
+      pill.textContent = label;
+      pill.href = r.joinUrl;
+      pill.style.display="inline-flex";
+    }else{
+      pill.style.display="none";
+    }
+  }catch{
+    pill.style.display="none";
+  }
+}
+function applyPermissions(ctx){
+  const perms = ctx?.permissions || {};
+  const tier = Number(ctx?.trustTier || 0);
+  const tierName = ctx?.tierName || ctx?.trustTierLabel || "Visitor";
+  const badge = $("trustBadge");
+  if(badge) badge.textContent = `Tier ${tier}: ${tierName}`;
+  const viewPerms = {
+    marketplace: !!perms.marketplace,
+    auctions: !!perms.auctions,
+    channels: !!perms.channels,
+    events: !!perms.events,
+    archive: !!perms.archive,
+    localbiz: !!perms.localbiz
+  };
+  Object.keys(viewPerms).forEach((view)=>{
+    const btn = document.querySelector(`.navItem[data-view="${view}"]`);
+    if(btn) btn.style.display = viewPerms[view] ? "" : "none";
+  });
+  const current = getRouteView();
+  if(current !== "map" && viewPerms[current] === false){
+    location.hash = "map";
+    setView("map");
+  }
+  const canPost = !!perms.chatPost;
+  const input = $("channelMessageInput");
+  const send = $("channelSendBtn");
+  const uploadBtn = $("channelsUploadBtn");
+  if(input){
+    input.disabled = !canPost;
+    if(!canPost) input.placeholder = "Posting requires Tier 2+.";
+  }
+  if(send) send.disabled = !canPost;
+  if(uploadBtn) uploadBtn.disabled = !perms.chatImages;
+}
+function updatePrizeOfferCta(){
+  const btn=$("sweepPrizeSubmitBtn");
+  const hint=$("sweepPrizeSubmitHint");
+  if(!btn) return;
+  if(state.trustTier >= 3){
+    btn.style.display="inline-flex";
+    if(state.trustTier >= 5){
+      btn.style.borderColor="var(--accent)";
+      if(hint) hint.textContent="Preferred donor tier";
+    }else if(hint){
+      hint.textContent="";
+    }
+  }else{
+    btn.style.display="none";
+    if(hint) hint.textContent="Local Resident+ required to submit prizes.";
+  }
+}
+async function loadPrizeOffers(){
+  const list = $("sweepPrizesList");
+  if(!list) return;
+  const prizes = await api("/api/prizes/active");
+  if(!prizes.length){
+    list.innerHTML = `<div class="muted">No active prizes.</div>`;
+    return;
+  }
+  list.innerHTML = "";
+  prizes.forEach(p=>{
+    const donorLink = p.donorPlaceId ? `/store/${p.donorPlaceId}` : `/u/${p.donorUserId}`;
+    const div=document.createElement("div");
+    div.className="item";
+    div.innerHTML = `<div><strong>${p.title}</strong> • $${(p.valueCents/100).toFixed(2)}</div>
+      <div class="muted">${p.description || ""}</div>
+      <div class="muted">Donor: <a href="${donorLink}" style="color:#cfe3ff;">${p.donorDisplayName}</a>${p.donorTrustTierLabel ? ` • ${p.donorTrustTierLabel}` : ""}</div>`;
+    list.appendChild(div);
+  });
+}
+async function submitPrizeOffer(){
+  if(state.trustTier < 3) return alert("Local Resident+ required.");
+  const msg=$("prizeSubmitMsg");
+  msg.textContent="Submitting...";
+  let imageUrl="";
+  const file=$("prizeImageFile")?.files?.[0];
+  if(file){
+    const form=new FormData();
+    form.append("file", file);
+    form.append("kind","event_prize");
+    const up=await api("/api/uploads",{ method:"POST", body: form });
+    imageUrl = up.url;
+  }
+  const payload={
+    title:$("prizeTitle").value.trim(),
+    description:$("prizeDescription").value.trim(),
+    valueCents: Math.round(Number($("prizeValue").value || 0) * 100),
+    prizeType:$("prizeType").value,
+    fulfillmentMethod:$("prizeFulfillment").value,
+    fulfillmentNotes:$("prizeFulfillmentNotes").value.trim(),
+    expiresAt:$("prizeExpiresAt").value ? new Date($("prizeExpiresAt").value).toISOString() : "",
+    imageUrl
+  };
+  if(!$("prizeConfirm").checked) return msg.textContent="Please confirm fulfillment.";
+  await api("/api/prizes/submit",{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
+  msg.textContent="Submitted for approval.";
+  $("prizeOfferModal").style.display="none";
+  await loadPrizeOffers();
+}
+async function loadSweepstake(){
+  const panel = $("panelSweepstake");
+  if(!panel) return;
+  try{
+    const data = await api("/sweepstake/active");
+    if(!data.sweepstake){
+      $("sweepStatus").textContent = "Inactive";
+      $("sweepPrize").textContent = "No active sweepstake";
+      $("sweepTime").textContent = "Check back soon";
+      $("sweepMeta").textContent = "—";
+      $("sweepTotalEntries").textContent = "0";
+      $("sweepUserEntries").textContent = "0";
+      $("sweepUserBalance").textContent = "0";
+      $("sweepWinner").textContent = "Winner: —";
+      $("sweepEnterBtn").disabled = true;
+      return;
+    }
+    const sweep = data.sweepstake;
+    $("sweepStatus").textContent = (sweep.status || "active").toUpperCase();
+    $("sweepPrize").textContent = `Prize: ${sweep.prize || sweep.title || "—"}`;
+    $("sweepTime").textContent = `Starts ${formatISO(sweep.startAt)} • Draw ${formatISO(sweep.drawAt)}`;
+    $("sweepMeta").textContent = `Entries close ${formatISO(sweep.endAt)} • 1 coin = 1 entry`;
+    $("sweepTotalEntries").textContent = data.totals?.totalEntries ?? 0;
+    $("sweepUserEntries").textContent = data.userEntries ?? 0;
+    $("sweepUserBalance").textContent = data.balance ?? 0;
+    if(data.winner?.displayName){
+      $("sweepWinner").textContent = `Winner: ${data.winner.displayName}`;
+    }else{
+      $("sweepWinner").textContent = "Winner: —";
+    }
+    $("sweepEnterBtn").disabled = !access.loggedIn;
+  }catch(e){
+    $("sweepStatus").textContent = "Error";
+    $("sweepPrize").textContent = "Sweepstake unavailable";
+  }
+}
+async function enterSweepstake(){
+  const msg = $("sweepEnterMsg");
+  msg.textContent = "";
+  try{
+    const data = await api("/sweepstake/active");
+    if(!data.sweepstake) return;
+    const entries = Number($("sweepEntryAmount").value || 0);
+    if(!Number.isFinite(entries) || entries <= 0){
+      msg.textContent = "Enter a valid amount.";
+      return;
+    }
+    const res = await api("/sweepstake/enter",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ sweepstakeId: data.sweepstake.id, entries })
+    });
+    $("sweepUserEntries").textContent = res.userEntries ?? 0;
+    $("sweepTotalEntries").textContent = res.totals?.totalEntries ?? 0;
+    $("sweepUserBalance").textContent = res.balance ?? 0;
+    $("sweepBal").textContent = res.balance ?? 0;
+    msg.textContent = "Entered.";
+  }catch(e){
+    msg.textContent = e.message || "Error";
+  }
 }
 
 async function logEvent(eventType, fields = {}, meta = {}) {
@@ -459,6 +1097,45 @@ function updateContextPanel(place){
   storeBtn.href=`/store/${place.id}`;
 }
 
+function firstNameFromDisplay(name, email){
+  const n = (name || "").toString().trim();
+  if(n) return n.split(" ")[0];
+  const e = (email || "").toString().trim();
+  if(!e) return "Member";
+  return e.split("@")[0] || "Member";
+}
+function updateSidebarAuth(){
+  const loginRow = $("navLoggedOut");
+  const loggedInRow = $("navLoggedIn");
+  if(loginRow) loginRow.style.display = access.loggedIn ? "none" : "flex";
+  if(loggedInRow) loggedInRow.style.display = access.loggedIn ? "flex" : "none";
+  const topJoin = $("topJoinLink");
+  if(topJoin) topJoin.style.display = access.loggedIn ? "none" : "inline-flex";
+  const topAuth = $("topAuthBtn");
+  if(topAuth){
+    topAuth.textContent = access.loggedIn ? "Logout" : "Login";
+  }
+  const nameEl = $("sidebarUserName");
+  if(nameEl){
+    if(access.loggedIn){
+      const first = firstNameFromDisplay(currentUser.displayName, access.email);
+      nameEl.textContent = `Hi, ${first}`;
+      nameEl.style.display = "block";
+    }else{
+      nameEl.textContent = "";
+      nameEl.style.display = "none";
+    }
+  }
+  const storeLink = $("navStoreLink");
+  if(storeLink) storeLink.href = "/me/store";
+  const myProfileLink = $("navMyProfileLink");
+  if(myProfileLink) myProfileLink.href = "/me/profile";
+  const adminLink = $("topAdminLink");
+  if(adminLink) adminLink.href = access.isAdmin ? "/admin" : "/admin/login";
+  const welcome = $("welcomeCard");
+  if(welcome) welcome.style.display = access.loggedIn ? "none" : "block";
+}
+
 function setControlsEnabled() {
   const canWrite = access.loggedIn && access.eligible;
 
@@ -482,17 +1159,31 @@ function setControlsEnabled() {
     $("authTitle").textContent = `Logged in: ${access.email}`;
     $("authTag").innerHTML = `🟡 Waitlist • ${access.reason || ""}`;
   }
+  updateSidebarAuth();
 }
 
 async function loadMe() {
   const me = await api("/me");
-  if (!me.user) { access = { loggedIn:false, eligible:false, email:null, reason:null }; setControlsEnabled(); await refreshSweep(); return; }
+  if (!me.user) {
+    access = { loggedIn:false, eligible:false, email:null, reason:null, isAdmin:false };
+    currentUser = { id:null, displayName:"" };
+    setControlsEnabled();
+    await refreshSweep();
+    await loadTrustContext();
+    if(getRouteView()==="localbiz") initLocalBiz().catch(()=>{});
+    return;
+  }
   const email = me.user.email;
+  const displayName = (me.user.displayName || "").toString().trim();
   const status = me.signup?.status || "waitlist";
   const reason = me.signup?.reason || "No signup record yet.";
-  access = { loggedIn:true, eligible: status==="eligible", email, reason };
+  const isAdmin = Number(me.user.isAdmin) === 1;
+  access = { loggedIn:true, eligible: status==="eligible", email, reason, isAdmin };
+  currentUser = { id: me.user.id, displayName };
   setControlsEnabled();
   await refreshSweep();
+  await loadTrustContext();
+  if(getRouteView()==="localbiz") initLocalBiz().catch(()=>{});
 }
 
 async function logout(){ await api("/auth/logout",{method:"POST"}); window.location.href="/signup"; }
@@ -693,16 +1384,19 @@ function initMap(){
   const accent=getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#00ffae";
   const accent2=getComputedStyle(document.documentElement).getPropertyValue("--accent-2").trim() || "#2e93ff";
   const center=[27.816,-80.470];
-  map=L.map("map").setView(center,13);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{ maxZoom:19, attribution:"&copy; OpenStreetMap contributors" }).addTo(map);
-  markersLayer=L.layerGroup().addTo(map);
-
-  const approxBoundary=[
-    [27.872,-80.555],[27.865,-80.472],[27.845,-80.430],[27.812,-80.430],
-    [27.780,-80.450],[27.765,-80.500],[27.785,-80.545],[27.840,-80.560]
-  ];
-  boundaryLayer=L.polygon(approxBoundary,{ color:accent, weight:3, fillOpacity:0.08 }).addTo(map);
-  map.fitBounds(boundaryLayer.getBounds(),{ padding:[20,20] });
+  map=L.map("map",{
+    zoomControl:false,
+    dragging:false,
+    scrollWheelZoom:false,
+    doubleClickZoom:false,
+    touchZoom:false,
+    boxZoom:false,
+    keyboard:false,
+    tap:false,
+    attributionControl:false
+  }).setView(center,13);
+  markersLayer=null;
+  boundaryLayer=null;
 }
 
 function setPlaceMarkers(places){
@@ -728,6 +1422,11 @@ function bindDistrictButtons(){
 async function main(){
   $("logoutBtn").onclick=logout;
   $("savePlaceSettings").onclick=savePlaceSettings;
+  if($("sweepEnterBtn")) $("sweepEnterBtn").onclick=enterSweepstake;
+  if($("sweepPrizeSubmitBtn")) $("sweepPrizeSubmitBtn").onclick=()=>{ $("prizeOfferModal").style.display="block"; };
+  if($("prizeCancelBtn")) $("prizeCancelBtn").onclick=()=>{ $("prizeOfferModal").style.display="none"; };
+  if($("prizeSubmitBtn")) $("prizeSubmitBtn").onclick=()=>submitPrizeOffer().catch(e=>{ $("prizeSubmitMsg").textContent=e.message; });
+  if($("topAuthBtn")) $("topAuthBtn").onclick=()=>access.loggedIn ? logout() : (window.location.href="/signup");
 
   $("viewerBuyer").onclick=()=>setViewer("buyer");
   $("viewerSeller").onclick=()=>setViewer("seller");
@@ -745,14 +1444,20 @@ async function main(){
     renderEventsCalendar();
   };
 
-  await loadTheme();
+  if(window.loadTownTheme) await window.loadTownTheme();
+  bindChannels();
   bindRouter();
   await loadStatus();
   await loadMe();
   await refreshSweep();
+  await loadSweepstake();
+  await loadPrizeOffers();
+  await loadLiveNow();
+  await loadPulseLatest();
 
   initMap();
   bindDistrictButtons();
+  await loadPlacesForDistrict(1);
 
   await logEvent("town_view", {}, {});
   debug("Trusted server events enabled for sweepstake_enter + listing_mark_sold.");

@@ -5,79 +5,75 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sebastian Digital Town</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <style>
-      :root {
-        --bg:#070b10;
-        --panel:#0f1722;
-        --panel-2:#0b1220;
-        --text:#e8eef6;
-        --muted:#9fb0c3;
-        --accent:#00ffae;
-        --accent-2:#2e93ff;
-        --border:rgba(255,255,255,.10);
-        --card:rgba(15,23,34,.78);
-        --sidebar:#0a0f14;
-        --rail:#0c1118;
-        --font-sans:"Sora", ui-sans-serif, system-ui;
-        --font-display:"Space Grotesk", ui-sans-serif, system-ui;
-      }
       * { box-sizing:border-box; }
-      body { margin:0; font-family:var(--font-sans); background:
-        radial-gradient(900px 420px at 8% -10%, rgba(0,255,174,.12), transparent 60%),
-        radial-gradient(680px 420px at 82% 2%, rgba(46,147,255,.16), transparent 60%),
-        linear-gradient(180deg,#070b10,#05070b);
-        color:var(--text);
-      }
-      a { color:#cfe3ff; text-decoration:none; }
-      .shell { display:grid; grid-template-columns: 240px minmax(0,1fr) 320px; gap:12px; padding:12px; min-height:100vh; }
+      body { margin:0; font-family:var(--font-sans); background:var(--bg); color:var(--text); }
+      a { color:var(--accent2); text-decoration:none; }
+      .shell { display:grid; grid-template-columns: 240px minmax(0,1fr); gap:12px; padding:12px; min-height:100vh; }
       .sidebar { background:var(--sidebar); border:1px solid var(--border); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:14px; }
       .brand { display:flex; gap:12px; align-items:center; }
-      .brandMark { width:14px; height:14px; border-radius:8px; background:var(--accent); box-shadow:0 0 18px rgba(0,255,170,.55); }
+      .brandMark { width:14px; height:14px; border-radius:8px; background:var(--accent); box-shadow:0 0 18px color-mix(in srgb, var(--accent) 55%, transparent); }
       .brandTitle { font-family:var(--font-display); font-size:16px; font-weight:700; }
       .brandSub { color:var(--muted); font-size:12px; letter-spacing:.3px; }
       .nav { display:flex; flex-direction:column; gap:6px; }
       .navItem { padding:10px 12px; border-radius:12px; border:1px solid transparent; background:transparent; color:var(--text); text-align:left; font-weight:600; cursor:pointer; }
-      .navItem.active { border-color:var(--accent); background:rgba(0,255,170,.08); }
+      .navItem.active { border-color:var(--accent); background:color-mix(in srgb, var(--accent) 10%, transparent); }
       .main { display:flex; flex-direction:column; gap:12px; }
-      .topbar { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border:1px solid var(--border); border-radius:16px; background:rgba(10,14,20,.7); }
+      .topbar { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border:1px solid var(--border); border-radius:16px; background:var(--panel2); }
       .views { display:flex; flex-direction:column; gap:12px; }
       .view { display:none; }
       .view.active { display:block; }
       .channelLayout { display:grid; grid-template-columns:260px 1fr; gap:12px; }
       .eventsLayout { display:grid; grid-template-columns:300px 1fr; gap:12px; }
       .calendarGrid { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; }
-      .calendarCell { border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px; min-height:70px; background:rgba(10,14,20,.35); }
+      .calendarCell { border:1px solid var(--border); border-radius:12px; padding:8px; min-height:70px; background:var(--panel2); }
       .calendarCell strong { display:block; font-size:12px; }
+      .calendarCell.active { border-color:var(--accent); box-shadow:0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
+      .eventDots { display:flex; gap:4px; margin-top:6px; flex-wrap:wrap; }
+      .eventDot { width:6px; height:6px; border-radius:999px; background:var(--accent); }
+      .eventsForm { display:flex; flex-direction:column; gap:10px; }
+      .eventsForm label { font-size:12px; color:var(--muted); }
       @media (max-width:1100px){ .channelLayout { grid-template-columns:1fr; } }
       .routeTitle { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.24em; }
       .routePath { font-family:var(--font-display); font-size:18px; font-weight:700; }
-      .rail { background:var(--rail); border:1px solid var(--border); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px; }
       .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-      .pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:rgba(15,23,34,.65); font-size:12px; color:#cfe3ff; text-decoration:none; }
+      .pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--panel2); font-size:12px; color:var(--text); text-decoration:none; }
       .muted { color:var(--muted); font-size:12px; }
-      .layout { display:grid; grid-template-columns:1.45fr 1fr; gap:12px; }
+      .layout { display:grid; grid-template-columns:1fr; gap:12px; }
       .panel { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
       .panel.compact { padding:10px; }
-      .panelHead { padding:12px; border-bottom:1px solid rgba(255,255,255,.07); display:flex; justify-content:space-between; gap:10px; }
+      .panelHead { padding:12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; gap:10px; }
       .panelBody { padding:12px; }
-      .mapWrap { position:relative; height:680px; border-radius:14px; border:1px solid rgba(255,255,255,.10); overflow:hidden; }
-      #map { position:absolute; inset:0; }
-      .districtBar { position:absolute; top:12px; left:12px; display:flex; flex-wrap:wrap; gap:8px; z-index:999; }
-      .dBtn { padding:8px 10px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(10,14,20,.65); color:var(--text); cursor:pointer; font-size:12px; font-weight:800; }
-      .dBtn.active { border-color:var(--accent); box-shadow:0 10px 30px rgba(0,255,170,.12); }
-      .authBanner { border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; background:rgba(10,14,20,.35); display:flex; justify-content:space-between; gap:10px; align-items:center; }
+      .marketTab {
+        border:1px solid var(--border);
+        border-radius:16px;
+        padding:16px;
+        background:var(--panel2);
+        cursor:pointer;
+      }
+      .marketTab:hover { border-color: var(--accent); }
+      .marketTabTitle { font-weight:800; font-size:16px; }
+      .marketTabMeta { display:flex; justify-content:space-between; gap:10px; }
+      .mapWrap { position:relative; height:680px; border-radius:14px; overflow:hidden; background-image:url("/images/sebastian-ui-map.png"); background-size:cover; background-position:center; }
+      #map {
+        position:absolute;
+        inset:0;
+        background:transparent;
+      }
+      .authBanner { border:1px solid var(--border); border-radius:12px; padding:10px; background:var(--panel2); display:flex; justify-content:space-between; gap:10px; align-items:center; }
       .authTitle { font-weight:800; }
-      .debugBox { border:1px solid rgba(255,204,0,.25); background:rgba(255,204,0,.07); border-radius:12px; padding:10px; margin-top:10px; }
+      .debugBox { border:1px solid var(--border); background:var(--panel2); border-radius:12px; padding:10px; margin-top:10px; }
       .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; white-space: pre-wrap; }
       .list { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
-      .item { border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; background:rgba(10,14,20,.30); }
-      .btn, button { padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0b1220; color:var(--text); cursor:pointer; text-decoration:none; }
+      .item { border:1px solid var(--border); border-radius:12px; padding:10px; background:var(--panel); }
+      .btn, button { padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--panel2); color:var(--text); cursor:pointer; text-decoration:none; }
       .btnGhost { background:transparent; }
-      input, textarea, select { width:100%; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.10); background:#0b1220; color:var(--text); }
+      input, textarea, select { width:100%; padding:10px; border-radius:12px; border:1px solid var(--border); background:var(--panel2); color:var(--text); }
       textarea { min-height:80px; }
       button:disabled { opacity:.5; cursor:not-allowed; }
-      hr { border:none; border-top:1px solid rgba(255,255,255,.08); margin:12px 0; }
+      hr { border:none; border-top:1px solid var(--border); margin:12px 0; }
       .twoCol { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
       .contextTitle { font-weight:800; font-size:14px; }
       @media (max-width:1200px){
@@ -98,22 +94,33 @@
             <div class="brandSub">Digital Town</div>
           </div>
         </div>
+        <div class="muted" id="sidebarUserName" style="display:none;"></div>
         <nav class="nav">
           <button class="navItem active" data-view="map">Map</button>
+          <button class="navItem" data-view="scheduled">Scheduled Live Shows</button>
+          <button class="navItem" data-view="auctions">Auctions</button>
           <button class="navItem" data-view="marketplace">Marketplace</button>
+          <button class="navItem" data-view="localbiz">Local Sebastian Businesses</button>
           <button class="navItem" data-view="channels">Channels</button>
           <button class="navItem" data-view="events">Events</button>
           <button class="navItem" data-view="archive">Archive</button>
-          <button class="navItem" data-view="admin">Admin</button>
         </nav>
         <div class="panel compact">
           <div class="muted">System</div>
-          <div class="row" style="margin-top:8px;">
+          <div class="row mt-8">
             <span class="pill" id="apiStatus">API: …</span>
             <span class="pill">Sweep: <span id="sweepBal">0</span></span>
           </div>
-          <div class="row" style="margin-top:8px;">
-            <a class="pill" href="/signup">Join Pilot</a>
+          <div class="row mt-8">
+            <span class="pill" id="trustBadge">Tier 0: Visitor</span>
+          </div>
+          <div class="row mt-8" id="navLoggedOut">
+            <a class="pill" id="navLoginLink" href="/signup">Join / Login</a>
+          </div>
+          <div class="row mt-8" style="display:none;" id="navLoggedIn">
+            <a class="pill" id="navStoreLink" href="/me/store">Store Profile</a>
+            <a class="pill" id="navMyProfileLink" href="/me/profile">My Profile</a>
+            <a class="pill" id="navLiveLink" href="/me/live">Live Host</a>
           </div>
         </div>
       </aside>
@@ -122,13 +129,16 @@
         <div class="topbar">
           <div>
             <div class="routeTitle">Route View</div>
-            <div class="routePath" id="routeView">/ui</div>
-          </div>
-          <div class="row">
-            <a class="pill" href="/signup">Join Pilot</a>
-            <a class="pill" href="/sweepstake">Sweepstake</a>
-          </div>
+          <div class="routePath" id="routeView">/ui</div>
         </div>
+        <div class="row">
+          <a class="pill" id="liveNowPill" href="#" style="display:none;">LIVE Now</a>
+          <a class="pill" id="topJoinLink" href="/signup">Join / Signup</a>
+          <a class="pill" id="topAdminLink" href="/admin/login">Admin</a>
+          <button class="pill" id="themeToggleBtn" type="button">Dark / Light</button>
+          <button class="pill" id="topAuthBtn" type="button">Login</button>
+        </div>
+      </div>
 
         <div class="views" id="routeViews">
           <section class="view active" data-view="map">
@@ -143,18 +153,87 @@
             <div class="panelBody">
               <div class="mapWrap">
                 <div id="map"></div>
-                <div class="districtBar">
-                  <button class="dBtn" data-district="1">Market Square</button>
-                  <button class="dBtn" data-district="2">Service Row</button>
-                  <button class="dBtn" data-district="3">Retail Way</button>
-                  <button class="dBtn" data-district="4">Marina / Live Hall</button>
-                  <button class="dBtn" data-district="5">Town Hall</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" id="panelSweepstake">
+            <div class="panelHead">
+              <div>
+                <strong>Town Sweepstake</strong>
+                <div class="muted" id="sweepTime">No active sweepstake</div>
+              </div>
+              <div class="pill" id="sweepStatus">—</div>
+            </div>
+            <div class="panelBody">
+              <div class="row">
+                <div class="contextTitle" id="sweepPrize">—</div>
+              </div>
+              <div class="muted" id="sweepMeta">—</div>
+              <div class="row mt-8">
+                <span class="pill">Total Entries: <span id="sweepTotalEntries">0</span></span>
+                <span class="pill">Your Entries: <span id="sweepUserEntries">0</span></span>
+                <span class="pill">Your Balance: <span id="sweepUserBalance">0</span></span>
+              </div>
+              <div class="row mt-10">
+                <input id="sweepEntryAmount" class="input max-w-120" type="number" min="1" value="1" />
+                <button id="sweepEnterBtn">Enter</button>
+                <span class="muted" id="sweepEnterMsg"></span>
+              </div>
+              <div class="row mt-12">
+                <button id="sweepPrizeSubmitBtn" class="pill" style="display:none;">Submit Prize Offer</button>
+                <span class="muted" id="sweepPrizeSubmitHint"></span>
+              </div>
+              <div class="list mt-10" id="sweepPrizesList"></div>
+              <div class="row mt-10">
+                <span class="pill" id="sweepWinner">Winner: —</span>
+              </div>
+              <div id="prizeOfferModal" class="panel mt-12" style="display:none;">
+                <div class="panelHead"><strong>Submit Prize Offer</strong></div>
+                <div class="panelBody">
+                  <input id="prizeTitle" placeholder="Prize title" />
+                  <textarea id="prizeDescription" placeholder="Describe the prize"></textarea>
+                  <input id="prizeValue" type="number" min="0" placeholder="Value (USD)" />
+                  <select id="prizeType">
+                    <option value="physical">physical</option>
+                    <option value="service">service</option>
+                    <option value="giftcard">giftcard</option>
+                    <option value="experience">experience</option>
+                  </select>
+                  <select id="prizeFulfillment">
+                    <option value="pickup">pickup</option>
+                    <option value="meetup">meetup</option>
+                    <option value="shipping">shipping</option>
+                  </select>
+                  <textarea id="prizeFulfillmentNotes" placeholder="Fulfillment notes"></textarea>
+                  <input id="prizeExpiresAt" type="datetime-local" />
+                  <input id="prizeImageFile" type="file" accept="image/*" />
+                  <label><input id="prizeConfirm" type="checkbox" /> I confirm I will fulfill this prize</label>
+                  <div class="row mt-8">
+                    <button id="prizeSubmitBtn">Submit</button>
+                    <button id="prizeCancelBtn" class="pill" type="button">Cancel</button>
+                    <span class="muted" id="prizeSubmitMsg"></span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="panel" id="panelControl">
+          <div class="panel" id="panelPulse" style="display:none;">
+            <div class="panelHead">
+              <div>
+                <strong>Today’s Pulse</strong>
+                <div class="muted" id="pulseDay">—</div>
+              </div>
+              <a class="pill" href="#archive">Archive</a>
+            </div>
+            <div class="panelBody">
+              <div class="list" id="pulseHighlights"></div>
+              <div class="muted" id="pulseEmpty" style="display:none;">No pulse published yet.</div>
+            </div>
+          </div>
+
+          <div class="panel" id="panelControl" style="display:none;">
             <div class="panelHead">
           <div>
             <strong>Control Panel</strong>
@@ -169,14 +248,39 @@
                 </div>
                 <div class="row">
                   <button id="logoutBtn">Logout</button>
-                  <a class="pill" href="/admin/sweep">Operator Toolkit</a>
+                  <a class="pill" href="/admin">Admin</a>
                 </div>
               </div>
 
-              <div class="debugBox">
-                <strong>Status</strong>
-                <div class="mono" id="debug">(ready)</div>
+              <div class="item" id="welcomeCard" style="display:none; margin-top:10px;">
+                <div><strong>Welcome to the Town</strong></div>
+                <div class="muted">Join to unlock listings, messages, and local services.</div>
+                <div class="row" style="margin-top:8px;">
+                  <a class="btn" href="/signup">Join / Login</a>
+                </div>
               </div>
+
+              <div class="item" style="margin-top:10px;">
+                <div class="contextTitle" id="contextPlaceName">No place selected</div>
+                <div class="muted" id="contextPlaceMeta">Select a place on the map to see details.</div>
+                <div class="row" style="margin-top:10px;">
+                  <a class="btn" id="contextStoreBtn" href="#" aria-disabled="true">Open Storefront</a>
+                </div>
+              </div>
+
+              <div class="item">
+                <div class="contextTitle" id="eventDetailTitle">No event selected</div>
+                <div class="muted" id="eventDetailMeta">Select an event to see details.</div>
+                <div class="row" style="margin-top:10px;">
+                  <button id="eventShowMapBtn" disabled>Show on Map</button>
+                  <button id="eventRsvpBtn" disabled>RSVP</button>
+                </div>
+              </div>
+
+              <details class="debugBox debugToggle">
+                <summary>Status</summary>
+                <div class="mono" id="debug">(ready)</div>
+              </details>
 
               <hr />
 
@@ -245,58 +349,187 @@
             </div>
           </section>
 
+          <section class="view" data-view="scheduled">
+            <div class="panel">
+              <div class="panelHead">
+                <div>
+                  <strong>Scheduled Live Shows</strong>
+                  <div class="muted">Upcoming live sessions</div>
+                </div>
+              </div>
+              <div class="panelBody">
+                <div class="list" id="scheduledShowList"></div>
+                <div class="item" id="scheduledDetail" style="display:none;margin-top:10px;"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="view" data-view="auctions">
+            <div class="panel">
+              <div class="panelHead">
+                <div>
+                  <strong>Auctions</strong>
+                  <div class="muted">Live auctions across the town</div>
+                </div>
+              </div>
+              <div class="panelBody">
+                <div class="grid" id="auctionGrid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:10px;"></div>
+              </div>
+            </div>
+          </section>
+
           <section class="view" data-view="marketplace">
             <div class="panel">
               <div class="panelHead">
                 <div>
                   <strong>Marketplace</strong>
-                  <div class="muted">Browse stores and active listings</div>
-                </div>
-                <div class="row">
-                  <input id="marketSearch" placeholder="Search stores…" style="max-width:240px;" />
+                  <div class="muted">Browse by category</div>
                 </div>
               </div>
               <div class="panelBody">
-                <div class="twoCol">
-                  <div>
-                    <label class="muted">District</label>
-                    <select id="marketDistrict"></select>
-                  </div>
-                  <div>
-                    <label class="muted">Category</label>
-                    <select id="marketCategory"></select>
+                <div class="marketTab" id="marketTabLocalProducers" data-category="Local Producers">
+                  <div class="marketTabMeta">
+                    <div>
+                      <div class="marketTabTitle">Local Producers</div>
+                      <div class="muted">Farmers, growers, and fresh local goods.</div>
+                    </div>
+                    <div class="pill" id="marketCountLocalProducers">Loading…</div>
                   </div>
                 </div>
-                <div class="twoCol" style="margin-top:8px;">
-                  <div>
-                    <label class="muted">Listing Type</label>
-                    <select id="marketListingType">
-                      <option value="all">all</option>
-                      <option value="item">item</option>
-                      <option value="offer">offer</option>
-                      <option value="request">request</option>
-                      <option value="auction">auction</option>
-                    </select>
+                <div class="marketTab" id="marketTabLocalCrafters" data-category="Local Crafters" style="margin-top:10px;">
+                  <div class="marketTabMeta">
+                    <div>
+                      <div class="marketTabTitle">Local Crafters</div>
+                      <div class="muted">Handmade goods and artisan work.</div>
+                    </div>
+                    <div class="pill" id="marketCountLocalCrafters">Loading…</div>
                   </div>
-                  <div>
-                    <label class="muted">Categories</label>
-                    <div class="row" id="marketCategories"></div>
+                </div>
+                <div class="marketTab" id="marketTabResellers" data-category="Resellers Market" style="margin-top:10px;">
+                  <div class="marketTabMeta">
+                    <div>
+                      <div class="marketTabTitle">Resellers Market</div>
+                      <div class="muted">Curated resale, vintage, and pre-owned items.</div>
+                    </div>
+                    <div class="pill" id="marketCountResellers">Loading…</div>
+                  </div>
+                </div>
+                <div class="marketTab" id="marketTabValueExchange" data-category="Value Exchange" style="margin-top:10px;">
+                  <div class="marketTabMeta">
+                    <div>
+                      <div class="marketTabTitle">Value Exchange</div>
+                      <div class="muted">Barter, trade, and community exchange.</div>
+                    </div>
+                    <div class="pill" id="marketCountValueExchange">Loading…</div>
                   </div>
                 </div>
 
-                <div style="margin-top:12px;">
-                  <div class="muted">Featured Stores</div>
-                  <div class="list" id="marketFeatured"></div>
+                <div id="marketSelectedWrap" style="margin-top:16px; display:none;">
+                  <div class="contextTitle" id="marketSelectedLabel">Showing: —</div>
+                  <div class="muted" id="marketSelectedNote">(Listings will load here next)</div>
                 </div>
-
-                <div class="hr"></div>
-
-                <div class="muted">Stores</div>
-                <div class="grid" id="marketGrid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:10px;"></div>
               </div>
             </div>
           </section>
 
+          <section class="view" data-view="localbiz">
+            <div class="panel">
+              <div class="panelHead">
+                <div>
+                  <strong>Local Sebastian Businesses</strong>
+                  <div class="muted">This is a curated directory of businesses physically located in Sebastian. Apply below.</div>
+                </div>
+              </div>
+              <div class="panelBody">
+                <div class="item">
+                  <div class="muted">
+                    This is a curated directory of businesses physically located in Sebastian. Apply below.
+                  </div>
+                </div>
+
+                <form class="item eventsForm" id="localBizForm" style="margin-top:10px;">
+                  <label>Business Name (required)</label>
+                  <input id="localBizName" />
+
+                  <label>Owner Full Name (required)</label>
+                  <input id="localBizOwner" />
+
+                  <div class="twoCol">
+                    <div>
+                      <label>Email (required)</label>
+                      <input id="localBizEmail" />
+                    </div>
+                    <div>
+                      <label>Phone (optional)</label>
+                      <input id="localBizPhone" />
+                    </div>
+                  </div>
+
+                  <label>Street Address (required)</label>
+                  <input id="localBizAddress" />
+
+                  <div class="twoCol">
+                    <div>
+                      <label>City (required)</label>
+                      <input id="localBizCity" value="Sebastian" />
+                    </div>
+                    <div>
+                      <label>State (required)</label>
+                      <input id="localBizState" value="FL" />
+                    </div>
+                  </div>
+
+                  <label>ZIP (required)</label>
+                  <input id="localBizZip" />
+
+                  <label>Category</label>
+                  <select id="localBizCategory">
+                    <option value="Producer">Producer</option>
+                    <option value="Crafter">Crafter</option>
+                    <option value="Retail">Retail</option>
+                    <option value="Restaurant/Food">Restaurant/Food</option>
+                    <option value="Service">Service</option>
+                    <option value="Wellness">Wellness</option>
+                    <option value="Other">Other</option>
+                  </select>
+
+                  <div class="twoCol">
+                    <div>
+                      <label>Website (optional)</label>
+                      <input id="localBizWebsite" />
+                    </div>
+                    <div>
+                      <label>Instagram (optional)</label>
+                      <input id="localBizInstagram" />
+                    </div>
+                  </div>
+
+                  <label>Short Description (required, 1–3 sentences)</label>
+                  <textarea id="localBizDescription"></textarea>
+
+                  <label>Sustainability Notes (optional)</label>
+                  <textarea id="localBizSustainability"></textarea>
+
+                  <label class="row">
+                    <input id="localBizConfirm" type="checkbox" style="width:auto;" />
+                    <span class="muted">I confirm this business is physically located in Sebastian, FL</span>
+                  </label>
+
+                  <div class="row" style="justify-content:space-between;">
+                    <button id="localBizSubmitBtn" type="submit">Submit Application</button>
+                    <div class="muted" id="localBizSubmitMsg"></div>
+                  </div>
+                  <div class="muted" id="localBizStatus"></div>
+                </form>
+
+                <hr />
+
+                <div class="contextTitle">Your Applications</div>
+                <div class="muted" id="localBizLoginMsg">Log in to track your application.</div>
+                <div class="list" id="localBizMyList" style="display:none;"></div>
+              </div>
+            </div>
+          </section>
           <section class="view" data-view="channels">
             <div class="panel">
               <div class="panelHead">
@@ -306,24 +539,45 @@
                 </div>
               </div>
               <div class="panelBody">
-                <div class="channelLayout">
-                  <div>
-                    <div class="muted">Channel List</div>
-                    <div class="list" id="channelsList"></div>
-                  </div>
-                  <div>
-                    <div class="contextTitle" id="channelTitle">Select a channel</div>
-                    <div class="muted" id="channelMeta">—</div>
-                    <div class="list" id="channelMessages" style="margin-top:10px;"></div>
-                    <div class="item" id="replyToBar" style="display:none; margin-top:10px;">
-                      <div class="row" style="justify-content:space-between;">
-                        <div class="muted" id="replyToText">Replying…</div>
-                        <button id="clearReplyBtn">Clear</button>
-                      </div>
+                <div class="list" id="channelsList" style="display:none;"></div>
+                <div id="channelsStack">
+                  <div class="item" id="channelsCard1">Sebastian Neighbors & Friends</div>
+                  <div class="item" id="channelsCard2">Sebastian Community Chat</div>
+                  <div class="item" id="channelsCard3">Fun Activities & Events</div>
+                  <div class="item" id="channelsCard4">Sebastian Lifestyle & Wellness</div>
+                  <div class="item" id="channelsCard5">Local Meetups & Walking Groups</div>
+                  <div class="item" id="channelsCard6">Sebastian Culture & Memories</div>
+                  <div class="item" id="channelsCard7">County Events & Happenings</div>
+                  <div class="item" id="channelsCard8">Ladies Social Club</div>
+                  <div class="item" id="channelsCard9">Reflections on the River</div>
+                </div>
+                <div class="item" id="channelsPlaceholder" style="margin-top:12px; display:none;">
+                  <div class="contextTitle" id="channelsPlaceholderTitle">Welcome</div>
+                  <div class="muted" id="channelsPlaceholderBody">Welcome to — posts load here.</div>
+                  <div class="item" id="channelsPlaceholderPost" style="margin-top:10px;">(First post goes here)</div>
+                </div>
+
+                <div>
+                  <div class="contextTitle" id="channelTitle">Select a channel</div>
+                  <div class="muted" id="channelMeta">—</div>
+                  <div class="list" id="channelMessages" style="margin-top:10px;"></div>
+                  <div class="item" id="replyToBar" style="display:none; margin-top:10px;">
+                    <div class="row" style="justify-content:space-between;">
+                      <div class="muted" id="replyToText">Replying…</div>
+                      <button id="clearReplyBtn">Clear</button>
                     </div>
-                    <textarea id="channelMessageInput" placeholder="Write a message…"></textarea>
-                    <div class="row" style="margin-top:8px;">
-                      <button id="channelSendBtn">Send</button>
+                  </div>
+                  <textarea id="channelMessageInput" placeholder="Write a message…"></textarea>
+                  <div class="row" style="margin-top:8px;">
+                    <input id="channelsImageInput" type="file" accept="image/png,image/jpeg,image/webp" style="display:none;" />
+                    <button id="channelsUploadBtn" type="button">Upload Photo</button>
+                    <button id="channelSendBtn">Send</button>
+                  </div>
+                  <div class="item" id="channelsImagePreview" style="margin-top:8px; display:none;">
+                    <div class="muted">Photo attached</div>
+                    <img id="channelsImageThumb" alt="" style="max-width:180px;border-radius:10px;border:1px solid var(--border);margin-top:6px;" />
+                    <div class="row" style="margin-top:6px;">
+                      <button id="channelsImageClear" type="button">Remove</button>
                     </div>
                   </div>
                 </div>
@@ -341,9 +595,87 @@
                 <div class="row">
                   <button id="eventsWeekBtn">Week</button>
                   <button id="eventsMonthBtn">Month</button>
+                  <button id="eventsOpenSubmit">Submit an Event</button>
                 </div>
               </div>
               <div class="panelBody">
+                <form class="item eventsForm" id="eventsSubmitWrap" style="display:none;">
+                  <div class="row" style="justify-content:space-between;">
+                    <div class="contextTitle">Submit an Event</div>
+                    <button class="btnGhost" id="eventsSubmitClose" type="button">Close</button>
+                  </div>
+                  <div class="muted">All events are reviewed before appearing publicly.</div>
+
+                  <label>Event Title (required)</label>
+                  <input id="eventsTitle" placeholder="Event title" />
+
+                  <label>Category</label>
+                  <select id="eventsCategory">
+                    <option value="community">community</option>
+                    <option value="market">market</option>
+                    <option value="music">music</option>
+                    <option value="outdoors">outdoors</option>
+                    <option value="education">education</option>
+                    <option value="charity">charity</option>
+                    <option value="sports">sports</option>
+                    <option value="kids">kids</option>
+                    <option value="other">other</option>
+                  </select>
+
+                  <label>Description (required)</label>
+                  <textarea id="eventsDescription" placeholder="Tell us about the event"></textarea>
+
+                  <div class="twoCol">
+                    <div>
+                      <label>Start Date/Time (required)</label>
+                      <input id="eventsStartAt" type="datetime-local" />
+                    </div>
+                    <div>
+                      <label>End Date/Time (required)</label>
+                      <input id="eventsEndAt" type="datetime-local" />
+                    </div>
+                  </div>
+
+                  <label>Location Name (optional)</label>
+                  <input id="eventsLocationName" placeholder="Venue or location name" />
+
+                  <label>Address (optional)</label>
+                  <input id="eventsAddress" placeholder="Street address" />
+
+                  <div class="twoCol">
+                    <div>
+                      <label>Website (optional)</label>
+                      <input id="eventsWebsite" placeholder="https://..." />
+                    </div>
+                    <div>
+                      <label>Image URL (optional)</label>
+                      <input id="eventsImageUrl" placeholder="https://..." />
+                    </div>
+                  </div>
+
+                  <div class="twoCol">
+                    <div>
+                      <label>Organizer Name (required)</label>
+                      <input id="eventsOrganizerName" placeholder="Organizer name" />
+                    </div>
+                    <div>
+                      <label>Organizer Email (required)</label>
+                      <input id="eventsOrganizerEmail" placeholder="organizer@email.com" />
+                    </div>
+                  </div>
+
+                  <label>Organizer Phone (optional)</label>
+                  <input id="eventsOrganizerPhone" placeholder="(555) 555-5555" />
+
+                  <label>Notes to Admin (optional)</label>
+                  <textarea id="eventsNotesToAdmin" placeholder="Anything else for review?"></textarea>
+
+                  <div class="row" style="justify-content:space-between;">
+                    <button id="eventsSubmitBtn" type="submit">Submit Event</button>
+                    <div class="muted" id="eventsSubmitMsg"></div>
+                  </div>
+                </form>
+
                 <div class="eventsLayout">
                   <div>
                     <div class="muted">Event List</div>
@@ -360,9 +692,18 @@
 
           <section class="view" data-view="archive">
             <div class="panel">
+              <div class="panelHead"><strong>Daily Pulse</strong></div>
+              <div class="panelBody">
+                <div id="archivePulseBody"></div>
+                <div class="muted" id="archivePulseEmpty" style="display:none;">No pulse published yet.</div>
+              </div>
+            </div>
+            <div class="panel">
               <div class="panelHead"><strong>Archive</strong></div>
               <div class="panelBody">
-                <div class="muted">Archive view placeholder.</div>
+                <div id="archivePinned"></div>
+                <div class="list" id="archiveList" style="margin-top:12px;"></div>
+                <div class="muted" id="archiveEmpty" style="display:none;">No archive entries yet.</div>
               </div>
             </div>
           </section>
@@ -377,65 +718,9 @@
           </section>
         </div>
       </main>
-
-      <aside class="rail">
-        <div class="panel">
-          <div class="panelHead">
-            <strong>Context</strong>
-          </div>
-          <div class="panelBody">
-            <div class="contextTitle" id="contextPlaceName">No place selected</div>
-            <div class="muted" id="contextPlaceMeta">Select a place on the map to see details.</div>
-            <div class="row" style="margin-top:10px;">
-              <a class="btn" id="contextStoreBtn" href="#" aria-disabled="true">Open Storefront</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panelHead">
-            <strong>Event Details</strong>
-          </div>
-          <div class="panelBody">
-            <div class="contextTitle" id="eventDetailTitle">No event selected</div>
-            <div class="muted" id="eventDetailMeta">Select an event to see details.</div>
-            <div class="row" style="margin-top:10px;">
-              <button id="eventShowMapBtn" disabled>Show on Map</button>
-              <button id="eventRsvpBtn" disabled>RSVP</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panelHead">
-            <strong>Upcoming Events</strong>
-          </div>
-          <div class="panelBody">
-            <div class="item">
-              <div><strong>Town Hall Q&A</strong></div>
-              <div class="muted">Tomorrow · 6:00 PM</div>
-            </div>
-            <div class="item">
-              <div><strong>Market Pop-up</strong></div>
-              <div class="muted">Saturday · 10:00 AM</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panelHead">
-            <strong>Quick Actions</strong>
-          </div>
-          <div class="panelBody">
-            <div class="row">
-              <a class="btnGhost" href="#panelListings">Listings</a>
-              <a class="btnGhost" href="#panelMessages">Messages</a>
-            </div>
-          </div>
-        </div>
-      </aside>
     </div>
 
+    <script src="/theme.js?v=1"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="/app.js?v=healthfix1"></script>
   </body>

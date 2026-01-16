@@ -4,64 +4,74 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Storefront • Sebastian Digital Town</title>
+  <link rel="stylesheet" href="/ui-kit.css?v=1">
   <style>
-    :root { --bg:#070b10; --panel:#0f1722; --text:#e8eef6; --muted:#9fb0c3; --mint:#00ffae; }
     * { box-sizing:border-box; }
-    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif; background:linear-gradient(180deg,#070b10,#05070b); color:var(--text); }
-    header { padding:12px 16px; background:rgba(10,14,20,.9); border-bottom:1px solid rgba(255,255,255,.08); position:sticky; top:0; z-index:10; backdrop-filter: blur(10px); }
-    a { color:#cfe3ff; text-decoration:none; }
+    body { margin:0; font-family:var(--font-sans, ui-sans-serif, system-ui); background:var(--bg); color:var(--text); }
+    header { padding:12px 16px; background:var(--panel); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+    a { color:var(--accent2); text-decoration:none; }
     .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    .pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.10); background:rgba(15,23,34,.65); font-size:12px; color:#cfe3ff; }
+    .pill { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:var(--panel2); font-size:12px; color:var(--text); }
     .wrap { max-width:1100px; margin:0 auto; padding:16px; }
-    .card { background:rgba(15,23,34,.78); border:1px solid rgba(255,255,255,.10); border-radius:14px; overflow:hidden; }
-    .head { padding:14px; border-bottom:1px solid rgba(255,255,255,.07); display:flex; justify-content:space-between; gap:10px; }
+    .card { background:var(--panel); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+    .head { padding:14px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; gap:10px; }
     .body { padding:14px; }
     .title { font-size:20px; font-weight:900; }
     .muted { color:var(--muted); font-size:13px; }
-    button { padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:#0b1220; color:var(--text); cursor:pointer; }
+    button { padding:10px 12px; border-radius:999px; border:1px solid var(--border); background:var(--panel2); color:var(--text); cursor:pointer; }
     button:disabled { opacity:.55; cursor:not-allowed; }
-    input, textarea, select { width:100%; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.10); background:#0b1220; color:var(--text); }
+    input, textarea, select { width:100%; padding:10px; border-radius:999px; border:1px solid var(--border); background:var(--panel2); color:var(--text); }
     textarea { min-height:70px; resize:vertical; }
     .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:12px; margin-top:14px; }
-    .item { border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:12px; background:rgba(10,14,20,.35); }
+    .item { border:1px solid var(--border); border-radius:16px; padding:12px; background:var(--panel); }
     .price { font-weight:900; margin-top:6px; }
-    .hr { height:1px; background:rgba(255,255,255,.08); margin:14px 0; }
+    .hr { height:1px; background:var(--border); margin:14px 0; }
     .tabs { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
-    .tabBtn { padding:8px 10px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(10,14,20,.45); cursor:pointer; font-weight:800; font-size:12px; }
-    .tabBtn.active { border-color: var(--mint); box-shadow: 0 10px 30px rgba(0,255,170,.12); }
+    .tabBtn { padding:8px 10px; border-radius:12px; border:1px solid var(--border); background:var(--panel2); cursor:pointer; font-weight:800; font-size:12px; }
+    .tabBtn.active { border-color: var(--accent); box-shadow: var(--shadow-sm); }
+    .hero { display:grid; grid-template-columns:120px 1fr; gap:14px; padding:14px; }
+    .avatar { width:96px; height:96px; border-radius:12px; background:var(--panel2); border:1px solid var(--border); object-fit:cover; }
+    .stats { display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--muted); }
+    .cover { height:180px; background:var(--panel2); border-bottom:1px solid var(--border); background-size:cover; background-position:center; }
+    .productImg { width:100%; height:180px; border-radius:12px; object-fit:cover; background:var(--panel2); }
     .thumbRow { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-    .thumb { width:78px; height:78px; border-radius:12px; border:1px solid rgba(255,255,255,.12); object-fit:cover; background:rgba(10,14,20,.5); }
+    .thumb { width:78px; height:78px; border-radius:12px; border:1px solid var(--border); object-fit:cover; background:var(--panel2); }
     .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; white-space: pre-wrap; }
     .twoCol { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     @media (max-width:900px){ .twoCol{ grid-template-columns:1fr; } }
   </style>
 </head>
-<body>
+<body data-town="sebastian">
 
 <header>
   <div class="row" style="justify-content:space-between;">
     <div class="row">
       <a class="pill" href="/ui">← Back to Town</a>
-      <span class="pill">Storefront</span>
-      <span class="pill">Sweep: <span id="sweepBal">0</span></span>
     </div>
     <div class="row">
-      <a class="pill" href="/signup">Login / Join</a>
+      <button id="messageBtn">Message</button>
+      <button id="followBtn">Follow</button>
+      <button id="cartBtn">Cart (<span id="cartCount">0</span>)</button>
     </div>
   </div>
 </header>
 
 <div class="wrap">
   <div class="card">
-    <div class="head">
+    <div class="cover" id="storeBanner"></div>
+    <div class="hero">
+      <img id="storeAvatar" class="avatar" alt="store" />
       <div>
         <div class="title" id="storeName">Loading…</div>
         <div class="muted" id="storeMeta">—</div>
-        <div class="muted">Seller: <span id="ownerName">—</span></div>
-      </div>
-      <div class="row">
-        <button id="createToggleBtn" disabled>Create Offer/Request</button>
-        <button id="testAuctionBtn" style="display:none;">Create Test Auction</button>
+        <div class="muted" id="storeOwnerTrust" style="margin-top:4px;"></div>
+        <div class="stats">
+          <span id="storeRating">★ 0.0 (0 Reviews)</span>
+          <span id="storeShipping">Free / 1–4 day ship</span>
+          <span id="storeFollowers">0 Followers</span>
+        </div>
+        <div class="muted" id="storeReviewRoles">Buyer reviews: 0 • Seller reviews: 0</div>
+        <div class="muted" id="storeDesc">—</div>
       </div>
     </div>
 
@@ -71,14 +81,23 @@
           <input id="searchBox" placeholder="Search in this store…" />
         </div>
         <div class="row">
-          <span class="pill">Shown: <span id="countLbl">0</span></span>
+          <span class="pill">Products: <span id="countLbl">0</span></span>
         </div>
       </div>
 
       <div class="tabs">
-        <button class="tabBtn active" id="tabItems">Items</button>
+        <button class="tabBtn active" id="tabItems">Shop</button>
         <button class="tabBtn" id="tabOffers">Offers</button>
         <button class="tabBtn" id="tabRequests">Requests</button>
+      </div>
+
+      <div class="item" id="storeLiveShows" style="margin-top:12px; display:none;">
+        <div style="font-weight:900;">Upcoming Live Show</div>
+        <div class="muted" id="storeLiveShowMeta"></div>
+        <div class="muted" id="storeLiveShowDesc" style="margin-top:6px;"></div>
+        <div class="row" style="margin-top:8px;">
+          <a class="pill" id="storeLiveShowJoin" href="#" style="display:none;">Join Live</a>
+        </div>
       </div>
 
       <div class="grid" id="listingGrid"></div>
@@ -162,11 +181,51 @@
         </div>
       </div>
 
-      <div class="mono" id="debug"></div>
+      <details class="debugBox debugToggle">
+        <summary>Show debug</summary>
+        <div class="mono" id="debug"></div>
+      </details>
     </div>
   </div>
 </div>
 
+<div id="cartModal" style="display:none; position:fixed; inset:0; background:color-mix(in srgb, var(--bg) 70%, transparent); z-index:40;">
+  <div id="cartPanel" style="max-width:720px; margin:6vh auto; background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:16px; color:var(--text);">
+    <div class="row" style="justify-content:space-between;">
+      <strong>Cart</strong>
+      <button id="cartClose">Close</button>
+    </div>
+    <div class="list" id="cartList" style="margin-top:10px;"></div>
+    <div class="muted" id="cartTotals" style="margin-top:10px;"></div>
+    <div class="row" style="margin-top:10px;">
+      <button id="cartCheckoutBtn">Checkout</button>
+      <button id="cartPayBtn" style="display:none;">Pay with Card</button>
+    </div>
+    <div class="muted" id="cartMsg" style="margin-top:8px;"></div>
+  </div>
+</div>
+
+<div id="listingModal" style="display:none; position:fixed; inset:0; background:color-mix(in srgb, var(--bg) 70%, transparent); z-index:40;">
+  <div id="listingModalPanel" style="max-width:900px; margin:6vh auto; background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:16px; color:var(--text);">
+    <div class="row" style="justify-content:space-between;">
+      <div class="contextTitle" id="listingModalTitle">Listing</div>
+      <button id="listingModalClose">Close</button>
+    </div>
+    <div class="row" style="margin-top:12px; gap:12px;">
+      <div style="flex:2;">
+        <img id="listingModalMainImg" src="" alt="" style="width:100%; border-radius:12px; object-fit:cover; max-height:420px;" />
+        <div class="row" id="listingModalThumbs" style="margin-top:10px; gap:8px; flex-wrap:wrap;"></div>
+      </div>
+      <div style="flex:1;">
+        <div class="muted" id="listingModalMeta">—</div>
+        <div style="margin-top:8px;" id="listingModalDesc"></div>
+        <div style="margin-top:8px;" id="listingModalDetails"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/theme.js?v=1"></script>
 <script src="/store.js?v=offers_ui_1"></script>
 </body>
 </html>

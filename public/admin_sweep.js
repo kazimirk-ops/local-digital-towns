@@ -7,8 +7,12 @@ async function api(url, opts) {
   return data;
 }
 
+function toLocalInputValue(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 function isoNowPlus(min) {
-  return new Date(Date.now() + min * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
+  return toLocalInputValue(new Date(Date.now() + min * 60 * 1000));
 }
 
 // Prefill sweepstake ISO fields
@@ -102,15 +106,17 @@ document.getElementById("createRule").onclick = async () => {
 
 document.getElementById("createSweepstake").onclick = async () => {
   try {
+    const startAt = document.getElementById("sStart").value;
+    const endAt = document.getElementById("sEnd").value;
+    const drawAt = document.getElementById("sDraw").value;
     const payload = {
       status: document.getElementById("sStatus").value,
       title: document.getElementById("sTitle").value,
       prize: document.getElementById("sPrize").value,
       entryCost: Number(document.getElementById("sCost").value),
-      startAt: document.getElementById("sStart").value,
-      endAt: document.getElementById("sEnd").value,
-      drawAt: document.getElementById("sDraw").value,
-      maxEntriesPerUserPerDay: Number(document.getElementById("sMax").value),
+      startAt: startAt ? new Date(startAt).toISOString() : "",
+      endAt: endAt ? new Date(endAt).toISOString() : "",
+      drawAt: drawAt ? new Date(drawAt).toISOString() : "",
     };
 
     const created = await api("/api/admin/sweep/sweepstake", {
@@ -128,4 +134,3 @@ document.getElementById("createSweepstake").onclick = async () => {
 loadRules().catch((e) => {
   document.getElementById("ruleMsg").textContent = `ERROR: ${e.message} (login required)`;
 });
-

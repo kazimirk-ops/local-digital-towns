@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pay Order</title>
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <style>
+      body{ font-family: var(--font-sans, ui-sans-serif, system-ui); margin:0; background:var(--bg); color:var(--text); }
+      .wrap{ max-width:900px; margin:0 auto; padding:16px; }
+      .card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; }
+      .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+      .muted{ color:var(--muted); font-size:12px; }
+      .pill{ display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--panel2); font-size:12px; }
+      button{ padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--panel2); color:var(--text); cursor:pointer; }
+    </style>
+  </head>
+  <body data-town="sebastian">
+    <div class="wrap">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <h2 style="margin:0;">Pay for Auction</h2>
+          <div class="muted">Complete payment before the deadline.</div>
+        </div>
+        <a href="/ui" class="pill">Back to Town</a>
+      </div>
+
+      <div class="card">
+        <div class="muted" id="payStatus">Loading…</div>
+        <div style="margin-top:8px;">
+          <div><strong>Order</strong> <span class="muted" id="orderId"></span></div>
+          <div class="muted" id="orderListing"></div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <span class="pill" id="orderSubtotal">Subtotal: —</span>
+          <span class="pill" id="orderGratuity">Gratuity: —</span>
+          <span class="pill" id="orderTotal">Total: —</span>
+        </div>
+        <div class="muted" style="margin-top:8px;">Payment due: <span id="paymentDue">—</span></div>
+        <div class="muted">Countdown: <span id="paymentCountdown">—</span></div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <button id="markPaidBtn" style="display:none;">Mark Paid (DEV)</button>
+          <span class="muted" id="payMsg"></span>
+        </div>
+      </div>
+    </div>
+    <script src="/theme.js?v=1"></script>
+    <script src="/pay.js"></script>
+  </body>
+</html>
