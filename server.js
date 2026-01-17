@@ -1149,7 +1149,7 @@ app.post("/api/checkout/stripe", async (req,res)=>{
     price_data: {
       currency: "usd",
       product_data: { name: item.titleSnapshot || `Item ${item.listingId}` },
-      unit_amount: Number(item.priceCentsSnapshot || 0)
+        unit_amount: Math.max(0, parseInt(String(item.priceCentsSnapshot ?? "0"), 10) || 0)
     },
     quantity: Number(item.quantity || 1)
   }));
@@ -1158,7 +1158,7 @@ app.post("/api/checkout/stripe", async (req,res)=>{
       price_data: {
         currency: "usd",
         product_data: { name: "Service Gratuity" },
-        unit_amount: Number(order.serviceGratuityCents || 0)
+        unit_amount: Math.max(0, parseInt(String(order.serviceGratuityCents ?? "0"), 10) || 0)
       },
       quantity: 1
     });
