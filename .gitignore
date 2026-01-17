@@ -5,3 +5,9 @@
 # Backups
 *.bak
 
+
+# ignore deps + secrets + mac junk
+node_modules/
+.env
+.DS_Store
+public/.DS_Store
