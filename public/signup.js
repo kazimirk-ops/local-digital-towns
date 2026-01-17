@@ -64,10 +64,10 @@ async function loadTrustStatus(){
 }
 
 $("verifyPresenceBtn").onclick = async () => {
-  const user = await requireLogin("Log in with the magic link below before GPS verification.");
+  const user = await requireLogin("Log in with the magic link below before location verification.");
   if(!user) return;
   presenceOk = false;
-  $("presenceStatus").textContent = "Checking GPS...";
+  $("presenceStatus").textContent = "Checking location...";
   if(!navigator.geolocation){
     $("presenceStatus").textContent = "Geolocation not available.";
     return;
@@ -76,19 +76,18 @@ $("verifyPresenceBtn").onclick = async () => {
     try{
       const payload = {
         lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
-        accuracyMeters: pos.coords.accuracy
+        lng: pos.coords.longitude
       };
-      const res = await postJSON("/api/presence/verify", payload);
+      const res = await postJSON("/api/verify/location", payload);
       presenceOk = !!res.ok;
       $("presenceStatus").textContent = res.ok
-        ? `Verified in town (${Math.round(payload.accuracyMeters)}m).`
-        : "Not inside Sebastian verification zone.";
+        ? "Location verified in Sebastian."
+        : "Not inside Sebastian verification box.";
     }catch(e){
-      $("presenceStatus").textContent = `GPS verify failed: ${e.message}`;
+      $("presenceStatus").textContent = `Location verify failed: ${e.message}`;
     }
   }, (err)=>{
-    $("presenceStatus").textContent = `GPS denied: ${err.message}`;
+    $("presenceStatus").textContent = `Location denied: ${err.message}`;
   }, { enableHighAccuracy: true, timeout: 10000 });
 };
 
@@ -108,8 +107,8 @@ $("submitTrust").onclick = async () => {
       zip: $("zip").value,
       identityMethod: $("identityMethod").value
     };
-    if(payload.requestedTier === 2 && !presenceOk){
-      return showSignup(`<div class="warn"><strong>GPS required</strong><div class="muted">Verify presence before submitting Tier 2.</div></div>`);
+    if(payload.requestedTier === 1 && !presenceOk){
+      return showSignup(`<div class="warn"><strong>Location required</strong><div class="muted">Verify location in Sebastian before submitting Tier 1.</div></div>`);
     }
     const data = await postJSON("/api/trust/apply", payload);
     const statusText = data.status === "approved"

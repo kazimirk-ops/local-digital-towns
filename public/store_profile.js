@@ -10,6 +10,7 @@ async function api(url, opts) {
 let currentUserId = null;
 let approvedStores = [];
 let auctionPhotos = [];
+let listingPhotos = [];
 let storeConversationId = null;
 let townCtx = { trustTier:0, tierName:"Visitor", permissions:{} };
 let listingApprovalOk = false;
@@ -305,6 +306,60 @@ async function uploadStoreImage(fileInputId, targetInputId, msgId) {
   }
 }
 
+function getUploadUrl(payload) {
+  if (typeof payload === "string") return payload;
+  if (!payload || typeof payload !== "object") return "";
+  return payload.url || payload.avatarUrl || payload.publicUrl || "";
+}
+
+function syncListingPhotoField() {
+  const field = document.getElementById("listingPhotoUrls");
+  if (field) field.value = JSON.stringify(listingPhotos);
+}
+
+function renderListingPhotos() {
+  const preview = document.getElementById("listingPhotoPreview");
+  if (!preview) return;
+  preview.innerHTML = "";
+  listingPhotos.forEach((url) => {
+    const img = document.createElement("img");
+    img.src = `${url}?v=${Date.now()}`;
+    img.alt = "Listing photo";
+    preview.appendChild(img);
+  });
+}
+
+async function uploadListingPhoto() {
+  const input = document.getElementById("listingPhotoInput");
+  if (!input?.files?.length) return;
+  const file = input.files[0];
+  if (!file.type.startsWith("image/")) {
+    setMsg("listingMsg", "Images only.");
+    input.value = "";
+    return;
+  }
+  try {
+    const placeId = document.getElementById("listingStore").value || null;
+    const form = new FormData();
+    form.append("file", file);
+    form.append("kind", "listing_photo");
+    if (placeId) form.append("placeId", placeId);
+    const res = await api("/api/uploads", {
+      method: "POST",
+      body: form
+    });
+    const url = getUploadUrl(res);
+    if (!url) throw new Error("Upload did not return a URL");
+    listingPhotos.push(url);
+    syncListingPhotoField();
+    renderListingPhotos();
+  } catch (e) {
+    setMsg("listingMsg", `ERROR: ${e.message}`);
+  } finally {
+    input.value = "";
+  }
+}
+
 async function createListing() {
   try {
     const placeId = document.getElementById("listingStore").value;
@@ -317,7 +372,8 @@ async function createListing() {
       title: document.getElementById("listingTitle").value.trim(),
       description: document.getElementById("listingDesc").value.trim(),
       quantity: Number(document.getElementById("listingQty").value || 1),
-      price: Number(document.getElementById("listingPrice").value || 0)
+      price: Number(document.getElementById("listingPrice").value || 0),
+      photoUrls: listingPhotos
     };
     const created = await api(`/places/${placeId}/listings`, {
       method: "POST",
@@ -325,6 +381,9 @@ async function createListing() {
       body: JSON.stringify(payload)
     });
     setMsg("listingMsg", `Created listing #${created.id}`);
+    listingPhotos = [];
+    syncListingPhotoField();
+    renderListingPhotos();
   } catch (e) {
     setMsg("listingMsg", `ERROR: ${e.message}`);
   }
@@ -560,5 +619,8 @@ document.getElementById("storeInboxStore").onchange = async (e) => {
 document.getElementById("storeInboxSendBtn").onclick = sendStoreMessage;
 document.getElementById("uploadBannerBtn").onclick = () => uploadStoreImage("storefrontBannerFile", "storefrontBannerUrl", "storefrontMsg");
 document.getElementById("uploadAvatarBtn").onclick = () => uploadStoreImage("storefrontAvatarFile", "storefrontAvatarUrl", "storefrontMsg");
+document.getElementById("listingPhotoUploadBtn").onclick = () => document.getElementById("listingPhotoInput").click();
+document.getElementById("listingPhotoInput").onchange = uploadListingPhoto;
+syncListingPhotoField();
 
 loadTownContext().then(() => loadMe().then(loadOwnedStores)).catch(() => {});

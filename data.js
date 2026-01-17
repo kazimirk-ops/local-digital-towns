@@ -360,6 +360,21 @@ CREATE TABLE IF NOT EXISTS trust_applications (
   decisionReason TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS resident_verification_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  townId INTEGER NOT NULL DEFAULT 1,
+  userId INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  addressLine1 TEXT NOT NULL,
+  city TEXT NOT NULL,
+  state TEXT NOT NULL,
+  zip TEXT NOT NULL,
+  createdAt TEXT NOT NULL,
+  reviewedAt TEXT NOT NULL DEFAULT '',
+  reviewedByUserId INTEGER,
+  decisionReason TEXT NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS magic_links (
   token TEXT PRIMARY KEY,
   userId INTEGER NOT NULL,
@@ -561,6 +576,8 @@ CREATE INDEX IF NOT EXISTS idx_dm_conversation ON direct_conversations(userA, us
 CREATE INDEX IF NOT EXISTS idx_dm_messages ON direct_messages(conversationId, createdAt DESC);
 CREATE INDEX IF NOT EXISTS idx_trust_apps_status ON trust_applications(townId, status, createdAt);
 CREATE INDEX IF NOT EXISTS idx_trust_apps_user ON trust_applications(userId, createdAt);
+CREATE INDEX IF NOT EXISTS idx_resident_verify_status ON resident_verification_requests(townId, status, createdAt);
+CREATE INDEX IF NOT EXISTS idx_resident_verify_user ON resident_verification_requests(userId, createdAt);
 
 CREATE TABLE IF NOT EXISTS town_memberships (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -682,6 +699,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_membership_unique ON town_memberships(town
   if(!columnExists("users","showAgeRange")) addColumn("users","showAgeRange INTEGER NOT NULL DEFAULT 0");
   if(!columnExists("users","isBuyerVerified")) addColumn("users","isBuyerVerified INTEGER NOT NULL DEFAULT 0");
   if(!columnExists("users","isSellerVerified")) addColumn("users","isSellerVerified INTEGER NOT NULL DEFAULT 0");
+  if(!columnExists("users","locationVerifiedSebastian")) addColumn("users","locationVerifiedSebastian INTEGER NOT NULL DEFAULT 0");
+  if(!columnExists("users","residentVerified")) addColumn("users","residentVerified INTEGER NOT NULL DEFAULT 0");
+  if(!columnExists("users","facebookVerified")) addColumn("users","facebookVerified INTEGER NOT NULL DEFAULT 0");
 })();
 
 (function migrateCalendarEvents(){
@@ -1131,6 +1151,59 @@ function updateUserPresence(userId, payload){
   return { ok:true, presenceVerifiedAt: now };
 }
 
+function setUserLocationVerifiedSebastian(userId, verified){
+  const uid = Number(userId);
+  if(!uid) return { error:"Invalid userId" };
+  db.prepare("UPDATE users SET locationVerifiedSebastian=? WHERE id=?")
+    .run(verified ? 1 : 0, uid);
+  return { ok:true };
+}
+
+function setUserFacebookVerified(userId, verified){
+  const uid = Number(userId);
+  if(!uid) return { error:"Invalid userId" };
+  db.prepare("UPDATE users SET facebookVerified=? WHERE id=?")
+    .run(verified ? 1 : 0, uid);
+  return { ok:true };
+}
+
+function setUserResidentVerified(userId, verified){
+  const uid = Number(userId);
+  if(!uid) return { error:"Invalid userId" };
+  db.prepare("UPDATE users SET residentVerified=? WHERE id=?")
+    .run(verified ? 1 : 0, uid);
+  return { ok:true };
+}
+
+function addResidentVerificationRequest(payload, userId){
+  const uid = Number(userId);
+  if(!uid) return { error:"Invalid userId" };
+  const addressLine1 = (payload.addressLine1 || "").toString().trim();
+  const city = (payload.city || "").toString().trim();
+  const state = (payload.state || "").toString().trim();
+  const zip = (payload.zip || "").toString().trim();
+  if(!addressLine1 || !city || !state || !zip) return { error:"addressLine1, city, state, zip required" };
+  const info = db.prepare(`
+    INSERT INTO resident_verification_requests
+      (townId, userId, status, addressLine1, city, state, zip, createdAt)
+    VALUES (?,?,?,?,?,?,?,?)
+  `).run(1, uid, "pending", addressLine1, city, state, zip, nowISO());
+  return db.prepare("SELECT * FROM resident_verification_requests WHERE id=?").get(info.lastInsertRowid);
+}
+
+function approveResidentVerification(userId, adminUserId){
+  const uid = Number(userId);
+  if(!uid) return { error:"Invalid userId" };
+  const now = nowISO();
+  db.prepare(`
+    UPDATE resident_verification_requests
+    SET status='approved', reviewedAt=?, reviewedByUserId=?, decisionReason=''
+    WHERE userId=? AND status='pending'
+  `).run(now, adminUserId == null ? null : Number(adminUserId), uid);
+  setUserResidentVerified(uid, true);
+  return { ok:true };
+}
+
 function updateUserContact(userId, payload){
   const uid = Number(userId);
   if(!uid) return { error:"Invalid userId" };
@@ -1454,7 +1527,10 @@ function getUserProfilePrivate(userId){
     showInterests: Number(user.showInterests || 0),
     showAgeRange: Number(user.showAgeRange || 0),
     isBuyerVerified: Number(user.isBuyerVerified || 0),
-    isSellerVerified: Number(user.isSellerVerified || 0)
+    isSellerVerified: Number(user.isSellerVerified || 0),
+    locationVerifiedSebastian: Number(user.locationVerifiedSebastian || 0),
+    residentVerified: Number(user.residentVerified || 0),
+    facebookVerified: Number(user.facebookVerified || 0)
   };
 }
 function updateUserProfile(userId, payload){
@@ -1814,6 +1890,41 @@ function getSellerSalesExport(placeId, fromIso, toIso){
     WHERE o.sellerPlaceId=? AND o.status='paid' AND o.createdAt>=? AND o.createdAt<?
     ORDER BY o.createdAt DESC, oi.id ASC
   `).all(Number(placeId), fromIso, toIso);
+}
+
+function countUsers(){
+  const row = db.prepare("SELECT COUNT(*) AS c FROM users").get();
+  return Number(row?.c || 0);
+}
+function countUsersSince(fromIso){
+  const row = db.prepare("SELECT COUNT(*) AS c FROM users WHERE createdAt>=?").get(String(fromIso || ""));
+  return Number(row?.c || 0);
+}
+function countOrders(){
+  const row = db.prepare("SELECT COUNT(*) AS c FROM orders").get();
+  return Number(row?.c || 0);
+}
+function countOrdersSince(fromIso){
+  const row = db.prepare("SELECT COUNT(*) AS c FROM orders WHERE createdAt>=?").get(String(fromIso || ""));
+  return Number(row?.c || 0);
+}
+function sumOrderRevenue(){
+  const row = db.prepare("SELECT COALESCE(SUM(totalCents),0) AS s FROM orders WHERE status='paid'").get();
+  return Number(row?.s || 0);
+}
+function sumOrderRevenueSince(fromIso){
+  const row = db.prepare("SELECT COALESCE(SUM(totalCents),0) AS s FROM orders WHERE status='paid' AND createdAt>=?").get(String(fromIso || ""));
+  return Number(row?.s || 0);
+}
+
+function listResidentVerificationRequestsByStatus(status){
+  const s = (status || "").toString().trim().toLowerCase();
+  const where = s ? "WHERE status=?" : "";
+  return db.prepare(`
+    SELECT * FROM resident_verification_requests
+    ${where}
+    ORDER BY createdAt ASC
+  `).all(s ? s : undefined);
 }
 
 function getLatestOrderForListingAndBuyer(listingId, buyerUserId){
@@ -2979,6 +3090,11 @@ module.exports = {
   setUserTrustTier,
   getTownContext,
   updateUserPresence,
+  setUserLocationVerifiedSebastian,
+  setUserFacebookVerified,
+  setUserResidentVerified,
+  addResidentVerificationRequest,
+  approveResidentVerification,
   updateUserContact,
   addTrustApplication,
   getTrustApplicationsByUser,
@@ -3029,6 +3145,13 @@ module.exports = {
   generateDailyPulse,
   getSellerSalesSummary,
   getSellerSalesExport,
+  countUsers,
+  countUsersSince,
+  countOrders,
+  countOrdersSince,
+  sumOrderRevenue,
+  sumOrderRevenueSince,
+  listResidentVerificationRequestsByStatus,
   addMediaObject,
   listMediaObjects,
   listMediaOrphans,

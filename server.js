@@ -162,6 +162,10 @@ app.get("/admin",(req,res)=>{
   const admin=requireAdminPage(req,res); if(!admin) return;
   res.sendFile(path.join(__dirname,"public","admin.html"));
 });
+app.get("/admin/analytics",(req,res)=>{
+  const admin=requireAdminPage(req,res); if(!admin) return;
+  res.sendFile(path.join(__dirname,"public","admin_analytics.html"));
+});
 app.get("/admin/media",(req,res)=>{
   const admin=requireAdminPage(req,res); if(!admin) return;
   res.sendFile(path.join(__dirname,"public","admin_media.html"));
@@ -231,16 +235,32 @@ function requireAdminOrDev(req,res){
   return requireAdmin(req,res);
 }
 
-function requireBuyerTier(req,res){
-  const u=requireLogin(req,res); if(!u) return null;
-  const user=data.getUserById(u);
-  const ctx=data.getTownContext(1, u);
+function getUserTier(req){
+  const userId = getUserId(req);
+  const user = userId ? data.getUserById(userId) : null;
+  const ctx = data.getTownContext(1, userId);
   const tier = trust.resolveTier(user, ctx);
-  if(tier < 1){
-    res.status(403).json({error:"Buying requires verified access (tier 1+)"});
+  return { userId, user, ctx, tier };
+}
+function hasPerm(user, perm, ctx){
+  if(!user) return false;
+  const context = ctx || data.getTownContext(1, user.id);
+  return trust.hasPerm(user, context, perm);
+}
+function requirePerm(req,res,perm){
+  const userId = requireLogin(req,res); if(!userId) return null;
+  const user = data.getUserById(userId);
+  const ctx = data.getTownContext(1, userId);
+  if(!hasPerm(user, perm, ctx)){
+    res.status(403).json({error:`Requires ${perm}`});
     return null;
   }
-  return u;
+  return { userId, user, ctx };
+}
+
+function requireBuyerTier(req,res){
+  const access = requirePerm(req,res,"BUY_MARKET");
+  return access ? access.userId : null;
 }
 function requireStripeConfig(res){
   if(!stripe){
@@ -252,6 +272,22 @@ function requireStripeConfig(res){
     return null;
   }
   return stripe;
+}
+
+function rangeToBounds(range){
+  const now = new Date();
+  const start = new Date(now);
+  const key = (range || "7d").toString();
+  if(key === "today"){
+    start.setHours(0,0,0,0);
+  }else if(key === "30d"){
+    start.setDate(start.getDate() - 29);
+    start.setHours(0,0,0,0);
+  }else{
+    start.setDate(start.getDate() - 6);
+    start.setHours(0,0,0,0);
+  }
+  return { from: start.toISOString(), to: now.toISOString(), range: key };
 }
 function finalizeOrderPayment(order){
   if(!order) return { ok:false, error:"Order not found" };
@@ -421,16 +457,7 @@ app.get("/api/users/:id",(req,res)=>{
   const user = data.getUserById(profile.id);
   const ctx = data.getTownContext(1, profile.id);
   const tier = trust.resolveTier(user, ctx);
-  const tierLabels = {
-    0: "Visitor",
-    1: "Verified Remote",
-    2: "Verified In-Town Visitor",
-    3: "Local Resident",
-    4: "Trusted Local",
-    5: "Verified Business",
-    6: "Admin"
-  };
-  res.json({ ...profile, trustTier: tier, trustTierLabel: tierLabels[tier] || "Visitor" });
+  res.json({ ...profile, trustTier: tier, trustTierLabel: TRUST_TIER_LABELS[tier] || "Visitor" });
 });
 app.get("/api/me/profile",(req,res)=>{
   const u=requireLogin(req,res); if(!u) return;
@@ -537,6 +564,21 @@ function isInsideSebastian(lat, lng, accuracyMeters){
   return { ok:true };
 }
 
+function isInsideSebastianBox(lat, lng){
+  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok:false, error:"Invalid coordinates" };
+  const bounds = {
+    minLat: 27.72,
+    maxLat: 27.88,
+    minLng: -80.56,
+    maxLng: -80.39
+  };
+  if(lat < bounds.minLat || lat > bounds.maxLat || lng < bounds.minLng || lng > bounds.maxLng){
+    return { ok:false, error:"Not inside Sebastian verification box." };
+  }
+  // TODO: Replace with a precise geofence/polygon for Sebastian.
+  return { ok:true };
+}
+
 app.post("/api/presence/verify",(req,res)=>{
   const u=requireLogin(req,res); if(!u) return;
   const lat = Number(req.body?.lat);
@@ -546,6 +588,43 @@ app.post("/api/presence/verify",(req,res)=>{
   if(!check.ok) return res.status(400).json({ ok:false, inside:false, error: check.error });
   const updated = data.updateUserPresence(u, { lat, lng, accuracyMeters });
   res.json({ ok:true, inside:true, presenceVerifiedAt: updated.presenceVerifiedAt });
+});
+
+app.post("/api/verify/location",(req,res)=>{
+  const u=requireLogin(req,res); if(!u) return;
+  const lat = Number(req.body?.lat);
+  const lng = Number(req.body?.lng);
+  const check = isInsideSebastianBox(lat, lng);
+  if(!check.ok) return res.status(400).json({ ok:false, inside:false, error: check.error });
+  data.setUserLocationVerifiedSebastian(u, true);
+  res.json({ ok:true, inside:true });
+});
+
+app.post("/api/verify/resident",(req,res)=>{
+  const u=requireLogin(req,res); if(!u) return;
+  const created = data.addResidentVerificationRequest(req.body || {}, u);
+  if(created?.error) return res.status(400).json(created);
+  res.status(201).json(created);
+});
+
+app.post("/api/admin/verify/resident/approve",(req,res)=>{
+  const admin=requireAdmin(req,res); if(!admin) return;
+  const userId = Number(req.body?.userId);
+  if(!userId) return res.status(400).json({error:"userId required"});
+  const approved = data.approveResidentVerification(userId, admin.id);
+  if(approved?.error) return res.status(400).json(approved);
+  const updated = data.setUserTrustTier(1, userId, 2);
+  if(updated?.error) return res.status(400).json(updated);
+  res.json({ ok:true });
+});
+
+app.post("/api/admin/verify/business/approve",(req,res)=>{
+  const admin=requireAdmin(req,res); if(!admin) return;
+  const userId = Number(req.body?.userId);
+  if(!userId) return res.status(400).json({error:"userId required"});
+  const updated = data.setUserTrustTier(1, userId, 3);
+  if(updated?.error) return res.status(400).json(updated);
+  res.json({ ok:true });
 });
 
 app.post("/api/trust/apply",(req,res)=>{
@@ -565,27 +644,20 @@ app.post("/api/trust/apply",(req,res)=>{
   if(!payload.email || !payload.phone || !payload.address1 || !payload.city || !payload.state || !payload.zip || !payload.identityMethod){
     return res.status(400).json({error:"Missing required fields"});
   }
-  if(requestedTier === 3){
-    const cityOk = payload.city.toLowerCase().includes("sebastian");
-    const zipOk = payload.zip === "32958";
-    if(!cityOk && !zipOk) return res.status(400).json({error:"Tier 3 requires Sebastian address or ZIP 32958"});
-  }
-  let presenceStatus = "not_required";
-  let presence = {};
-  if(requestedTier === 2){
-    const user = data.getUserById(u);
-    const last = user?.presenceVerifiedAt ? Date.parse(user.presenceVerifiedAt) : 0;
-    const ageMs = Date.now() - last;
-    if(!last || ageMs > 30 * 60 * 1000){
-      return res.status(400).json({error:"Presence verification required within last 30 minutes"});
+  const user = data.getUserById(u);
+  if(requestedTier === 1){
+    if(Number(user?.locationVerifiedSebastian || 0) !== 1){
+      return res.status(400).json({error:"Location verified in Sebastian required."});
     }
-    presenceStatus = "verified";
-    presence = {
-      presenceVerifiedAt: user.presenceVerifiedAt,
-      presenceLat: user.presenceLat,
-      presenceLng: user.presenceLng,
-      presenceAccuracyMeters: user.presenceAccuracyMeters
-    };
+  }
+  if(requestedTier === 2){
+    const reqRow = data.addResidentVerificationRequest({
+      addressLine1: payload.address1,
+      city: payload.city,
+      state: payload.state,
+      zip: payload.zip
+    }, u);
+    if(reqRow?.error) return res.status(400).json(reqRow);
   }
   data.updateUserContact(u, {
     phone: payload.phone,
@@ -597,7 +669,7 @@ app.post("/api/trust/apply",(req,res)=>{
       zip: payload.zip
     }
   });
-  const autoApprove = requestedTier === 1 || requestedTier === 2;
+  const autoApprove = requestedTier === 1;
   const appRow = data.addTrustApplication({
     townId: 1,
     userId: u,
@@ -611,13 +683,9 @@ app.post("/api/trust/apply",(req,res)=>{
     state: payload.state,
     zip: payload.zip,
     identityMethod: payload.identityMethod,
-    identityStatus: "pending",
-    presenceStatus,
-    ...presence
+    identityStatus: autoApprove ? "verified" : "pending",
+    presenceStatus: "not_required"
   });
-  if(autoApprove){
-    data.setUserTrustTier(1, u, requestedTier);
-  }
   res.status(201).json({ ok:true, id: appRow.id, status: autoApprove ? "approved" : "pending" });
 });
 
@@ -652,11 +720,9 @@ app.post("/api/admin/trust/apps/:id/reject",(req,res)=>{
 });
 
 app.post("/api/live/rooms/create", async (req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const user=data.getUserById(u);
-  const ctx=data.getTownContext(1, u);
-  const tier = trust.resolveTier(user, ctx);
-  if(tier < 4) return res.status(403).json({error:"Hosting requires tier 4+ or verified business"});
+  const access = requirePerm(req,res,"LIVE_HOST"); if(!access) return;
+  const u=access.userId;
+  const user=access.user;
   const title=(req.body?.title||"").toString().trim();
   const description=(req.body?.description||"").toString().trim();
   const hostType = (req.body?.hostType || "individual").toString().trim();
@@ -742,21 +808,13 @@ app.post("/api/live/rooms/:id/pin",(req,res)=>{
 });
 
 app.get("/api/live/rooms/active",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const user=data.getUserById(u);
-  const ctx=data.getTownContext(1, u);
-  const tier = trust.resolveTier(user, ctx);
-  if(tier < 1) return res.status(403).json({error:"Viewer requires tier 1+"});
+  const access = requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
   const rooms = data.listActiveLiveRooms(1).map(r=>({ id:r.id, title:r.title, hostType:r.hostType || "individual", joinUrl:`/live/${r.id}` }));
   res.json(rooms);
 });
 
 app.get("/api/live/rooms/:id",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const user=data.getUserById(u);
-  const ctx=data.getTownContext(1, u);
-  const tier = trust.resolveTier(user, ctx);
-  if(tier < 1) return res.status(403).json({error:"Viewer requires tier 1+"});
+  const access = requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
   const room = data.getLiveRoomById(req.params.id);
   if(!room) return res.status(404).json({error:"Room not found"});
   const hostUser = data.getUserById(room.hostUserId);
@@ -790,10 +848,11 @@ app.get("/api/live/rooms/:id",(req,res)=>{
 });
 
 app.get("/api/live/scheduled",(req,res)=>{
+  const access = requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
   const from = req.query.from;
   const to = req.query.to;
   const shows = data.listScheduledLiveShows({ from, to });
-  const u = getUserId(req);
+  const u = access.userId;
   let bookmarks = new Set();
   if(u){
     const rows = data.getLiveShowBookmarksForUser(u);
@@ -825,11 +884,9 @@ app.get("/api/live/scheduled",(req,res)=>{
 });
 
 app.post("/api/live/scheduled",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const user=data.getUserById(u);
-  const ctx=data.getTownContext(1, u);
-  const tier = trust.resolveTier(user, ctx);
-  if(tier < 4) return res.status(403).json({error:"Scheduling requires tier 4+ or verified business"});
+  const access = requirePerm(req,res,"LIVE_SCHEDULE"); if(!access) return;
+  const u=access.userId;
+  const user=access.user;
   const title=(req.body?.title||"").toString().trim();
   const description=(req.body?.description||"").toString().trim();
   const startAt=toISOOrEmpty(req.body?.startAt);
@@ -872,14 +929,16 @@ app.post("/api/live/scheduled",(req,res)=>{
 });
 
 app.get("/api/live/scheduled/:id/bookmark",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+  const access = requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
+  const u=access.userId;
   const showId = Number(req.params.id);
   const rows = data.getLiveShowBookmarksForUser(u);
   const bookmarked = rows.some(r=>Number(r.showId)===showId);
   res.json({ bookmarked });
 });
 app.post("/api/live/scheduled/:id/bookmark",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+  const access = requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
+  const u=access.userId;
   const showId = Number(req.params.id);
   const toggled = data.toggleLiveShowBookmark(u, showId);
   res.json(toggled);
@@ -893,11 +952,13 @@ app.post("/api/signup",(req,res)=>{
 
 // Events v1 (submission + approvals)
 app.post("/api/events/submit",(req,res)=>{
+  const access = requirePerm(req,res,"CREATE_EVENTS"); if(!access) return;
   const created=data.addEventSubmission(req.body || {});
   if(created?.error) return res.status(400).json(created);
   res.status(201).json(created);
 });
 app.get("/api/events",(req,res)=>{
+  const access = requirePerm(req,res,"VIEW_EVENTS"); if(!access) return;
   const status=(req.query.status || "approved").toString().trim().toLowerCase();
   if(status && status !== "approved") return res.status(400).json({error:"Only approved events can be listed"});
   const from=req.query.from;
@@ -912,14 +973,14 @@ app.get("/api/events",(req,res)=>{
 
 // Local businesses (applications)
 app.post("/api/localbiz/apply",(req,res)=>{
-  const u=getUserId(req);
-  const created=data.addLocalBizApplication(req.body || {}, u);
+  const access = requirePerm(req,res,"VIEW_LOCALBIZ"); if(!access) return;
+  const created=data.addLocalBizApplication(req.body || {}, access.userId);
   if(created?.error) return res.status(400).json(created);
   res.status(201).json(created);
 });
 app.get("/api/localbiz/my",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  res.json(data.listLocalBizApplicationsByUser(u));
+  const access = requirePerm(req,res,"VIEW_LOCALBIZ"); if(!access) return;
+  res.json(data.listLocalBizApplicationsByUser(access.userId));
 });
 
 // Prize offers
@@ -928,7 +989,7 @@ app.post("/api/prizes/submit",(req,res)=>{
   const ctx=data.getTownContext(1, u);
   const user=data.getUserById(u);
   const gate = trust.can(user, ctx, "prize_submit");
-  if(!gate.ok) return res.status(403).json({error:"Prize offers require trust tier 3+"});
+  if(!gate.ok) return res.status(403).json({error:"Prize offers require resident trust"});
   const created=data.addPrizeOffer(req.body || {}, u);
   if(created?.error) return res.status(400).json(created);
   res.status(201).json(created);
@@ -943,9 +1004,11 @@ app.get("/api/prizes/active",(req,res)=>{
 
 // Archive
 app.get("/api/archive",(req,res)=>{
+  const access = requirePerm(req,res,"VIEW_ARCHIVE"); if(!access) return;
   res.json(data.listArchiveEntries());
 });
 app.get("/api/archive/:slug",(req,res)=>{
+  const access = requirePerm(req,res,"VIEW_ARCHIVE"); if(!access) return;
   const entry=data.getArchiveEntryBySlug(req.params.slug);
   if(!entry) return res.status(404).json({error:"Not found"});
   res.json(entry);
@@ -1004,6 +1067,7 @@ app.post("/api/prize_awards/:id/report_issue",(req,res)=>{
 
 // Events (boot + calendar)
 app.get("/events",(req,res)=>{
+  const access = requirePerm(req,res,"VIEW_EVENTS"); if(!access) return;
   const range = (req.query.range || "week").toString();
   const safeRange = (range === "month") ? "month" : "week";
   res.json(data.getCalendarEvents(safeRange));
@@ -1013,16 +1077,15 @@ app.post("/events",(req,res)=>{
     data.logEvent(req.body || {});
     return res.json({ok:true});
   }
-  const u=requireLogin(req,res); if(!u) return;
-  const trustLevel=ctx.trustLevel;
-  const canOrganize=[TRUST.MEMBER, TRUST.TRUSTED].includes(trustLevel);
-  if(!canOrganize) return res.status(403).json({error:"Organizer requires member"});
+  const access = requirePerm(req,res,"CREATE_EVENTS"); if(!access) return;
+  const u=access.userId;
   if(!req.body?.title || !req.body?.startsAt) return res.status(400).json({error:"title and startsAt required"});
   const created=data.addCalendarEvent(req.body, u);
   res.status(201).json(created);
 });
 app.post("/events/:id/rsvp",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+  const access = requirePerm(req,res,"RSVP_EVENTS"); if(!access) return;
+  const u=access.userId;
   const ev=data.getCalendarEventById(req.params.id);
   if(!ev) return res.status(404).json({error:"Event not found"});
   data.addEventRsvp(ev.id, u, req.body?.status || "going");
@@ -1031,7 +1094,8 @@ app.post("/events/:id/rsvp",(req,res)=>{
 
 // Orders (payment scaffolding)
 app.get("/api/cart",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+  const access = requirePerm(req,res,"BUY_MARKET"); if(!access) return;
+  const u=access.userId;
   const items = data.getCartItemsByUser(u);
   const listings = data.getListings();
   const placeMap = new Map((data.getPlaces ? data.getPlaces() : data.places || []).map(p=>[Number(p.id), p]));
@@ -1070,14 +1134,16 @@ app.post("/api/cart/add",(req,res)=>{
   res.json({ ok:true, item: created });
 });
 app.post("/api/cart/remove",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+  const access = requirePerm(req,res,"BUY_MARKET"); if(!access) return;
+  const u=access.userId;
   const listingId = Number(req.body?.listingId || 0);
   if(!listingId) return res.status(400).json({error:"listingId required"});
   data.removeCartItem(u, listingId);
   res.json({ ok:true });
 });
 app.post("/api/cart/clear",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+  const access = requirePerm(req,res,"BUY_MARKET"); if(!access) return;
+  const u=access.userId;
   data.clearCart(u);
   res.json({ ok:true });
 });
@@ -1328,6 +1394,64 @@ app.get("/api/admin/pulse",(req,res)=>{
   const since = new Date(Date.now() - (Number.isFinite(hours) ? hours : 24) * 60 * 60 * 1000).toISOString();
   res.json({ since, sessions: 0, counts: [] });
 });
+app.get("/api/admin/analytics/summary",(req,res)=>{
+  const admin=requireAdmin(req,res); if(!admin) return;
+  const { from, to, range } = rangeToBounds(req.query?.range);
+  const listings = data.getListings();
+  const now = Date.now();
+  const auctions = listings.filter((l)=> (l.listingType || "item") === "auction" || l.auctionId);
+  const auctionsActive = auctions.filter((l)=>{
+    const endAt = Date.parse(l.auctionEndAt || "");
+    const ended = (String(l.auctionStatus || "").toLowerCase() === "ended") ||
+      (Number.isFinite(endAt) && now > endAt);
+    return !ended;
+  }).length;
+  const auctionsEnded = Math.max(0, auctions.length - auctionsActive);
+  const buyNowActive = listings.filter((l)=>{
+    const listingType = l.listingType || "item";
+    const isAuction = listingType === "auction" || l.auctionId;
+    if(isAuction) return false;
+    return String(l.status || "active").toLowerCase() === "active";
+  }).length;
+
+  const places = (data.getPlaces ? data.getPlaces() : data.places || []);
+  const pendingPlaces = data.listPlacesByStatus ? data.listPlacesByStatus("pending") : places.filter(p=>String(p.status||"").toLowerCase()==="pending");
+  const trustPending = data.getTrustApplicationsByStatus("pending").length;
+  const residentPending = data.listResidentVerificationRequestsByStatus("pending").length;
+  const businessPending = data.listLocalBizApplicationsByStatus("pending").length;
+
+  const usersTotal = data.countUsers();
+  const usersNew = data.countUsersSince(from);
+  const ordersTotal = data.countOrders();
+  const ordersRange = data.countOrdersSince(from);
+  const revenueTotalCents = data.sumOrderRevenue();
+  const revenueRangeCents = data.sumOrderRevenueSince(from);
+
+  const liveActive = data.listActiveLiveRooms(1).length;
+  const liveScheduled = data.listScheduledLiveShows({}).length;
+
+  const sweep = data.getActiveSweepstake();
+  let sweepStatus = "inactive";
+  let sweepEntries = 0;
+  if(sweep){
+    sweepStatus = String(sweep.status || "active");
+    const totals = data.getSweepstakeEntryTotals(sweep.id);
+    sweepEntries = Number(totals?.totalEntries || 0);
+  }
+
+  res.json({
+    range,
+    from,
+    to,
+    users: { total: usersTotal, new: usersNew },
+    places: { total: places.length, pending: pendingPlaces.length },
+    approvals: { trustPending, residentPending, businessPending },
+    listings: { buyNowActive, auctionsActive, auctionsEnded },
+    orders: { total: ordersTotal, rangeOrders: ordersRange, totalRevenueCents: revenueTotalCents, rangeRevenueCents: revenueRangeCents },
+    live: { activeRooms: liveActive, scheduledShows: liveScheduled },
+    sweep: { status: sweepStatus, totalEntries: sweepEntries }
+  });
+});
 app.get("/api/seller/sales/summary",(req,res)=>{
   const u=requireLogin(req,res); if(!u) return;
   const placeId = Number(req.query.placeId || 0);
@@ -1538,7 +1662,8 @@ app.get("/sweepstake/active",(req,res)=>{
   res.json({ sweepstake: sweep, totals, winner: winnerProfile, userEntries, balance });
 });
 app.post("/sweepstake/enter",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+  const access = requirePerm(req,res,"SWEEP_ENTER"); if(!access) return;
+  const u=access.userId;
   const sweepId = Number(req.body?.sweepstakeId);
   const entries = Number(req.body?.entries);
   if(!Number.isFinite(entries) || entries <= 0) return res.status(400).json({error:"entries must be > 0"});
@@ -1612,6 +1737,7 @@ app.get("/districts/:id/places",(req,res)=>{
 });
 
 app.get("/market/listings",(req,res)=>{
+  const access = requirePerm(req,res,"VIEW_MARKET"); if(!access) return;
   const townId = Number(req.query.townId || 1);
   const places = (data.getPlaces ? data.getPlaces() : data.places || []);
   const placeById = new Map(places.map(p=>[Number(p.id), p]));
@@ -1620,13 +1746,17 @@ app.get("/market/listings",(req,res)=>{
     const p = placeById.get(Number(l.placeId));
     if(!p) return;
     if(townId && Number(p.townId)!==Number(townId)) return;
+    const listingType = l.listingType || "item";
+    const hasAuctionFields = !!(l.auctionStartAt || l.auctionEndAt || Number(l.startBidCents || 0) || Number(l.minIncrementCents || 0) || Number(l.reserveCents || 0));
+    const hasAuctionId = !!l.auctionId;
+    if(listingType === "auction" || hasAuctionFields || hasAuctionId) return;
     const joined = {
       id: l.id,
       placeId: l.placeId,
       title: l.title,
       description: l.description,
       price: l.price,
-      listingType: l.listingType || "item",
+      listingType,
       auctionEndAt: l.auctionEndAt || "",
       startBidCents: l.startBidCents || 0,
       placeName: p.name || "Store",
@@ -1642,20 +1772,54 @@ app.get("/market/listings",(req,res)=>{
   res.json(out);
 });
 
+app.get("/market/auctions",(req,res)=>{
+  const access = requirePerm(req,res,"VIEW_AUCTIONS"); if(!access) return;
+  const townId = Number(req.query.townId || 1);
+  const places = (data.getPlaces ? data.getPlaces() : data.places || []);
+  const placeById = new Map(places.map(p=>[Number(p.id), p]));
+  const out = [];
+  data.getListings().forEach((l)=>{
+    const p = placeById.get(Number(l.placeId));
+    if(!p) return;
+    if(townId && Number(p.townId)!==Number(townId)) return;
+    const listingType = l.listingType || "item";
+    const hasAuctionId = !!l.auctionId;
+    if(listingType !== "auction" && !hasAuctionId) return;
+    const joined = {
+      id: l.id,
+      placeId: l.placeId,
+      title: l.title,
+      description: l.description,
+      price: l.price,
+      listingType: l.listingType || "item",
+      auctionEndAt: l.auctionEndAt || "",
+      startBidCents: l.startBidCents || 0,
+      placeName: p.name || "Store",
+      placeCategory: p.category || "",
+      districtId: p.districtId
+    };
+    const summary = data.getAuctionSummary(l.id);
+    joined.highestBidCents = summary.highestBidCents || 0;
+    out.push(joined);
+  });
+  res.json(out);
+});
+
 // Channels
 app.get("/channels",(req,res)=>{
-  const u=getUserId(req);
+  const access = requirePerm(req,res,"VIEW_CHANNELS"); if(!access) return;
+  const u=access.userId;
   const channels=data.getChannels();
   if(!u) return res.json(channels.filter(c=>Number(c.isPublic)===1));
   res.json(channels);
 });
 app.get("/channels/:id/messages",(req,res)=>{
+  const access = requirePerm(req,res,"VIEW_CHANNELS"); if(!access) return;
   const channel=data.getChannelById(req.params.id);
   if(!channel) return res.status(404).json({error:"Channel not found"});
   const isPublic=Number(channel.isPublic)===1;
   if(!isPublic){
-    const u=getUserId(req);
-    if(!u) return res.status(401).json({error:"Login required"});
+    const u=access.userId;
     if(!data.isChannelMember(channel.id,u)) return res.status(403).json({error:"Not a member"});
   }
   const msgs = data.getChannelMessages(channel.id, 200).map((m)=>({
@@ -1665,9 +1829,10 @@ app.get("/channels/:id/messages",(req,res)=>{
   res.json(msgs);
 });
 app.post("/channels/:id/messages",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const ctx=data.getTownContext(1, u);
-  const user=data.getUserById(u);
+  const access = requirePerm(req,res,"COMMENT_CHANNELS"); if(!access) return;
+  const u=access.userId;
+  const ctx=access.ctx;
+  const user=access.user;
   const gate = trust.can(user, ctx, "chat_text");
   if(!gate.ok) return res.status(403).json({error:"Chat requires verified access"});
   const channel=data.getChannelById(req.params.id);
@@ -1682,20 +1847,20 @@ app.post("/channels/:id/messages",(req,res)=>{
     const isAllowed = imageUrl.startsWith("https://") || imageUrl.startsWith("/uploads/");
     if(!isAllowed) return res.status(400).json({error:"Invalid imageUrl"});
     const imageGate = trust.can(user, ctx, "chat_image");
-    if(!imageGate.ok) return res.status(403).json({error:"Chat images require tier 2+"});
+    if(!imageGate.ok) return res.status(403).json({error:"Chat images require tier 1+"});
   }
   const tier = trust.resolveTier(user, ctx);
-  const canPost = tier >= 2;
-  const canCreateThread = tier >= 3;
+  const canPost = tier >= 1;
+  const canCreateThread = tier >= 1;
   const replyToId=req.body?.replyToId ? Number(req.body.replyToId) : null;
   let threadId=null;
   if(replyToId){
-    if(!canPost) return res.status(403).json({error:"Posting requires tier 2+"});
+    if(!canPost) return res.status(403).json({error:"Posting requires tier 1+"});
     const parent=data.getChannelMessageById(replyToId);
     if(!parent || Number(parent.channelId)!==Number(channel.id)) return res.status(400).json({error:"Invalid replyToId"});
     threadId=parent.threadId;
   }else{
-    if(!canCreateThread) return res.status(403).json({error:"Thread creation requires tier 3+"});
+    if(!canCreateThread) return res.status(403).json({error:"Thread creation requires tier 1+"});
     threadId=data.createChannelThread(channel.id, u);
   }
   const created=data.addChannelMessage(channel.id, u, text, imageUrl, replyToId, threadId);
@@ -1714,7 +1879,8 @@ app.get("/places/:id",(req,res)=>{
   res.json({ ...p, followCount, isFollowing, reviewSummary, owner });
 });
 app.post("/places",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+  const access = requirePerm(req,res,"SELL_LISTINGS"); if(!access) return;
+  const u=access.userId;
   const payload = req.body || {};
   const created = data.addPlace({
     ...payload,
@@ -1799,12 +1965,12 @@ app.post("/places/:id/listings",(req,res)=>{
   const ctx=data.getTownContext(1, u);
   const user=data.getUserById(u);
   const listingGate = trust.can(user, ctx, "listing_create");
-  if(!listingGate.ok) return res.status(403).json({error:"Listing creation requires local resident trust"});
+  if(!listingGate.ok) return res.status(403).json({error:"Listing creation requires Sebastian Resident trust"});
   const pid=Number(req.params.id);
   const listingType=(req.body?.listingType||"item").toString();
   if(listingType === "auction"){
     const auctionGate = trust.can(user, ctx, "auction_host");
-    if(!auctionGate.ok) return res.status(403).json({error:"Auction hosting requires trusted local trust"});
+    if(!auctionGate.ok) return res.status(403).json({error:"Auction hosting requires Local Business trust"});
   }
   const exchangeType=(req.body?.exchangeType||"money").toString();
   const offerCategory=(req.body?.offerCategory||"").toString().trim().toLowerCase();
@@ -1813,12 +1979,8 @@ app.post("/places/:id/listings",(req,res)=>{
     const place = placeList.find(p=>Number(p.id)===pid);
     if(!place) return res.status(404).json({error:"Place not found"});
     if(Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Only store owner can post offers/requests"});
-    const ctx=data.getTownContext(1, u);
-    const trustLevel=ctx.trustLevel;
-    if(trustLevel===TRUST.VISITOR) return res.status(403).json({error:"Verified visitor required"});
-    if(trustLevel===TRUST.VERIFIED_VISITOR && (exchangeType==="barter" || offerCategory==="lodging")) {
-      return res.status(403).json({error:"Member required for lodging/barter"});
-    }
+    const tier = trust.resolveTier(user, ctx);
+    if(tier < 2) return res.status(403).json({error:"Sebastian Resident required for offers/requests"});
   }
   if(!req.body?.title) return res.status(400).json({error:"title required"});
   const created=data.addListing({...req.body,placeId:pid});
@@ -1852,6 +2014,7 @@ app.post("/listings/:id/apply",(req,res)=>{
 
 // Auctions
 app.get("/listings/:id/auction",(req,res)=>{
+  const access = requirePerm(req,res,"VIEW_AUCTIONS"); if(!access) return;
   const listing = data.getListingById(req.params.id);
   if(!listing) return res.status(404).json({error:"Listing not found"});
   if((listing.listingType||"item")!=="auction") return res.status(400).json({error:"Not an auction"});
@@ -2040,7 +2203,7 @@ app.post("/api/admin/trust/tiers",(req,res)=>{
   const userId = Number(req.body?.userId);
   const trustTier = Number(req.body?.trustTier);
   if(!userId || !Number.isFinite(trustTier)) return res.status(400).json({error:"userId and trustTier required"});
-  if(trustTier < 0 || trustTier > 6) return res.status(400).json({error:"trustTier must be 0-6 (0 resets to automatic)"});
+  if(trustTier < 0 || trustTier > 3) return res.status(400).json({error:"trustTier must be 0-3 (0 resets to automatic)"});
   const updated = data.setUserTrustTier(1, userId, trustTier);
   if(updated?.error) return res.status(400).json(updated);
   res.json({ ok:true, membership: updated });

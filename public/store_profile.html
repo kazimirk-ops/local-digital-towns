@@ -6,252 +6,429 @@
     <title>Store Profile</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
     <link rel="stylesheet" href="/ui-kit.css?v=1">
-    <style>
-      * { box-sizing:border-box; }
-      body { margin:0; font-family:var(--font-sans); background:var(--bg); color:var(--text); }
-      .wrap { max-width:1100px; margin:0 auto; padding:20px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-      .card { background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:16px; }
-      .pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--panel2); font-size:12px; color:var(--text); text-decoration:none; }
-      .title { font-family:var(--font-display); font-weight:700; font-size:18px; }
-      .muted { color:var(--muted); font-size:12px; }
-      .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-      input, textarea, select { width:100%; padding:10px; border-radius:12px; border:1px solid var(--border); background:var(--panel2); color:var(--text); }
-      textarea { min-height:80px; }
-      button { padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--panel2); color:var(--text); cursor:pointer; }
-      .list { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
-      @media (max-width:1000px){ .wrap { grid-template-columns:1fr; } }
-    </style>
+    <link rel="stylesheet" href="/store_profile_v2.css?v=1">
   </head>
   <body data-town="sebastian">
-    <div class="wrap">
-      <div class="row" style="grid-column:1 / -1;">
-        <a class="pill" href="/ui">Back to Town</a>
-        <a class="pill" href="/me/profile">My Profile</a>
-        <span class="pill" id="trustBadge">Tier 0: Visitor</span>
-        <span class="muted" id="storeLoginNote"></span>
-      </div>
-
-      <div class="card">
-        <div class="title">Owned Stores</div>
-        <div class="list" id="ownedStores"></div>
-      </div>
-
-      <div class="card">
-        <div class="title">Create Store</div>
-        <label class="muted">Store Type</label>
-        <select id="storeType">
-          <option value="individual">individual seller</option>
-          <option value="business">registered business</option>
-        </select>
-        <label class="muted">District</label>
-        <select id="storeDistrict">
-          <option value="1">Market Square</option>
-          <option value="2">Service Row</option>
-          <option value="3">Retail Way</option>
-          <option value="4">Marina / Live Hall</option>
-          <option value="5">Town Hall</option>
-        </select>
-        <label class="muted">Store Name</label>
-        <input id="storeName" />
-        <label class="muted">Category</label>
-        <input id="storeCategory" />
-        <label class="muted">Description</label>
-        <textarea id="storeDescription"></textarea>
-        <label class="muted">Address (private)</label>
-        <input id="storeAddress" />
-        <label class="muted">Website / Social (IG or FB)</label>
-        <input id="storeWebsite" />
-        <label class="muted">How long in Sebastian</label>
-        <input id="storeYears" />
-        <div class="row" style="margin-top:10px;">
-          <button id="createStoreBtn">Submit Store Application</button>
-          <span class="muted" id="storeMsg"></span>
+    <header class="store-header">
+      <div class="store-header-inner">
+        <div class="nav-left">
+          <a class="nav-btn" href="/ui">
+            <span class="nav-icon">←</span>
+            <span class="nav-text">Back to Town</span>
+          </a>
+          <span class="nav-divider"></span>
+          <a class="nav-btn" href="/me/profile">
+            <span class="nav-icon">👤</span>
+            <span class="nav-text">My Profile</span>
+          </a>
+        </div>
+        <div class="nav-right">
+          <span class="trust-badge" id="trustBadge">Tier 0: Visitor</span>
         </div>
       </div>
+    </header>
 
-      <div class="card" id="storefrontCard" style="display:none;">
-        <div class="title">Storefront</div>
-        <label class="muted">Store</label>
-        <select id="storefrontStore"></select>
-        <label class="muted">Name</label>
-        <input id="storefrontName" />
-        <label class="muted">Category</label>
-        <input id="storefrontCategory" />
-        <label class="muted">Description</label>
-        <textarea id="storefrontDescription"></textarea>
-        <label class="muted">Banner Image URL</label>
-        <input id="storefrontBannerUrl" />
-        <div class="row" style="margin-top:6px;">
-          <input id="storefrontBannerFile" type="file" accept="image/*" />
-          <button id="uploadBannerBtn" type="button">Upload Banner</button>
-        </div>
-        <label class="muted">Profile Image URL</label>
-        <input id="storefrontAvatarUrl" />
-        <div class="row" style="margin-top:6px;">
-          <input id="storefrontAvatarFile" type="file" accept="image/*" />
-          <button id="uploadAvatarBtn" type="button">Upload Avatar</button>
-        </div>
-        <label class="muted">Visibility</label>
-        <select id="storefrontVisibility">
-          <option value="town_only">town_only</option>
-          <option value="zone">zone</option>
-          <option value="exact_address">exact_address</option>
-          <option value="meetup_only">meetup_only</option>
-        </select>
-        <label class="muted">Pickup Zone</label>
-        <input id="storefrontPickup" />
-        <label class="muted">Meetup Instructions</label>
-        <textarea id="storefrontMeetup"></textarea>
-        <label class="muted">Hours</label>
-        <input id="storefrontHours" />
-        <div class="row" style="margin-top:10px;">
-          <button id="saveStorefrontBtn">Save Storefront</button>
-          <span class="muted" id="storefrontMsg"></span>
-        </div>
-      </div>
-
-      <div class="card" id="salesCard" style="grid-column:1 / -1; display:none;">
-        <div class="row" style="justify-content:space-between;">
+    <main class="store-shell">
+      <div class="store-header-block">
+        <div class="store-title-wrap">
+          <div class="store-title-icon">🏬</div>
           <div>
-            <div class="title">Sales</div>
-            <div class="muted" id="salesRangeLabel">—</div>
-          </div>
-          <div class="row">
-            <select id="salesStore"></select>
-            <a class="pill" id="salesExportLink" href="#" target="_blank">Download CSV</a>
+            <h1 class="store-title">Store Management</h1>
+            <p class="store-subtitle">Manage your stores, listings, and customer messages</p>
           </div>
         </div>
-        <div class="row" style="margin-top:10px;">
-          <button class="pill" id="salesRangeToday" data-range="today">Today</button>
-          <button class="pill" id="salesRange7d" data-range="7d">7 days</button>
-          <button class="pill" id="salesRange30d" data-range="30d">30 days</button>
-        </div>
-        <div class="row" style="margin-top:12px;">
-          <div class="item">
-            <div class="muted">Revenue</div>
-            <div class="title" id="salesRevenue">—</div>
-          </div>
-          <div class="item">
-            <div class="muted">Orders</div>
-            <div class="title" id="salesOrders">—</div>
-          </div>
-          <div class="item">
-            <div class="muted">Avg Order</div>
-            <div class="title" id="salesAvg">—</div>
-          </div>
-        </div>
-        <div class="twoCol" style="margin-top:12px;">
-          <div>
-            <div class="muted">Daily</div>
-            <div class="list" id="salesDaily"></div>
-          </div>
-          <div>
-            <div class="muted">Top Items</div>
-            <div class="list" id="salesTopItems"></div>
-          </div>
-        </div>
-        <div class="muted" style="margin-top:12px;">Recent Orders</div>
-        <div class="list" id="salesRecent"></div>
-        <div class="muted" id="salesMsg"></div>
+        <p class="store-note" id="storeLoginNote"></p>
       </div>
 
-      <div class="card" id="sellerOrdersCard" style="grid-column:1 / -1; display:none;">
-        <div class="row" style="justify-content:space-between;">
-          <div>
-            <div class="title">Orders</div>
-            <div class="muted">Paid orders for this store.</div>
-          </div>
-          <select id="sellerOrdersStore"></select>
+      <div class="tabs">
+        <div class="tabs-list">
+          <button class="tab-btn tab-active" data-tab="stores">My Stores</button>
+          <button class="tab-btn" data-tab="listings">Listings</button>
+          <button class="tab-btn" data-tab="inbox">Inbox</button>
         </div>
-        <div class="list" id="sellerOrdersList"></div>
-        <div class="muted" id="sellerOrdersMsg"></div>
-      </div>
 
-      <div class="card">
-        <div class="title">Create Listing</div>
-        <label class="muted">Store</label>
-        <select id="listingStore"></select>
-        <label class="muted">Listing Type</label>
-        <select id="listingType">
-          <option value="item">item</option>
-          <option value="offer">offer</option>
-          <option value="request">request</option>
-          <option value="auction">auction</option>
-        </select>
-        <label class="muted">Title</label>
-        <input id="listingTitle" />
-        <label class="muted">Description</label>
-        <textarea id="listingDesc"></textarea>
-        <label class="muted">Quantity</label>
-        <input id="listingQty" value="1" />
-        <label class="muted">Price</label>
-        <input id="listingPrice" value="0" />
+        <div class="tab-panels">
+          <section class="tab-panel" data-panel="stores">
+            <div class="panel-grid">
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-icon">🏪</div>
+                  <div>
+                    <h2 class="card-title">Owned Stores</h2>
+                    <p class="card-subtitle">View and manage your existing stores</p>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="list" id="ownedStores"></div>
+                </div>
+              </div>
 
-        <div class="item" id="auctionPanel" style="display:none; margin-top:10px;">
-          <div class="title" style="font-size:14px;">Auction Setup</div>
-          <label class="muted">Photos (up to 5)</label>
-          <input id="auctionPhotosInput" type="file" accept="image/*" multiple />
-          <div class="muted" id="auctionPhotosHelp">Images only, max 2MB each.</div>
-          <div id="auctionPhotoList" class="row" style="margin-top:8px; flex-wrap:wrap;"></div>
-          <label class="muted">Start Time</label>
-          <input id="auctionStartLocal" type="datetime-local" />
-          <label class="muted">Duration</label>
-          <select id="auctionDuration">
-            <option value="">Select duration</option>
-            <option value="24">24 hours</option>
-            <option value="48">48 hours</option>
-            <option value="72">72 hours</option>
-          </select>
-          <div class="muted">End time: <span id="auctionEndDisplay">—</span></div>
-          <div class="twoCol" style="margin-top:8px;">
-            <div>
-              <label class="muted">Start Bid ($)</label>
-              <input id="auctionStartBid" type="number" min="0" step="0.01" value="1.00" />
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-icon success">＋</div>
+                  <div>
+                    <h2 class="card-title">Create Store</h2>
+                    <p class="card-subtitle">Set up a new store in Sebastian</p>
+                  </div>
+                </div>
+                <div class="card-body form-stack">
+                  <div class="field-grid">
+                    <div class="field">
+                      <label class="label" for="storeType">Store Type</label>
+                      <select id="storeType">
+                        <option value="individual">individual seller</option>
+                        <option value="business">registered business</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label class="label" for="storeDistrict">District</label>
+                      <select id="storeDistrict">
+                        <option value="1">Market Square</option>
+                        <option value="2">Service Row</option>
+                        <option value="3">Retail Way</option>
+                        <option value="4">Marina / Live Hall</option>
+                        <option value="5">Town Hall</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for="storeName">Store Name</label>
+                    <input id="storeName" />
+                  </div>
+                  <div class="field">
+                    <label class="label" for="storeCategory">Category</label>
+                    <input id="storeCategory" />
+                  </div>
+                  <div class="field">
+                    <label class="label" for="storeDescription">Description</label>
+                    <textarea id="storeDescription"></textarea>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="storeAddress">Address (private)</label>
+                    <input id="storeAddress" />
+                  </div>
+                  <div class="field">
+                    <label class="label" for="storeWebsite">Website / Social (IG or FB)</label>
+                    <input id="storeWebsite" />
+                  </div>
+                  <div class="field">
+                    <label class="label" for="storeYears">How long in Sebastian</label>
+                    <input id="storeYears" />
+                  </div>
+
+                  <div class="actions-row">
+                    <button id="createStoreBtn" class="btn-primary">Submit Store Application</button>
+                    <span class="status" id="storeMsg"></span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <label class="muted">Min Increment ($)</label>
-              <input id="auctionMinIncrement" type="number" min="0" step="0.01" value="0.50" />
+
+            <div class="panel-stack">
+              <div class="card" id="storefrontCard" style="display:none;">
+                <div class="card-header">
+                  <div class="card-icon">🧭</div>
+                  <div>
+                    <h2 class="card-title">Storefront</h2>
+                    <p class="card-subtitle">Public-facing store details</p>
+                  </div>
+                </div>
+                <div class="card-body form-stack">
+                  <div class="field">
+                    <label class="label" for="storefrontStore">Store</label>
+                    <select id="storefrontStore"></select>
+                  </div>
+                  <div class="field-grid">
+                    <div class="field">
+                      <label class="label" for="storefrontName">Name</label>
+                      <input id="storefrontName" />
+                    </div>
+                    <div class="field">
+                      <label class="label" for="storefrontCategory">Category</label>
+                      <input id="storefrontCategory" />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="storefrontDescription">Description</label>
+                    <textarea id="storefrontDescription"></textarea>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="storefrontBannerUrl">Banner Image URL</label>
+                    <input id="storefrontBannerUrl" />
+                    <div class="upload-row">
+                      <input id="storefrontBannerFile" type="file" accept="image/*" />
+                      <button id="uploadBannerBtn" type="button" class="btn-outline">Upload Banner</button>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="storefrontAvatarUrl">Profile Image URL</label>
+                    <input id="storefrontAvatarUrl" />
+                    <div class="upload-row">
+                      <input id="storefrontAvatarFile" type="file" accept="image/*" />
+                      <button id="uploadAvatarBtn" type="button" class="btn-outline">Upload Avatar</button>
+                    </div>
+                  </div>
+                  <div class="field-grid">
+                    <div class="field">
+                      <label class="label" for="storefrontVisibility">Visibility</label>
+                      <select id="storefrontVisibility">
+                        <option value="town_only">town_only</option>
+                        <option value="zone">zone</option>
+                        <option value="exact_address">exact_address</option>
+                        <option value="meetup_only">meetup_only</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label class="label" for="storefrontPickup">Pickup Zone</label>
+                      <input id="storefrontPickup" />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="storefrontMeetup">Meetup Instructions</label>
+                    <textarea id="storefrontMeetup"></textarea>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="storefrontHours">Hours</label>
+                    <input id="storefrontHours" />
+                  </div>
+                  <div class="actions-row">
+                    <button id="saveStorefrontBtn" class="btn-primary">Save Storefront</button>
+                    <span class="status" id="storefrontMsg"></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card" id="salesCard" style="display:none;">
+                <div class="card-header split">
+                  <div>
+                    <h2 class="card-title">Sales</h2>
+                    <p class="card-subtitle" id="salesRangeLabel">—</p>
+                  </div>
+                  <div class="header-actions">
+                    <select id="salesStore"></select>
+                    <a class="pill" id="salesExportLink" href="#" target="_blank">Download CSV</a>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="range-buttons">
+                    <button class="pill" id="salesRangeToday" data-range="today">Today</button>
+                    <button class="pill" id="salesRange7d" data-range="7d">7 days</button>
+                    <button class="pill" id="salesRange30d" data-range="30d">30 days</button>
+                  </div>
+                  <div class="metrics-grid">
+                    <div class="metric">
+                      <span class="metric-label">Revenue</span>
+                      <span class="metric-value" id="salesRevenue">—</span>
+                    </div>
+                    <div class="metric">
+                      <span class="metric-label">Orders</span>
+                      <span class="metric-value" id="salesOrders">—</span>
+                    </div>
+                    <div class="metric">
+                      <span class="metric-label">Avg Order</span>
+                      <span class="metric-value" id="salesAvg">—</span>
+                    </div>
+                  </div>
+                  <div class="two-col">
+                    <div>
+                      <div class="muted">Daily</div>
+                      <div class="list" id="salesDaily"></div>
+                    </div>
+                    <div>
+                      <div class="muted">Top Items</div>
+                      <div class="list" id="salesTopItems"></div>
+                    </div>
+                  </div>
+                  <div class="muted" style="margin-top:12px;">Recent Orders</div>
+                  <div class="list" id="salesRecent"></div>
+                  <div class="muted" id="salesMsg"></div>
+                </div>
+              </div>
+
+              <div class="card" id="sellerOrdersCard" style="display:none;">
+                <div class="card-header split">
+                  <div>
+                    <h2 class="card-title">Orders</h2>
+                    <p class="card-subtitle">Paid orders for this store.</p>
+                  </div>
+                  <select id="sellerOrdersStore"></select>
+                </div>
+                <div class="card-body">
+                  <div class="list" id="sellerOrdersList"></div>
+                  <div class="muted" id="sellerOrdersMsg"></div>
+                </div>
+              </div>
+
+              <div class="card" id="storePrizeClaimsCard">
+                <div class="card-header">
+                  <div class="card-icon">🎁</div>
+                  <div>
+                    <h2 class="card-title">Prize Claims</h2>
+                    <p class="card-subtitle">Claims tied to your stores</p>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="list" id="storePrizeClaims"></div>
+                  <div class="muted" id="storePrizeMsg"></div>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="row" style="margin-top:10px;">
-            <button id="auctionPublishBtn">Publish Auction</button>
-          </div>
-        </div>
+          </section>
 
-        <div class="row" style="margin-top:10px;">
-          <button id="createListingBtn">Create Listing</button>
-          <span class="muted" id="listingMsg"></span>
-          <a class="pill" id="listingLink" href="#" style="display:none;">View Auction</a>
-        </div>
-      </div>
+          <section class="tab-panel hidden" data-panel="listings">
+            <div class="panel-stack">
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-icon warning">📦</div>
+                  <div>
+                    <h2 class="card-title">Create Listing</h2>
+                    <p class="card-subtitle">Add a new item or service to your store</p>
+                  </div>
+                </div>
+                <div class="card-body form-stack">
+                  <div class="field-grid">
+                    <div class="field">
+                      <label class="label" for="listingStore">Store</label>
+                      <select id="listingStore"></select>
+                    </div>
+                    <div class="field">
+                      <label class="label" for="listingType">Listing Type</label>
+                      <select id="listingType">
+                        <option value="item">item</option>
+                        <option value="offer">offer</option>
+                        <option value="request">request</option>
+                        <option value="auction">auction</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="listingTitle">Title</label>
+                    <input id="listingTitle" />
+                  </div>
+                  <div class="field">
+                    <label class="label" for="listingDesc">Description</label>
+                    <textarea id="listingDesc"></textarea>
+                  </div>
+                  <div class="field">
+                    <label class="label">Photos</label>
+                    <input id="listingPhotoInput" type="file" accept="image/*" hidden />
+                    <input id="listingPhotoUrls" type="hidden" value="[]" />
+                    <div class="upload-row">
+                      <button id="listingPhotoUploadBtn" type="button" class="btn-outline">Upload Photo</button>
+                      <span class="muted">Images only.</span>
+                    </div>
+                    <div id="listingPhotoPreview" class="listing-photo-preview"></div>
+                  </div>
+                  <div class="field-grid">
+                    <div class="field">
+                      <label class="label" for="listingQty">Quantity</label>
+                      <input id="listingQty" value="1" />
+                    </div>
+                    <div class="field">
+                      <label class="label" for="listingPrice">Price</label>
+                      <input id="listingPrice" value="0" />
+                    </div>
+                  </div>
 
-      <div class="card" style="grid-column:1 / -1;">
-        <div class="title">Store Inbox</div>
-        <label class="muted">Store</label>
-        <select id="storeInboxStore"></select>
-        <div class="row" style="margin-top:8px;">
-          <div style="flex:1;">
-            <div class="muted">Conversations</div>
-            <div class="list" id="storeInboxList"></div>
-          </div>
-          <div style="flex:2;">
-            <div class="muted">Messages</div>
-            <div class="list" id="storeInboxMessages"></div>
-            <textarea id="storeInboxInput" placeholder="Write a message…"></textarea>
-            <div class="row" style="margin-top:8px;">
-              <button id="storeInboxSendBtn">Send</button>
-              <span class="muted" id="storeInboxMsg"></span>
+                  <div class="item" id="auctionPanel" style="display:none; margin-top:10px;">
+                    <div class="title" style="font-size:14px;">Auction Setup</div>
+                    <label class="muted">Photos (up to 5)</label>
+                    <input id="auctionPhotosInput" type="file" accept="image/*" multiple />
+                    <div class="muted" id="auctionPhotosHelp">Images only, max 2MB each.</div>
+                    <div id="auctionPhotoList" class="row" style="margin-top:8px; flex-wrap:wrap;"></div>
+                    <label class="muted">Start Time</label>
+                    <input id="auctionStartLocal" type="datetime-local" />
+                    <label class="muted">Duration</label>
+                    <select id="auctionDuration">
+                      <option value="">Select duration</option>
+                      <option value="24">24 hours</option>
+                      <option value="48">48 hours</option>
+                      <option value="72">72 hours</option>
+                    </select>
+                    <div class="muted">End time: <span id="auctionEndDisplay">—</span></div>
+                    <div class="twoCol" style="margin-top:8px;">
+                      <div>
+                        <label class="muted">Start Bid ($)</label>
+                        <input id="auctionStartBid" type="number" min="0" step="0.01" value="1.00" />
+                      </div>
+                      <div>
+                        <label class="muted">Min Increment ($)</label>
+                        <input id="auctionMinIncrement" type="number" min="0" step="0.01" value="0.50" />
+                      </div>
+                    </div>
+                    <div class="row" style="margin-top:10px;">
+                      <button id="auctionPublishBtn">Publish Auction</button>
+                    </div>
+                  </div>
+
+                  <div class="actions-row">
+                    <button id="createListingBtn" class="btn-primary">Create Listing</button>
+                    <span class="status" id="listingMsg"></span>
+                    <a class="pill" id="listingLink" href="#" style="display:none;">View Auction</a>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
+
+          <section class="tab-panel hidden" data-panel="inbox">
+            <div class="panel-stack">
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-icon info">💬</div>
+                  <div>
+                    <h2 class="card-title">Store Inbox</h2>
+                    <p class="card-subtitle">View and respond to customer messages</p>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="field">
+                    <label class="label" for="storeInboxStore">Store</label>
+                    <select id="storeInboxStore"></select>
+                  </div>
+                  <div class="inbox-grid">
+                    <div>
+                      <div class="muted">Conversations</div>
+                      <div class="list" id="storeInboxList"></div>
+                    </div>
+                    <div>
+                      <div class="muted">Messages</div>
+                      <div class="list" id="storeInboxMessages"></div>
+                      <textarea id="storeInboxInput" placeholder="Write a message…"></textarea>
+                      <div class="actions-row" style="margin-top:8px;">
+                        <button id="storeInboxSendBtn" class="btn-primary">Send</button>
+                        <span class="status" id="storeInboxMsg"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
+    </main>
 
-      <div class="card" style="grid-column:1 / -1;" id="storePrizeClaimsCard">
-        <div class="title">Prize Claims</div>
-        <div class="list" id="storePrizeClaims"></div>
-        <div class="muted" id="storePrizeMsg"></div>
-      </div>
-    </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const tabs = Array.from(document.querySelectorAll(".tab-btn"));
+        const panels = Array.from(document.querySelectorAll(".tab-panel"));
+        if (!tabs.length || !panels.length) return;
+        const showPanel = (name) => {
+          tabs.forEach((btn) => {
+            btn.classList.toggle("tab-active", btn.dataset.tab === name);
+          });
+          panels.forEach((panel) => {
+            panel.classList.toggle("hidden", panel.dataset.panel !== name);
+          });
+        };
+        tabs.forEach((btn) => {
+          btn.addEventListener("click", () => showPanel(btn.dataset.tab));
+        });
+        showPanel("stores");
+      });
+    </script>
     <script src="/theme.js?v=1"></script>
     <script src="/store_profile.js"></script>
   </body>

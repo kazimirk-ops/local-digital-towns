@@ -4,226 +4,338 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Admin Metrics – Sebastian</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
     <link rel="stylesheet" href="/ui-kit.css?v=1">
     <style>
-      body{ font-family: var(--font-sans, ui-sans-serif, system-ui); margin:0; background:var(--bg); color:var(--text); }
-      .wrap{ max-width:1200px; margin:0 auto; padding:16px; }
-      .card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; }
-      .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-      .muted{ color:var(--muted); font-size:12px; }
-      table{ width:100%; border-collapse:collapse; }
-      th,td{ padding:8px; border-bottom:1px solid var(--border); text-align:left; font-size:13px; }
-      .pill{ display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:var(--panel2); font-size:12px; }
-      a{ color:var(--accent2); }
-      .mono{ font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; white-space:pre-wrap; }
+      * { box-sizing: border-box; }
+      body {
+        font-family: var(--font-sans, ui-sans-serif, system-ui);
+        margin: 0;
+        background: #0a0f1a;
+        color: #e2e8f0;
+      }
+      a { color: #7dd3fc; text-decoration: none; }
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(13, 20, 36, 0.92);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(12px);
+      }
+      .topbar-inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        color: #94a3b8;
+        transition: all 0.2s ease;
+        font-size: 13px;
+      }
+      .nav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+      .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 18px 64px; }
+      .hero {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 18px;
+      }
+      .hero-title {
+        margin: 0;
+        font-size: 26px;
+        color: #fff;
+      }
+      .hero-subtitle { color: #94a3b8; font-size: 13px; }
+      .grid { display: grid; gap: 16px; }
+      .card {
+        background: #0d1424;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 24px 50px rgba(3, 7, 15, 0.35);
+      }
+      .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .card-title { font-weight: 700; color: #fff; margin: 0; }
+      .muted { color: #94a3b8; font-size: 12px; }
+      .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.04);
+        font-size: 12px;
+        color: #cbd5f5;
+      }
+      .btn-primary {
+        border: none;
+        border-radius: 12px;
+        padding: 8px 14px;
+        background: linear-gradient(90deg, #22d3ee, #3b82f6);
+        color: #0b1120;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn-outline {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: transparent;
+        color: #e2e8f0;
+        border-radius: 12px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      table { width: 100%; border-collapse: collapse; }
+      th, td {
+        padding: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        text-align: left;
+        font-size: 13px;
+      }
+      th { color: #cbd5f5; font-weight: 600; }
+      input, select {
+        padding: 8px 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #151d2e;
+        color: #fff;
+      }
+      .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; white-space: pre-wrap; }
+      .table-wrap { margin-top: 10px; overflow: auto; }
     </style>
   </head>
   <body data-town="sebastian">
-    <div class="wrap">
-      <div class="row" style="justify-content:space-between;">
-        <div>
-          <h2 style="margin:0;">Admin Metrics – Sebastian</h2>
-          <div class="muted">You must be logged in. Data source: append-only events.</div>
-        </div>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="nav-btn" href="/ui">← Back to Town</a>
         <div class="row">
-          <a href="/ui" class="pill">Back to Town</a>
-          <a href="/admin/trust" class="pill">Trust Moderation</a>
-          <a href="/admin/media" class="pill">Media</a>
+          <a href="/admin/analytics" class="nav-btn">Platform Analytics</a>
+          <a href="/admin/trust" class="nav-btn">Trust Moderation</a>
+          <a href="/admin/media" class="nav-btn">Media</a>
         </div>
       </div>
+    </header>
 
-      <div class="card">
-        <div class="row" style="justify-content:space-between;">
-          <div>
-            <strong>Town Pulse (last 24h)</strong>
-            <div class="muted" id="pulseMeta">—</div>
+    <main class="wrap">
+      <div class="hero">
+        <h2 class="hero-title">Admin Metrics – Sebastian</h2>
+        <div class="hero-subtitle">You must be logged in. Data source: append-only events.</div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <strong class="card-title">Town Pulse (last 24h)</strong>
+              <div class="muted" id="pulseMeta">—</div>
+            </div>
+            <div class="row">
+              <span class="pill" id="pulseSessions">Sessions: —</span>
+              <button class="btn-outline" id="pulseGenerateBtn" type="button">Generate Pulse Now</button>
+            </div>
           </div>
-          <div class="row">
-            <span class="pill" id="pulseSessions">Sessions: —</span>
-            <button class="pill" id="pulseGenerateBtn" type="button">Generate Pulse Now</button>
+          <div id="pulseCounts"></div>
+        </div>
+
+        <div class="card">
+          <strong class="card-title">Place Leaderboard (last 24h)</strong>
+          <div class="muted">Views, messages, listing creates per place.</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Place</th><th>Views</th><th>Messages</th><th>Listing Creates</th><th>Total Events</th></tr>
+              </thead>
+              <tbody id="placeRows"></tbody>
+            </table>
           </div>
         </div>
-        <div id="pulseCounts" style="margin-top:10px;"></div>
-      </div>
 
-      <div class="card">
-        <strong>Place Leaderboard (last 24h)</strong>
-        <div class="muted">Views, messages, listing creates per place.</div>
-        <div style="margin-top:10px;">
-          <table>
-            <thead>
-              <tr><th>Place</th><th>Views</th><th>Messages</th><th>Listing Creates</th><th>Total Events</th></tr>
-            </thead>
-            <tbody id="placeRows"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card">
-        <strong>Store Applications</strong>
-        <div class="muted">Pending approvals for new stores.</div>
-        <div style="margin-top:10px;">
-          <table>
-            <thead>
-              <tr><th>Store</th><th>Type</th><th>Owner</th><th>Status</th><th>Actions</th></tr>
-            </thead>
-            <tbody id="storeRows"></tbody>
-          </table>
-        </div>
-        <div class="muted" id="storeMsg" style="margin-top:8px;"></div>
-      </div>
-
-      <div class="card">
-        <strong>Event Submissions</strong>
-        <div class="muted">Approve or deny pending events.</div>
-        <div style="margin-top:10px;">
-          <table>
-            <thead>
-              <tr><th>Event</th><th>Dates</th><th>Organizer</th><th>Status</th><th>Deny Reason</th><th>Actions</th></tr>
-            </thead>
-            <tbody id="eventRows"></tbody>
-          </table>
-        </div>
-        <div class="muted" id="eventMsg" style="margin-top:8px;"></div>
-      </div>
-
-      <div class="card">
-        <strong>Local Business Applications</strong>
-        <div class="muted">Approve or deny pending local business applications.</div>
-        <div style="margin-top:10px;">
-          <table>
-            <thead>
-              <tr><th>Business</th><th>Owner</th><th>Category</th><th>Status</th><th>Deny Reason</th><th>Actions</th></tr>
-            </thead>
-            <tbody id="localBizRows"></tbody>
-          </table>
-        </div>
-        <div class="muted" id="localBizMsg" style="margin-top:8px;"></div>
-      </div>
-
-      <div class="card">
-        <strong>Prize Offers</strong>
-        <div class="muted">Pending donor-funded prizes.</div>
-        <div style="margin-top:10px;">
-          <table>
-            <thead>
-              <tr><th>Prize</th><th>Donor</th><th>Status</th><th>Winner</th><th>Actions</th></tr>
-            </thead>
-            <tbody id="prizeRows"></tbody>
-          </table>
-        </div>
-        <div class="muted" id="prizeMsg" style="margin-top:8px;"></div>
-      </div>
-
-      <div class="card">
-        <h3 style="margin-top:0;">Sweep Toolkit</h3>
-        <div class="muted">Define what earns Sweep + who earns it (buyer/seller) + anti-gaming controls.</div>
-      </div>
-
-      <div class="card">
-        <h3 style="margin-top:0;">Add New Reward Rule</h3>
-        <div class="muted">Pick a suggested event key or type your own. Use caps/cooldowns to prevent farming.</div>
-
-        <div class="row" style="margin-top:10px;">
-          <select id="newEventSelect">
-            <option value="">(choose suggested event)</option>
-            <option value="message_send">message_send</option>
-            <option value="listing_create">listing_create</option>
-            <option value="listing_mark_sold">listing_mark_sold</option>
-            <option value="sweepstake_enter">sweepstake_enter</option>
-            <option value="task_complete">task_complete</option>
-            <option value="purchase_completed">purchase_completed</option>
-            <option value="local_purchase">local_purchase</option>
-            <option value="review_left">review_left</option>
-          </select>
-
-          <input id="newEventType" placeholder="or type custom event key (matchEventType)" style="flex:1;min-width:240px;" />
-
-          <label class="muted">Enabled <input type="checkbox" id="newEnabled" checked /></label>
+        <div class="card">
+          <strong class="card-title">Store Applications</strong>
+          <div class="muted">Pending approvals for new stores.</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Store</th><th>Type</th><th>Owner</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="storeRows"></tbody>
+            </table>
+          </div>
+          <div class="muted" id="storeMsg" style="margin-top:8px;"></div>
         </div>
 
-        <div class="row" style="margin-top:10px;">
-          <input id="newBuyer" value="0" placeholder="Buyer Amt" style="width:120px;" />
-          <input id="newSeller" value="0" placeholder="Seller Amt" style="width:120px;" />
-          <input id="newCap" value="30" placeholder="Daily Cap" style="width:140px;" />
-          <input id="newCooldown" value="10" placeholder="Cooldown (sec)" style="width:160px;" />
-          <button id="createRule">Create Rule</button>
+        <div class="card">
+          <strong class="card-title">Event Submissions</strong>
+          <div class="muted">Approve or deny pending events.</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Event</th><th>Dates</th><th>Organizer</th><th>Status</th><th>Deny Reason</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="eventRows"></tbody>
+            </table>
+          </div>
+          <div class="muted" id="eventMsg" style="margin-top:8px;"></div>
         </div>
 
-        <div class="mono" id="createMsg"></div>
+        <div class="card">
+          <strong class="card-title">Local Business Applications</strong>
+          <div class="muted">Approve or deny pending local business applications.</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Business</th><th>Owner</th><th>Category</th><th>Status</th><th>Deny Reason</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="localBizRows"></tbody>
+            </table>
+          </div>
+          <div class="muted" id="localBizMsg" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="card">
+          <strong class="card-title">Prize Offers</strong>
+          <div class="muted">Pending donor-funded prizes.</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Prize</th><th>Donor</th><th>Status</th><th>Winner</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="prizeRows"></tbody>
+            </table>
+          </div>
+          <div class="muted" id="prizeMsg" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="card">
+          <strong class="card-title">Sweep Toolkit</strong>
+          <div class="muted">Define what earns Sweep + who earns it (buyer/seller) + anti-gaming controls.</div>
+        </div>
+
+        <div class="card">
+          <strong class="card-title">Add New Reward Rule</strong>
+          <div class="muted">Pick a suggested event key or type your own. Use caps/cooldowns to prevent farming.</div>
+
+          <div class="row" style="margin-top:10px;">
+            <select id="newEventSelect">
+              <option value="">(choose suggested event)</option>
+              <option value="message_send">message_send</option>
+              <option value="listing_create">listing_create</option>
+              <option value="listing_mark_sold">listing_mark_sold</option>
+              <option value="sweepstake_enter">sweepstake_enter</option>
+              <option value="task_complete">task_complete</option>
+              <option value="purchase_completed">purchase_completed</option>
+              <option value="local_purchase">local_purchase</option>
+              <option value="review_left">review_left</option>
+            </select>
+
+            <input id="newEventType" placeholder="or type custom event key (matchEventType)" style="flex:1;min-width:240px;" />
+
+            <label class="muted">Enabled <input type="checkbox" id="newEnabled" checked /></label>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <input id="newBuyer" value="0" placeholder="Buyer Amt" style="width:120px;" />
+            <input id="newSeller" value="0" placeholder="Seller Amt" style="width:120px;" />
+            <input id="newCap" value="30" placeholder="Daily Cap" style="width:140px;" />
+            <input id="newCooldown" value="10" placeholder="Cooldown (sec)" style="width:160px;" />
+            <button id="createRule" class="btn-primary">Create Rule</button>
+          </div>
+
+          <div class="mono" id="createMsg"></div>
+        </div>
+
+        <div class="card">
+          <strong class="card-title">Existing Sweep Rules</strong>
+          <div class="muted">Edit live. Changing matchEventType changes what event key this rule listens to.</div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Match Event Type</th>
+                  <th>Enabled</th>
+                  <th>Buyer</th>
+                  <th>Seller</th>
+                  <th>Daily Cap</th>
+                  <th>Cooldown (sec)</th>
+                  <th>Save</th>
+                </tr>
+              </thead>
+              <tbody id="ruleRows"></tbody>
+            </table>
+          </div>
+          <div class="mono" id="ruleMsg"></div>
+        </div>
+
+        <div class="card">
+          <strong class="card-title">Create Sweepstake</strong>
+          <div class="muted">Creates a new sweepstake. Only “active” shows publicly.</div>
+
+          <div class="row" style="margin-top:10px;">
+            <label class="muted">Status
+            <select id="sStatus">
+              <option value="active">active</option>
+              <option value="scheduled">scheduled</option>
+              <option value="ended">ended</option>
+            </select>
+            </label>
+            <label class="muted" style="flex:1;min-width:240px;">Title
+              <input id="sTitle" placeholder="e.g. Summer Garden Bundle" />
+            </label>
+            <label class="muted" style="flex:1;min-width:240px;">Prize
+              <input id="sPrize" placeholder="e.g. $250 local gift basket" />
+            </label>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <label class="muted">Entry Cost (coins)
+              <input id="sCost" placeholder="Entry Cost" value="10" />
+            </label>
+            <label class="muted">Start Time
+              <input id="sStart" type="datetime-local" style="min-width:260px;" />
+            </label>
+            <label class="muted">End Time (entries close)
+              <input id="sEnd" type="datetime-local" style="min-width:220px;" />
+            </label>
+            <label class="muted">Draw Time (winner picked)
+              <input id="sDraw" type="datetime-local" style="min-width:220px;" />
+            </label>
+          </div>
+          <div class="muted" style="margin-top:6px;">Times use your local timezone.</div>
+
+          <div class="row" style="margin-top:10px;">
+            <button id="createSweepstake" class="btn-primary">Create Sweepstake</button>
+            <span class="mono" id="sweepMsg"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <strong class="card-title">Recent Events</strong>
+          <div class="muted">Most recent 80 events (raw).</div>
+          <div class="mono" id="recentEvents" style="margin-top:10px;"></div>
+        </div>
       </div>
-
-      <div class="card">
-        <h3 style="margin-top:0;">Existing Sweep Rules</h3>
-        <div class="muted">Edit live. Changing matchEventType changes what event key this rule listens to.</div>
-
-        <div style="margin-top:10px;overflow:auto;">
-          <table>
-            <thead>
-              <tr>
-                <th>Match Event Type</th>
-                <th>Enabled</th>
-                <th>Buyer</th>
-                <th>Seller</th>
-                <th>Daily Cap</th>
-                <th>Cooldown (sec)</th>
-                <th>Save</th>
-              </tr>
-            </thead>
-            <tbody id="ruleRows"></tbody>
-          </table>
-        </div>
-        <div class="mono" id="ruleMsg"></div>
-      </div>
-
-      <div class="card">
-        <h3 style="margin-top:0;">Create Sweepstake</h3>
-        <div class="muted">Creates a new sweepstake. Only “active” shows publicly.</div>
-
-        <div class="row" style="margin-top:10px;">
-          <label class="muted">Status
-          <select id="sStatus">
-            <option value="active">active</option>
-            <option value="scheduled">scheduled</option>
-            <option value="ended">ended</option>
-          </select>
-          </label>
-          <label class="muted" style="flex:1;min-width:240px;">Title
-            <input id="sTitle" placeholder="e.g. Summer Garden Bundle" />
-          </label>
-          <label class="muted" style="flex:1;min-width:240px;">Prize
-            <input id="sPrize" placeholder="e.g. $250 local gift basket" />
-          </label>
-        </div>
-
-        <div class="row" style="margin-top:10px;">
-          <label class="muted">Entry Cost (coins)
-            <input id="sCost" placeholder="Entry Cost" value="10" />
-          </label>
-          <label class="muted">Start Time
-            <input id="sStart" type="datetime-local" style="min-width:260px;" />
-          </label>
-          <label class="muted">End Time (entries close)
-            <input id="sEnd" type="datetime-local" style="min-width:220px;" />
-          </label>
-          <label class="muted">Draw Time (winner picked)
-            <input id="sDraw" type="datetime-local" style="min-width:220px;" />
-          </label>
-        </div>
-        <div class="muted" style="margin-top:6px;">Times use your local timezone.</div>
-
-        <div class="row" style="margin-top:10px;">
-          <button id="createSweepstake">Create Sweepstake</button>
-          <span class="mono" id="sweepMsg"></span>
-        </div>
-      </div>
-
-      <div class="card">
-        <strong>Recent Events</strong>
-        <div class="muted">Most recent 80 events (raw).</div>
-        <div class="mono" id="recentEvents" style="margin-top:10px;"></div>
-      </div>
-    </div>
+    </main>
 
     <script src="/theme.js?v=1"></script>
     <script src="/admin.js?v=1"></script>

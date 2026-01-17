@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Platform Analytics – Sebastian</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <link rel="stylesheet" href="/admin_analytics.css?v=1">
+  </head>
+  <body data-town="sebastian">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="nav-btn" href="/admin">← Admin Dashboard</a>
+        <div class="controls">
+          <a class="nav-btn" href="/ui">Back to Town</a>
+          <a class="nav-btn" href="/admin/trust">Trust Moderation</a>
+          <a class="nav-btn" href="/admin/media">Media</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <div class="hero">
+        <div>
+          <h2 class="hero-title">Platform Analytics</h2>
+          <div class="hero-subtitle">Admin-only snapshot of platform activity.</div>
+        </div>
+        <div class="controls">
+          <span class="muted">Time window</span>
+          <select id="rangeSelect">
+            <option value="today">Today</option>
+            <option value="7d" selected>7 days</option>
+            <option value="30d">30 days</option>
+          </select>
+          <span class="pill" id="apiHealth">API: —</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <section class="card">
+          <h3 class="card-title">Users</h3>
+          <div class="metric" id="usersTotal">—</div>
+          <div class="muted">Total users</div>
+          <div class="divider"></div>
+          <div class="metric" id="usersNew">—</div>
+          <div class="muted">New users (range)</div>
+        </section>
+
+        <section class="card">
+          <h3 class="card-title">Stores & Places</h3>
+          <div class="metric" id="placesTotal">—</div>
+          <div class="muted">Total places</div>
+          <div class="divider"></div>
+          <div class="stack">
+            <div class="row"><span class="muted">Pending store approvals</span><span id="placesPending" class="pill">—</span></div>
+            <div class="row"><span class="muted">Pending trust apps</span><span id="trustPending" class="pill">—</span></div>
+            <div class="row"><span class="muted">Pending resident verifications</span><span id="residentPending" class="pill">—</span></div>
+            <div class="row"><span class="muted">Pending business approvals</span><span id="businessPending" class="pill">—</span></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3 class="card-title">Listings</h3>
+          <div class="metric" id="buyNowCount">—</div>
+          <div class="muted">Active buy-it-now listings</div>
+          <div class="divider"></div>
+          <div class="stack">
+            <div class="row"><span class="muted">Active auctions</span><span id="auctionsActive" class="pill">—</span></div>
+            <div class="row"><span class="muted">Ended auctions</span><span id="auctionsEnded" class="pill">—</span></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3 class="card-title">Orders</h3>
+          <div class="metric" id="ordersTotal">—</div>
+          <div class="muted">Total orders</div>
+          <div class="divider"></div>
+          <div class="stack">
+            <div class="row"><span class="muted">Orders (range)</span><span id="ordersRange" class="pill">—</span></div>
+            <div class="row"><span class="muted">Total revenue</span><span id="revenueTotal" class="pill">—</span></div>
+            <div class="row"><span class="muted">Revenue (range)</span><span id="revenueRange" class="pill">—</span></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3 class="card-title">Live</h3>
+          <div class="metric" id="liveActive">—</div>
+          <div class="muted">Active live rooms</div>
+          <div class="divider"></div>
+          <div class="metric" id="liveScheduled">—</div>
+          <div class="muted">Scheduled live shows</div>
+        </section>
+
+        <section class="card">
+          <h3 class="card-title">Sweepstake</h3>
+          <div class="metric" id="sweepStatus">—</div>
+          <div class="muted">Active sweep status</div>
+          <div class="divider"></div>
+          <div class="metric" id="sweepEntries">—</div>
+          <div class="muted">Total entries</div>
+          <div class="divider"></div>
+          <div class="muted" id="sweepBalancesNote">Balances: Not tracked yet</div>
+        </section>
+      </div>
+    </main>
+
+    <script src="/admin_analytics.js?v=1"></script>
+  </body>
+</html>

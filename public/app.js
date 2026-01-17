@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id);
 
 let state = { districtId:null, placeId:null, place:null, conversationId:null, viewer:"buyer", trustTier:0, trustTierLabel:"Visitor" };
-let market = { listings:[], categories:[], districts:[], selectedCategory:null };
+let market = { listings:[], auctions:[], categories:[], districts:[], selectedCategory:null };
 let channels = { list:[], messages:[], selectedId:null, replyToId:null, pendingImageUrl:"" };
 let eventsState = { list:[], selectedId:null, range:"week", bound:false };
 let localBizState = { list:[], bound:false };
@@ -9,6 +9,7 @@ let scheduledState = { list:[], selectedId:null, thumbnailUrl:"" };
 let pulseState = { latest:null };
 let access = { loggedIn:false, eligible:false, email:null, reason:null, isAdmin:false };
 let currentUser = { id:null, displayName:"" };
+let auctionsTabsBound = false;
 let map, markersLayer, boundaryLayer;
 
 async function loadNeighborTowns(){
@@ -715,6 +716,10 @@ async function loadMarketplaceData(){
   market.categories=[...cats].sort();
 }
 
+async function loadAuctionData(){
+  const listings=await api("/market/auctions?townId=1");
+  market.auctions=listings;
+}
 function setMarketplaceFilters(){
   const districtSel=$("marketDistrict");
   const categorySel=$("marketCategory");
@@ -752,65 +757,48 @@ function renderListingCard(l){
 }
 
 function renderMarketplace(){
-  const q=($("marketSearch").value||"").toLowerCase().trim();
-  const district=$("marketDistrict").value;
-  const category=$("marketCategory").value;
-  const listingType=$("marketListingType").value;
-
-  const filtered = market.listings.filter(l=>{
-    if(q){
-      const hay = `${l.title||""} ${l.description||""} ${l.placeName||""}`.toLowerCase();
-      if(!hay.includes(q)) return false;
-    }
-    if(district!=="all" && String(l.districtId)!==String(district)) return false;
-    const c = l.category || l.placeCategory || "";
-    if(category!=="all" && String(c)!==String(category)) return false;
-    if(listingType!=="all" && (l.listingType||"item")!==listingType) return false;
-    return true;
-  });
-
   const items=$("marketItems");
-  const offers=$("marketOffers");
-  const requests=$("marketRequests");
-  items.innerHTML=""; offers.innerHTML=""; requests.innerHTML="";
-
-  filtered.filter(l=>(l.listingType||"item")==="item").forEach(l=>items.appendChild(renderListingCard(l)));
-  filtered.filter(l=>(l.listingType||"item")==="offer").forEach(l=>offers.appendChild(renderListingCard(l)));
-  filtered.filter(l=>(l.listingType||"item")==="request").forEach(l=>requests.appendChild(renderListingCard(l)));
+  const empty=$("marketEmpty");
+  if(!items) return;
+  items.innerHTML="";
+  if(!market.listings.length){
+    if(empty) empty.style.display="block";
+    return;
+  }
+  if(empty) empty.style.display="none";
+  market.listings.forEach(l=>items.appendChild(renderListingCard(l)));
 }
 
 async function initMarketplace(){
-  const tabs = [
-    "marketTabLocalProducers",
-    "marketTabLocalCrafters",
-    "marketTabResellers",
-    "marketTabValueExchange"
-  ];
-  tabs.forEach(id=>{
-    const el = $(id);
-    if(!el) return;
-    el.onclick = () => {
-      const category = el.getAttribute("data-category") || "";
-      market.selectedCategory = category;
-      const wrap = $("marketSelectedWrap");
-      if(wrap) wrap.style.display = "block";
-      $("marketSelectedLabel").textContent = `Showing: ${category}`;
-      $("marketSelectedNote").textContent = "(Listings will load here next)";
-    };
-  });
+  if(!market.listings.length){
+    await loadMarketplaceData();
+  }
+  renderMarketplace();
 }
 
-function renderAuctionCard(l){
+function isAuctionEnded(l){
+  const status = (l.auctionStatus || "").toString().toLowerCase();
+  if(status && status !== "active") return true;
+  const endAt = Date.parse(l.auctionEndAt || l.endsAt || "");
+  return Number.isFinite(endAt) && endAt <= Date.now();
+}
+
+function renderAuctionCard(l, opts={}){
   const div=document.createElement("div");
   div.className="item";
   const current = Number.isFinite(Number(l.highestBidCents)) && Number(l.highestBidCents) > 0
     ? `$${(Number(l.highestBidCents)/100).toFixed(2)}`
     : `$${(Number(l.startBidCents||0)/100).toFixed(2)}`;
   const ends = l.auctionEndAt || l.endsAt || "—";
+  const ended = !!opts.ended;
+  const statusBadge = ended ? `<span class="pill badge-ended">Ended</span>` : "";
   div.innerHTML=`
-    <div><strong>${l.title || "Auction"}</strong></div>
+    <div class="row" style="justify-content:space-between;">
+      <strong>${l.title || "Auction"}</strong>
+      ${statusBadge}
+    </div>
     <div class="muted">Current bid: ${current}</div>
-    <div class="muted">Ends: ${ends}</div>
+    <div class="muted">${ended ? "Ended" : "Ends"}: ${ends}</div>
     <div class="row" style="margin-top:8px;">
       <a class="btn" href="/store/${l.placeId}">Open Auction</a>
     </div>
@@ -819,15 +807,49 @@ function renderAuctionCard(l){
 }
 
 async function initAuctions(){
-  if(!market.listings.length){
-    await loadMarketplaceData();
-    setMarketplaceFilters();
-    renderMarketplaceCategories();
+  bindAuctionTabs();
+  if(!market.auctions.length){
+    await loadAuctionData();
   }
   const grid=$("auctionGrid");
-  const auctions=market.listings.filter(l=>(l.listingType||"item")==="auction");
-  grid.innerHTML="";
-  auctions.forEach(l=>grid.appendChild(renderAuctionCard(l)));
+  const endedGrid=$("auctionGridEnded");
+  const emptyActive=$("auctionEmptyActive");
+  const emptyEnded=$("auctionEmptyEnded");
+  const auctions=market.auctions.filter(l=>(l.listingType||"item")==="auction");
+  const activeAuctions=auctions.filter(l=>!isAuctionEnded(l));
+  const endedAuctions=auctions.filter(l=>isAuctionEnded(l));
+
+  if(grid){
+    grid.innerHTML="";
+    activeAuctions.forEach(l=>grid.appendChild(renderAuctionCard(l)));
+  }
+  if(endedGrid){
+    endedGrid.innerHTML="";
+    endedAuctions.forEach(l=>endedGrid.appendChild(renderAuctionCard(l, { ended:true })));
+  }
+  if(emptyActive) emptyActive.style.display = activeAuctions.length ? "none" : "block";
+  if(emptyEnded) emptyEnded.style.display = endedAuctions.length ? "none" : "block";
+}
+
+function bindAuctionTabs(){
+  if(auctionsTabsBound) return;
+  const activeBtn = $("auctionTabActive");
+  const endedBtn = $("auctionTabEnded");
+  const activePanel = $("auctionPanelActive");
+  const endedPanel = $("auctionPanelEnded");
+  if(!activeBtn || !endedBtn || !activePanel || !endedPanel) return;
+
+  const setTab = (tab) => {
+    activeBtn.classList.toggle("active", tab === "active");
+    endedBtn.classList.toggle("active", tab === "ended");
+    activePanel.classList.toggle("hidden", tab !== "active");
+    endedPanel.classList.toggle("hidden", tab !== "ended");
+  };
+
+  activeBtn.addEventListener("click", () => setTab("active"));
+  endedBtn.addEventListener("click", () => setTab("ended"));
+  setTab("active");
+  auctionsTabsBound = true;
 }
 
 function getClientSessionId() {
@@ -907,14 +929,34 @@ function applyPermissions(ctx){
     channels: !!perms.channels,
     events: !!perms.events,
     archive: !!perms.archive,
-    localbiz: !!perms.localbiz
+    localbiz: !!perms.localbiz,
+    services: !!perms.marketplace,
+    scheduled: !!perms.scheduled
   };
   Object.keys(viewPerms).forEach((view)=>{
     const btn = document.querySelector(`.navItem[data-view="${view}"]`);
-    if(btn) btn.style.display = viewPerms[view] ? "" : "none";
+    if(!btn) return;
+    const label = btn.querySelector("span:last-child");
+    if(label && !btn.dataset.baseLabel) btn.dataset.baseLabel = label.textContent;
+    if(tier < 1){
+      btn.style.display = "";
+      btn.disabled = true;
+      btn.setAttribute("aria-disabled","true");
+      if(label && btn.dataset.baseLabel) label.textContent = `${btn.dataset.baseLabel} (Login required)`;
+      return;
+    }
+    btn.disabled = false;
+    btn.removeAttribute("aria-disabled");
+    if(label && btn.dataset.baseLabel) label.textContent = btn.dataset.baseLabel;
+    btn.style.display = viewPerms[view] ? "" : "none";
   });
+  const sweepPanel = $("panelSweepstake");
+  if(sweepPanel) sweepPanel.style.display = tier < 1 ? "none" : "";
   const current = getRouteView();
-  if(current !== "map" && viewPerms[current] === false){
+  if(tier < 1 && current !== "map"){
+    location.hash = "map";
+    setView("map");
+  }else if(current !== "map" && viewPerms[current] === false){
     location.hash = "map";
     setView("map");
   }
@@ -924,18 +966,22 @@ function applyPermissions(ctx){
   const uploadBtn = $("channelsUploadBtn");
   if(input){
     input.disabled = !canPost;
-    if(!canPost) input.placeholder = "Posting requires Tier 2+.";
+    if(!canPost) input.placeholder = "Posting requires Tier 1+.";
   }
   if(send) send.disabled = !canPost;
   if(uploadBtn) uploadBtn.disabled = !perms.chatImages;
+  const storeLink = $("navStoreLink");
+  if(storeLink) storeLink.style.display = perms.listingCreate ? "inline-flex" : "none";
+  const liveLink = $("navLiveLink");
+  if(liveLink) liveLink.style.display = perms.liveHost ? "inline-flex" : "none";
 }
 function updatePrizeOfferCta(){
   const btn=$("sweepPrizeSubmitBtn");
   const hint=$("sweepPrizeSubmitHint");
   if(!btn) return;
-  if(state.trustTier >= 3){
+  if(state.trustTier >= 2){
     btn.style.display="inline-flex";
-    if(state.trustTier >= 5){
+    if(state.trustTier >= 3){
       btn.style.borderColor="var(--accent)";
       if(hint) hint.textContent="Preferred donor tier";
     }else if(hint){
@@ -943,7 +989,7 @@ function updatePrizeOfferCta(){
     }
   }else{
     btn.style.display="none";
-    if(hint) hint.textContent="Local Resident+ required to submit prizes.";
+    if(hint) hint.textContent="Sebastian Resident+ required to submit prizes.";
   }
 }
 async function loadPrizeOffers(){
@@ -966,7 +1012,7 @@ async function loadPrizeOffers(){
   });
 }
 async function submitPrizeOffer(){
-  if(state.trustTier < 3) return alert("Local Resident+ required.");
+  if(state.trustTier < 2) return alert("Sebastian Resident+ required.");
   const msg=$("prizeSubmitMsg");
   msg.textContent="Submitting...";
   let imageUrl="";
@@ -1024,7 +1070,7 @@ async function loadSweepstake(){
     }else{
       $("sweepWinner").textContent = "Winner: —";
     }
-    $("sweepEnterBtn").disabled = !access.loggedIn;
+    $("sweepEnterBtn").disabled = !access.loggedIn || state.trustTier < 1;
   }catch(e){
     $("sweepStatus").textContent = "Error";
     $("sweepPrize").textContent = "Sweepstake unavailable";

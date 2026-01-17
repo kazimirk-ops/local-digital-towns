@@ -3,83 +3,341 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Join Sebastian Pilot</title>
+    <title>Join Sebastian</title>
     <link rel="stylesheet" href="/ui-kit.css?v=1">
     <style>
-      body { font-family: var(--font-sans, ui-sans-serif, system-ui); background:var(--bg); color:var(--text); margin:0; }
-      .wrap { max-width: 720px; margin: 0 auto; padding: 18px; }
-      .card { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px; }
-      input { width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); color:var(--text); margin-top:8px;}
-      button { margin-top:12px; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); color:var(--text); cursor:pointer;}
-      button:hover { background:var(--panel); }
-      .muted { color:var(--muted); font-size:12px; }
-      .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:12px; white-space: pre-wrap; }
-      .ok { border:1px solid var(--border); background:var(--panel2); padding:10px; border-radius:12px; margin-top:12px;}
-      .warn { border:1px solid var(--border); background:var(--panel2); padding:10px; border-radius:12px; margin-top:12px;}
-      a { color:var(--accent2); }
+      :root {
+        --join-bg: #0a0f1a;
+        --join-panel: #0d1424;
+        --join-panel-2: #151d2e;
+        --join-border: rgba(255, 255, 255, 0.08);
+        --join-muted: #94a3b8;
+        --join-text: #e2e8f0;
+        --join-accent: #22d3ee;
+        --join-accent-2: #3b82f6;
+      }
+      body {
+        font-family: var(--font-sans, ui-sans-serif, system-ui);
+        background: var(--join-bg);
+        color: var(--join-text);
+        margin: 0;
+      }
+      a { color: #7dd3fc; text-decoration: none; }
+      .page {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(13, 20, 36, 0.92);
+        border-bottom: 1px solid var(--join-border);
+        backdrop-filter: blur(12px);
+      }
+      .topbar-inner {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        color: var(--join-muted);
+        transition: all 0.2s ease;
+      }
+      .nav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+      .hero {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 28px 18px 8px;
+      }
+      .hero-title {
+        font-size: 30px;
+        margin: 0;
+        color: #fff;
+      }
+      .hero-subtitle {
+        margin: 6px 0 0;
+        color: var(--join-muted);
+        font-size: 14px;
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 18px;
+        display: grid;
+        gap: 18px;
+      }
+      .card {
+        background: var(--join-panel);
+        border: 1px solid var(--join-border);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 20px 40px rgba(3, 7, 15, 0.35);
+      }
+      .card-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .card-icon {
+        height: 36px;
+        width: 36px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(34, 211, 238, 0.12);
+        color: #67e8f9;
+      }
+      .card-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        color: #fff;
+      }
+      .card-subtitle {
+        margin: 4px 0 0;
+        color: var(--join-muted);
+        font-size: 13px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .label {
+        color: #cbd5f5;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      input, select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--join-panel-2);
+        color: #fff;
+        font-size: 14px;
+      }
+      input:focus, select:focus {
+        outline: none;
+        border-color: rgba(56, 189, 248, 0.5);
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+      }
+      .btn-primary {
+        border: none;
+        border-radius: 12px;
+        padding: 10px 16px;
+        background: linear-gradient(90deg, var(--join-accent), var(--join-accent-2));
+        color: #0b1120;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn-outline {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: transparent;
+        color: #e2e8f0;
+        border-radius: 12px;
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+      .btn-outline:hover { background: rgba(255, 255, 255, 0.06); }
+      .actions-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+      .muted { color: var(--join-muted); font-size: 12px; }
+      .tier-grid {
+        display: grid;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .tier-card {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .tier-name {
+        font-weight: 700;
+        color: #fff;
+      }
+      .mono {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+      }
+      .ok, .warn {
+        border: 1px solid var(--join-border);
+        background: var(--join-panel-2);
+        padding: 10px;
+        border-radius: 12px;
+        margin-top: 12px;
+      }
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      @media (min-width: 760px) {
+        .wrap { grid-template-columns: 1fr 1fr; }
+        .full { grid-column: 1 / -1; }
+        .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 640px) {
+        .actions-row { flex-direction: column; align-items: stretch; }
+        .btn-primary, .btn-outline { width: 100%; }
+      }
     </style>
   </head>
   <body data-town="sebastian">
-    <div class="wrap">
-      <h2>Join the Sebastian Pilot</h2>
-      <div class="muted">New accounts start at Tier 0 (Map-only). Verify to unlock more access.</div>
-
-      <div class="card">
-        <h3>Trust Tiers & Permissions</h3>
-        <div class="muted">Know what each tier unlocks.</div>
-        <div class="mono" style="margin-top:8px;">
-Tier 0: Visitor — map only
-Tier 1: Verified Remote — browse marketplace, bid, DM stores
-Tier 2: Verified In‑Town Visitor — chat posting + chat images
-Tier 3: Local Resident — create listings (Sebastian address + admin approval)
-Tier 4: Trusted Local — host auctions
-Tier 5: Verified Business — business‑verified access
-Tier 6: Admin — full access
+    <div class="page">
+      <header class="topbar">
+        <div class="topbar-inner">
+          <a class="nav-btn" href="/ui">← Back to Town</a>
+          <span class="muted">Sebastian Digital Town</span>
         </div>
-      </div>
+      </header>
 
-      <div class="card">
-        <h3>Login / Signup (Magic Link)</h3>
-        <div class="muted">New accounts default to Tier 0. Log in to apply for higher tiers.</div>
-        <input id="loginEmail" placeholder="Email for login link" />
-        <button id="requestLink">Send Login Link</button>
-        <div id="loginResult"></div>
-        <div class="mono" id="debug"></div>
-      </div>
+      <section class="hero">
+        <h2 class="hero-title">Join Sebastian</h2>
+        <div class="hero-subtitle">New accounts start at Tier 0 (Map-only). Verify to unlock more access.</div>
+      </section>
 
-      <div class="card" id="trustApplyCard" style="display:none;">
-        <h3>Apply for Verification</h3>
-        <div class="muted" id="tierBadge">Tier 0: Visitor</div>
-        <label class="muted">Requested Tier</label>
-        <select id="requestedTier">
-          <option value="1">Tier 1 — Verified Remote</option>
-          <option value="2">Tier 2 — Verified In‑Town Visitor</option>
-          <option value="3">Tier 3 — Local Resident</option>
-        </select>
-        <input id="email" placeholder="Email" />
-        <input id="phone" placeholder="Phone" />
-        <input id="address1" placeholder="Address line 1" />
-        <input id="address2" placeholder="Address line 2 (optional)" />
-        <input id="city" placeholder="City" />
-        <input id="state" placeholder="State (e.g. FL)" value="FL" />
-        <input id="zip" placeholder="ZIP" />
-        <label class="muted">Identity Method</label>
-        <select id="identityMethod">
-          <option value="id">Government ID</option>
-          <option value="payment">Payment Method</option>
-          <option value="manual">Manual Review</option>
-        </select>
-        <div class="row" style="margin-top:8px;">
-          <button id="verifyPresenceBtn" type="button">Verify I’m In Town (GPS)</button>
-          <span class="muted" id="presenceStatus">Tier 2 requires GPS verification.</span>
+      <div class="wrap">
+        <div class="card full">
+          <div class="card-header">
+            <div class="card-icon">🛡️</div>
+            <div>
+              <h3 class="card-title">Trust Tiers & Permissions</h3>
+              <p class="card-subtitle">Know what each tier unlocks.</p>
+            </div>
+          </div>
+          <div class="tier-grid">
+            <div class="tier-card">
+              <div class="tier-name">Tier 0: Not logged in</div>
+              <div class="muted">Map only</div>
+            </div>
+            <div class="tier-card">
+              <div class="tier-name">Tier 1: Location Verified</div>
+              <div class="muted">Marketplace buying, auctions bidding, events view, channels comments, sweepstakes entry</div>
+            </div>
+            <div class="tier-card">
+              <div class="tier-name">Tier 2: Sebastian Resident</div>
+              <div class="muted">Everything except scheduling live shows</div>
+            </div>
+            <div class="tier-card">
+              <div class="tier-name">Tier 3: Local Business</div>
+              <div class="muted">Full access including scheduling live shows</div>
+            </div>
+          </div>
         </div>
-        <button id="submitTrust">Submit Application</button>
-        <div id="signupResult"></div>
-        <div class="muted" id="trustStatus" style="margin-top:8px;"></div>
 
-        <hr />
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon">✉️</div>
+            <div>
+              <h3 class="card-title">Login / Signup (Magic Link)</h3>
+              <p class="card-subtitle">New accounts default to Tier 0. Log in to apply for higher tiers.</p>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="loginEmail">Email</label>
+            <input id="loginEmail" placeholder="Email for login link" />
+          </div>
+          <div class="actions-row">
+            <button id="requestLink" class="btn-primary">Send Login Link</button>
+          </div>
+          <div id="loginResult"></div>
+          <div class="mono" id="debug"></div>
+        </div>
 
-        <div class="muted" style="margin-top:10px;"><a href="/ui">Back to Town</a></div>
+        <div class="card full" id="trustApplyCard" style="display:none;">
+          <div class="card-header">
+            <div class="card-icon">✅</div>
+            <div>
+              <h3 class="card-title">Apply for Verification</h3>
+              <p class="card-subtitle" id="tierBadge">Tier 0: Visitor</p>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="requestedTier">Requested Tier</label>
+            <select id="requestedTier">
+              <option value="1">Tier 1 — Location Verified</option>
+              <option value="2">Tier 2 — Sebastian Resident</option>
+              <option value="3">Tier 3 — Local Business</option>
+            </select>
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label class="label" for="email">Email</label>
+              <input id="email" placeholder="Email" />
+            </div>
+            <div class="field">
+              <label class="label" for="phone">Phone</label>
+              <input id="phone" placeholder="Phone" />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="address1">Address line 1</label>
+            <input id="address1" placeholder="Address line 1" />
+          </div>
+          <div class="field">
+            <label class="label" for="address2">Address line 2 (optional)</label>
+            <input id="address2" placeholder="Address line 2 (optional)" />
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label class="label" for="city">City</label>
+              <input id="city" placeholder="City" />
+            </div>
+            <div class="field">
+              <label class="label" for="state">State</label>
+              <input id="state" placeholder="State (e.g. FL)" value="FL" />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="zip">ZIP</label>
+            <input id="zip" placeholder="ZIP" />
+          </div>
+          <div class="field">
+            <label class="label" for="identityMethod">Identity Method</label>
+            <select id="identityMethod">
+              <option value="id">Government ID</option>
+              <option value="payment">Payment Method</option>
+              <option value="manual">Manual Review</option>
+            </select>
+          </div>
+          <div class="actions-row">
+            <button id="verifyPresenceBtn" type="button" class="btn-outline">Verify Location in Sebastian (GPS)</button>
+            <span class="muted" id="presenceStatus">Tier 1 requires location verification.</span>
+          </div>
+          <div class="actions-row">
+            <button id="submitTrust" class="btn-primary">Submit Application</button>
+          </div>
+          <div id="signupResult"></div>
+          <div class="muted" id="trustStatus" style="margin-top:8px;"></div>
+
+          <div class="actions-row" style="margin-top:10px;">
+            <a class="muted" href="/ui">Back to Town</a>
+          </div>
+        </div>
       </div>
     </div>
 

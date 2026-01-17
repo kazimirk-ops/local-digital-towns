@@ -33,7 +33,6 @@ check "/store/102" "200|404"
 echo "== Public APIs =="
 check "/town/context" "200"
 check "/districts/1/places" "200"
-check "/api/live/scheduled" "200"
 check "/api/pulse/latest" "200|404"
 
 echo "== Auth-required (expect 401) =="
@@ -47,15 +46,24 @@ check "/api/checkout/stripe" "401" "POST"
 check "/api/orders/1/pay" "401" "POST"
 check "/api/seller/sales/summary?placeId=1&range=7d" "401"
 check "/api/admin/pulse/generate" "401" "POST"
+check "/api/live/scheduled" "401"
 check "/api/live/scheduled/1/bookmark" "401" "GET"
 check "/api/live/scheduled/1/bookmark" "401" "POST"
+check "/api/verify/location" "401" "POST"
+check "/api/verify/resident" "401" "POST"
+check "/api/admin/verify/resident/approve" "401" "POST"
+check "/api/admin/verify/business/approve" "401" "POST"
 check "/api/stripe/webhook" "400" "POST"
 
-channel_id="$(curl -s "${BASE_URL}/channels" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const j=JSON.parse(d);console.log(j[0]?.id||"");}catch{console.log("");}})')"
-if [[ -n "$channel_id" ]]; then
-  check "/channels/${channel_id}/messages" "401" "POST"
+if [[ -n "$AUTH_COOKIE" ]]; then
+  channel_id="$(curl -s -H "Cookie: sid=${AUTH_COOKIE}" "${BASE_URL}/channels" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const j=JSON.parse(d);console.log(j[0]?.id||"");}catch{console.log(\"\");}})')"
+  if [[ -n "$channel_id" ]]; then
+    check "/channels/${channel_id}/messages" "200" "GET" "$AUTH_COOKIE"
+  else
+    echo "SKIP /channels/:id/messages (no channels found)"
+  fi
 else
-  echo "SKIP /channels/:id/messages (no channels found)"
+  echo "SKIP /channels/:id/messages (set AUTH_COOKIE)"
 fi
 
 echo "== Debug endpoints =="

@@ -16,6 +16,28 @@ function setMsg(id, text) {
   if (el) el.textContent = text;
 }
 
+function updateHeroPreview() {
+  const name = document.getElementById("displayName")?.value || "";
+  const bio = document.getElementById("bio")?.value || "";
+  const heroName = document.querySelector(".hero-title");
+  const heroBio = document.getElementById("heroBio");
+  if (heroName) heroName.textContent = name.trim() || "Your Name";
+  if (heroBio) heroBio.textContent = bio.trim() || "Add a bio to tell others about yourself...";
+}
+
+function updateAvatarPreview() {
+  const url = document.getElementById("avatarUrl")?.value || "";
+  const img = document.getElementById("avatarPreview");
+  if (!img) return;
+  if (url.trim()) {
+    img.src = url.trim();
+    img.style.display = "block";
+  } else {
+    img.removeAttribute("src");
+    img.style.display = "none";
+  }
+}
+
 async function loadProfile() {
   try {
     const profile = await api("/api/me/profile");
@@ -31,6 +53,9 @@ async function loadProfile() {
     document.getElementById("showAgeRange").checked = !!profile.showAgeRange;
     const buyerStatus = profile.isBuyerVerified ? "Buyer status: Verified" : "Buyer status: Not verified";
     document.getElementById("buyerStatus").textContent = buyerStatus;
+    setMsg("profileLoginNote", "");
+    updateHeroPreview();
+    updateAvatarPreview();
   } catch (e) {
     document.getElementById("profileLoginNote").textContent = "Login required to edit your profile.";
   }
@@ -94,11 +119,18 @@ async function uploadAvatar() {
   form.append("file", file);
   form.append("kind", "profile_avatar");
   try {
-    const res = await api("/api/uploads", {
+    const data = await api("/api/uploads", {
       method: "POST",
       body: form
     });
-    target.value = res.url;
+    const returnedUrl = typeof data === "string" ? data : (data.url || data.avatarUrl || data.publicUrl || "");
+    const avatarInput = document.getElementById("avatarUrl");
+    const avatarImg = document.getElementById("avatarImg");
+    if (!avatarInput || !avatarImg) {
+      console.warn("Avatar preview elements missing", { avatarUrl: !!avatarInput, avatarImg: !!avatarImg });
+    }
+    if (avatarInput) avatarInput.value = returnedUrl;
+    if (avatarImg && returnedUrl) avatarImg.src = `${returnedUrl}?v=${Date.now()}`;
     await saveProfile();
     setMsg("profileMsg", "Uploaded and saved.");
   } catch (e) {
@@ -176,8 +208,20 @@ async function sendDm() {
 }
 
 document.getElementById("saveProfileBtn").onclick = saveProfile;
-document.getElementById("uploadAvatarBtn").onclick = uploadAvatar;
 document.getElementById("dmSendBtn").onclick = sendDm;
+document.getElementById("displayName").addEventListener("input", updateHeroPreview);
+document.getElementById("bio").addEventListener("input", updateHeroPreview);
+document.getElementById("avatarUrl").addEventListener("input", updateAvatarPreview);
+document.addEventListener("DOMContentLoaded", () => {
+  const uploadBtn = document.getElementById("uploadAvatarBtn");
+  const fileInput = document.getElementById("avatarFile");
+  if (!uploadBtn || !fileInput) {
+    console.warn("Avatar upload elements missing", { uploadBtn: !!uploadBtn, fileInput: !!fileInput });
+    return;
+  }
+  uploadBtn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", () => uploadAvatar());
+});
 
 loadTownContext().then(() => loadProfile().then(async () => {
   if (!currentUserId) return;
