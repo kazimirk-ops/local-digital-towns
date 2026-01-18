@@ -428,6 +428,12 @@ app.get("/auth/magic",(req,res)=>{
   setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30});
   res.redirect("/ui");
 });
+app.get("/auth/logout",(req,res)=>{
+  const sid=parseCookies(req).sid;
+  if(sid) data.deleteSession(sid);
+  setCookie(res,"sid","",{httpOnly:true,maxAge:0});
+  res.redirect("/ui");
+});
 app.post("/auth/logout",(req,res)=>{
   const sid=parseCookies(req).sid;
   if(sid) data.deleteSession(sid);
