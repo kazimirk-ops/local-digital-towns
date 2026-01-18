@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>My Orders – Sebastian</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
+    <link rel="stylesheet" href="/my_orders.css?v=1" />
+  </head>
+  <body data-town="sebastian">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="nav-btn" href="/ui">Back to Town</a>
+        <div class="nav-actions">
+          <a class="nav-btn" href="/me/profile">My Profile</a>
+          <a class="nav-btn" href="/me/store">Store Profile</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <div class="hero">
+        <div>
+          <h1>My Orders</h1>
+          <p>Track your recent purchases and order status.</p>
+        </div>
+      </div>
+
+      <section class="card">
+        <div class="table-header">
+          <div>Order</div>
+          <div>Date</div>
+          <div>Status</div>
+          <div>Total</div>
+          <div>Items</div>
+          <div>Store</div>
+        </div>
+        <div id="ordersBody" class="table-body"></div>
+        <div id="ordersEmpty" class="empty" style="display:none;">No orders yet.</div>
+        <div id="ordersError" class="error" style="display:none;"></div>
+      </section>
+    </main>
+
+    <script src="/my_orders.js?v=1"></script>
+  </body>
+</html>
