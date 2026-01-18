@@ -64,6 +64,12 @@ app.use((req,res,next)=>{
   const pathName = req.path || "";
   const isGet = req.method === "GET";
   if(isGet && pathName === "/health") return next();
+  if(isGet && (pathName === "/waitlist" || pathName === "/apply/business" || pathName === "/apply/resident")) return next();
+  if(req.method === "POST"){
+    if(pathName === "/api/public/waitlist") return next();
+    if(pathName === "/api/public/apply/business") return next();
+    if(pathName === "/api/public/apply/resident") return next();
+  }
   if(pathName.startsWith("/admin/login")) return next();
   if(isGet){
     const isStatic =
@@ -159,6 +165,9 @@ app.get("/debug/routes",(req,res)=>{
 // Pages
 app.get("/ui",(req,res)=>res.sendFile(path.join(__dirname,"public","index.html")));
 app.get("/signup",(req,res)=>res.sendFile(path.join(__dirname,"public","signup.html")));
+app.get("/waitlist",(req,res)=>res.sendFile(path.join(__dirname,"public","waitlist.html")));
+app.get("/apply/business",(req,res)=>res.sendFile(path.join(__dirname,"public","apply_business.html")));
+app.get("/apply/resident",(req,res)=>res.sendFile(path.join(__dirname,"public","apply_resident.html")));
 app.get("/u/:id",(req,res)=>res.sendFile(path.join(__dirname,"public","profile.html")));
 app.get("/me/store",(req,res)=>res.sendFile(path.join(__dirname,"public","store_profile.html")));
 app.get("/me/profile",(req,res)=>res.sendFile(path.join(__dirname,"public","my_profile.html")));
@@ -229,6 +238,14 @@ app.get("/admin/sweep",(req,res)=>{
 app.get("/admin/trust",(req,res)=>{
   const admin=requireAdminPage(req,res); if(!admin) return;
   res.sendFile(path.join(__dirname,"public","admin_trust.html"));
+});
+app.get("/admin/applications",(req,res)=>{
+  const admin=requireAdminPage(req,res); if(!admin) return;
+  res.sendFile(path.join(__dirname,"public","admin_applications.html"));
+});
+app.get("/admin/waitlist",(req,res)=>{
+  const admin=requireAdminPage(req,res); if(!admin) return;
+  res.sendFile(path.join(__dirname,"public","admin_applications.html"));
 });
 
 // Neighbor towns (directory only; no identity sharing)
@@ -439,6 +456,24 @@ app.post("/auth/logout",(req,res)=>{
   if(sid) data.deleteSession(sid);
   setCookie(res,"sid","",{httpOnly:true,maxAge:0});
   res.json({ok:true});
+});
+
+app.post("/api/public/waitlist",(req,res)=>{
+  const result = data.addWaitlistSignup(req.body || {});
+  if(result?.error) return res.status(400).json({ error: result.error });
+  res.json({ ok:true });
+});
+
+app.post("/api/public/apply/business",(req,res)=>{
+  const result = data.addBusinessApplication(req.body || {});
+  if(result?.error) return res.status(400).json({ error: result.error });
+  res.json({ ok:true });
+});
+
+app.post("/api/public/apply/resident",(req,res)=>{
+  const result = data.addResidentApplication(req.body || {});
+  if(result?.error) return res.status(400).json({ error: result.error });
+  res.json({ ok:true });
 });
 
 const upload = multer({
@@ -1608,6 +1643,61 @@ app.post("/api/admin/localbiz/:id/deny",(req,res)=>{
   if(!reason) return res.status(400).json({error:"reason required"});
   const updated=data.updateLocalBizDecision(req.params.id, "denied", admin.id, reason);
   if(!updated) return res.status(404).json({error:"Not found"});
+  res.json(updated);
+});
+
+app.get("/api/admin/waitlist",(req,res)=>{
+  const admin=requireAdmin(req,res); if(!admin) return;
+  const status=(req.query.status || "pending").toString().trim().toLowerCase();
+  res.json(data.listWaitlistSignupsByStatus(status));
+});
+app.post("/api/admin/waitlist/:id/status",(req,res)=>{
+  const admin=requireAdmin(req,res); if(!admin) return;
+  const status=(req.body?.status || "").toString().trim().toLowerCase();
+  if(status !== "approved" && status !== "rejected" && status !== "pending"){
+    return res.status(400).json({error:"status must be approved, rejected, or pending"});
+  }
+  const updated = data.updateWaitlistStatus(req.params.id, status);
+  if(!updated) return res.status(404).json({error:"Not found"});
+  res.json(updated);
+});
+
+app.get("/api/admin/applications/business",(req,res)=>{
+  const admin=requireAdmin(req,res); if(!admin) return;
+  const status=(req.query.status || "pending").toString().trim().toLowerCase();
+  res.json(data.listBusinessApplicationsByStatus(status));
+});
+app.post("/api/admin/applications/business/:id/status",(req,res)=>{
+  const admin=requireAdmin(req,res); if(!admin) return;
+  const status=(req.body?.status || "").toString().trim().toLowerCase();
+  if(status !== "approved" && status !== "rejected" && status !== "pending"){
+    return res.status(400).json({error:"status must be approved, rejected, or pending"});
+  }
+  const updated = data.updateBusinessApplicationStatus(req.params.id, status);
+  if(!updated) return res.status(404).json({error:"Not found"});
+  res.json(updated);
+});
+
+app.get("/api/admin/applications/resident",(req,res)=>{
+  const admin=requireAdmin(req,res); if(!admin) return;
+  const status=(req.query.status || "pending").toString().trim().toLowerCase();
+  res.json(data.listResidentApplicationsByStatus(status));
+});
+app.post("/api/admin/applications/resident/:id/status",(req,res)=>{
+  const admin=requireAdmin(req,res); if(!admin) return;
+  const status=(req.body?.status || "").toString().trim().toLowerCase();
+  if(status !== "approved" && status !== "rejected" && status !== "pending"){
+    return res.status(400).json({error:"status must be approved, rejected, or pending"});
+  }
+  const updated = data.updateResidentApplicationStatus(req.params.id, status);
+  if(!updated) return res.status(404).json({error:"Not found"});
+  if(status === "approved"){
+    const app = data.getResidentApplicationById(req.params.id);
+    if(app?.email){
+      const user = data.getUserByEmail(app.email);
+      if(user) data.setUserResidentVerified(user.id, true);
+    }
+  }
   res.json(updated);
 });
 

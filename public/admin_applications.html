@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Intake</title>
+    <link rel="stylesheet" href="/admin_applications.css?v=1">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="nav-btn" href="/admin">← Admin Dashboard</a>
+        <div class="row">
+          <a class="nav-btn" href="/admin/analytics">Analytics</a>
+          <a class="nav-btn" href="/admin/trust">Trust</a>
+          <a class="nav-btn" href="/admin/media">Media</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <div class="hero">
+        <h2>Private Beta Intake</h2>
+        <div class="muted">Review waitlist signups and applications.</div>
+      </div>
+
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <strong class="card-title">Waitlist Signups</strong>
+            <div class="muted">Filter by status, then approve or reject.</div>
+          </div>
+          <div>
+            <select id="waitlistStatus">
+              <option value="pending">pending</option>
+              <option value="approved">approved</option>
+              <option value="rejected">rejected</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Submitted</th><th>Name</th><th>Email</th><th>Interests</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="waitlistRows"></tbody>
+          </table>
+        </div>
+        <div class="muted" id="waitlistMsg"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <strong class="card-title">Business / Service Applications</strong>
+            <div class="muted">Approve or reject business and service requests.</div>
+          </div>
+          <div>
+            <select id="businessStatus">
+              <option value="pending">pending</option>
+              <option value="approved">approved</option>
+              <option value="rejected">rejected</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Submitted</th><th>Contact</th><th>Business</th><th>Type</th><th>Category</th><th>In Sebastian</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="businessRows"></tbody>
+          </table>
+        </div>
+        <div class="muted" id="businessMsg"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <strong class="card-title">Resident Applications</strong>
+            <div class="muted">Approvals mark residentVerified if an account exists.</div>
+          </div>
+          <div>
+            <select id="residentStatus">
+              <option value="pending">pending</option>
+              <option value="approved">approved</option>
+              <option value="rejected">rejected</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Submitted</th><th>Name</th><th>Email</th><th>City</th><th>Years</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="residentRows"></tbody>
+          </table>
+        </div>
+        <div class="muted" id="residentMsg"></div>
+      </section>
+    </main>
+
+    <script src="/admin_applications.js?v=1"></script>
+  </body>
+</html>

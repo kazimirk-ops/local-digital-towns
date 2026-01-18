@@ -476,6 +476,48 @@ CREATE TABLE IF NOT EXISTS local_business_applications (
   userId INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS waitlist_signups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  createdAt TEXT NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL,
+  phone TEXT NOT NULL DEFAULT '',
+  interests TEXT NOT NULL DEFAULT '',
+  notes TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending'
+);
+
+CREATE TABLE IF NOT EXISTS business_applications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  createdAt TEXT NOT NULL,
+  contactName TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT NOT NULL DEFAULT '',
+  businessName TEXT NOT NULL,
+  type TEXT NOT NULL,
+  category TEXT NOT NULL,
+  website TEXT NOT NULL DEFAULT '',
+  inSebastian TEXT NOT NULL,
+  address TEXT NOT NULL DEFAULT '',
+  notes TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending'
+);
+
+CREATE TABLE IF NOT EXISTS resident_applications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  createdAt TEXT NOT NULL,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT NOT NULL DEFAULT '',
+  addressLine1 TEXT NOT NULL,
+  city TEXT NOT NULL,
+  state TEXT NOT NULL,
+  zip TEXT NOT NULL,
+  yearsInSebastian TEXT NOT NULL DEFAULT '',
+  notes TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending'
+);
+
 CREATE TABLE IF NOT EXISTS event_rsvps (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   townId INTEGER NOT NULL DEFAULT 1,
@@ -561,6 +603,12 @@ CREATE INDEX IF NOT EXISTS idx_daily_pulses_town_day ON daily_pulses(townId, day
 CREATE INDEX IF NOT EXISTS idx_daily_pulses_created ON daily_pulses(createdAt DESC);
 CREATE INDEX IF NOT EXISTS idx_localbiz_status ON local_business_applications(townId, status, createdAt);
 CREATE INDEX IF NOT EXISTS idx_localbiz_user ON local_business_applications(userId, createdAt);
+CREATE INDEX IF NOT EXISTS idx_waitlist_status ON waitlist_signups(status, createdAt);
+CREATE INDEX IF NOT EXISTS idx_waitlist_email ON waitlist_signups(email);
+CREATE INDEX IF NOT EXISTS idx_business_apps_status ON business_applications(status, createdAt);
+CREATE INDEX IF NOT EXISTS idx_business_apps_email ON business_applications(email);
+CREATE INDEX IF NOT EXISTS idx_resident_apps_status ON resident_applications(status, createdAt);
+CREATE INDEX IF NOT EXISTS idx_resident_apps_email ON resident_applications(email);
 -- townId indexes created in migrations to avoid errors on existing DBs
 
 CREATE INDEX IF NOT EXISTS idx_channel_membership_unique ON channel_memberships(channelId, userId);
@@ -1456,6 +1504,11 @@ function getUserBySession(sid){
 
 function getUserById(id){
   return db.prepare("SELECT * FROM users WHERE id=?").get(Number(id)) || null;
+}
+function getUserByEmail(email){
+  const e = normalizeEmail(email);
+  if(!e) return null;
+  return db.prepare("SELECT * FROM users WHERE email=?").get(e) || null;
 }
 function getDisplayNameForUser(user){
   const name = (user?.displayName || "").toString().trim();
@@ -2761,6 +2814,130 @@ function generateDailyPulse(townId = 1, dayKey){
   return pulse;
 }
 
+function addWaitlistSignup(payload){
+  const createdAt = nowISO();
+  const email = normalizeEmail(payload?.email);
+  if(!email) return { error: "email required" };
+  const name = (payload?.name || "").toString().trim();
+  const phone = (payload?.phone || "").toString().trim();
+  const notes = (payload?.notes || "").toString().trim();
+  let interests = "";
+  if(Array.isArray(payload?.interests)){
+    interests = payload.interests.map(i=>String(i || "").trim()).filter(Boolean).join(",");
+  }else{
+    interests = (payload?.interests || "").toString().trim();
+  }
+  const info = db.prepare(`
+    INSERT INTO waitlist_signups
+      (createdAt, name, email, phone, interests, notes, status)
+    VALUES (?,?,?,?,?,?,?)
+  `).run(createdAt, name, email, phone, interests, notes, "pending");
+  return db.prepare("SELECT * FROM waitlist_signups WHERE id=?").get(info.lastInsertRowid);
+}
+
+function listWaitlistSignupsByStatus(status){
+  const s = (status || "pending").toString().trim().toLowerCase();
+  return db.prepare("SELECT * FROM waitlist_signups WHERE status=? ORDER BY createdAt DESC")
+    .all(s);
+}
+
+function updateWaitlistStatus(id, status){
+  db.prepare("UPDATE waitlist_signups SET status=? WHERE id=?")
+    .run(String(status), Number(id));
+  return db.prepare("SELECT * FROM waitlist_signups WHERE id=?").get(Number(id)) || null;
+}
+
+function addBusinessApplication(payload){
+  const createdAt = nowISO();
+  const contactName = (payload?.contactName || "").toString().trim();
+  const email = normalizeEmail(payload?.email);
+  const businessName = (payload?.businessName || "").toString().trim();
+  const type = (payload?.type || "").toString().trim();
+  const category = (payload?.category || "").toString().trim();
+  const inSebastian = (payload?.inSebastian || "").toString().trim();
+  if(!contactName || !email || !businessName || !type || !category || !inSebastian){
+    return { error: "contactName, email, businessName, type, category, inSebastian required" };
+  }
+  const info = db.prepare(`
+    INSERT INTO business_applications
+      (createdAt, contactName, email, phone, businessName, type, category, website, inSebastian, address, notes, status)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+  `).run(
+    createdAt,
+    contactName,
+    email,
+    (payload?.phone || "").toString().trim(),
+    businessName,
+    type,
+    category,
+    (payload?.website || "").toString().trim(),
+    inSebastian,
+    (payload?.address || "").toString().trim(),
+    (payload?.notes || "").toString().trim(),
+    "pending"
+  );
+  return db.prepare("SELECT * FROM business_applications WHERE id=?").get(info.lastInsertRowid);
+}
+
+function listBusinessApplicationsByStatus(status){
+  const s = (status || "pending").toString().trim().toLowerCase();
+  return db.prepare("SELECT * FROM business_applications WHERE status=? ORDER BY createdAt DESC")
+    .all(s);
+}
+
+function updateBusinessApplicationStatus(id, status){
+  db.prepare("UPDATE business_applications SET status=? WHERE id=?")
+    .run(String(status), Number(id));
+  return db.prepare("SELECT * FROM business_applications WHERE id=?").get(Number(id)) || null;
+}
+
+function addResidentApplication(payload){
+  const createdAt = nowISO();
+  const name = (payload?.name || "").toString().trim();
+  const email = normalizeEmail(payload?.email);
+  const addressLine1 = (payload?.addressLine1 || "").toString().trim();
+  const city = (payload?.city || "").toString().trim();
+  const state = (payload?.state || "").toString().trim();
+  const zip = (payload?.zip || "").toString().trim();
+  if(!name || !email || !addressLine1 || !city || !state || !zip){
+    return { error: "name, email, addressLine1, city, state, zip required" };
+  }
+  const info = db.prepare(`
+    INSERT INTO resident_applications
+      (createdAt, name, email, phone, addressLine1, city, state, zip, yearsInSebastian, notes, status)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+  `).run(
+    createdAt,
+    name,
+    email,
+    (payload?.phone || "").toString().trim(),
+    addressLine1,
+    city,
+    state,
+    zip,
+    (payload?.yearsInSebastian || "").toString().trim(),
+    (payload?.notes || "").toString().trim(),
+    "pending"
+  );
+  return db.prepare("SELECT * FROM resident_applications WHERE id=?").get(info.lastInsertRowid);
+}
+
+function listResidentApplicationsByStatus(status){
+  const s = (status || "pending").toString().trim().toLowerCase();
+  return db.prepare("SELECT * FROM resident_applications WHERE status=? ORDER BY createdAt DESC")
+    .all(s);
+}
+
+function getResidentApplicationById(id){
+  return db.prepare("SELECT * FROM resident_applications WHERE id=?").get(Number(id)) || null;
+}
+
+function updateResidentApplicationStatus(id, status){
+  db.prepare("UPDATE resident_applications SET status=? WHERE id=?")
+    .run(String(status), Number(id));
+  return db.prepare("SELECT * FROM resident_applications WHERE id=?").get(Number(id)) || null;
+}
+
 function addLocalBizApplication(payload, userId){
   const createdAt = nowISO();
   const businessName = (payload.businessName || "").toString().trim();
@@ -3109,6 +3286,7 @@ module.exports = {
   deleteSession,
   getUserBySession,
   getUserById,
+  getUserByEmail,
   getUserProfilePublic,
   getUserProfilePrivate,
   updateUserProfile,
@@ -3156,6 +3334,16 @@ module.exports = {
   listMediaObjects,
   listMediaOrphans,
   listMissingLocalMedia,
+  addWaitlistSignup,
+  listWaitlistSignupsByStatus,
+  updateWaitlistStatus,
+  addBusinessApplication,
+  listBusinessApplicationsByStatus,
+  updateBusinessApplicationStatus,
+  addResidentApplication,
+  listResidentApplicationsByStatus,
+  getResidentApplicationById,
+  updateResidentApplicationStatus,
   addLocalBizApplication,
   listLocalBizApplicationsByUser,
   listLocalBizApplicationsByStatus,

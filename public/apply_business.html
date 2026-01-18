@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Business or Service Application</title>
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <link rel="stylesheet" href="/apply_business.css?v=1">
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <h1>Apply as a Business or Service</h1>
+        <p class="muted">Share details about your business. Applications are reviewed manually.</p>
+      </header>
+
+      <form id="businessForm" class="card">
+        <label>Contact Name (required)</label>
+        <input id="businessContactName" type="text" required />
+
+        <label>Email (required)</label>
+        <input id="businessEmail" type="email" required />
+
+        <label>Phone (optional)</label>
+        <input id="businessPhone" type="tel" />
+
+        <label>Business / Service Name (required)</label>
+        <input id="businessName" type="text" required />
+
+        <label>Type (required)</label>
+        <select id="businessType" required>
+          <option value="">Select one</option>
+          <option value="business">Business</option>
+          <option value="service">Service</option>
+          <option value="individual seller">Individual Seller</option>
+        </select>
+
+        <label>Category (required)</label>
+        <input id="businessCategory" type="text" required />
+
+        <label>Website / Social (optional)</label>
+        <input id="businessWebsite" type="text" placeholder="https:// or @handle" />
+
+        <label>Located in Sebastian? (required)</label>
+        <select id="businessInSebastian" required>
+          <option value="">Select one</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+
+        <label>Address (optional, private)</label>
+        <input id="businessAddress" type="text" />
+
+        <label>Notes to Admin (optional)</label>
+        <textarea id="businessNotes" rows="4"></textarea>
+
+        <div class="row">
+          <button type="submit">Submit Application</button>
+          <span class="muted" id="businessMsg"></span>
+        </div>
+      </form>
+    </main>
+
+    <script src="/apply_business.js?v=1"></script>
+  </body>
+</html>

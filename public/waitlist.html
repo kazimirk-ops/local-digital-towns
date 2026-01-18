@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Join the Waitlist</title>
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <link rel="stylesheet" href="/waitlist.css?v=1">
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <h1>Join the Private Beta</h1>
+        <p class="muted">Add your info and we will reach out as slots open.</p>
+      </header>
+
+      <form id="waitlistForm" class="card">
+        <label>Email (required)</label>
+        <input id="waitlistEmail" type="email" required />
+
+        <label>Name (optional)</label>
+        <input id="waitlistName" type="text" />
+
+        <label>Phone (optional)</label>
+        <input id="waitlistPhone" type="tel" />
+
+        <fieldset class="checkboxes">
+          <legend>I'm interested in (optional)</legend>
+          <label><input type="checkbox" name="interest" value="buyer" /> Buyer</label>
+          <label><input type="checkbox" name="interest" value="seller" /> Seller</label>
+          <label><input type="checkbox" name="interest" value="resident" /> Resident</label>
+          <label><input type="checkbox" name="interest" value="business/service" /> Business or Service</label>
+        </fieldset>
+
+        <label>Notes (optional)</label>
+        <textarea id="waitlistNotes" rows="4"></textarea>
+
+        <div class="row">
+          <button type="submit">Join Waitlist</button>
+          <span class="muted" id="waitlistMsg"></span>
+        </div>
+      </form>
+    </main>
+
+    <script src="/waitlist.js?v=1"></script>
+  </body>
+</html>
