@@ -58,6 +58,49 @@ app.use((req,res,next)=>{
   if(req.path === "/api/stripe/webhook") return next();
   return jsonParser(req,res,next);
 });
+const LOCKDOWN = (process.env.LOCKDOWN_MODE || "").toLowerCase() === "true";
+app.use((req,res,next)=>{
+  if(!LOCKDOWN) return next();
+  const pathName = req.path || "";
+  const isGet = req.method === "GET";
+  if(isGet && pathName === "/health") return next();
+  if(pathName.startsWith("/admin/login")) return next();
+  if(isGet){
+    const isStatic =
+      pathName === "/favicon.ico" ||
+      pathName.startsWith("/images/") ||
+      pathName.startsWith("/css/") ||
+      pathName.startsWith("/js/") ||
+      pathName.startsWith("/fonts/") ||
+      pathName.startsWith("/uploads/") ||
+      /\.[a-z0-9]+$/i.test(pathName);
+    if(isStatic) return next();
+  }
+  const userId = getUserId(req);
+  const user = userId ? data.getUserById(userId) : null;
+  if(isAdminUser(user)) return next();
+  if(pathName.startsWith("/api")){
+    return res.status(403).json({ error: "coming soon" });
+  }
+  setCookie(res, "lockdown_logged_in", userId ? "1" : "0", { maxAge: 300 });
+  return res.status(200).sendFile(path.join(__dirname,"public","coming_soon.html"));
+});
+app.use("/admin",(req,res,next)=>{
+  if(req.path === "/login") return next();
+  const userId = getUserId(req);
+  const user = userId ? data.getUserById(userId) : null;
+  if(isAdminUser(user)) return next();
+  if(req.method === "GET" || req.method === "HEAD"){
+    return res.redirect("/ui");
+  }
+  return res.status(403).json({ error: "Admin access required" });
+});
+app.use("/api/admin",(req,res,next)=>{
+  const userId = getUserId(req);
+  const user = userId ? data.getUserById(userId) : null;
+  if(isAdminUser(user)) return next();
+  return res.status(403).json({ error: "Admin access required" });
+});
 
 // Health
 app.get("/health",(req,res)=>res.json({status:"ok"}));
@@ -119,6 +162,14 @@ app.get("/signup",(req,res)=>res.sendFile(path.join(__dirname,"public","signup.h
 app.get("/u/:id",(req,res)=>res.sendFile(path.join(__dirname,"public","profile.html")));
 app.get("/me/store",(req,res)=>res.sendFile(path.join(__dirname,"public","store_profile.html")));
 app.get("/me/profile",(req,res)=>res.sendFile(path.join(__dirname,"public","my_profile.html")));
+app.get("/me/orders",(req,res)=>{
+  const u=requireLogin(req,res); if(!u) return;
+  res.sendFile(path.join(__dirname,"public","my_orders.html"));
+});
+app.get("/me/seller/orders",(req,res)=>{
+  const u=requireLogin(req,res); if(!u) return;
+  res.sendFile(path.join(__dirname,"public","seller_orders.html"));
+});
 app.get("/me/hub",(req,res)=>res.redirect("/me/store"));
 app.get("/pay/:id",(req,res)=>res.sendFile(path.join(__dirname,"public","pay.html")));
 app.get("/pay/success",(req,res)=>res.sendFile(path.join(__dirname,"public","pay_success.html")));
@@ -213,16 +264,18 @@ function requireLogin(req,res){
 }
 function isAdminUser(user){
   if(!user) return false;
-  const email=(user.email||"").toLowerCase();
+  const email=(user.email||"").toString().trim().toLowerCase();
+  if(user.isAdmin === true) return true;
   if(Number(user.isAdmin)===1) return true;
   if(email && ADMIN_EMAIL_ALLOWLIST.has(email)) return true;
   return false;
 }
-function requireAdmin(req,res){
+function requireAdmin(req,res,options={}){
   const u=requireLogin(req,res); if(!u) return null;
   const user=data.getUserById(u);
   if(!isAdminUser(user)){
-    res.status(403).json({error:"Admin required"});
+    const message = (options.message || "Admin required").toString();
+    res.status(403).json({error: message});
     return null;
   }
   return user;
@@ -2182,7 +2235,7 @@ app.post("/api/auctions/:listingId/expire_winner",(req,res)=>{
 // ADMIN VERIFY (TEMP)
 // =====================
 app.post("/admin/verify/buyer", (req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+  const admin=requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
   const id = Number(req.body?.userId);
   if(!id) return res.status(400).json({error:"userId required"});
   const r = data.verifyBuyer(id, "verified", "admin");
@@ -2190,7 +2243,7 @@ app.post("/admin/verify/buyer", (req,res)=>{
 });
 
 app.post("/admin/verify/store", (req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+  const admin=requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
   const id = Number(req.body?.placeId);
   if(!id) return res.status(400).json({error:"placeId required"});
   const r = data.verifyStore(id);
@@ -2209,5 +2262,5 @@ app.post("/api/admin/trust/tiers",(req,res)=>{
   res.json({ ok:true, membership: updated });
 });
 
-const PORT=3000;
-app.listen(PORT,()=>console.log(`Server running on http://localhost:${PORT}`));
+const PORT = Number(process.env.PORT || 3000);
+app.listen(PORT, "0.0.0.0", () => console.log(`Server running on http://localhost:${PORT}`));
