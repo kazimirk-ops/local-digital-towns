@@ -21,6 +21,7 @@ const express = require("express");
 const path = require("path");
 const multer = require("multer");
 const trust = require("./lib/trust");
+const { sendAdminEmail } = require("./lib/notify");
 const TRUST_TIER_LABELS = trust.TRUST_TIER_LABELS;
 function getTrustBadgeForUser(userId){
   const user = data.getUserById(userId);
@@ -305,6 +306,12 @@ function requireAdminOrDev(req,res){
   return requireAdmin(req,res);
 }
 
+function getAdminReviewLink(){
+  const base = (process.env.PUBLIC_BASE_URL || process.env.SITE_URL || process.env.APP_URL || "").toString().trim();
+  if(!base) return "/admin/applications";
+  return `${base.replace(/\/$/,"")}/admin/applications`;
+}
+
 function getUserTier(req){
   const userId = getUserId(req);
   const user = userId ? data.getUserById(userId) : null;
@@ -461,18 +468,75 @@ app.post("/auth/logout",(req,res)=>{
 app.post("/api/public/waitlist",(req,res)=>{
   const result = data.addWaitlistSignup(req.body || {});
   if(result?.error) return res.status(400).json({ error: result.error });
+  const waitlistSummary = {
+    name: (req.body?.name || "").toString().trim(),
+    email: (req.body?.email || "").toString().trim(),
+    phone: (req.body?.phone || "").toString().trim(),
+    interests: Array.isArray(req.body?.interests) ? req.body.interests : (req.body?.interests || ""),
+    notes: (req.body?.notes || "").toString().trim(),
+    status: "pending"
+  };
+  const waitlistText = [
+    "New waitlist signup",
+    "",
+    JSON.stringify(waitlistSummary, null, 2),
+    "",
+    `Review: ${getAdminReviewLink()}`
+  ].join("\n");
+  sendAdminEmail("New waitlist signup", waitlistText);
   res.json({ ok:true });
 });
 
 app.post("/api/public/apply/business",(req,res)=>{
   const result = data.addBusinessApplication(req.body || {});
   if(result?.error) return res.status(400).json({ error: result.error });
+  const businessSummary = {
+    contactName: (req.body?.contactName || "").toString().trim(),
+    email: (req.body?.email || "").toString().trim(),
+    phone: (req.body?.phone || "").toString().trim(),
+    businessName: (req.body?.businessName || "").toString().trim(),
+    type: (req.body?.type || "").toString().trim(),
+    category: (req.body?.category || "").toString().trim(),
+    website: (req.body?.website || "").toString().trim(),
+    inSebastian: (req.body?.inSebastian || "").toString().trim(),
+    address: (req.body?.address || "").toString().trim(),
+    notes: (req.body?.notes || "").toString().trim(),
+    status: "pending"
+  };
+  const businessText = [
+    "New business/service application",
+    "",
+    JSON.stringify(businessSummary, null, 2),
+    "",
+    `Review: ${getAdminReviewLink()}`
+  ].join("\n");
+  sendAdminEmail("New business/service application", businessText);
   res.json({ ok:true });
 });
 
 app.post("/api/public/apply/resident",(req,res)=>{
   const result = data.addResidentApplication(req.body || {});
   if(result?.error) return res.status(400).json({ error: result.error });
+  const residentSummary = {
+    name: (req.body?.name || "").toString().trim(),
+    email: (req.body?.email || "").toString().trim(),
+    phone: (req.body?.phone || "").toString().trim(),
+    addressLine1: (req.body?.addressLine1 || "").toString().trim(),
+    city: (req.body?.city || "").toString().trim(),
+    state: (req.body?.state || "").toString().trim(),
+    zip: (req.body?.zip || "").toString().trim(),
+    yearsInSebastian: (req.body?.yearsInSebastian || "").toString().trim(),
+    notes: (req.body?.notes || "").toString().trim(),
+    status: "pending"
+  };
+  const residentText = [
+    "New resident application",
+    "",
+    JSON.stringify(residentSummary, null, 2),
+    "",
+    `Review: ${getAdminReviewLink()}`
+  ].join("\n");
+  sendAdminEmail("New resident application", residentText);
   res.json({ ok:true });
 });
 
