@@ -1611,6 +1611,7 @@ async function consumeMagicToken(token){
 async function createSession(userId){
   const sid = randToken(24);
   const expiresAt = new Date(Date.now()+30*24*60*60*1000).toISOString();
+  console.log("SESSION_CREATE", { userId: Number(userId) });
   await stmt("INSERT INTO sessions (sid,userId,expiresAt,createdAt) VALUES ($1,$2,$3,$4)")
     .run(sid, Number(userId), expiresAt, nowISO());
   return {sid,expiresAt};
@@ -1620,6 +1621,7 @@ async function deleteSession(sid){
 }
 async function getUserBySession(sid){
   const sess= await stmt("SELECT * FROM sessions WHERE sid=$1").get(sid);
+  console.log("SESSION_LOOKUP", { found: !!sess });
   if(!sess) return null;
   if(new Date(sess.expiresAt).getTime()<Date.now()){ await deleteSession(sid); return null; }
   const user= normalizeUserRow(await stmt("SELECT * FROM users WHERE id=$1").get(sess.userId));
