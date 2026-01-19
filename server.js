@@ -1763,6 +1763,30 @@ app.post("/api/admin/localbiz/:id/deny",(req,res)=>{
   res.json(updated);
 });
 
+app.post("/api/admin/test-email", async (req,res)=>{
+  const admin=requireAdmin(req,res); if(!admin) return;
+  console.log("POSTMARK_TEST_SEND", {
+    hasToken: !!process.env.POSTMARK_SERVER_TOKEN,
+    hasFrom: !!process.env.EMAIL_FROM,
+    hasBase: !!process.env.PUBLIC_BASE_URL,
+    toCount: (process.env.ADMIN_NOTIFY_EMAILS || "").split(",").length
+  });
+  let result;
+  try{
+    result = await sendAdminEmail("[Sebastian Beta] Test Email", "If you received this, Postmark is working.");
+  }catch(err){
+    result = { ok:false, error: err?.message || String(err) };
+  }
+  const statusCode = typeof result?.statusCode === "number"
+    ? result.statusCode
+    : (result?.ok ? 200 : 500);
+  console.log("POSTMARK_TEST_RESULT", statusCode);
+  if(!result?.ok){
+    console.warn("POSTMARK_TEST_ERROR", result?.error || "Unknown error");
+  }
+  res.json({ ok:true });
+});
+
 app.get("/api/admin/waitlist",(req,res)=>{
   const admin=requireAdmin(req,res); if(!admin) return;
   const status=(req.query.status || "pending").toString().trim().toLowerCase();
