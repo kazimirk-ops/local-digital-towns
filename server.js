@@ -2042,6 +2042,7 @@ app.get("/api/sweepstake/active",(req,res)=>{
 app.post("/sweepstake/enter",(req,res)=>{
   const access = requirePerm(req,res,"SWEEP_ENTER"); if(!access) return;
   const u=access.userId;
+  const isSweepTestMode = process.env.SWEEP_TEST_MODE === "true" && isAdminUser(access.user);
   const sweepId = Number(req.body?.sweepstakeId);
   const entries = Number(req.body?.entries);
   if(!Number.isFinite(entries) || entries <= 0) return res.status(400).json({error:"entries must be > 0"});
@@ -2055,12 +2056,15 @@ app.post("/sweepstake/enter",(req,res)=>{
   if(Number.isFinite(endAt) && now > endAt) return res.status(400).json({error:"Sweepstake ended"});
   const cost = Number(sweep.entryCost || 1) * entries;
   const balance = data.getSweepBalance(u);
-  if(balance < cost) return res.status(400).json({error:"Insufficient sweep balance"});
-  data.addSweepLedgerEntry({ userId: u, amount: -cost, reason: "sweepstake_entry", meta: { sweepstakeId: sweep.id, entries } });
+  if(!isSweepTestMode){
+    if(balance < cost) return res.status(400).json({error:"Insufficient sweep balance"});
+    data.addSweepLedgerEntry({ userId: u, amount: -cost, reason: "sweepstake_entry", meta: { sweepstakeId: sweep.id, entries } });
+  }
   data.addSweepstakeEntry(sweep.id, u, entries);
   const totals = data.getSweepstakeEntryTotals(sweep.id);
   const userEntries = data.getUserEntriesForSweepstake(sweep.id, u);
-  res.json({ ok:true, balance: balance - cost, totals, userEntries });
+  const nextBalance = isSweepTestMode ? balance : balance - cost;
+  res.json({ ok:true, balance: nextBalance, totals, userEntries });
 });
 app.post("/api/admin/sweep/draw",(req,res)=>{
   const admin = requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
@@ -2111,6 +2115,12 @@ app.post("/api/admin/sweep/draw",(req,res)=>{
     winner,
     createdAt: draw?.createdAt || ""
   });
+});
+app.post("/api/admin/sweep/grant_test_balance",(req,res)=>{
+  const admin = requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+  if(process.env.SWEEP_TEST_MODE !== "true") return res.status(403).json({error:"Sweep test mode disabled"});
+  data.addSweepLedgerEntry({ userId: admin.id, amount: 999999, reason: "sweep_test_grant", meta: { mode: "test" } });
+  res.json({ ok:true, balance: data.getSweepBalance(admin.id) });
 });
 app.get("/api/admin/sweep/last",(req,res)=>{
   const admin = requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;

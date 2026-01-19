@@ -931,6 +931,30 @@ This archive will grow with the Daily Digital Sebastian Pulse.`;
   }
 })();
 
+(function seedAdminTestStore(){
+  const adminUser = db.prepare("SELECT * FROM users WHERE isAdmin=1 ORDER BY id LIMIT 1").get();
+  if(!adminUser) return;
+  const existing = db.prepare("SELECT 1 FROM places WHERE ownerUserId=? LIMIT 1").get(adminUser.id);
+  if(existing) return;
+  db.prepare(`
+    INSERT INTO places
+      (townId, districtId, name, category, status, description, sellerType, addressPrivate, website, yearsInTown, ownerUserId)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+  `).run(
+    1,
+    1,
+    "Admin Test Store",
+    "Test",
+    "approved",
+    "Test storefront for admin setup.",
+    "individual",
+    "",
+    "",
+    "",
+    adminUser.id
+  );
+})();
+
 // ---------- Core getters ----------
 function getPlaces(){
   return db.prepare(`
