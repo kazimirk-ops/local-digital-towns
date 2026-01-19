@@ -1071,17 +1071,14 @@ async function loadSweepstake(){
     }
     const sweep = data.sweepstake;
     $("sweepStatus").textContent = (sweep.status || "active").toUpperCase();
-    $("sweepPrize").textContent = `Prize: ${sweep.prize || sweep.title || "—"}`;
+    const prizeTitle = (data.prize?.title || sweep.prize || sweep.title || "—").toString().trim() || "—";
+    $("sweepPrize").textContent = `Prize: ${prizeTitle}`;
     $("sweepTime").textContent = `Starts ${formatISO(sweep.startAt)} • Draw ${formatISO(sweep.drawAt)}`;
     $("sweepMeta").textContent = `Entries close ${formatISO(sweep.endAt)} • 1 coin = 1 entry`;
     $("sweepTotalEntries").textContent = data.totals?.totalEntries ?? 0;
     $("sweepUserEntries").textContent = data.userEntries ?? 0;
     $("sweepUserBalance").textContent = data.balance ?? 0;
-    if(data.winner?.displayName){
-      $("sweepWinner").textContent = `Winner: ${data.winner.displayName}`;
-    }else{
-      $("sweepWinner").textContent = "Winner: —";
-    }
+    $("sweepWinner").textContent = formatSweepWinnerText(data.winner, data.prize);
     $("sweepEnterBtn").disabled = !access.loggedIn || state.trustTier < 1;
   }catch(e){
     $("sweepStatus").textContent = "Error";
@@ -1119,6 +1116,29 @@ function updateSweepWheelControls(){
   if(spinBtn) spinBtn.style.display = access.isAdmin ? "" : "none";
   const replayBtn = $("sweepWheelReplayBtn");
   if(replayBtn) replayBtn.style.display = access.isAdmin ? "" : "none";
+}
+
+function formatSweepWinnerText(winner, prize){
+  if(!winner?.displayName) return "Winner: —";
+  const prizeTitle = (prize?.title || "").toString().trim();
+  const donorName = (prize?.donorName || "").toString().trim();
+  let line = `Winner: ${winner.displayName}`;
+  if(prizeTitle) line += ` • ${prizeTitle}`;
+  if(donorName) line += ` • Donor: ${donorName}`;
+  return line;
+}
+
+function updateSweepWinnerPanel(winner, prize){
+  const el = $("sweepWinner");
+  if(!el) return;
+  el.textContent = formatSweepWinnerText(winner, prize);
+}
+
+function updateSweepPrizePanel(prize){
+  const el = $("sweepPrize");
+  if(!el) return;
+  const title = (prize?.title || "").toString().trim();
+  if(title) el.textContent = `Prize: ${title}`;
 }
 
 function setupWheelCanvas(){
@@ -1349,6 +1369,8 @@ async function spinSweepWheel(){
     sweepWheelState.highlightWinnerId = null;
     if($("sweepWheelTotal")) $("sweepWheelTotal").textContent = `Total entries: ${sweepWheelState.totalEntries}`;
     drawSweepWheel(sweepWheelState.rotation);
+    updateSweepPrizePanel(res.prize);
+    updateSweepWinnerPanel(res.winner, res.prize);
     if(!sweepWheelState.winner){
       if(status) status.textContent = "No winner selected.";
       return;

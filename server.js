@@ -69,6 +69,7 @@ app.use((req,res,next)=>{
   if(isGet && pathName === "/health") return next();
   if(isGet && (pathName === "/waitlist" || pathName === "/apply/business" || pathName === "/apply/resident")) return next();
   if(isGet && (pathName === "/admin/login" || pathName === "/admin/bootstrap")) return next();
+  if(isGet && pathName.startsWith("/sweep/claim/")) return next();
   if(isGet && pathName === "/auth/magic") return next();
   if(pathName === "/auth/logout" && (req.method === "GET" || req.method === "POST")) return next();
   if(req.method === "POST" && pathName === "/auth/request-link") return next();
@@ -77,7 +78,9 @@ app.use((req,res,next)=>{
     if(pathName === "/api/public/waitlist") return next();
     if(pathName === "/api/public/apply/business") return next();
     if(pathName === "/api/public/apply/resident") return next();
+    if(pathName.startsWith("/api/sweep/claim/")) return next();
   }
+  if(isGet && pathName.startsWith("/api/sweep/claim/")) return next();
   if(isGet){
     const isStatic =
       pathName === "/favicon.ico" ||
@@ -366,6 +369,92 @@ function getAdminReviewLink(){
   return `${base.replace(/\/$/,"")}/admin/applications`;
 }
 
+function getSweepPrizeInfo(sweep, snapshotPrize){
+  if(snapshotPrize && snapshotPrize.title) return snapshotPrize;
+  const offers = data.listActivePrizeOffers ? data.listActivePrizeOffers() : [];
+  const offer = offers[0];
+  const title = (offer?.title || sweep?.prize || sweep?.title || "").toString().trim();
+  const donorName = (offer?.donorDisplayName || "").toString().trim();
+  return {
+    title,
+    donorName,
+    donorUserId: offer?.donorUserId ?? null,
+    donorPlaceId: offer?.donorPlaceId ?? null,
+    prizeOfferId: offer?.id ?? null
+  };
+}
+
+function getSweepDrawContext(draw){
+  if(!draw) return { sweep: null, prize: null, snapshot: {} };
+  const sweep = data.getSweepstakeById(draw.sweepId);
+  let snapshot = {};
+  try{ snapshot = JSON.parse(draw.snapshotJson || "{}"); }catch(_){}
+  const prize = getSweepPrizeInfo(sweep, snapshot.prize);
+  return { sweep, prize, snapshot };
+}
+
+function resolveSweepDonorUserId(prize){
+  if(!prize) return null;
+  if(prize.donorUserId) return Number(prize.donorUserId);
+  if(prize.donorPlaceId){
+    const place = data.getPlaceById(prize.donorPlaceId);
+    if(place?.ownerUserId) return Number(place.ownerUserId);
+  }
+  return null;
+}
+
+function resolveSweepDonorName(prize, donorUserId){
+  const name = (prize?.donorName || "").toString().trim();
+  if(name) return name;
+  if(donorUserId){
+    const donorUser = data.getUserById(donorUserId);
+    return donorUser ? data.getDisplayNameForUser(donorUser) : "";
+  }
+  return "";
+}
+
+function notifySweepDrawUsers({ draw, sweep, winner, prize, adminId }){
+  if(!draw?.id || !winner?.userId) return;
+  if(Number(draw.notified) === 1) return;
+  const prizeTitle = (prize?.title || sweep?.prize || sweep?.title || "Prize").toString().trim();
+  const donorUserId = resolveSweepDonorUserId(prize);
+  const donorName = resolveSweepDonorName(prize, donorUserId) || "Donor";
+  const winnerUser = data.getUserById(winner.userId);
+  const winnerName = winner.displayName || (winnerUser ? data.getDisplayNameForUser(winnerUser) : "Winner");
+  const drawnAt = draw.createdAt || new Date().toISOString();
+  const systemPrefix = "[SYSTEM] ";
+
+  try{
+    if(donorUserId && Number(donorUserId) !== Number(winner.userId)){
+      const convo = data.addDirectConversation(winner.userId, donorUserId);
+      const longText = `${systemPrefix}🎉 You won: ${prizeTitle} (Donor: ${donorName}). Please coordinate pickup/delivery here. Winner: reply with preferred pickup time/location. Donor: reply with instructions.\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}`;
+      if(convo?.id){
+        data.addDirectMessage(convo.id, adminId, longText);
+        const winnerNote = `${systemPrefix}🎉 You won ${prizeTitle}! Check your inbox thread with ${donorName} for instructions.`;
+        data.addDirectMessage(convo.id, adminId, winnerNote);
+        const donorNote = `${systemPrefix}${winnerName} won your prize ${prizeTitle}. Please send pickup instructions in this thread.`;
+        data.addDirectMessage(convo.id, adminId, donorNote);
+      }
+    }else{
+      const convo = data.addDirectConversation(adminId, winner.userId);
+      if(convo?.id){
+        const winnerNote = `${systemPrefix}🎉 You won ${prizeTitle}! We will follow up with donor details soon.`;
+        data.addDirectMessage(convo.id, adminId, winnerNote);
+      }
+      if(donorUserId){
+        const donorConvo = data.addDirectConversation(adminId, donorUserId);
+        if(donorConvo?.id){
+          const donorNote = `${systemPrefix}${winnerName} won your prize ${prizeTitle}. Please send pickup instructions in the winner thread.`;
+          data.addDirectMessage(donorConvo.id, adminId, donorNote);
+        }
+      }
+    }
+    data.setSweepDrawNotified(draw.id);
+  }catch(err){
+    console.warn("Sweep draw notify failed", err?.message || err);
+  }
+}
+
 function buildSweepParticipants(sweepId){
   const rows = data.listSweepstakeParticipants(sweepId);
   return rows
@@ -386,6 +475,11 @@ function getSweepstakeActivePayload(req){
   const totals = data.getSweepstakeEntryTotals(sweep.id);
   const participants = buildSweepParticipants(sweep.id);
   const draw = data.getSweepDrawBySweepId(sweep.id);
+  let snapshot = {};
+  if(draw?.snapshotJson){
+    try{ snapshot = JSON.parse(draw.snapshotJson || "{}"); }catch(_){}
+  }
+  const prize = getSweepPrizeInfo(sweep, snapshot.prize);
   const winnerUserId = draw?.winnerUserId || sweep.winnerUserId || null;
   const winner = winnerUserId
     ? {
@@ -402,6 +496,7 @@ function getSweepstakeActivePayload(req){
     totals,
     participants,
     winner,
+    prize,
     drawId: draw?.id || null,
     createdAt: draw?.createdAt || "",
     userEntries,
@@ -2039,6 +2134,37 @@ app.get("/sweepstake/active",(req,res)=>{
 app.get("/api/sweepstake/active",(req,res)=>{
   return res.json(getSweepstakeActivePayload(req));
 });
+app.get("/sweep/claim/:drawId",(req,res)=>{
+  const u=requireLogin(req,res); if(!u) return;
+  const draw = data.getSweepDrawById(req.params.drawId);
+  if(!draw) return res.status(404).send("Draw not found");
+  if(Number(draw.winnerUserId) !== Number(u)){
+    return res.status(403).send("Forbidden");
+  }
+  res.sendFile(path.join(__dirname,"public","sweep_claim.html"));
+});
+app.get("/api/sweep/claim/:drawId",(req,res)=>{
+  const u=requireLogin(req,res); if(!u) return;
+  const draw = data.getSweepDrawById(req.params.drawId);
+  if(!draw) return res.status(404).json({error:"Draw not found"});
+  if(Number(draw.winnerUserId) !== Number(u)){
+    return res.status(403).json({error:"Forbidden"});
+  }
+  const { sweep, prize } = getSweepDrawContext(draw);
+  res.json({
+    ok:true,
+    drawId: draw.id,
+    sweepId: draw.sweepId,
+    prize,
+    donorName: prize?.donorName || "",
+    status: (draw.claimedAt || "").toString().trim() ? "claimed" : "pending",
+    claimedAt: draw.claimedAt || "",
+    claimedMessage: draw.claimedMessage || "",
+    claimedPhotoUrl: draw.claimedPhotoUrl || "",
+    sweepTitle: sweep?.title || "",
+    sweepPrize: sweep?.prize || ""
+  });
+});
 app.post("/sweepstake/enter",(req,res)=>{
   const access = requirePerm(req,res,"SWEEP_ENTER"); if(!access) return;
   const u=access.userId;
@@ -2066,6 +2192,81 @@ app.post("/sweepstake/enter",(req,res)=>{
   const nextBalance = isSweepTestMode ? balance : balance - cost;
   res.json({ ok:true, balance: nextBalance, totals, userEntries });
 });
+app.post("/api/sweep/claim/:drawId",(req,res)=>{
+  const u=requireLogin(req,res); if(!u) return;
+  const draw = data.getSweepDrawById(req.params.drawId);
+  if(!draw) return res.status(404).json({error:"Draw not found"});
+  if(Number(draw.winnerUserId) !== Number(u)){
+    return res.status(403).json({error:"Forbidden"});
+  }
+  if((draw.claimedAt || "").toString().trim()){
+    return res.json({
+      ok:true,
+      drawId: draw.id,
+      claimedAt: draw.claimedAt || "",
+      claimedMessage: draw.claimedMessage || "",
+      claimedPhotoUrl: draw.claimedPhotoUrl || "",
+      claimedPostedMessageId: draw.claimedPostedMessageId || null
+    });
+  }
+  const messageToDonor = (req.body?.messageToDonor || "").toString().trim();
+  const photoUrl = (req.body?.photoUrl || "").toString().trim();
+  const claimed = data.setSweepClaimed(draw.id, {
+    claimedByUserId: u,
+    claimedMessage: messageToDonor,
+    claimedPhotoUrl: photoUrl
+  });
+  const { sweep, prize } = getSweepDrawContext(draw);
+  const prizeTitle = (prize?.title || sweep?.prize || sweep?.title || "Prize").toString().trim();
+  const donorUserId = resolveSweepDonorUserId(prize);
+  const donorName = resolveSweepDonorName(prize, donorUserId) || "Donor";
+  const winnerUser = data.getUserById(u);
+  const winnerName = winnerUser ? data.getDisplayNameForUser(winnerUser) : "Winner";
+  const systemSenderId = draw.createdByUserId || u;
+  const claimLines = [`[SYSTEM] ✅ Prize claimed: ${winnerName} confirmed receipt of ${prizeTitle}.`];
+  if(messageToDonor) claimLines.push(`Message: ${messageToDonor}`);
+  if(photoUrl) claimLines.push(`Photo: ${photoUrl}`);
+  const claimText = claimLines.join("\n");
+  try{
+    if(donorUserId && Number(donorUserId) !== Number(u)){
+      const convo = data.addDirectConversation(u, donorUserId);
+      if(convo?.id) data.addDirectMessage(convo.id, systemSenderId, claimText);
+    }else if(draw.createdByUserId && Number(draw.createdByUserId) !== Number(u)){
+      const convo = data.addDirectConversation(u, draw.createdByUserId);
+      if(convo?.id) data.addDirectMessage(convo.id, systemSenderId, claimText);
+    }
+  }catch(err){
+    console.warn("Sweep claim DM failed", err?.message || err);
+  }
+
+  try{
+    if(!claimed?.claimedPostedMessageId){
+      let channelId = Number(process.env.SWEETSTAKE_ANNOUNCE_CHANNEL_ID || 0);
+      if(!channelId){
+        const chans = data.getChannels ? data.getChannels() : [];
+        channelId = chans[0]?.id ? Number(chans[0].id) : 0;
+      }
+      if(channelId){
+        const announceText = `🎉 Prize Claimed! ${winnerName} received: ${prizeTitle} (Donor: ${donorName}).`;
+        const msg = data.addChannelMessage(channelId, systemSenderId, announceText, photoUrl || "");
+        if(msg?.id) data.setSweepClaimPostedMessageId(draw.id, msg.id);
+      }else{
+        console.warn("Sweep claim announce channel missing");
+      }
+    }
+  }catch(err){
+    console.warn("Sweep claim announce failed", err?.message || err);
+  }
+
+  return res.json({
+    ok:true,
+    drawId: draw.id,
+    claimedAt: claimed?.claimedAt || "",
+    claimedMessage: claimed?.claimedMessage || "",
+    claimedPhotoUrl: claimed?.claimedPhotoUrl || "",
+    claimedPostedMessageId: claimed?.claimedPostedMessageId || null
+  });
+});
 app.post("/api/admin/sweep/draw",(req,res)=>{
   const admin = requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
   const sweep = data.getActiveSweepstake();
@@ -2076,6 +2277,7 @@ app.post("/api/admin/sweep/draw",(req,res)=>{
     try{ snapshot = JSON.parse(existing.snapshotJson || "{}"); }catch(_){}
     const participants = Array.isArray(snapshot.participants) ? snapshot.participants : buildSweepParticipants(sweep.id);
     const winner = snapshot.winner || participants.find(p=>Number(p.userId)===Number(existing.winnerUserId)) || null;
+    const prize = getSweepPrizeInfo(sweep, snapshot.prize);
     return res.json({
       ok:true,
       drawId: existing.id,
@@ -2083,7 +2285,9 @@ app.post("/api/admin/sweep/draw",(req,res)=>{
       totalEntries: Number(existing.totalEntries || 0),
       participants,
       winner,
-      createdAt: existing.createdAt || ""
+      prize,
+      createdAt: existing.createdAt || "",
+      claimedAt: existing.claimedAt || ""
     });
   }
   const participants = buildSweepParticipants(sweep.id);
@@ -2097,7 +2301,8 @@ app.post("/api/admin/sweep/draw",(req,res)=>{
     if(r < acc){ winner = p; break; }
   }
   if(!winner) return res.status(500).json({ error: "Failed to select winner" });
-  const snapshot = { participants, winner, totalEntries };
+  const prize = getSweepPrizeInfo(sweep);
+  const snapshot = { participants, winner, totalEntries, prize };
   const draw = data.createSweepDraw({
     sweepId: sweep.id,
     createdByUserId: admin.id,
@@ -2106,6 +2311,7 @@ app.post("/api/admin/sweep/draw",(req,res)=>{
     snapshot
   });
   data.setSweepstakeWinner(sweep.id, winner.userId);
+  notifySweepDrawUsers({ draw, sweep, winner, prize, adminId: admin.id });
   return res.json({
     ok:true,
     drawId: draw?.id || null,
@@ -2113,7 +2319,9 @@ app.post("/api/admin/sweep/draw",(req,res)=>{
     totalEntries,
     participants,
     winner,
-    createdAt: draw?.createdAt || ""
+    prize,
+    createdAt: draw?.createdAt || "",
+    claimedAt: draw?.claimedAt || ""
   });
 });
 app.post("/api/admin/sweep/grant_test_balance",(req,res)=>{
@@ -2130,6 +2338,8 @@ app.get("/api/admin/sweep/last",(req,res)=>{
   try{ snapshot = JSON.parse(existing.snapshotJson || "{}"); }catch(_){}
   const participants = Array.isArray(snapshot.participants) ? snapshot.participants : buildSweepParticipants(existing.sweepId);
   const winner = snapshot.winner || participants.find(p=>Number(p.userId)===Number(existing.winnerUserId)) || null;
+  const sweep = data.getSweepstakeById(existing.sweepId);
+  const prize = getSweepPrizeInfo(sweep, snapshot.prize);
   return res.json({
     ok:true,
     drawId: existing.id,
@@ -2137,7 +2347,9 @@ app.get("/api/admin/sweep/last",(req,res)=>{
     totalEntries: Number(existing.totalEntries || 0),
     participants,
     winner,
-    createdAt: existing.createdAt || ""
+    prize,
+    createdAt: existing.createdAt || "",
+    claimedAt: existing.claimedAt || ""
   });
 });
 app.get("/api/admin/sweep/rules",(req,res)=>{

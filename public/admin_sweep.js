@@ -170,6 +170,20 @@ if(sweepDrawReplayBtn) sweepDrawReplayBtn.onclick = replaySweepDraw;
 const sweepDrawOpenBtn = document.getElementById("sweepDrawOpenBtn");
 if(sweepDrawOpenBtn) sweepDrawOpenBtn.onclick = ()=>{ window.location.href = "/ui#sweepdraw"; };
 
+async function loadLatestDrawStatus(){
+  const el = document.getElementById("sweepClaimInfo");
+  if(!el) return;
+  try{
+    const res = await api("/api/admin/sweep/last");
+    const claimed = res.claimedAt ? `claimed at ${res.claimedAt}` : "pending";
+    const link = res.drawId ? `/sweep/claim/${res.drawId}` : "#";
+    el.innerHTML = `Draw #${res.drawId || "—"} • Winner: ${res.winner?.displayName || "—"} • ${claimed}<br/>Claim link: <a href="${link}">${link}</a>`;
+  }catch(e){
+    el.textContent = `No draw yet. (${e.message})`;
+  }
+}
+
 loadRules().catch((e) => {
   document.getElementById("ruleMsg").textContent = `ERROR: ${e.message} (login required)`;
 });
+loadLatestDrawStatus().catch(()=>{});

@@ -723,6 +723,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_membership_unique ON town_memberships(town
   if(!columnExists("live_rooms","hostType")) addColumn("live_rooms","hostType TEXT NOT NULL DEFAULT 'individual'");
 })();
 
+(function migrateSweepDraws(){
+  if(!columnExists("sweep_draws","notified")) addColumn("sweep_draws","notified INTEGER NOT NULL DEFAULT 0");
+  if(!columnExists("sweep_draws","claimedAt")) addColumn("sweep_draws","claimedAt TEXT NOT NULL DEFAULT ''");
+  if(!columnExists("sweep_draws","claimedByUserId")) addColumn("sweep_draws","claimedByUserId INTEGER");
+  if(!columnExists("sweep_draws","claimedMessage")) addColumn("sweep_draws","claimedMessage TEXT NOT NULL DEFAULT ''");
+  if(!columnExists("sweep_draws","claimedPhotoUrl")) addColumn("sweep_draws","claimedPhotoUrl TEXT NOT NULL DEFAULT ''");
+  if(!columnExists("sweep_draws","claimedPostedMessageId")) addColumn("sweep_draws","claimedPostedMessageId INTEGER");
+})();
+
 (function migrateListingExtensions(){
   if(!columnExists("listings","photoUrlsJson")) addColumn("listings","photoUrlsJson TEXT NOT NULL DEFAULT '[]'");
   if(!columnExists("listings","listingType")) addColumn("listings","listingType TEXT NOT NULL DEFAULT 'item'");
@@ -2291,6 +2300,9 @@ function getSweepDrawBySweepId(sweepId){
     LIMIT 1
   `).get(Number(sweepId)) || null;
 }
+function getSweepDrawById(drawId){
+  return db.prepare("SELECT * FROM sweep_draws WHERE id=?").get(Number(drawId)) || null;
+}
 function getLatestSweepDraw(){
   return db.prepare(`
     SELECT * FROM sweep_draws
@@ -2313,6 +2325,34 @@ function createSweepDraw(payload){
     JSON.stringify(payload.snapshot || {})
   );
   return db.prepare("SELECT * FROM sweep_draws WHERE id=?").get(info.lastInsertRowid) || null;
+}
+function setSweepDrawNotified(drawId){
+  const id = Number(drawId);
+  if(!id) return false;
+  db.prepare("UPDATE sweep_draws SET notified=1 WHERE id=?").run(id);
+  return true;
+}
+function setSweepClaimed(drawId, payload){
+  const draw = getSweepDrawById(drawId);
+  if(!draw) return null;
+  if((draw.claimedAt || "").toString().trim()) return draw;
+  const claimedAt = payload?.claimedAt || nowISO();
+  const claimedByUserId = payload?.claimedByUserId == null ? null : Number(payload.claimedByUserId);
+  const claimedMessage = (payload?.claimedMessage || "").toString();
+  const claimedPhotoUrl = (payload?.claimedPhotoUrl || "").toString();
+  db.prepare(`
+    UPDATE sweep_draws
+    SET claimedAt=?, claimedByUserId=?, claimedMessage=?, claimedPhotoUrl=?
+    WHERE id=?
+  `).run(claimedAt, claimedByUserId, claimedMessage, claimedPhotoUrl, Number(drawId));
+  return getSweepDrawById(drawId);
+}
+function setSweepClaimPostedMessageId(drawId, messageId){
+  const id = Number(drawId);
+  const msgId = Number(messageId);
+  if(!id || !msgId) return false;
+  db.prepare("UPDATE sweep_draws SET claimedPostedMessageId=? WHERE id=?").run(msgId, id);
+  return true;
 }
 function setSweepstakeWinner(sweepstakeId, winnerUserId){
   db.prepare("UPDATE sweepstakes SET winnerUserId=?, winnerEntryId=NULL, status='ended' WHERE id=?")
@@ -3398,8 +3438,12 @@ module.exports = {
   getUserEntriesForSweepstake,
   listSweepstakeParticipants,
   getSweepDrawBySweepId,
+  getSweepDrawById,
   getLatestSweepDraw,
   createSweepDraw,
+  setSweepDrawNotified,
+  setSweepClaimed,
+  setSweepClaimPostedMessageId,
   setSweepstakeWinner,
   drawSweepstakeWinner,
   addCalendarEvent,
