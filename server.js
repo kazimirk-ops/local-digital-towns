@@ -79,6 +79,7 @@ app.use(async (req,res,next)=>{
     if(pathName === "/api/public/apply/business") return next();
     if(pathName === "/api/public/apply/resident") return next();
     if(pathName.startsWith("/api/sweep/claim/")) return next();
+    if(pathName === "/api/admin/test-email") return next();
   }
   if(isGet && pathName.startsWith("/api/sweep/claim/")) return next();
   if(isGet){
@@ -112,6 +113,7 @@ app.use("/admin", async (req, res, next) =>{
   return res.status(403).json({ error: "Admin access required" });
 });
 app.use("/api/admin", async (req, res, next) =>{
+  if(req.path === "/test-email") return next();
   const userId = await getUserId(req);
   const user = userId ? await data.getUserById(userId) : null;
   if(isAdminUser(user)) return next();
@@ -2005,7 +2007,16 @@ app.post("/api/admin/localbiz/:id/deny", async (req, res) =>{
 });
 
 app.post("/api/admin/test-email", async (req,res)=>{
-  const admin=await requireAdmin(req,res); if(!admin) return;
+  const userId = await getUserId(req);
+  const user = userId ? await data.getUserById(userId) : null;
+  const isAdmin = isAdminUser(user);
+  console.log("TEST_EMAIL_ENDPOINT_HIT", {
+    loggedIn: !!userId,
+    isAdmin,
+    hasPostmarkToken: !!process.env.POSTMARK_SERVER_TOKEN
+  });
+  if(!userId) return res.status(401).json({ error: "Login required" });
+  if(!isAdmin) return res.status(403).json({ error: "Admin access required" });
   console.log("POSTMARK_TEST_SEND", {
     hasToken: !!process.env.POSTMARK_SERVER_TOKEN,
     hasFrom: !!process.env.EMAIL_FROM,
