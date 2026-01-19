@@ -326,6 +326,16 @@ function setCookie(res,n,v,o={}){
   if(o.maxAge!=null) p.push(`Max-Age=${o.maxAge}`);
   res.setHeader("Set-Cookie",p.join("; "));
 }
+function redactEmail(email){
+  const s = (email || "").toString().trim();
+  const at = s.indexOf("@");
+  if(at < 1) return s ? `${s.slice(0,3)}...` : "";
+  const local = s.slice(0, at);
+  const domain = s.slice(at + 1);
+  const prefix = local.slice(0, 3);
+  const dots = local.length > 3 ? "..." : "";
+  return `${prefix}${dots}@${domain}`;
+}
 async function getUserId(req){
   const sid=parseCookies(req).sid;
   if(!sid) return null;
@@ -509,7 +519,7 @@ async function sendLoginEmail(toEmail, magicUrl){
   const from = (process.env.EMAIL_FROM || "").trim();
   if(!token || !from){
     console.warn("Login email not configured");
-    return { ok:false, skipped:true };
+    return { ok:false, skipped:true, statusCode: null };
   }
   const payload = {
     From: from,
@@ -528,11 +538,11 @@ async function sendLoginEmail(toEmail, magicUrl){
     });
     if(!resp.ok){
       const errText = await resp.text().catch(()=> "");
-      return { ok:false, error: errText || `Postmark error ${resp.status}` };
+      return { ok:false, error: errText || `Postmark error ${resp.status}`, statusCode: resp.status };
     }
-    return { ok:true };
+    return { ok:true, statusCode: resp.status };
   }catch(err){
-    return { ok:false, error: err.message || String(err) };
+    return { ok:false, error: err.message || String(err), statusCode: null };
   }
 }
 
@@ -670,18 +680,41 @@ app.post("/auth/request-link", async (req, res) =>{
   const rateKey = `${ip}|${email}`;
   const now = Date.now();
   const last = loginLinkRateLimit.get(rateKey) || 0;
+  console.log("MAGICLINK_SEND_ATTEMPT", {
+    email: redactEmail(email),
+    hasPostmarkToken: !!process.env.POSTMARK_SERVER_TOKEN,
+    hasEmailFrom: !!process.env.EMAIL_FROM,
+    hasBaseUrl: !!process.env.PUBLIC_BASE_URL,
+    nodeEnv: process.env.NODE_ENV || "",
+    lockdownMode: LOCKDOWN
+  });
   if(now - last < 30000){
     return res.json({ ok:true, message: "Check your email for your login link." });
   }
   loginLinkRateLimit.set(rateKey, now);
 
   const c=await data.createMagicLink(email);
-  const base=(process.env.PUBLIC_BASE_URL || "").replace(/\/$/,"");
+  const baseFromEnv = (process.env.PUBLIC_BASE_URL || "").replace(/\/$/,"");
+  const fallbackBase = req.headers.host
+    ? `${isHttpsRequest(req) ? "https" : "http"}://${req.headers.host}`
+    : "";
+  const base = (baseFromEnv || fallbackBase).replace(/\/$/,"");
   const magicUrl = c?.token ? `${base}/auth/magic?token=${c.token}` : "";
   if(process.env.NODE_ENV === "production"){
     if(c?.token){
-      sendLoginEmail(email, magicUrl)
-        .catch((err)=>console.warn("Login email failed", err?.message || err));
+      let result;
+      try{
+        result = await sendLoginEmail(email, magicUrl);
+      }catch(err){
+        result = { ok:false, error: err?.message || String(err) };
+      }
+      const statusCode = typeof result?.statusCode === "number" ? result.statusCode : null;
+      console.log("MAGICLINK_SEND_RESULT", { ok: !!result?.ok, statusCode });
+      if(!result?.ok && result?.error){
+        console.warn("MAGICLINK_SEND_ERROR", result.error);
+      }
+    }else{
+      console.log("MAGICLINK_SEND_RESULT", { ok:false, statusCode: null });
     }
     return res.json({ ok:true, message: "Check your email for your login link." });
   }
