@@ -1,0 +1,86 @@
+flowchart LR
+  %% Routes -> Controllers -> Permissions -> DB Tables
+  subgraph Routes
+    RAuth[POST /api/auth/request-code]
+    RVerify[POST /api/auth/verify-code]
+    RMe[GET /api/me]
+    RIntake[POST /api/intake]
+    RIntakeApprove[POST /api/intake/:id/approve]
+    RListingCreate[POST /api/listings]
+    RPurchase[POST /api/listings/:id/purchase]
+    RAuctionBid[POST /api/auctions/:id/bids]
+    RAuctionClose[POST /api/auctions/:id/close]
+    RGiveawayDraw[POST /api/giveaways/:id/draw]
+    RGiveawayClaim[POST /api/giveaways/:id/claim]
+    RChannelPost[POST /api/channels/:id/messages]
+    RPulsePost[POST /api/pulse]
+    RModActions[GET /api/admin/moderation/actions]
+  end
+
+  subgraph Controllers
+    CAuth[AuthController]
+    CSession[SessionController]
+    CIntake[IntakeController]
+    CListings[ListingsController]
+    CAuctions[AuctionsController]
+    CGiveaways[GiveawaysController]
+    CChannels[ChannelsController]
+    CPulse[PulseController]
+    CAdmin[AdminController]
+  end
+
+  subgraph Permissions
+    PPublic[Public]
+    PUser[User]
+    PAdmin[Admin]
+  end
+
+  subgraph DB
+    TUsers[(users)]
+    TAuthCodes[(auth_codes)]
+    TSessions[(sessions)]
+    TIntakes[(intakes)]
+    TListings[(listings)]
+    TOrders[(orders)]
+    TAuctions[(auctions)]
+    TBids[(bids)]
+    TGiveaways[(giveaways)]
+    TEntries[(giveaway_entries)]
+    TClaims[(giveaway_claims)]
+    TChannels[(channels)]
+    TMessages[(messages)]
+    TPulse[(pulse)]
+    TModActions[(moderation_actions)]
+  end
+
+  RAuth --> CAuth --> PPublic --> TAuthCodes
+  RVerify --> CAuth --> PPublic --> TSessions
+  RMe --> CSession --> PUser --> TUsers
+  RIntake --> CIntake --> PUser --> TIntakes
+  RIntakeApprove --> CIntake --> PAdmin --> TIntakes
+  RListingCreate --> CListings --> PUser --> TListings
+  RPurchase --> CListings --> PUser --> TOrders
+  RAuctionBid --> CAuctions --> PUser --> TBids
+  RAuctionClose --> CAuctions --> PAdmin --> TAuctions
+  RGiveawayDraw --> CGiveaways --> PAdmin --> TGiveaways
+  RGiveawayClaim --> CGiveaways --> PUser --> TClaims
+  RChannelPost --> CChannels --> PUser --> TMessages
+  RPulsePost --> CPulse --> PUser --> TPulse
+  RModActions --> CAdmin --> PAdmin --> TModActions
+
+  %% Key flows
+  subgraph Flows
+    FAuth[Auth-by-code]
+    FIntake[Intake approval]
+    FBuy[Buy-it-now purchase]
+    FAuction[Auction lifecycle]
+    FGiveaway[Giveaway draw + claim]
+    FModeration[Moderation actions]
+  end
+
+  FAuth --> RAuth --> RVerify --> RMe
+  FIntake --> RIntake --> RIntakeApprove
+  FBuy --> RListingCreate --> RPurchase
+  FAuction --> RAuctionBid --> RAuctionClose
+  FGiveaway --> RGiveawayDraw --> RGiveawayClaim
+  FModeration --> RModActions
