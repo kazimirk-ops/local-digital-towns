@@ -340,8 +340,9 @@ async function requireLogin(req,res){
 function isAdminUser(user){
   if(!user) return false;
   const email=(user.email||"").toString().trim().toLowerCase();
-  if(user.isAdmin === true) return true;
-  if(Number(user.isAdmin)===1) return true;
+  const adminFlag = user.isAdmin ?? user.isadmin;
+  if(adminFlag === true) return true;
+  if(Number(adminFlag)===1) return true;
   if(email && ADMIN_EMAIL_ALLOWLIST.has(email)) return true;
   return false;
 }
@@ -852,6 +853,7 @@ app.get("/me", async (req, res) =>{
   const r=await data.getUserBySession(sid);
   if(!r) return res.json({user:null});
   await data.ensureTownMembership(1,r.user.id);
+  r.user.isAdmin = isAdminUser(r.user);
   res.json(r);
 });
 app.get("/api/users/:id", async (req, res) =>{

@@ -41,6 +41,11 @@ function normalizePhotoUrls(urls){
   }
   return out;
 }
+function normalizeUserRow(row){
+  if(!row) return row;
+  if(row.isAdmin == null && row.isadmin != null) row.isAdmin = row.isadmin;
+  return row;
+}
 
 function sanitizeListingType(x){
   const v = (x || "item").toString().trim().toLowerCase();
@@ -1577,7 +1582,7 @@ async function setUserAdmin(userId, isAdmin){
   if(!uid) return { error:"Invalid userId" };
   await stmt("UPDATE users SET isAdmin=$1 WHERE id=$2")
     .run(isAdmin ? 1 : 0, uid);
-  return (await stmt("SELECT * FROM users WHERE id=$1").get(uid)) || null;
+  return normalizeUserRow((await stmt("SELECT * FROM users WHERE id=$1").get(uid)) || null);
 }
 async function setUserAdminByEmail(email, isAdmin){
   const user = await upsertUserByEmail(email);
@@ -1617,19 +1622,19 @@ async function getUserBySession(sid){
   const sess= await stmt("SELECT * FROM sessions WHERE sid=$1").get(sid);
   if(!sess) return null;
   if(new Date(sess.expiresAt).getTime()<Date.now()){ await deleteSession(sid); return null; }
-  const user= await stmt("SELECT * FROM users WHERE id=$1").get(sess.userId);
+  const user= normalizeUserRow(await stmt("SELECT * FROM users WHERE id=$1").get(sess.userId));
   if(!user) return null;
   const signup= await stmt("SELECT * FROM signups WHERE email=$1 ORDER BY id DESC LIMIT 1").get(user.email) || null;
   return {user,signup};
 }
 
 async function getUserById(id){
-  return (await stmt("SELECT * FROM users WHERE id=$1").get(Number(id))) || null;
+  return normalizeUserRow((await stmt("SELECT * FROM users WHERE id=$1").get(Number(id))) || null);
 }
 async function getUserByEmail(email){
   const e = normalizeEmail(email);
   if(!e) return null;
-  return (await stmt("SELECT * FROM users WHERE email=$1").get(e)) || null;
+  return normalizeUserRow((await stmt("SELECT * FROM users WHERE email=$1").get(e)) || null);
 }
 async function getDisplayNameForUser(user){
   const name = (user?.displayName || "").toString().trim();
