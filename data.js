@@ -1,26 +1,33 @@
-const Database = require("better-sqlite3");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const db = require("./lib/db");
 const { TRUST, getTownConfig } = require("./town_config");
-
-const db = new Database("town.db");
-db.pragma("journal_mode = WAL");
 
 function nowISO() { return new Date().toISOString(); }
 function normalizeEmail(e) { return (e || "").toString().trim().toLowerCase(); }
 function randToken(bytes = 24) { return crypto.randomBytes(bytes).toString("hex"); }
 
-function columnExists(table, col) {
-  const rows = db.prepare(`PRAGMA table_info(${table})`).all();
-  return rows.some((r) => r.name === col);
-}
-function addColumn(table, colDef) {
-  db.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`);
+function stmt(text) {
+  return {
+    get: (...params) => db.one(text, params),
+    all: (...params) => db.many(text, params),
+    run: (...params) => db.query(text, params),
+  };
 }
 
 function parseJsonArray(s){
+  if(Array.isArray(s)) return s;
   try { const v = JSON.parse(s || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+function parseJsonObject(s){
+  if(s && typeof s === "object" && !Array.isArray(s)) return s;
+  try {
+    const v = JSON.parse(s || "{}");
+    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  } catch {
+    return {};
+  }
 }
 function normalizePhotoUrls(urls){
   const out = [];
@@ -54,9 +61,20 @@ function toISOOrEmpty(x){
 }
 
 // ---------- Schema ----------
-db.exec(`
+async function runStatements(sql){
+  const statements = sql
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  for(const statement of statements){
+    await db.query(statement);
+  }
+}
+
+async function initDb(){
+  const schemaSql = `
 CREATE TABLE IF NOT EXISTS towns (
-  id INTEGER PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   state TEXT NOT NULL,
   region TEXT NOT NULL,
@@ -64,14 +82,14 @@ CREATE TABLE IF NOT EXISTS towns (
 );
 
 CREATE TABLE IF NOT EXISTS districts (
-  id INTEGER PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL,
   name TEXT NOT NULL,
   type TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS places (
-  id INTEGER PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL,
   districtId INTEGER NOT NULL,
   name TEXT NOT NULL,
@@ -81,19 +99,28 @@ CREATE TABLE IF NOT EXISTS places (
   bannerUrl TEXT NOT NULL DEFAULT '',
   avatarUrl TEXT NOT NULL DEFAULT '',
   category TEXT NOT NULL,
-  status TEXT NOT NULL
+  status TEXT NOT NULL,
+  sellerType TEXT NOT NULL DEFAULT 'individual',
+  visibilityLevel TEXT NOT NULL DEFAULT 'town_only',
+  pickupZone TEXT NOT NULL DEFAULT '',
+  addressPublic TEXT NOT NULL DEFAULT '',
+  addressPrivate TEXT NOT NULL DEFAULT '',
+  meetupInstructions TEXT NOT NULL DEFAULT '',
+  hours TEXT NOT NULL DEFAULT '',
+  verifiedStatus TEXT NOT NULL DEFAULT 'unverified',
+  ownerUserId INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS listings (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   placeId INTEGER NOT NULL,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   quantity INTEGER NOT NULL,
-  price REAL NOT NULL,
+  price DOUBLE PRECISION NOT NULL,
   status TEXT NOT NULL,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   offerCategory TEXT NOT NULL DEFAULT '',
   availabilityWindow TEXT NOT NULL DEFAULT '',
   compensationType TEXT NOT NULL DEFAULT '',
@@ -107,11 +134,16 @@ CREATE TABLE IF NOT EXISTS listings (
   winningBidId INTEGER,
   winnerUserId INTEGER,
   paymentDueAt TEXT NOT NULL DEFAULT '',
-  paymentStatus TEXT NOT NULL DEFAULT 'none'
+  paymentStatus TEXT NOT NULL DEFAULT 'none',
+  photoUrlsJson JSONB NOT NULL DEFAULT '[]'::jsonb,
+  listingType TEXT NOT NULL DEFAULT 'item',
+  exchangeType TEXT NOT NULL DEFAULT 'money',
+  startAt TEXT NOT NULL DEFAULT '',
+  endAt TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS orders (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   listingId INTEGER NOT NULL,
   buyerUserId INTEGER NOT NULL,
@@ -120,9 +152,9 @@ CREATE TABLE IF NOT EXISTS orders (
   quantity INTEGER NOT NULL,
   amountCents INTEGER NOT NULL,
   status TEXT NOT NULL,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   updatedAt TEXT NOT NULL DEFAULT '',
-  completedAt TEXT,
+  completedAt TIMESTAMPTZ,
   paymentProvider TEXT NOT NULL,
   paymentIntentId TEXT NOT NULL,
   subtotalCents INTEGER NOT NULL DEFAULT 0,
@@ -133,37 +165,37 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 
 CREATE TABLE IF NOT EXISTS order_items (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   orderId INTEGER NOT NULL,
   listingId INTEGER NOT NULL,
   titleSnapshot TEXT NOT NULL,
   priceCentsSnapshot INTEGER NOT NULL,
   quantity INTEGER NOT NULL,
   sellerPlaceId INTEGER NOT NULL,
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS cart_items (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   userId INTEGER NOT NULL,
   listingId INTEGER NOT NULL,
   quantity INTEGER NOT NULL,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   UNIQUE(userId, listingId)
 );
 
 CREATE TABLE IF NOT EXISTS payments (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   orderId INTEGER NOT NULL,
   provider TEXT NOT NULL,
   status TEXT NOT NULL,
   amountCents INTEGER NOT NULL,
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS reviews (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   orderId INTEGER NOT NULL,
   reviewerUserId INTEGER NOT NULL,
@@ -171,109 +203,109 @@ CREATE TABLE IF NOT EXISTS reviews (
   role TEXT NOT NULL,
   rating INTEGER NOT NULL,
   text TEXT NOT NULL,
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS disputes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   orderId INTEGER NOT NULL,
   reporterUserId INTEGER NOT NULL,
   reason TEXT NOT NULL,
   status TEXT NOT NULL,
-  createdAt TEXT NOT NULL,
-  resolvedAt TEXT,
+  createdAt TIMESTAMPTZ NOT NULL,
+  resolvedAt TIMESTAMPTZ,
   resolutionNote TEXT
 );
 
 CREATE TABLE IF NOT EXISTS trust_events (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   orderId INTEGER NOT NULL,
   userId INTEGER NOT NULL,
   eventType TEXT NOT NULL,
-  metaJson TEXT NOT NULL,
-  createdAt TEXT NOT NULL
+  metaJson JSONB NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS bids (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   listingId INTEGER NOT NULL,
   userId INTEGER NOT NULL,
   amountCents INTEGER NOT NULL,
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS conversations (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   placeId INTEGER NOT NULL,
   participant TEXT NOT NULL,
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS messages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   conversationId INTEGER NOT NULL,
   sender TEXT NOT NULL,
   text TEXT NOT NULL,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   readBy TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS direct_conversations (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   userA INTEGER NOT NULL,
   userB INTEGER NOT NULL,
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS direct_messages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   conversationId INTEGER NOT NULL,
   senderUserId INTEGER NOT NULL,
   text TEXT NOT NULL,
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS channels (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   name TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL,
   isPublic INTEGER NOT NULL DEFAULT 1,
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS channel_memberships (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   channelId INTEGER NOT NULL,
   userId INTEGER NOT NULL,
   role TEXT NOT NULL DEFAULT 'member',
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS message_threads (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   channelId INTEGER NOT NULL,
   createdBy INTEGER NOT NULL,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   title TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS channel_messages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   channelId INTEGER NOT NULL,
   userId INTEGER NOT NULL,
   text TEXT NOT NULL,
   imageUrl TEXT NOT NULL DEFAULT '',
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   replyToId INTEGER,
   threadId INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS live_rooms (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL DEFAULT 'idle',
   title TEXT NOT NULL DEFAULT '',
@@ -284,14 +316,14 @@ CREATE TABLE IF NOT EXISTS live_rooms (
   hostType TEXT NOT NULL DEFAULT 'individual',
   hostChannelId INTEGER,
   pinnedListingId INTEGER,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   startedAt TEXT NOT NULL DEFAULT '',
   endedAt TEXT NOT NULL DEFAULT '',
   cfRoomId TEXT NOT NULL DEFAULT '',
   cfRoomToken TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS live_show_schedule (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL DEFAULT 'scheduled',
   title TEXT NOT NULL,
@@ -303,19 +335,19 @@ CREATE TABLE IF NOT EXISTS live_show_schedule (
   hostPlaceId INTEGER,
   hostEventId INTEGER,
   thumbnailUrl TEXT NOT NULL DEFAULT '',
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   updatedAt TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS live_show_bookmarks (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   userId INTEGER NOT NULL,
   showId INTEGER NOT NULL,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   UNIQUE(userId, showId)
 );
 CREATE TABLE IF NOT EXISTS signups (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   name TEXT NOT NULL,
   email TEXT NOT NULL,
@@ -326,16 +358,39 @@ CREATE TABLE IF NOT EXISTS signups (
   zip TEXT NOT NULL,
   status TEXT NOT NULL,
   reason TEXT NOT NULL,
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL,
+  trustTier INTEGER NOT NULL DEFAULT 0,
+  trustTierUpdatedAt TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  addressJson JSONB NOT NULL DEFAULT '{}'::jsonb,
+  presenceVerifiedAt TEXT NOT NULL DEFAULT '',
+  presenceLat DOUBLE PRECISION,
+  presenceLng DOUBLE PRECISION,
+  presenceAccuracyMeters DOUBLE PRECISION,
+  displayName TEXT NOT NULL DEFAULT '',
+  bio TEXT NOT NULL DEFAULT '',
+  avatarUrl TEXT NOT NULL DEFAULT '',
+  interestsJson JSONB NOT NULL DEFAULT '[]'::jsonb,
+  ageRange TEXT NOT NULL DEFAULT '',
+  showAvatar INTEGER NOT NULL DEFAULT 0,
+  showBio INTEGER NOT NULL DEFAULT 1,
+  showInterests INTEGER NOT NULL DEFAULT 1,
+  showAgeRange INTEGER NOT NULL DEFAULT 0,
+  isBuyerVerified INTEGER NOT NULL DEFAULT 0,
+  isSellerVerified INTEGER NOT NULL DEFAULT 0,
+  locationVerifiedSebastian INTEGER NOT NULL DEFAULT 0,
+  residentVerified INTEGER NOT NULL DEFAULT 0,
+  facebookVerified INTEGER NOT NULL DEFAULT 0,
+  isAdmin INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS trust_applications (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   userId INTEGER NOT NULL,
   requestedTier INTEGER NOT NULL,
@@ -351,17 +406,17 @@ CREATE TABLE IF NOT EXISTS trust_applications (
   identityStatus TEXT NOT NULL,
   presenceStatus TEXT NOT NULL,
   presenceVerifiedAt TEXT NOT NULL DEFAULT '',
-  presenceLat REAL,
-  presenceLng REAL,
-  presenceAccuracyMeters REAL,
-  createdAt TEXT NOT NULL,
+  presenceLat DOUBLE PRECISION,
+  presenceLng DOUBLE PRECISION,
+  presenceAccuracyMeters DOUBLE PRECISION,
+  createdAt TIMESTAMPTZ NOT NULL,
   reviewedAt TEXT NOT NULL DEFAULT '',
   reviewedByUserId INTEGER,
   decisionReason TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS resident_verification_requests (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   userId INTEGER NOT NULL,
   status TEXT NOT NULL,
@@ -369,7 +424,7 @@ CREATE TABLE IF NOT EXISTS resident_verification_requests (
   city TEXT NOT NULL,
   state TEXT NOT NULL,
   zip TEXT NOT NULL,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   reviewedAt TEXT NOT NULL DEFAULT '',
   reviewedByUserId INTEGER,
   decisionReason TEXT NOT NULL DEFAULT ''
@@ -378,20 +433,20 @@ CREATE TABLE IF NOT EXISTS resident_verification_requests (
 CREATE TABLE IF NOT EXISTS magic_links (
   token TEXT PRIMARY KEY,
   userId INTEGER NOT NULL,
-  expiresAt TEXT NOT NULL,
-  createdAt TEXT NOT NULL
+  expiresAt TIMESTAMPTZ NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
   sid TEXT PRIMARY KEY,
   userId INTEGER NOT NULL,
-  expiresAt TEXT NOT NULL,
-  createdAt TEXT NOT NULL
+  expiresAt TIMESTAMPTZ NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS events (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  createdAt TEXT NOT NULL,
+  id SERIAL PRIMARY KEY,
+  createdAt TIMESTAMPTZ NOT NULL,
   eventType TEXT NOT NULL,
   townId INTEGER NOT NULL,
   districtId INTEGER,
@@ -400,11 +455,18 @@ CREATE TABLE IF NOT EXISTS events (
   conversationId INTEGER,
   userId INTEGER,
   clientSessionId TEXT NOT NULL,
-  metaJson TEXT NOT NULL
+  metaJson JSONB NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  startsAt TEXT NOT NULL DEFAULT '',
+  endsAt TEXT NOT NULL DEFAULT '',
+  locationName TEXT NOT NULL DEFAULT '',
+  isPublic INTEGER NOT NULL DEFAULT 1,
+  organizerUserId INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS events_v1 (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -421,38 +483,38 @@ CREATE TABLE IF NOT EXISTS events_v1 (
   category TEXT NOT NULL DEFAULT 'community',
   imageUrl TEXT NOT NULL DEFAULT '',
   notesToAdmin TEXT NOT NULL DEFAULT '',
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   reviewedAt TEXT NOT NULL DEFAULT '',
   reviewedByUserId INTEGER,
   decisionReason TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS archive_entries (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL DEFAULT 'published',
   title TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
   bodyMarkdown TEXT NOT NULL,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   createdByUserId INTEGER,
   pinned INTEGER NOT NULL DEFAULT 0,
-  tagsJson TEXT NOT NULL DEFAULT '[]'
+  tagsJson JSONB NOT NULL DEFAULT '[]'::jsonb
 );
 
 CREATE TABLE IF NOT EXISTS daily_pulses (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   dayKey TEXT NOT NULL UNIQUE,
   status TEXT NOT NULL DEFAULT 'published',
-  metricsJson TEXT NOT NULL DEFAULT '{}',
-  highlightsJson TEXT NOT NULL DEFAULT '{}',
+  metricsJson JSONB NOT NULL DEFAULT '{}'::jsonb,
+  highlightsJson JSONB NOT NULL DEFAULT '{}'::jsonb,
   markdownBody TEXT NOT NULL DEFAULT '',
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS local_business_applications (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL,
   businessName TEXT NOT NULL,
@@ -469,7 +531,7 @@ CREATE TABLE IF NOT EXISTS local_business_applications (
   description TEXT NOT NULL,
   sustainabilityNotes TEXT NOT NULL DEFAULT '',
   confirmSebastian INTEGER NOT NULL DEFAULT 0,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   reviewedAt TEXT NOT NULL DEFAULT '',
   reviewedByUserId INTEGER,
   decisionReason TEXT NOT NULL DEFAULT '',
@@ -477,8 +539,8 @@ CREATE TABLE IF NOT EXISTS local_business_applications (
 );
 
 CREATE TABLE IF NOT EXISTS waitlist_signups (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  createdAt TEXT NOT NULL,
+  id SERIAL PRIMARY KEY,
+  createdAt TIMESTAMPTZ NOT NULL,
   name TEXT NOT NULL DEFAULT '',
   email TEXT NOT NULL,
   phone TEXT NOT NULL DEFAULT '',
@@ -488,8 +550,8 @@ CREATE TABLE IF NOT EXISTS waitlist_signups (
 );
 
 CREATE TABLE IF NOT EXISTS business_applications (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  createdAt TEXT NOT NULL,
+  id SERIAL PRIMARY KEY,
+  createdAt TIMESTAMPTZ NOT NULL,
   contactName TEXT NOT NULL,
   email TEXT NOT NULL,
   phone TEXT NOT NULL DEFAULT '',
@@ -504,8 +566,8 @@ CREATE TABLE IF NOT EXISTS business_applications (
 );
 
 CREATE TABLE IF NOT EXISTS resident_applications (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  createdAt TEXT NOT NULL,
+  id SERIAL PRIMARY KEY,
+  createdAt TIMESTAMPTZ NOT NULL,
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   phone TEXT NOT NULL DEFAULT '',
@@ -519,27 +581,28 @@ CREATE TABLE IF NOT EXISTS resident_applications (
 );
 
 CREATE TABLE IF NOT EXISTS event_rsvps (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   eventId INTEGER NOT NULL,
   userId INTEGER NOT NULL,
   status TEXT NOT NULL,
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL,
+  UNIQUE(eventId, userId)
 );
 
 CREATE TABLE IF NOT EXISTS sweep_ledger (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   userId INTEGER NOT NULL,
   amount INTEGER NOT NULL,
   reason TEXT NOT NULL,
   eventId INTEGER,
-  metaJson TEXT NOT NULL
+  metaJson JSONB NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sweepstakes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -551,38 +614,46 @@ CREATE TABLE IF NOT EXISTS sweepstakes (
   maxEntriesPerUserPerDay INTEGER NOT NULL DEFAULT 1,
   winnerUserId INTEGER,
   winnerEntryId INTEGER,
-  createdAt TEXT NOT NULL
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sweepstake_entries (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   sweepstakeId INTEGER NOT NULL,
   userId INTEGER NOT NULL,
-  entries INTEGER NOT NULL,
-  createdAt TEXT NOT NULL
+  entries INTEGER NOT NULL DEFAULT 0,
+  dayKey TEXT NOT NULL DEFAULT '',
+  createdAt TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sweep_draws (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   sweepId INTEGER NOT NULL,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   createdByUserId INTEGER,
   winnerUserId INTEGER NOT NULL,
   totalEntries INTEGER NOT NULL,
-  snapshotJson TEXT NOT NULL
+  snapshotJson JSONB NOT NULL,
+  notified INTEGER NOT NULL DEFAULT 0,
+  claimedAt TEXT NOT NULL DEFAULT '',
+  claimedByUserId INTEGER,
+  claimedMessage TEXT NOT NULL DEFAULT '',
+  claimedPhotoUrl TEXT NOT NULL DEFAULT '',
+  claimedPostedMessageId INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS store_follows (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   userId INTEGER NOT NULL,
-  placeId INTEGER NOT NULL
+  placeId INTEGER NOT NULL,
+  UNIQUE(userId, placeId)
 );
 
 CREATE TABLE IF NOT EXISTS media_objects (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   ownerUserId INTEGER NOT NULL,
   placeId INTEGER,
@@ -594,7 +665,7 @@ CREATE TABLE IF NOT EXISTS media_objects (
   url TEXT NOT NULL,
   mime TEXT NOT NULL,
   bytes INTEGER NOT NULL DEFAULT 0,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   deletedAt TEXT NOT NULL DEFAULT ''
 );
 
@@ -619,7 +690,6 @@ CREATE INDEX IF NOT EXISTS idx_business_apps_status ON business_applications(sta
 CREATE INDEX IF NOT EXISTS idx_business_apps_email ON business_applications(email);
 CREATE INDEX IF NOT EXISTS idx_resident_apps_status ON resident_applications(status, createdAt);
 CREATE INDEX IF NOT EXISTS idx_resident_apps_email ON resident_applications(email);
--- townId indexes created in migrations to avoid errors on existing DBs
 
 CREATE INDEX IF NOT EXISTS idx_channel_membership_unique ON channel_memberships(channelId, userId);
 CREATE INDEX IF NOT EXISTS idx_channel_messages_channel_created ON channel_messages(channelId, createdAt);
@@ -638,8 +708,8 @@ CREATE INDEX IF NOT EXISTS idx_resident_verify_status ON resident_verification_r
 CREATE INDEX IF NOT EXISTS idx_resident_verify_user ON resident_verification_requests(userId, createdAt);
 
 CREATE TABLE IF NOT EXISTS town_memberships (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  createdAt TEXT NOT NULL,
+  id SERIAL PRIMARY KEY,
+  createdAt TIMESTAMPTZ NOT NULL,
   townId INTEGER NOT NULL,
   userId INTEGER NOT NULL,
   trustLevel TEXT NOT NULL,
@@ -648,7 +718,7 @@ CREATE TABLE IF NOT EXISTS town_memberships (
 );
 
 CREATE TABLE IF NOT EXISTS prize_offers (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL,
   title TEXT NOT NULL,
@@ -662,14 +732,14 @@ CREATE TABLE IF NOT EXISTS prize_offers (
   donorUserId INTEGER NOT NULL,
   donorPlaceId INTEGER,
   donorDisplayName TEXT NOT NULL,
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   reviewedAt TEXT NOT NULL DEFAULT '',
   reviewedByUserId INTEGER,
   decisionReason TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS prize_awards (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   townId INTEGER NOT NULL DEFAULT 1,
   prizeOfferId INTEGER NOT NULL,
   winnerUserId INTEGER NOT NULL,
@@ -679,178 +749,159 @@ CREATE TABLE IF NOT EXISTS prize_awards (
   dueBy TEXT NOT NULL DEFAULT '',
   convoId INTEGER,
   proofUrl TEXT NOT NULL DEFAULT '',
-  createdAt TEXT NOT NULL,
+  createdAt TIMESTAMPTZ NOT NULL,
   updatedAt TEXT NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_membership_unique ON town_memberships(townId, userId);
-`);
+`;
+  await runStatements(schemaSql);
 
-// ---------- Migrations ----------
-(function migratePlaces(){
-  if(!columnExists("places","sellerType")) addColumn("places","sellerType TEXT NOT NULL DEFAULT 'individual'");
-  if(!columnExists("places","visibilityLevel")) addColumn("places","visibilityLevel TEXT NOT NULL DEFAULT 'town_only'");
-  if(!columnExists("places","pickupZone")) addColumn("places","pickupZone TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("places","addressPublic")) addColumn("places","addressPublic TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("places","addressPrivate")) addColumn("places","addressPrivate TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("places","meetupInstructions")) addColumn("places","meetupInstructions TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("places","hours")) addColumn("places","hours TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("places","verifiedStatus")) addColumn("places","verifiedStatus TEXT NOT NULL DEFAULT 'unverified'");
-  if(!columnExists("places","ownerUserId")) addColumn("places","ownerUserId INTEGER");
-  if(!columnExists("places","description")) addColumn("places","description TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("places","website")) addColumn("places","website TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("places","yearsInTown")) addColumn("places","yearsInTown TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("places","bannerUrl")) addColumn("places","bannerUrl TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("places","avatarUrl")) addColumn("places","avatarUrl TEXT NOT NULL DEFAULT ''");
-})();
+  const migrationSql = `
+ALTER TABLE places ADD COLUMN IF NOT EXISTS sellerType TEXT NOT NULL DEFAULT 'individual';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS visibilityLevel TEXT NOT NULL DEFAULT 'town_only';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS pickupZone TEXT NOT NULL DEFAULT '';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS addressPublic TEXT NOT NULL DEFAULT '';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS addressPrivate TEXT NOT NULL DEFAULT '';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS meetupInstructions TEXT NOT NULL DEFAULT '';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS hours TEXT NOT NULL DEFAULT '';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS verifiedStatus TEXT NOT NULL DEFAULT 'unverified';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS ownerUserId INTEGER;
+ALTER TABLE places ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS website TEXT NOT NULL DEFAULT '';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS yearsInTown TEXT NOT NULL DEFAULT '';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS bannerUrl TEXT NOT NULL DEFAULT '';
+ALTER TABLE places ADD COLUMN IF NOT EXISTS avatarUrl TEXT NOT NULL DEFAULT '';
 
-(function migrateUsers(){
-  if(!columnExists("users","trustTier")) addColumn("users","trustTier INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("users","trustTierUpdatedAt")) addColumn("users","trustTierUpdatedAt TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("users","phone")) addColumn("users","phone TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("users","addressJson")) addColumn("users","addressJson TEXT NOT NULL DEFAULT '{}'");
-  if(!columnExists("users","presenceVerifiedAt")) addColumn("users","presenceVerifiedAt TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("users","presenceLat")) addColumn("users","presenceLat REAL");
-  if(!columnExists("users","presenceLng")) addColumn("users","presenceLng REAL");
-  if(!columnExists("users","presenceAccuracyMeters")) addColumn("users","presenceAccuracyMeters REAL");
-})();
+ALTER TABLE users ADD COLUMN IF NOT EXISTS trustTier INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS trustTierUpdatedAt TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS addressJson JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS presenceVerifiedAt TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS presenceLat DOUBLE PRECISION;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS presenceLng DOUBLE PRECISION;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS presenceAccuracyMeters DOUBLE PRECISION;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS displayName TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatarUrl TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS interestsJson JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS ageRange TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS showAvatar INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS showBio INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS showInterests INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS showAgeRange INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS isBuyerVerified INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS isSellerVerified INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS locationVerifiedSebastian INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS residentVerified INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS facebookVerified INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS isAdmin INTEGER NOT NULL DEFAULT 0;
 
-(function migrateChannelMessages(){
-  if(!columnExists("channel_messages","imageUrl")) addColumn("channel_messages","imageUrl TEXT NOT NULL DEFAULT ''");
-})();
+ALTER TABLE channel_messages ADD COLUMN IF NOT EXISTS imageUrl TEXT NOT NULL DEFAULT '';
 
-(function migrateLiveRooms(){
-  if(!columnExists("live_rooms","hostEventId")) addColumn("live_rooms","hostEventId INTEGER");
-  if(!columnExists("live_rooms","hostType")) addColumn("live_rooms","hostType TEXT NOT NULL DEFAULT 'individual'");
-})();
+ALTER TABLE live_rooms ADD COLUMN IF NOT EXISTS hostEventId INTEGER;
+ALTER TABLE live_rooms ADD COLUMN IF NOT EXISTS hostType TEXT NOT NULL DEFAULT 'individual';
 
-(function migrateSweepDraws(){
-  if(!columnExists("sweep_draws","notified")) addColumn("sweep_draws","notified INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("sweep_draws","claimedAt")) addColumn("sweep_draws","claimedAt TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("sweep_draws","claimedByUserId")) addColumn("sweep_draws","claimedByUserId INTEGER");
-  if(!columnExists("sweep_draws","claimedMessage")) addColumn("sweep_draws","claimedMessage TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("sweep_draws","claimedPhotoUrl")) addColumn("sweep_draws","claimedPhotoUrl TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("sweep_draws","claimedPostedMessageId")) addColumn("sweep_draws","claimedPostedMessageId INTEGER");
-})();
+ALTER TABLE sweep_draws ADD COLUMN IF NOT EXISTS notified INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sweep_draws ADD COLUMN IF NOT EXISTS claimedAt TEXT NOT NULL DEFAULT '';
+ALTER TABLE sweep_draws ADD COLUMN IF NOT EXISTS claimedByUserId INTEGER;
+ALTER TABLE sweep_draws ADD COLUMN IF NOT EXISTS claimedMessage TEXT NOT NULL DEFAULT '';
+ALTER TABLE sweep_draws ADD COLUMN IF NOT EXISTS claimedPhotoUrl TEXT NOT NULL DEFAULT '';
+ALTER TABLE sweep_draws ADD COLUMN IF NOT EXISTS claimedPostedMessageId INTEGER;
 
-(function migrateListingExtensions(){
-  if(!columnExists("listings","photoUrlsJson")) addColumn("listings","photoUrlsJson TEXT NOT NULL DEFAULT '[]'");
-  if(!columnExists("listings","listingType")) addColumn("listings","listingType TEXT NOT NULL DEFAULT 'item'");
-  if(!columnExists("listings","exchangeType")) addColumn("listings","exchangeType TEXT NOT NULL DEFAULT 'money'");
-  if(!columnExists("listings","startAt")) addColumn("listings","startAt TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("listings","endAt")) addColumn("listings","endAt TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("listings","offerCategory")) addColumn("listings","offerCategory TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("listings","availabilityWindow")) addColumn("listings","availabilityWindow TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("listings","compensationType")) addColumn("listings","compensationType TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("listings","auctionStartAt")) addColumn("listings","auctionStartAt TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("listings","auctionEndAt")) addColumn("listings","auctionEndAt TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("listings","startBidCents")) addColumn("listings","startBidCents INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("listings","minIncrementCents")) addColumn("listings","minIncrementCents INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("listings","reserveCents")) addColumn("listings","reserveCents INTEGER");
-  if(!columnExists("listings","buyNowCents")) addColumn("listings","buyNowCents INTEGER");
-  if(!columnExists("listings","auctionStatus")) addColumn("listings","auctionStatus TEXT NOT NULL DEFAULT 'active'");
-  if(!columnExists("listings","winningBidId")) addColumn("listings","winningBidId INTEGER");
-  if(!columnExists("listings","winnerUserId")) addColumn("listings","winnerUserId INTEGER");
-  if(!columnExists("listings","paymentDueAt")) addColumn("listings","paymentDueAt TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("listings","paymentStatus")) addColumn("listings","paymentStatus TEXT NOT NULL DEFAULT 'none'");
-})();
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS photoUrlsJson JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS listingType TEXT NOT NULL DEFAULT 'item';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS exchangeType TEXT NOT NULL DEFAULT 'money';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS startAt TEXT NOT NULL DEFAULT '';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS endAt TEXT NOT NULL DEFAULT '';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS offerCategory TEXT NOT NULL DEFAULT '';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS availabilityWindow TEXT NOT NULL DEFAULT '';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS compensationType TEXT NOT NULL DEFAULT '';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS auctionStartAt TEXT NOT NULL DEFAULT '';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS auctionEndAt TEXT NOT NULL DEFAULT '';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS startBidCents INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS minIncrementCents INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS reserveCents INTEGER;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS buyNowCents INTEGER;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS auctionStatus TEXT NOT NULL DEFAULT 'active';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS winningBidId INTEGER;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS winnerUserId INTEGER;
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS paymentDueAt TEXT NOT NULL DEFAULT '';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS paymentStatus TEXT NOT NULL DEFAULT 'none';
+ALTER TABLE listings ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
 
-(function migrateUserProfiles(){
-  if(!columnExists("users","displayName")) addColumn("users","displayName TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("users","bio")) addColumn("users","bio TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("users","avatarUrl")) addColumn("users","avatarUrl TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("users","interestsJson")) addColumn("users","interestsJson TEXT NOT NULL DEFAULT '[]'");
-  if(!columnExists("users","ageRange")) addColumn("users","ageRange TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("users","showAvatar")) addColumn("users","showAvatar INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("users","showBio")) addColumn("users","showBio INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("users","showInterests")) addColumn("users","showInterests INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("users","showAgeRange")) addColumn("users","showAgeRange INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("users","isBuyerVerified")) addColumn("users","isBuyerVerified INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("users","isSellerVerified")) addColumn("users","isSellerVerified INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("users","locationVerifiedSebastian")) addColumn("users","locationVerifiedSebastian INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("users","residentVerified")) addColumn("users","residentVerified INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("users","facebookVerified")) addColumn("users","facebookVerified INTEGER NOT NULL DEFAULT 0");
-})();
+ALTER TABLE events ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT '';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS startsAt TEXT NOT NULL DEFAULT '';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS endsAt TEXT NOT NULL DEFAULT '';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS locationName TEXT NOT NULL DEFAULT '';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS isPublic INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS organizerUserId INTEGER;
 
-(function migrateCalendarEvents(){
-  if(!columnExists("events","title")) addColumn("events","title TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("events","description")) addColumn("events","description TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("events","startsAt")) addColumn("events","startsAt TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("events","endsAt")) addColumn("events","endsAt TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("events","locationName")) addColumn("events","locationName TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("events","isPublic")) addColumn("events","isPublic INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("events","organizerUserId")) addColumn("events","organizerUserId INTEGER");
-})();
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS sellerPlaceId INTEGER;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS updatedAt TEXT NOT NULL DEFAULT '';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS subtotalCents INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS serviceGratuityCents INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS totalCents INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS fulfillmentType TEXT NOT NULL DEFAULT '';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS fulfillmentNotes TEXT NOT NULL DEFAULT '';
 
-(function migrateUsers(){
-  if(!columnExists("users","isAdmin")) addColumn("users","isAdmin INTEGER NOT NULL DEFAULT 0");
-})();
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE disputes ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE bids ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE channels ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE direct_conversations ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE signups ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE event_rsvps ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE sweep_ledger ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE sweepstakes ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE sweepstake_entries ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE store_follows ADD COLUMN IF NOT EXISTS townId INTEGER NOT NULL DEFAULT 1;
 
-(function migrateTownIds(){
-  if(!columnExists("listings","townId")) addColumn("listings","townId INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("orders","townId")) addColumn("orders","townId INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("orders","sellerPlaceId")) addColumn("orders","sellerPlaceId INTEGER");
-  if(!columnExists("orders","updatedAt")) addColumn("orders","updatedAt TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("orders","subtotalCents")) addColumn("orders","subtotalCents INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("orders","serviceGratuityCents")) addColumn("orders","serviceGratuityCents INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("orders","totalCents")) addColumn("orders","totalCents INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("orders","fulfillmentType")) addColumn("orders","fulfillmentType TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("orders","fulfillmentNotes")) addColumn("orders","fulfillmentNotes TEXT NOT NULL DEFAULT ''");
-  if(!columnExists("reviews","townId")) addColumn("reviews","townId INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("disputes","townId")) addColumn("disputes","townId INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("bids","townId")) addColumn("bids","townId INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("channels","townId")) addColumn("channels","townId INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("direct_conversations","townId")) addColumn("direct_conversations","townId INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("direct_messages","townId")) addColumn("direct_messages","townId INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("signups","townId")) addColumn("signups","townId INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("event_rsvps","townId")) addColumn("event_rsvps","townId INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("sweep_ledger","townId")) addColumn("sweep_ledger","townId INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("sweepstakes","townId")) addColumn("sweepstakes","townId INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("sweepstake_entries","townId")) addColumn("sweepstake_entries","townId INTEGER NOT NULL DEFAULT 1");
-  if(!columnExists("store_follows","townId")) addColumn("store_follows","townId INTEGER NOT NULL DEFAULT 1");
-})();
+ALTER TABLE town_memberships ADD COLUMN IF NOT EXISTS trustTier INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sweepstakes ADD COLUMN IF NOT EXISTS maxEntriesPerUserPerDay INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE sweepstake_entries ADD COLUMN IF NOT EXISTS entries INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sweepstake_entries ADD COLUMN IF NOT EXISTS dayKey TEXT NOT NULL DEFAULT '';
 
-(function migrateTownIndexes(){
-  const safe = (sql)=>{
-    try{ db.exec(sql); }catch{}
-  };
-  safe("CREATE INDEX IF NOT EXISTS idx_listings_town_created ON listings(townId, createdAt DESC);");
-  safe("CREATE INDEX IF NOT EXISTS idx_orders_town_created ON orders(townId, createdAt DESC);");
-  safe("CREATE INDEX IF NOT EXISTS idx_bids_town_created ON bids(townId, createdAt DESC);");
-  safe("CREATE INDEX IF NOT EXISTS idx_reviews_town_created ON reviews(townId, createdAt DESC);");
-  safe("CREATE INDEX IF NOT EXISTS idx_disputes_town_created ON disputes(townId, createdAt DESC);");
-  safe("CREATE INDEX IF NOT EXISTS idx_channels_town_created ON channels(townId, createdAt DESC);");
-  safe("CREATE INDEX IF NOT EXISTS idx_dm_town_created ON direct_messages(townId, createdAt DESC);");
-  safe("CREATE INDEX IF NOT EXISTS idx_media_town ON media_objects(townId);");
-  safe("CREATE INDEX IF NOT EXISTS idx_media_owner ON media_objects(ownerUserId);");
-  safe("CREATE INDEX IF NOT EXISTS idx_media_kind ON media_objects(kind);");
-  safe("CREATE INDEX IF NOT EXISTS idx_media_created ON media_objects(createdAt DESC);");
-})();
-(function migrateTrustTiers(){
-  if(!columnExists("town_memberships","trustTier")) addColumn("town_memberships","trustTier INTEGER NOT NULL DEFAULT 0");
-})();
-(function migrateSweepstakes(){
-  if(!columnExists("sweepstakes","maxEntriesPerUserPerDay")) addColumn("sweepstakes","maxEntriesPerUserPerDay INTEGER NOT NULL DEFAULT 1");
-})();
+CREATE INDEX IF NOT EXISTS idx_listings_town_created ON listings(townId, createdAt DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_town_created ON orders(townId, createdAt DESC);
+CREATE INDEX IF NOT EXISTS idx_bids_town_created ON bids(townId, createdAt DESC);
+CREATE INDEX IF NOT EXISTS idx_reviews_town_created ON reviews(townId, createdAt DESC);
+CREATE INDEX IF NOT EXISTS idx_disputes_town_created ON disputes(townId, createdAt DESC);
+CREATE INDEX IF NOT EXISTS idx_channels_town_created ON channels(townId, createdAt DESC);
+CREATE INDEX IF NOT EXISTS idx_dm_town_created ON direct_messages(townId, createdAt DESC);
+CREATE INDEX IF NOT EXISTS idx_media_town ON media_objects(townId);
+CREATE INDEX IF NOT EXISTS idx_media_owner ON media_objects(ownerUserId);
+CREATE INDEX IF NOT EXISTS idx_media_kind ON media_objects(kind);
+CREATE INDEX IF NOT EXISTS idx_media_created ON media_objects(createdAt DESC);
+`;
+  await runStatements(migrationSql);
 
-(function migrateSweepstakeEntries(){
-  if(!columnExists("sweepstake_entries","entries")) addColumn("sweepstake_entries","entries INTEGER NOT NULL DEFAULT 0");
-  if(!columnExists("sweepstake_entries","dayKey")) addColumn("sweepstake_entries","dayKey TEXT NOT NULL DEFAULT ''");
-})();
+  await seedChannels();
+  await seedArchiveEntries();
+  await seedAdminUser();
+  await seedAdminTestStore();
+}
 
 // ---------- Seed ----------
-(function seedChannels(){
-  const row = db.prepare("SELECT COUNT(*) AS c FROM channels").get();
+async function seedChannels(){
+  const row = await stmt("SELECT COUNT(*) AS c FROM channels").get();
   if((row?.c || 0) > 0) return;
   const now = nowISO();
-  db.prepare("INSERT INTO channels (name, description, isPublic, createdAt) VALUES (?,?,?,?)").run("announcements","Town-wide updates",1,now);
-  db.prepare("INSERT INTO channels (name, description, isPublic, createdAt) VALUES (?,?,?,?)").run("marketplace","Local offers and requests",1,now);
-  db.prepare("INSERT INTO channels (name, description, isPublic, createdAt) VALUES (?,?,?,?)").run("events","Upcoming events and meetups",1,now);
-  db.prepare("INSERT INTO channels (name, description, isPublic, createdAt) VALUES (?,?,?,?)").run("general","Community discussion",1,now);
-})();
+  await stmt("INSERT INTO channels (name, description, isPublic, createdAt) VALUES ($1,$2,$3,$4)")
+    .run("announcements","Town-wide updates",1,now);
+  await stmt("INSERT INTO channels (name, description, isPublic, createdAt) VALUES ($1,$2,$3,$4)")
+    .run("marketplace","Local offers and requests",1,now);
+  await stmt("INSERT INTO channels (name, description, isPublic, createdAt) VALUES ($1,$2,$3,$4)")
+    .run("events","Upcoming events and meetups",1,now);
+  await stmt("INSERT INTO channels (name, description, isPublic, createdAt) VALUES ($1,$2,$3,$4)")
+    .run("general","Community discussion",1,now);
+}
 
-(function seedArchiveEntries(){
+async function seedArchiveEntries(){
   const slug = "archive-introduction";
-  const row = db.prepare("SELECT id FROM archive_entries WHERE slug=?").get(slug);
+  const row = await stmt("SELECT id FROM archive_entries WHERE slug=$1").get(slug);
   if(row) return;
   const body = `# Archive
 
@@ -907,10 +958,10 @@ This archive will grow with:
 The archive belongs to the place — and to the people who live here now.
 
 This archive will grow with the Daily Digital Sebastian Pulse.`;
-  db.prepare(`
+  await stmt(`
     INSERT INTO archive_entries
       (townId, status, title, slug, bodyMarkdown, createdAt, createdByUserId, pinned, tagsJson)
-    VALUES (?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
   `).run(
     1,
     "published",
@@ -922,33 +973,33 @@ This archive will grow with the Daily Digital Sebastian Pulse.`;
     1,
     JSON.stringify(["history","sebastian","identity"])
   );
-})();
+}
 
-(function seedAdminUser(){
+async function seedAdminUser(){
   const email = (process.env.DEV_ADMIN_EMAIL || "admin@local.test").toLowerCase().trim();
   if(!email) return;
-  let user = db.prepare("SELECT * FROM users WHERE email=?").get(email);
+  let user = await stmt("SELECT * FROM users WHERE email=$1").get(email);
   if(!user){
-    const info = db.prepare("INSERT INTO users (email, createdAt) VALUES (?,?)").run(email, nowISO());
-    user = db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
+    const created = await stmt("INSERT INTO users (email, createdAt) VALUES ($1,$2) RETURNING id").run(email, nowISO());
+    user = await stmt("SELECT * FROM users WHERE id=$1").get(created.rows?.[0]?.id);
   }
   if(Number(user.isAdmin) !== 1){
-    db.prepare("UPDATE users SET isAdmin=1 WHERE id=?").run(user.id);
+    await stmt("UPDATE users SET isAdmin=1 WHERE id=$1").run(user.id);
   }
   if(!(user.displayName || "").toString().trim()){
-    db.prepare("UPDATE users SET displayName=? WHERE id=?").run("Admin", user.id);
+    await stmt("UPDATE users SET displayName=$1 WHERE id=$2").run("Admin", user.id);
   }
-})();
+}
 
-(function seedAdminTestStore(){
-  const adminUser = db.prepare("SELECT * FROM users WHERE isAdmin=1 ORDER BY id LIMIT 1").get();
+async function seedAdminTestStore(){
+  const adminUser = await stmt("SELECT * FROM users WHERE isAdmin=1 ORDER BY id LIMIT 1").get();
   if(!adminUser) return;
-  const existing = db.prepare("SELECT 1 FROM places WHERE ownerUserId=? LIMIT 1").get(adminUser.id);
+  const existing = await stmt("SELECT 1 FROM places WHERE ownerUserId=$1 LIMIT 1").get(adminUser.id);
   if(existing) return;
-  db.prepare(`
+  await stmt(`
     INSERT INTO places
       (townId, districtId, name, category, status, description, sellerType, addressPrivate, website, yearsInTown, ownerUserId)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
   `).run(
     1,
     1,
@@ -962,11 +1013,11 @@ This archive will grow with the Daily Digital Sebastian Pulse.`;
     "",
     adminUser.id
   );
-})();
+}
 
 // ---------- Core getters ----------
-function getPlaces(){
-  return db.prepare(`
+async function getPlaces(){
+  return stmt(`
     SELECT id, townId, districtId, name, category, status,
            description, website, yearsInTown, bannerUrl, avatarUrl,
            sellerType, visibilityLevel, pickupZone, addressPublic, addressPrivate,
@@ -974,23 +1025,23 @@ function getPlaces(){
     FROM places WHERE townId=1 ORDER BY id
   `).all();
 }
-function getPlaceById(id){
-  return db.prepare(`
+async function getPlaceById(id){
+  return stmt(`
     SELECT id, townId, districtId, name, category, status,
            description, website, yearsInTown, bannerUrl, avatarUrl,
            sellerType, visibilityLevel, pickupZone, addressPublic, addressPrivate,
            meetupInstructions, hours, verifiedStatus, ownerUserId
-    FROM places WHERE id=?
+    FROM places WHERE id=$1
   `).get(Number(id)) || null;
 }
-function getPlaceOwnerPublic(placeId){
-  const place = getPlaceById(placeId);
+async function getPlaceOwnerPublic(placeId){
+  const place = await getPlaceById(placeId);
   if(!place || !place.ownerUserId) return null;
-  const user = db.prepare("SELECT id, email FROM users WHERE id=?").get(Number(place.ownerUserId)) || null;
+  const user = await stmt("SELECT id, email FROM users WHERE id=$1").get(Number(place.ownerUserId)) || null;
   return user ? { id: user.id, email: user.email } : null;
 }
-function updatePlaceSettings(placeId, payload){
-  const place = getPlaceById(placeId);
+async function updatePlaceSettings(placeId, payload){
+  const place = await getPlaceById(placeId);
   if(!place) return null;
   const updated = {
     sellerType: (payload?.sellerType ?? place.sellerType),
@@ -1001,10 +1052,10 @@ function updatePlaceSettings(placeId, payload){
     meetupInstructions: (payload?.meetupInstructions ?? place.meetupInstructions),
     hours: (payload?.hours ?? place.hours)
   };
-  db.prepare(`
+  await stmt(`
     UPDATE places
-    SET sellerType=?, visibilityLevel=?, pickupZone=?, addressPublic=?, addressPrivate=?, meetupInstructions=?, hours=?
-    WHERE id=?
+    SET sellerType=$1, visibilityLevel=$2, pickupZone=$3, addressPublic=$4, addressPrivate=$5, meetupInstructions=$6, hours=$7
+    WHERE id=$8
   `).run(
     updated.sellerType,
     updated.visibilityLevel,
@@ -1018,20 +1069,20 @@ function updatePlaceSettings(placeId, payload){
   return getPlaceById(placeId);
 }
 
-function listPlacesByStatus(status){
-  if(!status) return db.prepare("SELECT * FROM places ORDER BY id DESC").all();
-  return db.prepare("SELECT * FROM places WHERE status=? ORDER BY id DESC")
+async function listPlacesByStatus(status){
+  if(!status) return stmt("SELECT * FROM places ORDER BY id DESC").all();
+  return stmt("SELECT * FROM places WHERE status=$1 ORDER BY id DESC")
     .all(String(status));
 }
-function updatePlaceStatus(placeId, status){
-  const place = getPlaceById(placeId);
+async function updatePlaceStatus(placeId, status){
+  const place = await getPlaceById(placeId);
   if(!place) return null;
-  db.prepare("UPDATE places SET status=? WHERE id=?")
+  await stmt("UPDATE places SET status=$1 WHERE id=$2")
     .run(String(status), Number(placeId));
   return getPlaceById(placeId);
 }
 
-function addPlace(payload){
+async function addPlace(payload){
   const name = (payload?.name || "").toString().trim();
   const category = (payload?.category || "").toString().trim();
   const description = (payload?.description || "").toString().trim();
@@ -1040,10 +1091,11 @@ function addPlace(payload){
   const website = (payload?.website || "").toString().trim();
   const yearsInTown = (payload?.yearsInTown || "").toString().trim();
   if(!name || !category) return { error: "name and category required" };
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO places
       (townId, districtId, name, category, status, description, sellerType, addressPrivate, website, yearsInTown, ownerUserId)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    RETURNING id
   `).run(
     Number(payload.townId || 1),
     Number(payload.districtId || 1),
@@ -1057,11 +1109,11 @@ function addPlace(payload){
     yearsInTown,
     payload.ownerUserId == null ? null : Number(payload.ownerUserId)
   );
-  return getPlaceById(info.lastInsertRowid);
+  return getPlaceById(info.rows?.[0]?.id);
 }
 
-function updatePlaceProfile(placeId, payload){
-  const place = getPlaceById(placeId);
+async function updatePlaceProfile(placeId, payload){
+  const place = await getPlaceById(placeId);
   if(!place) return null;
   const name = (payload?.name ?? place.name).toString().trim();
   const category = (payload?.category ?? place.category).toString().trim();
@@ -1072,16 +1124,17 @@ function updatePlaceProfile(placeId, payload){
   const pickupZone = (payload?.pickupZone ?? place.pickupZone).toString().trim();
   const meetupInstructions = (payload?.meetupInstructions ?? place.meetupInstructions).toString().trim();
   const hours = (payload?.hours ?? place.hours).toString().trim();
-  db.prepare(`
+  await stmt(`
     UPDATE places
-    SET name=?, category=?, description=?, bannerUrl=?, avatarUrl=?, visibilityLevel=?, pickupZone=?, meetupInstructions=?, hours=?
-    WHERE id=?
+    SET name=$1, category=$2, description=$3, bannerUrl=$4, avatarUrl=$5, visibilityLevel=$6, pickupZone=$7, meetupInstructions=$8, hours=$9
+    WHERE id=$10
   `).run(name, category, description, bannerUrl, avatarUrl, visibilityLevel, pickupZone, meetupInstructions, hours, Number(placeId));
   return getPlaceById(placeId);
 }
 
-function getListings(){
-  return db.prepare("SELECT * FROM listings ORDER BY id").all().map(l=>({
+async function getListings(){
+  const rows = await stmt("SELECT * FROM listings ORDER BY id").all();
+  return rows.map((l)=>({
     ...l,
     photoUrls: parseJsonArray(l.photoUrlsJson || "[]"),
     listingType: l.listingType || "item",
@@ -1105,55 +1158,56 @@ function getListings(){
   }));
 }
 
-function getChannels(){
-  return db.prepare("SELECT id, name, description, isPublic, createdAt FROM channels ORDER BY id").all();
+async function getChannels(){
+  return stmt("SELECT id, name, description, isPublic, createdAt FROM channels ORDER BY id").all();
 }
-function createChannel(name, description, isPublic=1){
-  const info = db.prepare("INSERT INTO channels (name, description, isPublic, createdAt) VALUES (?,?,?,?)")
+async function createChannel(name, description, isPublic=1){
+  const info = await stmt("INSERT INTO channels (name, description, isPublic, createdAt) VALUES ($1,$2,$3,$4) RETURNING id")
     .run(String(name), String(description || ""), Number(isPublic ? 1 : 0), nowISO());
-  return db.prepare("SELECT id, name, description, isPublic, createdAt FROM channels WHERE id=?")
-    .get(info.lastInsertRowid);
+  return stmt("SELECT id, name, description, isPublic, createdAt FROM channels WHERE id=$1")
+    .get(info.rows?.[0]?.id);
 }
-function getChannelById(id){
-  return db.prepare("SELECT id, name, description, isPublic, createdAt FROM channels WHERE id=?")
+async function getChannelById(id){
+  return stmt("SELECT id, name, description, isPublic, createdAt FROM channels WHERE id=$1")
     .get(Number(id)) || null;
 }
-function isChannelMember(channelId, userId){
-  return db.prepare("SELECT 1 FROM channel_memberships WHERE channelId=? AND userId=?")
+async function isChannelMember(channelId, userId){
+  return stmt("SELECT 1 FROM channel_memberships WHERE channelId=$1 AND userId=$2")
     .get(Number(channelId), Number(userId)) || null;
 }
-function getChannelMessages(channelId, limit=200){
-  return db.prepare(`
+async function getChannelMessages(channelId, limit=200){
+  return stmt(`
     SELECT id, channelId, userId, text, imageUrl, createdAt, replyToId, threadId
     FROM channel_messages
-    WHERE channelId=?
+    WHERE channelId=$1
     ORDER BY createdAt ASC
-    LIMIT ?
+    LIMIT $2
   `).all(Number(channelId), Number(limit));
 }
-function getChannelMessageById(id){
-  return db.prepare(`
+async function getChannelMessageById(id){
+  return stmt(`
     SELECT id, channelId, userId, text, imageUrl, createdAt, replyToId, threadId
     FROM channel_messages
-    WHERE id=?
+    WHERE id=$1
   `).get(Number(id)) || null;
 }
-function createChannelThread(channelId, userId){
-  const info = db.prepare("INSERT INTO message_threads (channelId, createdBy, createdAt) VALUES (?,?,?)")
+async function createChannelThread(channelId, userId){
+  const info = await stmt("INSERT INTO message_threads (channelId, createdBy, createdAt) VALUES ($1,$2,$3) RETURNING id")
     .run(Number(channelId), Number(userId), nowISO());
-  return info.lastInsertRowid;
+  return info.rows?.[0]?.id;
 }
-function addChannelMessage(channelId, userId, text, imageUrl, replyToId, threadId){
-  const info = db.prepare("INSERT INTO channel_messages (channelId, userId, text, imageUrl, createdAt, replyToId, threadId) VALUES (?,?,?,?,?,?,?)")
+async function addChannelMessage(channelId, userId, text, imageUrl, replyToId, threadId){
+  const info = await stmt("INSERT INTO channel_messages (channelId, userId, text, imageUrl, createdAt, replyToId, threadId) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id")
     .run(Number(channelId), Number(userId), String(text), String(imageUrl || ""), nowISO(), replyToId ?? null, Number(threadId));
-  return { id: info.lastInsertRowid };
+  return { id: info.rows?.[0]?.id };
 }
 
-function createLiveRoom(payload){
-  const info = db.prepare(`
+async function createLiveRoom(payload){
+  const info = await stmt(`
     INSERT INTO live_rooms
     (townId, status, title, description, hostUserId, hostPlaceId, hostEventId, hostType, hostChannelId, pinnedListingId, createdAt, startedAt, endedAt, cfRoomId, cfRoomToken)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+    RETURNING id
   `).run(
     Number(payload.townId || 1),
     String(payload.status || "idle"),
@@ -1171,19 +1225,20 @@ function createLiveRoom(payload){
     String(payload.cfRoomId || ""),
     String(payload.cfRoomToken || "")
   );
-  return getLiveRoomById(info.lastInsertRowid);
+  return getLiveRoomById(info.rows?.[0]?.id);
 }
-function getLiveRoomById(id){
-  return db.prepare("SELECT * FROM live_rooms WHERE id=?").get(Number(id)) || null;
+async function getLiveRoomById(id){
+  return (await stmt("SELECT * FROM live_rooms WHERE id=$1").get(Number(id))) || null;
 }
-function listActiveLiveRooms(townId=1){
-  return db.prepare("SELECT * FROM live_rooms WHERE townId=? AND status='live' ORDER BY startedAt DESC").all(Number(townId));
+async function listActiveLiveRooms(townId=1){
+  return stmt("SELECT * FROM live_rooms WHERE townId=$1 AND status='live' ORDER BY startedAt DESC").all(Number(townId));
 }
-function updateLiveRoom(id, fields){
+async function updateLiveRoom(id, fields){
   const updates = [];
   const params = [];
   const add = (key, val)=>{
-    updates.push(`${key}=?`);
+    const index = params.length + 1;
+    updates.push(`${key}=$${index}`);
     params.push(val);
   };
   if(fields.status != null) add("status", String(fields.status));
@@ -1198,75 +1253,76 @@ function updateLiveRoom(id, fields){
   if(fields.cfRoomId != null) add("cfRoomId", String(fields.cfRoomId));
   if(fields.cfRoomToken != null) add("cfRoomToken", String(fields.cfRoomToken));
   if(!updates.length) return getLiveRoomById(id);
-  db.prepare(`UPDATE live_rooms SET ${updates.join(", ")} WHERE id=?`).run(...params, Number(id));
+  const whereIndex = params.length + 1;
+  await stmt(`UPDATE live_rooms SET ${updates.join(", ")} WHERE id=$${whereIndex}`).run(...params, Number(id));
   return getLiveRoomById(id);
 }
 
 // ---------- Trust / memberships ----------
-function ensureTownMembership(townId, userId){
+async function ensureTownMembership(townId, userId){
   const tid = Number(townId || 1);
   const uid = Number(userId);
-  const cfg = getTownConfig(tid);
+  const cfg = await getTownConfig(tid);
   const defaultLevel = cfg.trustDefaults?.defaultLevel || TRUST.VISITOR;
 
-  const existing = db.prepare("SELECT * FROM town_memberships WHERE townId=? AND userId=?").get(tid, uid);
+  const existing = await stmt("SELECT * FROM town_memberships WHERE townId=$1 AND userId=$2").get(tid, uid);
   if(existing) return existing;
 
-  db.prepare("INSERT INTO town_memberships (createdAt, townId, userId, trustLevel, trustTier, notes) VALUES (?,?,?,?,?,?)")
+  await stmt("INSERT INTO town_memberships (createdAt, townId, userId, trustLevel, trustTier, notes) VALUES ($1,$2,$3,$4,$5,$6)")
     .run(nowISO(), tid, uid, defaultLevel, 0, "");
-  return db.prepare("SELECT * FROM town_memberships WHERE townId=? AND userId=?").get(tid, uid);
+  return stmt("SELECT * FROM town_memberships WHERE townId=$1 AND userId=$2").get(tid, uid);
 }
 
-function setUserTrustTier(townId, userId, trustTier){
+async function setUserTrustTier(townId, userId, trustTier){
   const tid = Number(townId || 1);
   const uid = Number(userId);
   const tier = Number(trustTier);
   if(!uid || !Number.isFinite(tier)) return { error: "Invalid userId or trustTier" };
-  ensureTownMembership(tid, uid);
-  db.prepare("UPDATE town_memberships SET trustTier=? WHERE townId=? AND userId=?")
+  await ensureTownMembership(tid, uid);
+  await stmt("UPDATE town_memberships SET trustTier=$1 WHERE townId=$2 AND userId=$3")
     .run(tier, tid, uid);
-  db.prepare("UPDATE users SET trustTier=?, trustTierUpdatedAt=? WHERE id=?")
+  await stmt("UPDATE users SET trustTier=$1, trustTierUpdatedAt=$2 WHERE id=$3")
     .run(tier, nowISO(), uid);
-  return db.prepare("SELECT * FROM town_memberships WHERE townId=? AND userId=?").get(tid, uid);
+  return stmt("SELECT * FROM town_memberships WHERE townId=$1 AND userId=$2").get(tid, uid);
 }
 
-function updateUserPresence(userId, payload){
+async function updateUserPresence(userId, payload){
   const uid = Number(userId);
   if(!uid) return { error:"Invalid userId" };
   const now = nowISO();
-  db.prepare(`
+  await stmt(`
     UPDATE users
-    SET presenceVerifiedAt=?, presenceLat=?, presenceLng=?, presenceAccuracyMeters=?
-    WHERE id=?
+    SET presenceVerifiedAt=$1, presenceLat=$2, presenceLng=$3, presenceAccuracyMeters=$4
+    WHERE id=$5
   `).run(now, payload.lat, payload.lng, payload.accuracyMeters, uid);
   return { ok:true, presenceVerifiedAt: now };
 }
 
-function setUserLocationVerifiedSebastian(userId, verified){
+async function setUserLocationVerifiedSebastian(userId, verified){
   const uid = Number(userId);
   if(!uid) return { error:"Invalid userId" };
-  db.prepare("UPDATE users SET locationVerifiedSebastian=? WHERE id=?")
+  await stmt("UPDATE users SET locationVerifiedSebastian=$1 WHERE id=$2")
     .run(verified ? 1 : 0, uid);
   return { ok:true };
 }
 
-function setUserFacebookVerified(userId, verified){
+async function setUserFacebookVerified(userId, verified){
   const uid = Number(userId);
   if(!uid) return { error:"Invalid userId" };
-  db.prepare("UPDATE users SET facebookVerified=? WHERE id=?")
+  await stmt("UPDATE users SET facebookVerified=$1 WHERE id=$2")
     .run(verified ? 1 : 0, uid);
   return { ok:true };
 }
 
-function setUserResidentVerified(userId, verified){
+async function setUserResidentVerified(userId, verified){
   const uid = Number(userId);
   if(!uid) return { error:"Invalid userId" };
-  db.prepare("UPDATE users SET residentVerified=? WHERE id=?")
+  await stmt("UPDATE users SET residentVerified=$1 WHERE id=$2")
     .run(verified ? 1 : 0, uid);
   return { ok:true };
 }
 
-function addResidentVerificationRequest(payload, userId){
+async function addResidentVerificationRequest(payload, userId){
   const uid = Number(userId);
   if(!uid) return { error:"Invalid userId" };
   const addressLine1 = (payload.addressLine1 || "").toString().trim();
@@ -1274,44 +1330,45 @@ function addResidentVerificationRequest(payload, userId){
   const state = (payload.state || "").toString().trim();
   const zip = (payload.zip || "").toString().trim();
   if(!addressLine1 || !city || !state || !zip) return { error:"addressLine1, city, state, zip required" };
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO resident_verification_requests
       (townId, userId, status, addressLine1, city, state, zip, createdAt)
-    VALUES (?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING id
   `).run(1, uid, "pending", addressLine1, city, state, zip, nowISO());
-  return db.prepare("SELECT * FROM resident_verification_requests WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM resident_verification_requests WHERE id=$1").get(info.rows?.[0]?.id);
 }
 
-function approveResidentVerification(userId, adminUserId){
+async function approveResidentVerification(userId, adminUserId){
   const uid = Number(userId);
   if(!uid) return { error:"Invalid userId" };
   const now = nowISO();
-  db.prepare(`
+  await stmt(`
     UPDATE resident_verification_requests
-    SET status='approved', reviewedAt=?, reviewedByUserId=?, decisionReason=''
-    WHERE userId=? AND status='pending'
+    SET status='approved', reviewedAt=$1, reviewedByUserId=$2, decisionReason=''
+    WHERE userId=$3 AND status='pending'
   `).run(now, adminUserId == null ? null : Number(adminUserId), uid);
-  setUserResidentVerified(uid, true);
+  await setUserResidentVerified(uid, true);
   return { ok:true };
 }
 
-function updateUserContact(userId, payload){
+async function updateUserContact(userId, payload){
   const uid = Number(userId);
   if(!uid) return { error:"Invalid userId" };
-  db.prepare("UPDATE users SET phone=?, addressJson=? WHERE id=?")
+  await stmt("UPDATE users SET phone=$1, addressJson=$2 WHERE id=$3")
     .run(payload.phone || "", JSON.stringify(payload.address || {}), uid);
   return { ok:true };
 }
 
-function addTrustApplication(payload){
+async function addTrustApplication(payload){
   const now = nowISO();
-  const stmt = db.prepare(`
+  const info = await stmt(`
     INSERT INTO trust_applications
     (townId, userId, requestedTier, status, email, phone, address1, address2, city, state, zip,
      identityMethod, identityStatus, presenceStatus, presenceVerifiedAt, presenceLat, presenceLng, presenceAccuracyMeters, createdAt)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-  `);
-  const info = stmt.run(
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+    RETURNING id
+  `).run(
     payload.townId || 1,
     payload.userId,
     payload.requestedTier,
@@ -1332,50 +1389,50 @@ function addTrustApplication(payload){
     payload.presenceAccuracyMeters ?? null,
     now
   );
-  return { id: info.lastInsertRowid, createdAt: now };
+  return { id: info.rows?.[0]?.id, createdAt: now };
 }
 
-function getTrustApplicationsByUser(userId){
-  return db.prepare("SELECT * FROM trust_applications WHERE userId=? ORDER BY createdAt DESC")
+async function getTrustApplicationsByUser(userId){
+  return stmt("SELECT * FROM trust_applications WHERE userId=$1 ORDER BY createdAt DESC")
     .all(userId);
 }
 
-function getTrustApplicationsByStatus(status){
-  return db.prepare("SELECT * FROM trust_applications WHERE status=? ORDER BY createdAt ASC")
+async function getTrustApplicationsByStatus(status){
+  return stmt("SELECT * FROM trust_applications WHERE status=$1 ORDER BY createdAt ASC")
     .all(status || "pending");
 }
 
-function updateTrustApplicationStatus(id, status, reviewedByUserId, decisionReason){
+async function updateTrustApplicationStatus(id, status, reviewedByUserId, decisionReason){
   const now = nowISO();
-  db.prepare(`
+  await stmt(`
     UPDATE trust_applications
-    SET status=?, reviewedAt=?, reviewedByUserId=?, decisionReason=?
-    WHERE id=?
+    SET status=$1, reviewedAt=$2, reviewedByUserId=$3, decisionReason=$4
+    WHERE id=$5
   `).run(status, now, reviewedByUserId || null, decisionReason || "", id);
   return { ok:true };
 }
 
-function getCapabilitiesFor(townId, trustLevel){
-  const cfg = getTownConfig(Number(townId || 1));
+async function getCapabilitiesFor(townId, trustLevel){
+  const cfg = await getTownConfig(Number(townId || 1));
   return cfg.capabilitiesByTrust?.[trustLevel] || cfg.capabilitiesByTrust?.[TRUST.VISITOR] || {};
 }
 
-function getTownContext(townId, userId){
+async function getTownContext(townId, userId){
   const tid = Number(townId || 1);
-  const cfg = getTownConfig(tid);
+  const cfg = await getTownConfig(tid);
 
   if(!userId){
     const trustLevel = cfg.trustDefaults?.defaultLevel || TRUST.VISITOR;
-    return { town: cfg, membership: null, trustLevel, capabilities: getCapabilitiesFor(tid, trustLevel) };
+    return { town: cfg, membership: null, trustLevel, capabilities: await getCapabilitiesFor(tid, trustLevel) };
   }
 
-  const membership = ensureTownMembership(tid, userId);
+  const membership = await ensureTownMembership(tid, userId);
   const trustLevel = membership.trustLevel;
-  return { town: cfg, membership, trustLevel, capabilities: getCapabilitiesFor(tid, trustLevel) };
+  return { town: cfg, membership, trustLevel, capabilities: await getCapabilitiesFor(tid, trustLevel) };
 }
 
 // ---------- Prize offers ----------
-function addPrizeOffer(payload, userId){
+async function addPrizeOffer(payload, userId){
   const title = (payload.title || "").toString().trim();
   const description = (payload.description || "").toString().trim();
   const valueCents = Number(payload.valueCents || 0);
@@ -1390,12 +1447,13 @@ function addPrizeOffer(payload, userId){
   if(!Number.isFinite(valueCents) || valueCents <= 0) return { error: "valueCents required" };
   if(!["physical","service","giftcard","experience"].includes(prizeType)) return { error: "invalid prizeType" };
   if(!["pickup","meetup","shipping"].includes(fulfillmentMethod)) return { error: "invalid fulfillmentMethod" };
-  const donor = getUserById(userId);
-  const donorDisplayName = donor ? getDisplayNameForUser(donor) : "Donor";
-  const info = db.prepare(`
+  const donor = await getUserById(userId);
+  const donorDisplayName = donor ? await getDisplayNameForUser(donor) : "Donor";
+  const info = await stmt(`
     INSERT INTO prize_offers
       (townId, status, title, description, valueCents, prizeType, fulfillmentMethod, fulfillmentNotes, expiresAt, imageUrl, donorUserId, donorPlaceId, donorDisplayName, createdAt)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+    RETURNING id
   `).run(
     1,
     "pending",
@@ -1412,44 +1470,50 @@ function addPrizeOffer(payload, userId){
     donorDisplayName,
     nowISO()
   );
-  return db.prepare("SELECT * FROM prize_offers WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM prize_offers WHERE id=$1").get(info.rows?.[0]?.id);
 }
-function listPrizeOffersByStatus(status){
+async function listPrizeOffersByStatus(status){
   const s = (status || "").toString().trim().toLowerCase();
-  const where = s ? "WHERE status=?" : "";
-  const rows = db.prepare(`
+  const where = s ? "WHERE status=$1" : "";
+  if(!s){
+    return stmt(`
+      SELECT * FROM prize_offers
+      ORDER BY createdAt DESC
+    `).all();
+  }
+  return stmt(`
     SELECT * FROM prize_offers
     ${where}
     ORDER BY createdAt DESC
-  `).all(s ? s : undefined);
-  return rows;
+  `).all(s);
 }
-function listActivePrizeOffers(){
-  return db.prepare(`
+async function listActivePrizeOffers(){
+  return stmt(`
     SELECT * FROM prize_offers
     WHERE status IN ('approved','active')
     ORDER BY createdAt DESC
   `).all();
 }
-function updatePrizeOfferDecision(id, status, reviewerUserId, decisionReason){
+async function updatePrizeOfferDecision(id, status, reviewerUserId, decisionReason){
   const reviewedAt = nowISO();
-  db.prepare(`
+  await stmt(`
     UPDATE prize_offers
-    SET status=?, reviewedAt=?, reviewedByUserId=?, decisionReason=?
-    WHERE id=?
+    SET status=$1, reviewedAt=$2, reviewedByUserId=$3, decisionReason=$4
+    WHERE id=$5
   `).run(String(status), reviewedAt, reviewerUserId == null ? null : Number(reviewerUserId), String(decisionReason || ""), Number(id));
-  return db.prepare("SELECT * FROM prize_offers WHERE id=?").get(Number(id)) || null;
+  return (await stmt("SELECT * FROM prize_offers WHERE id=$1").get(Number(id))) || null;
 }
-function getPrizeOfferById(id){
-  return db.prepare("SELECT * FROM prize_offers WHERE id=?").get(Number(id)) || null;
+async function getPrizeOfferById(id){
+  return (await stmt("SELECT * FROM prize_offers WHERE id=$1").get(Number(id))) || null;
 }
-function addPrizeAward(payload){
+async function addPrizeAward(payload){
   const createdAt = nowISO();
   const updatedAt = createdAt;
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO prize_awards
       (townId, prizeOfferId, winnerUserId, donorUserId, donorPlaceId, status, dueBy, convoId, proofUrl, createdAt, updatedAt)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    RETURNING id
   `).run(
     1,
     Number(payload.prizeOfferId),
@@ -1463,129 +1527,131 @@ function addPrizeAward(payload){
     createdAt,
     updatedAt
   );
-  return db.prepare("SELECT * FROM prize_awards WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM prize_awards WHERE id=$1").get(info.rows?.[0]?.id);
 }
-function updatePrizeAwardStatus(id, status, patch){
+async function updatePrizeAwardStatus(id, status, patch){
   const updatedAt = nowISO();
   const proofUrl = (patch?.proofUrl || "").toString();
   const convoId = patch?.convoId == null ? null : Number(patch.convoId);
-  db.prepare(`
+  await stmt(`
     UPDATE prize_awards
-    SET status=?, proofUrl=COALESCE(NULLIF(?,''), proofUrl), convoId=COALESCE(?, convoId), updatedAt=?
-    WHERE id=?
+    SET status=$1, proofUrl=COALESCE(NULLIF($2,''), proofUrl), convoId=COALESCE($3, convoId), updatedAt=$4
+    WHERE id=$5
   `).run(String(status), proofUrl, convoId, updatedAt, Number(id));
-  return db.prepare("SELECT * FROM prize_awards WHERE id=?").get(Number(id)) || null;
+  return (await stmt("SELECT * FROM prize_awards WHERE id=$1").get(Number(id))) || null;
 }
-function getPrizeAwardById(id){
-  return db.prepare("SELECT * FROM prize_awards WHERE id=?").get(Number(id)) || null;
+async function getPrizeAwardById(id){
+  return (await stmt("SELECT * FROM prize_awards WHERE id=$1").get(Number(id))) || null;
 }
-function listPrizeAwardsForUser(userId, placeId){
+async function listPrizeAwardsForUser(userId, placeId){
   const uid = Number(userId);
   if(placeId){
-    return db.prepare(`
+    return stmt(`
       SELECT pa.*, po.title, po.donorDisplayName
       FROM prize_awards pa
       JOIN prize_offers po ON po.id=pa.prizeOfferId
-      WHERE pa.donorPlaceId=?
+      WHERE pa.donorPlaceId=$1
       ORDER BY pa.updatedAt DESC
     `).all(Number(placeId));
   }
-  return db.prepare(`
+  return stmt(`
     SELECT pa.*, po.title, po.donorDisplayName
     FROM prize_awards pa
     JOIN prize_offers po ON po.id=pa.prizeOfferId
-    WHERE pa.winnerUserId=? OR pa.donorUserId=?
+    WHERE pa.winnerUserId=$1 OR pa.donorUserId=$2
     ORDER BY pa.updatedAt DESC
   `).all(uid, uid);
 }
 
 // ---------- Auth ----------
-function upsertUserByEmail(email){
+async function upsertUserByEmail(email){
   const e = normalizeEmail(email);
   if(!e) return null;
-  const existing = db.prepare("SELECT * FROM users WHERE email=?").get(e);
+  const existing = await stmt("SELECT * FROM users WHERE email=$1").get(e);
   if(existing) return existing;
-  const info = db.prepare("INSERT INTO users (email, createdAt) VALUES (?,?)").run(e, nowISO());
-  return db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
+  const info = await stmt("INSERT INTO users (email, createdAt) VALUES ($1,$2) RETURNING id").run(e, nowISO());
+  return stmt("SELECT * FROM users WHERE id=$1").get(info.rows?.[0]?.id);
 }
-function setUserAdmin(userId, isAdmin){
+async function setUserAdmin(userId, isAdmin){
   const uid = Number(userId);
   if(!uid) return { error:"Invalid userId" };
-  db.prepare("UPDATE users SET isAdmin=? WHERE id=?")
+  await stmt("UPDATE users SET isAdmin=$1 WHERE id=$2")
     .run(isAdmin ? 1 : 0, uid);
-  return db.prepare("SELECT * FROM users WHERE id=?").get(uid) || null;
+  return (await stmt("SELECT * FROM users WHERE id=$1").get(uid)) || null;
 }
-function setUserAdminByEmail(email, isAdmin){
-  const user = upsertUserByEmail(email);
+async function setUserAdminByEmail(email, isAdmin){
+  const user = await upsertUserByEmail(email);
   if(!user) return { error:"Invalid email" };
   return setUserAdmin(user.id, isAdmin);
 }
-function createMagicLink(email){
-  const user = upsertUserByEmail(email);
+async function createMagicLink(email){
+  const user = await upsertUserByEmail(email);
   if(!user) return {error:"Invalid email"};
   const token = randToken(24);
   const expiresAt = new Date(Date.now()+15*60*1000).toISOString();
-  db.prepare("INSERT INTO magic_links (token,userId,expiresAt,createdAt) VALUES (?,?,?,?)")
+  await stmt("INSERT INTO magic_links (token,userId,expiresAt,createdAt) VALUES ($1,$2,$3,$4)")
     .run(token,user.id,expiresAt,nowISO());
   return {token,userId:user.id,expiresAt};
 }
-function consumeMagicToken(token){
-  const row = db.prepare("SELECT * FROM magic_links WHERE token=?").get(token);
+async function consumeMagicToken(token){
+  const row = await stmt("SELECT * FROM magic_links WHERE token=$1").get(token);
   if(!row) return {error:"Invalid token"};
   if(new Date(row.expiresAt).getTime() < Date.now()){
-    db.prepare("DELETE FROM magic_links WHERE token=?").run(token);
+    await stmt("DELETE FROM magic_links WHERE token=$1").run(token);
     return {error:"Token expired"};
   }
-  db.prepare("DELETE FROM magic_links WHERE token=?").run(token);
+  await stmt("DELETE FROM magic_links WHERE token=$1").run(token);
   return {userId: row.userId};
 }
-function createSession(userId){
+async function createSession(userId){
   const sid = randToken(24);
   const expiresAt = new Date(Date.now()+30*24*60*60*1000).toISOString();
-  db.prepare("INSERT INTO sessions (sid,userId,expiresAt,createdAt) VALUES (?,?,?,?)")
+  await stmt("INSERT INTO sessions (sid,userId,expiresAt,createdAt) VALUES ($1,$2,$3,$4)")
     .run(sid, Number(userId), expiresAt, nowISO());
   return {sid,expiresAt};
 }
-function deleteSession(sid){ db.prepare("DELETE FROM sessions WHERE sid=?").run(sid); }
-function getUserBySession(sid){
-  const sess=db.prepare("SELECT * FROM sessions WHERE sid=?").get(sid);
+async function deleteSession(sid){
+  await stmt("DELETE FROM sessions WHERE sid=$1").run(sid);
+}
+async function getUserBySession(sid){
+  const sess= await stmt("SELECT * FROM sessions WHERE sid=$1").get(sid);
   if(!sess) return null;
-  if(new Date(sess.expiresAt).getTime()<Date.now()){ deleteSession(sid); return null; }
-  const user=db.prepare("SELECT * FROM users WHERE id=?").get(sess.userId);
+  if(new Date(sess.expiresAt).getTime()<Date.now()){ await deleteSession(sid); return null; }
+  const user= await stmt("SELECT * FROM users WHERE id=$1").get(sess.userId);
   if(!user) return null;
-  const signup=db.prepare("SELECT * FROM signups WHERE email=? ORDER BY id DESC LIMIT 1").get(user.email) || null;
+  const signup= await stmt("SELECT * FROM signups WHERE email=$1 ORDER BY id DESC LIMIT 1").get(user.email) || null;
   return {user,signup};
 }
 
-function getUserById(id){
-  return db.prepare("SELECT * FROM users WHERE id=?").get(Number(id)) || null;
+async function getUserById(id){
+  return (await stmt("SELECT * FROM users WHERE id=$1").get(Number(id))) || null;
 }
-function getUserByEmail(email){
+async function getUserByEmail(email){
   const e = normalizeEmail(email);
   if(!e) return null;
-  return db.prepare("SELECT * FROM users WHERE email=?").get(e) || null;
+  return (await stmt("SELECT * FROM users WHERE email=$1").get(e)) || null;
 }
-function getDisplayNameForUser(user){
+async function getDisplayNameForUser(user){
   const name = (user?.displayName || "").toString().trim();
   if(name) return name;
   const email = (user?.email || "").toString().trim();
   if(email) return email.split("@")[0] || email;
   return `User #${user?.id || "?"}`;
 }
-function getReviewSummaryForUser(userId){
-  const row = db.prepare("SELECT COUNT(*) AS count, AVG(rating) AS avg FROM reviews WHERE revieweeUserId=?")
+async function getReviewSummaryForUser(userId){
+  const row = await stmt("SELECT COUNT(*) AS count, AVG(rating) AS avg FROM reviews WHERE revieweeUserId=$1")
     .get(Number(userId)) || { count: 0, avg: null };
   return { count: row.count || 0, average: row.avg == null ? 0 : Number(row.avg) };
 }
-function getReviewSummaryForUserDetailed(userId){
-  const row = db.prepare(`
+async function getReviewSummaryForUserDetailed(userId){
+  const row = await stmt(`
     SELECT
       COUNT(*) AS count,
       AVG(rating) AS avg,
       SUM(CASE WHEN role='buyer' THEN 1 ELSE 0 END) AS buyerCount,
       SUM(CASE WHEN role='seller' THEN 1 ELSE 0 END) AS sellerCount
     FROM reviews
-    WHERE revieweeUserId=?
+    WHERE revieweeUserId=$1
   `).get(Number(userId)) || { count: 0, avg: null, buyerCount: 0, sellerCount: 0 };
   return {
     count: row.count || 0,
@@ -1594,15 +1660,15 @@ function getReviewSummaryForUserDetailed(userId){
     sellerCount: row.sellerCount || 0
   };
 }
-function getUserRoles(userId){
-  const seller = db.prepare("SELECT 1 FROM places WHERE ownerUserId=? LIMIT 1").get(Number(userId));
-  const buyer = db.prepare("SELECT 1 FROM orders WHERE buyerUserId=? LIMIT 1").get(Number(userId));
+async function getUserRoles(userId){
+  const seller = await stmt("SELECT 1 FROM places WHERE ownerUserId=$1 LIMIT 1").get(Number(userId));
+  const buyer = await stmt("SELECT 1 FROM orders WHERE buyerUserId=$1 LIMIT 1").get(Number(userId));
   return { isBuyer: !!buyer, isSeller: !!seller };
 }
-function getUserProfilePublic(userId){
-  const user = getUserById(userId);
+async function getUserProfilePublic(userId){
+  const user = await getUserById(userId);
   if(!user) return null;
-  const profile = { id: user.id, displayName: getDisplayNameForUser(user) };
+  const profile = { id: user.id, displayName: await getDisplayNameForUser(user) };
   if(Number(user.showAvatar) === 1 && user.avatarUrl) profile.avatarUrl = user.avatarUrl;
   if(Number(user.showBio) === 1 && user.bio) profile.bio = user.bio;
   if(Number(user.showInterests) === 1){
@@ -1612,15 +1678,15 @@ function getUserProfilePublic(userId){
   if(Number(user.showAgeRange) === 1 && user.ageRange) profile.ageRange = user.ageRange;
   if(Number(user.isBuyerVerified) === 1) profile.isBuyerVerified = true;
   if(Number(user.isSellerVerified) === 1) profile.isSellerVerified = true;
-  const roles = getUserRoles(user.id);
+  const roles = await getUserRoles(user.id);
   if(roles.isBuyer) profile.isBuyer = true;
   if(roles.isSeller) profile.isSeller = true;
-  const reviews = getReviewSummaryForUser(user.id);
+  const reviews = await getReviewSummaryForUser(user.id);
   if(reviews.count > 0) profile.reviews = reviews;
   return profile;
 }
-function getUserProfilePrivate(userId){
-  const user = getUserById(userId);
+async function getUserProfilePrivate(userId){
+  const user = await getUserById(userId);
   if(!user) return null;
   return {
     id: user.id,
@@ -1641,8 +1707,8 @@ function getUserProfilePrivate(userId){
     facebookVerified: Number(user.facebookVerified || 0)
   };
 }
-function updateUserProfile(userId, payload){
-  const user = getUserById(userId);
+async function updateUserProfile(userId, payload){
+  const user = await getUserById(userId);
   if(!user) return null;
   const displayName = (payload.displayName ?? user.displayName ?? "").toString().trim();
   const bio = (payload.bio ?? user.bio ?? "").toString().trim();
@@ -1660,10 +1726,10 @@ function updateUserProfile(userId, payload){
   const showBio = payload.showBio != null ? (payload.showBio ? 1 : 0) : Number(user.showBio || 0);
   const showInterests = payload.showInterests != null ? (payload.showInterests ? 1 : 0) : Number(user.showInterests || 0);
   const showAgeRange = payload.showAgeRange != null ? (payload.showAgeRange ? 1 : 0) : Number(user.showAgeRange || 0);
-  db.prepare(`
+  await stmt(`
     UPDATE users
-    SET displayName=?, bio=?, avatarUrl=?, interestsJson=?, ageRange=?, showAvatar=?, showBio=?, showInterests=?, showAgeRange=?
-    WHERE id=?
+    SET displayName=$1, bio=$2, avatarUrl=$3, interestsJson=$4, ageRange=$5, showAvatar=$6, showBio=$7, showInterests=$8, showAgeRange=$9
+    WHERE id=$10
   `).run(
     displayName,
     bio,
@@ -1679,8 +1745,8 @@ function updateUserProfile(userId, payload){
   return getUserProfilePrivate(userId);
 }
 
-function getListingById(id){
-  const l = db.prepare("SELECT * FROM listings WHERE id=?").get(Number(id));
+async function getListingById(id){
+  const l = await stmt("SELECT * FROM listings WHERE id=$1").get(Number(id));
   if(!l) return null;
   return {
     ...l,
@@ -1702,64 +1768,65 @@ function getListingById(id){
     paymentStatus: l.paymentStatus || "none",
   };
 }
-function updateListingStatus(listingId, status){
-  db.prepare("UPDATE listings SET status=? WHERE id=?").run(String(status), Number(listingId));
+async function updateListingStatus(listingId, status){
+  await stmt("UPDATE listings SET status=$1 WHERE id=$2").run(String(status), Number(listingId));
   return getListingById(listingId);
 }
-function getHighestBidForListing(listingId){
-  return db.prepare("SELECT id, amountCents, userId, createdAt FROM bids WHERE listingId=? ORDER BY amountCents DESC, createdAt DESC LIMIT 1")
-    .get(Number(listingId)) || null;
+async function getHighestBidForListing(listingId){
+  return (await stmt("SELECT id, amountCents, userId, createdAt FROM bids WHERE listingId=$1 ORDER BY amountCents DESC, createdAt DESC LIMIT 1")
+    .get(Number(listingId))) || null;
 }
-function getNextHighestBidForListing(listingId, excludeUserId){
-  return db.prepare(`
+async function getNextHighestBidForListing(listingId, excludeUserId){
+  return (await stmt(`
     SELECT id, amountCents, userId, createdAt
     FROM bids
-    WHERE listingId=? AND userId!=?
+    WHERE listingId=$1 AND userId!=$2
     ORDER BY amountCents DESC, createdAt DESC
     LIMIT 1
-  `).get(Number(listingId), Number(excludeUserId)) || null;
+  `).get(Number(listingId), Number(excludeUserId))) || null;
 }
-function getBidCountForListing(listingId){
-  const row = db.prepare("SELECT COUNT(*) AS c FROM bids WHERE listingId=?").get(Number(listingId));
+async function getBidCountForListing(listingId){
+  const row = await stmt("SELECT COUNT(*) AS c FROM bids WHERE listingId=$1").get(Number(listingId));
   return row?.c || 0;
 }
-function getLastBidForUser(listingId, userId){
-  return db.prepare("SELECT createdAt FROM bids WHERE listingId=? AND userId=? ORDER BY createdAt DESC LIMIT 1")
-    .get(Number(listingId), Number(userId)) || null;
+async function getLastBidForUser(listingId, userId){
+  return (await stmt("SELECT createdAt FROM bids WHERE listingId=$1 AND userId=$2 ORDER BY createdAt DESC LIMIT 1")
+    .get(Number(listingId), Number(userId))) || null;
 }
-function addBid(listingId, userId, amountCents){
+async function addBid(listingId, userId, amountCents){
   const createdAt = nowISO();
-  const info = db.prepare("INSERT INTO bids (listingId,userId,amountCents,createdAt) VALUES (?,?,?,?)")
+  const info = await stmt("INSERT INTO bids (listingId,userId,amountCents,createdAt) VALUES ($1,$2,$3,$4) RETURNING id")
     .run(Number(listingId), Number(userId), Number(amountCents), createdAt);
-  return {id: info.lastInsertRowid, listingId:Number(listingId), userId:Number(userId), amountCents:Number(amountCents), createdAt};
+  return {id: info.rows?.[0]?.id, listingId:Number(listingId), userId:Number(userId), amountCents:Number(amountCents), createdAt};
 }
-function getAuctionSummary(listingId){
-  const highest = getHighestBidForListing(listingId);
-  const bidCount = getBidCountForListing(listingId);
+async function getAuctionSummary(listingId){
+  const highest = await getHighestBidForListing(listingId);
+  const bidCount = await getBidCountForListing(listingId);
   return {highestBidCents: highest?.amountCents || 0, bidCount};
 }
 
-function updateListingAuctionState(listingId, payload){
+async function updateListingAuctionState(listingId, payload){
   const auctionStatus = (payload.auctionStatus || "").toString().trim() || "active";
   const winningBidId = payload.winningBidId == null ? null : Number(payload.winningBidId);
   const winnerUserId = payload.winnerUserId == null ? null : Number(payload.winnerUserId);
   const paymentDueAt = (payload.paymentDueAt || "").toString();
   const paymentStatus = (payload.paymentStatus || "").toString().trim() || "none";
-  db.prepare(`
+  await stmt(`
     UPDATE listings
-    SET auctionStatus=?, winningBidId=?, winnerUserId=?, paymentDueAt=?, paymentStatus=?
-    WHERE id=?
+    SET auctionStatus=$1, winningBidId=$2, winnerUserId=$3, paymentDueAt=$4, paymentStatus=$5
+    WHERE id=$6
   `).run(auctionStatus, winningBidId, winnerUserId, paymentDueAt, paymentStatus, Number(listingId));
   return getListingById(listingId);
 }
 
-function createOrderWithItems(payload){
+async function createOrderWithItems(payload){
   const createdAt = nowISO();
   const updatedAt = createdAt;
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO orders
       (townId, listingId, buyerUserId, sellerUserId, sellerPlaceId, quantity, amountCents, status, createdAt, updatedAt, completedAt, paymentProvider, paymentIntentId, subtotalCents, serviceGratuityCents, totalCents, fulfillmentType, fulfillmentNotes)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+    RETURNING id
   `).run(
     Number(payload.townId || 1),
     Number(payload.listingId),
@@ -1780,11 +1847,11 @@ function createOrderWithItems(payload){
     String(payload.fulfillmentType || ""),
     String(payload.fulfillmentNotes || "")
   );
-  const orderId = info.lastInsertRowid;
-  db.prepare(`
+  const orderId = info.rows?.[0]?.id;
+  await stmt(`
     INSERT INTO order_items
       (orderId, listingId, titleSnapshot, priceCentsSnapshot, quantity, sellerPlaceId, createdAt)
-    VALUES (?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7)
   `).run(
     Number(orderId),
     Number(payload.listingId),
@@ -1794,90 +1861,93 @@ function createOrderWithItems(payload){
     Number(payload.sellerPlaceId || 0),
     createdAt
   );
-  return db.prepare("SELECT * FROM orders WHERE id=?").get(Number(orderId));
+  return stmt("SELECT * FROM orders WHERE id=$1").get(Number(orderId));
 }
 
-function getOrderItems(orderId){
-  return db.prepare(`
+async function getOrderItems(orderId){
+  return stmt(`
     SELECT id, orderId, listingId, titleSnapshot, priceCentsSnapshot, quantity, sellerPlaceId, createdAt
     FROM order_items
-    WHERE orderId=?
+    WHERE orderId=$1
     ORDER BY id
   `).all(Number(orderId));
 }
 
-function getCartItemsByUser(userId){
-  return db.prepare(`
+async function getCartItemsByUser(userId){
+  return stmt(`
     SELECT id, townId, userId, listingId, quantity, createdAt
     FROM cart_items
-    WHERE userId=?
+    WHERE userId=$1
     ORDER BY id DESC
   `).all(Number(userId));
 }
-function getCartItem(userId, listingId){
-  return db.prepare(`
+async function getCartItem(userId, listingId){
+  return (await stmt(`
     SELECT id, townId, userId, listingId, quantity, createdAt
     FROM cart_items
-    WHERE userId=? AND listingId=?
-  `).get(Number(userId), Number(listingId)) || null;
+    WHERE userId=$1 AND listingId=$2
+  `).get(Number(userId), Number(listingId))) || null;
 }
-function addCartItem(userId, listingId, quantity){
+async function addCartItem(userId, listingId, quantity){
   const createdAt = nowISO();
-  const existing = getCartItem(userId, listingId);
+  const existing = await getCartItem(userId, listingId);
   if(existing){
     const nextQty = Number(existing.quantity || 0) + Number(quantity || 0);
     if(nextQty <= 0){
-      db.prepare("DELETE FROM cart_items WHERE id=?").run(Number(existing.id));
+      await stmt("DELETE FROM cart_items WHERE id=$1").run(Number(existing.id));
       return null;
     }
-    db.prepare("UPDATE cart_items SET quantity=? WHERE id=?").run(nextQty, Number(existing.id));
+    await stmt("UPDATE cart_items SET quantity=$1 WHERE id=$2").run(nextQty, Number(existing.id));
     return getCartItem(userId, listingId);
   }
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO cart_items (townId, userId, listingId, quantity, createdAt)
-    VALUES (?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5)
+    RETURNING id
   `).run(1, Number(userId), Number(listingId), Number(quantity || 1), createdAt);
-  return db.prepare("SELECT * FROM cart_items WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM cart_items WHERE id=$1").get(info.rows?.[0]?.id);
 }
-function removeCartItem(userId, listingId){
-  db.prepare("DELETE FROM cart_items WHERE userId=? AND listingId=?").run(Number(userId), Number(listingId));
+async function removeCartItem(userId, listingId){
+  await stmt("DELETE FROM cart_items WHERE userId=$1 AND listingId=$2").run(Number(userId), Number(listingId));
   return { ok:true };
 }
-function clearCart(userId){
-  db.prepare("DELETE FROM cart_items WHERE userId=?").run(Number(userId));
+async function clearCart(userId){
+  await stmt("DELETE FROM cart_items WHERE userId=$1").run(Number(userId));
   return { ok:true };
 }
 
-function createPaymentForOrder(orderId, amountCents, provider="stub"){
+async function createPaymentForOrder(orderId, amountCents, provider="stub"){
   const createdAt = nowISO();
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO payments (orderId, provider, status, amountCents, createdAt)
-    VALUES (?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5)
+    RETURNING id
   `).run(Number(orderId), String(provider), "requires_payment", Number(amountCents), createdAt);
-  return db.prepare("SELECT * FROM payments WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM payments WHERE id=$1").get(info.rows?.[0]?.id);
 }
-function getPaymentForOrder(orderId){
-  return db.prepare("SELECT * FROM payments WHERE orderId=? ORDER BY id DESC LIMIT 1")
-    .get(Number(orderId)) || null;
+async function getPaymentForOrder(orderId){
+  return (await stmt("SELECT * FROM payments WHERE orderId=$1 ORDER BY id DESC LIMIT 1")
+    .get(Number(orderId))) || null;
 }
-function markPaymentPaid(orderId){
-  db.prepare("UPDATE payments SET status='paid' WHERE orderId=?").run(Number(orderId));
-  return db.prepare("SELECT * FROM payments WHERE orderId=? ORDER BY id DESC LIMIT 1").get(Number(orderId)) || null;
+async function markPaymentPaid(orderId){
+  await stmt("UPDATE payments SET status='paid' WHERE orderId=$1").run(Number(orderId));
+  return (await stmt("SELECT * FROM payments WHERE orderId=$1 ORDER BY id DESC LIMIT 1").get(Number(orderId))) || null;
 }
-function updateOrderPayment(orderId, provider, paymentIntentId){
+async function updateOrderPayment(orderId, provider, paymentIntentId){
   const updatedAt = nowISO();
-  db.prepare("UPDATE orders SET paymentProvider=?, paymentIntentId=?, updatedAt=? WHERE id=?")
+  await stmt("UPDATE orders SET paymentProvider=$1, paymentIntentId=$2, updatedAt=$3 WHERE id=$4")
     .run(String(provider || "stripe"), String(paymentIntentId || ""), updatedAt, Number(orderId));
-  return db.prepare("SELECT * FROM orders WHERE id=?").get(Number(orderId)) || null;
+  return (await stmt("SELECT * FROM orders WHERE id=$1").get(Number(orderId))) || null;
 }
 
-function createOrderFromCart(payload, items){
+async function createOrderFromCart(payload, items){
   const createdAt = nowISO();
   const updatedAt = createdAt;
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO orders
       (townId, listingId, buyerUserId, sellerUserId, sellerPlaceId, quantity, amountCents, status, createdAt, updatedAt, completedAt, paymentProvider, paymentIntentId, subtotalCents, serviceGratuityCents, totalCents, fulfillmentType, fulfillmentNotes)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+    RETURNING id
   `).run(
     Number(payload.townId || 1),
     Number(payload.listingId),
@@ -1898,14 +1968,13 @@ function createOrderFromCart(payload, items){
     String(payload.fulfillmentType || ""),
     String(payload.fulfillmentNotes || "")
   );
-  const orderId = info.lastInsertRowid;
-  const stmt = db.prepare(`
-    INSERT INTO order_items
-      (orderId, listingId, titleSnapshot, priceCentsSnapshot, quantity, sellerPlaceId, createdAt)
-    VALUES (?,?,?,?,?,?,?)
-  `);
-  items.forEach((item)=>{
-    stmt.run(
+  const orderId = info.rows?.[0]?.id;
+  for(const item of items){
+    await stmt(`
+      INSERT INTO order_items
+        (orderId, listingId, titleSnapshot, priceCentsSnapshot, quantity, sellerPlaceId, createdAt)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
+    `).run(
       Number(orderId),
       Number(item.listingId),
       String(item.titleSnapshot || ""),
@@ -1914,74 +1983,74 @@ function createOrderFromCart(payload, items){
       Number(payload.sellerPlaceId || 0),
       createdAt
     );
-  });
-  return db.prepare("SELECT * FROM orders WHERE id=?").get(Number(orderId));
+  }
+  return stmt("SELECT * FROM orders WHERE id=$1").get(Number(orderId));
 }
 
-function getOrdersForBuyer(userId){
-  return db.prepare(`
+async function getOrdersForBuyer(userId){
+  return stmt(`
     SELECT * FROM orders
-    WHERE buyerUserId=?
+    WHERE buyerUserId=$1
     ORDER BY createdAt DESC
   `).all(Number(userId));
 }
-function getOrdersForSellerPlaces(placeIds){
+async function getOrdersForSellerPlaces(placeIds){
   if(!placeIds.length) return [];
   const ids = placeIds.map(Number);
-  const placeholders = ids.map(()=>"?").join(",");
-  return db.prepare(`
+  const placeholders = ids.map((_, idx)=>`$${idx + 1}`).join(",");
+  return stmt(`
     SELECT * FROM orders
     WHERE sellerPlaceId IN (${placeholders})
     ORDER BY createdAt DESC
   `).all(...ids);
 }
 
-function decrementListingQuantity(listingId, quantity){
-  const listing = getListingById(listingId);
+async function decrementListingQuantity(listingId, quantity){
+  const listing = await getListingById(listingId);
   if(!listing) return null;
   const current = Number(listing.quantity || 0);
   const next = Math.max(0, current - Number(quantity || 0));
   const status = next <= 0 ? "sold" : listing.status;
-  db.prepare("UPDATE listings SET quantity=?, status=? WHERE id=?")
+  await stmt("UPDATE listings SET quantity=$1, status=$2 WHERE id=$3")
     .run(next, String(status || listing.status || "active"), Number(listingId));
   return getListingById(listingId);
 }
 
-function getSellerSalesSummary(placeId, fromIso, toIso){
+async function getSellerSalesSummary(placeId, fromIso, toIso){
   const pid = Number(placeId);
-  const totals = db.prepare(`
+  const totals = await stmt(`
     SELECT COALESCE(SUM(totalCents),0) AS revenueCents, COUNT(*) AS orderCount
     FROM orders
-    WHERE sellerPlaceId=? AND status='paid' AND createdAt>=? AND createdAt<?
+    WHERE sellerPlaceId=$1 AND status='paid' AND createdAt>=$2 AND createdAt<$3
   `).get(pid, fromIso, toIso);
 
-  const topItems = db.prepare(`
+  const topItems = await stmt(`
     SELECT oi.listingId AS listingId,
            oi.titleSnapshot AS title,
            SUM(oi.quantity) AS qty,
            SUM(oi.priceCentsSnapshot * oi.quantity) AS revenueCents
     FROM order_items oi
     JOIN orders o ON o.id=oi.orderId
-    WHERE o.sellerPlaceId=? AND o.status='paid' AND o.createdAt>=? AND o.createdAt<?
+    WHERE o.sellerPlaceId=$1 AND o.status='paid' AND o.createdAt>=$2 AND o.createdAt<$3
     GROUP BY oi.listingId, oi.titleSnapshot
     ORDER BY revenueCents DESC
     LIMIT 10
   `).all(pid, fromIso, toIso);
 
-  const daily = db.prepare(`
-    SELECT substr(createdAt,1,10) AS dayKey,
+  const daily = await stmt(`
+    SELECT to_char(createdAt, 'YYYY-MM-DD') AS dayKey,
            COALESCE(SUM(totalCents),0) AS revenueCents,
            COUNT(*) AS orderCount
     FROM orders
-    WHERE sellerPlaceId=? AND status='paid' AND createdAt>=? AND createdAt<?
+    WHERE sellerPlaceId=$1 AND status='paid' AND createdAt>=$2 AND createdAt<$3
     GROUP BY dayKey
     ORDER BY dayKey
   `).all(pid, fromIso, toIso);
 
-  const recentOrders = db.prepare(`
+  const recentOrders = await stmt(`
     SELECT id AS orderId, createdAt, status, totalCents
     FROM orders
-    WHERE sellerPlaceId=? AND status='paid' AND createdAt>=? AND createdAt<?
+    WHERE sellerPlaceId=$1 AND status='paid' AND createdAt>=$2 AND createdAt<$3
     ORDER BY createdAt DESC
     LIMIT 10
   `).all(pid, fromIso, toIso);
@@ -1989,194 +2058,200 @@ function getSellerSalesSummary(placeId, fromIso, toIso){
   return { totals, topItems, daily, recentOrders };
 }
 
-function getSellerSalesExport(placeId, fromIso, toIso){
-  return db.prepare(`
+async function getSellerSalesExport(placeId, fromIso, toIso){
+  return stmt(`
     SELECT o.id AS orderId, o.createdAt, o.status, o.totalCents, o.subtotalCents, o.serviceGratuityCents,
            oi.listingId, oi.titleSnapshot, oi.quantity, oi.priceCentsSnapshot
     FROM orders o
     JOIN order_items oi ON oi.orderId=o.id
-    WHERE o.sellerPlaceId=? AND o.status='paid' AND o.createdAt>=? AND o.createdAt<?
+    WHERE o.sellerPlaceId=$1 AND o.status='paid' AND o.createdAt>=$2 AND o.createdAt<$3
     ORDER BY o.createdAt DESC, oi.id ASC
   `).all(Number(placeId), fromIso, toIso);
 }
 
-function countUsers(){
-  const row = db.prepare("SELECT COUNT(*) AS c FROM users").get();
+async function countUsers(){
+  const row = await stmt("SELECT COUNT(*) AS c FROM users").get();
   return Number(row?.c || 0);
 }
-function countUsersSince(fromIso){
-  const row = db.prepare("SELECT COUNT(*) AS c FROM users WHERE createdAt>=?").get(String(fromIso || ""));
+async function countUsersSince(fromIso){
+  const row = await stmt("SELECT COUNT(*) AS c FROM users WHERE createdAt>=$1").get(String(fromIso || ""));
   return Number(row?.c || 0);
 }
-function countOrders(){
-  const row = db.prepare("SELECT COUNT(*) AS c FROM orders").get();
+async function countOrders(){
+  const row = await stmt("SELECT COUNT(*) AS c FROM orders").get();
   return Number(row?.c || 0);
 }
-function countOrdersSince(fromIso){
-  const row = db.prepare("SELECT COUNT(*) AS c FROM orders WHERE createdAt>=?").get(String(fromIso || ""));
+async function countOrdersSince(fromIso){
+  const row = await stmt("SELECT COUNT(*) AS c FROM orders WHERE createdAt>=$1").get(String(fromIso || ""));
   return Number(row?.c || 0);
 }
-function sumOrderRevenue(){
-  const row = db.prepare("SELECT COALESCE(SUM(totalCents),0) AS s FROM orders WHERE status='paid'").get();
+async function sumOrderRevenue(){
+  const row = await stmt("SELECT COALESCE(SUM(totalCents),0) AS s FROM orders WHERE status='paid'").get();
   return Number(row?.s || 0);
 }
-function sumOrderRevenueSince(fromIso){
-  const row = db.prepare("SELECT COALESCE(SUM(totalCents),0) AS s FROM orders WHERE status='paid' AND createdAt>=?").get(String(fromIso || ""));
+async function sumOrderRevenueSince(fromIso){
+  const row = await stmt("SELECT COALESCE(SUM(totalCents),0) AS s FROM orders WHERE status='paid' AND createdAt>=$1").get(String(fromIso || ""));
   return Number(row?.s || 0);
 }
 
-function listResidentVerificationRequestsByStatus(status){
+async function listResidentVerificationRequestsByStatus(status){
   const s = (status || "").toString().trim().toLowerCase();
-  const where = s ? "WHERE status=?" : "";
-  return db.prepare(`
+  const where = s ? "WHERE status=$1" : "";
+  if(!s){
+    return stmt(`
+      SELECT * FROM resident_verification_requests
+      ORDER BY createdAt ASC
+    `).all();
+  }
+  return stmt(`
     SELECT * FROM resident_verification_requests
     ${where}
     ORDER BY createdAt ASC
-  `).all(s ? s : undefined);
+  `).all(s);
 }
 
-function getLatestOrderForListingAndBuyer(listingId, buyerUserId){
-  return db.prepare(`
+async function getLatestOrderForListingAndBuyer(listingId, buyerUserId){
+  return (await stmt(`
     SELECT o.*
     FROM orders o
     JOIN order_items oi ON oi.orderId=o.id
-    WHERE oi.listingId=? AND o.buyerUserId=?
+    WHERE oi.listingId=$1 AND o.buyerUserId=$2
     ORDER BY o.id DESC
     LIMIT 1
-  `).get(Number(listingId), Number(buyerUserId)) || null;
+  `).get(Number(listingId), Number(buyerUserId))) || null;
 }
 
-function markOrderPaid(orderId){
+async function markOrderPaid(orderId){
   const updatedAt = nowISO();
-  db.prepare("UPDATE orders SET status='paid', updatedAt=? WHERE id=?").run(updatedAt, Number(orderId));
-  return db.prepare("SELECT * FROM orders WHERE id=?").get(Number(orderId)) || null;
+  await stmt("UPDATE orders SET status='paid', updatedAt=$1 WHERE id=$2").run(updatedAt, Number(orderId));
+  return (await stmt("SELECT * FROM orders WHERE id=$1").get(Number(orderId))) || null;
 }
 
-function getDirectConversationById(id){
-  return db.prepare("SELECT * FROM direct_conversations WHERE id=?").get(Number(id)) || null;
+async function getDirectConversationById(id){
+  return (await stmt("SELECT * FROM direct_conversations WHERE id=$1").get(Number(id))) || null;
 }
-function findDirectConversation(userA, userB){
+async function findDirectConversation(userA, userB){
   const a = Number(userA);
   const b = Number(userB);
   const low = Math.min(a,b);
   const high = Math.max(a,b);
-  return db.prepare("SELECT * FROM direct_conversations WHERE userA=? AND userB=?")
-    .get(low, high) || null;
+  return (await stmt("SELECT * FROM direct_conversations WHERE userA=$1 AND userB=$2")
+    .get(low, high)) || null;
 }
-function addDirectConversation(userA, userB){
+async function addDirectConversation(userA, userB){
   const a = Number(userA);
   const b = Number(userB);
   const low = Math.min(a,b);
   const high = Math.max(a,b);
-  const existing = findDirectConversation(low, high);
+  const existing = await findDirectConversation(low, high);
   if(existing) return existing;
-  const info = db.prepare("INSERT INTO direct_conversations (userA, userB, createdAt) VALUES (?,?,?)")
+  const info = await stmt("INSERT INTO direct_conversations (userA, userB, createdAt) VALUES ($1,$2,$3) RETURNING id")
     .run(low, high, nowISO());
-  return getDirectConversationById(info.lastInsertRowid);
+  return getDirectConversationById(info.rows?.[0]?.id);
 }
-function listDirectConversationsForUser(userId){
+async function listDirectConversationsForUser(userId){
   const uid = Number(userId);
-  const rows = db.prepare(`
+  const rows = await stmt(`
     SELECT id, userA, userB, createdAt
     FROM direct_conversations
-    WHERE userA=? OR userB=?
+    WHERE userA=$1 OR userB=$2
     ORDER BY createdAt DESC
   `).all(uid, uid);
-  return rows.map((r)=>{
+  return Promise.all(rows.map(async (r)=>{
     const otherUserId = Number(r.userA) === uid ? r.userB : r.userA;
-    const otherUser = getUserById(otherUserId);
-    const last = db.prepare(`
+    const otherUser = await getUserById(otherUserId);
+    const last = (await stmt(`
       SELECT id, senderUserId, text, createdAt
       FROM direct_messages
-      WHERE conversationId=?
+      WHERE conversationId=$1
       ORDER BY createdAt DESC
       LIMIT 1
-    `).get(Number(r.id)) || null;
+    `).get(Number(r.id))) || null;
     return {
       id: r.id,
-      otherUser: otherUser ? { id: otherUser.id, displayName: getDisplayNameForUser(otherUser), avatarUrl: otherUser.avatarUrl || "" } : null,
+      otherUser: otherUser ? { id: otherUser.id, displayName: await getDisplayNameForUser(otherUser), avatarUrl: otherUser.avatarUrl || "" } : null,
       lastMessage: last
     };
-  });
+  }));
 }
-function isDirectConversationMember(conversationId, userId){
-  const convo = getDirectConversationById(conversationId);
+async function isDirectConversationMember(conversationId, userId){
+  const convo = await getDirectConversationById(conversationId);
   if(!convo) return false;
   const uid = Number(userId);
   return Number(convo.userA) === uid || Number(convo.userB) === uid;
 }
-function getDirectMessages(conversationId){
-  return db.prepare(`
+async function getDirectMessages(conversationId){
+  return stmt(`
     SELECT id, conversationId, senderUserId, text, createdAt
     FROM direct_messages
-    WHERE conversationId=?
+    WHERE conversationId=$1
     ORDER BY createdAt ASC
   `).all(Number(conversationId));
 }
-function addDirectMessage(conversationId, senderUserId, text){
-  const info = db.prepare("INSERT INTO direct_messages (conversationId, senderUserId, text, createdAt) VALUES (?,?,?,?)")
+async function addDirectMessage(conversationId, senderUserId, text){
+  const info = await stmt("INSERT INTO direct_messages (conversationId, senderUserId, text, createdAt) VALUES ($1,$2,$3,$4) RETURNING id")
     .run(Number(conversationId), Number(senderUserId), String(text || ""), nowISO());
-  return db.prepare("SELECT * FROM direct_messages WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM direct_messages WHERE id=$1").get(info.rows?.[0]?.id);
 }
 
-function addConversation(payload){
-  const info = db.prepare("INSERT INTO conversations (placeId, participant, createdAt) VALUES (?,?,?)")
+async function addConversation(payload){
+  const info = await stmt("INSERT INTO conversations (placeId, participant, createdAt) VALUES ($1,$2,$3) RETURNING id")
     .run(Number(payload.placeId), String(payload.participant || "buyer"), nowISO());
-  return db.prepare("SELECT * FROM conversations WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM conversations WHERE id=$1").get(info.rows?.[0]?.id);
 }
-function getConversationById(id){
-  return db.prepare("SELECT id, placeId, participant, createdAt FROM conversations WHERE id=?")
-    .get(Number(id)) || null;
+async function getConversationById(id){
+  return (await stmt("SELECT id, placeId, participant, createdAt FROM conversations WHERE id=$1")
+    .get(Number(id))) || null;
 }
-function addMessage(payload){
+async function addMessage(payload){
   const readBy = JSON.stringify([String(payload.sender || "buyer")]);
-  const info = db.prepare("INSERT INTO messages (conversationId, sender, text, createdAt, readBy) VALUES (?,?,?,?,?)")
+  const info = await stmt("INSERT INTO messages (conversationId, sender, text, createdAt, readBy) VALUES ($1,$2,$3,$4,$5) RETURNING id")
     .run(Number(payload.conversationId), String(payload.sender || "buyer"), String(payload.text || ""), nowISO(), readBy);
-  return db.prepare("SELECT * FROM messages WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM messages WHERE id=$1").get(info.rows?.[0]?.id);
 }
-function getConversationMessages(conversationId){
-  return db.prepare(`
+async function getConversationMessages(conversationId){
+  return stmt(`
     SELECT id, conversationId, sender, text, createdAt, readBy
     FROM messages
-    WHERE conversationId=?
+    WHERE conversationId=$1
     ORDER BY createdAt ASC
   `).all(Number(conversationId));
 }
-function getConversationsForPlace(placeId, viewer){
-  const convos = db.prepare(`
+async function getConversationsForPlace(placeId, viewer){
+  const convos = await stmt(`
     SELECT id, placeId, participant, createdAt
     FROM conversations
-    WHERE placeId=?
+    WHERE placeId=$1
     ORDER BY createdAt DESC
   `).all(Number(placeId));
   if(!viewer) return convos.map(c=>({ ...c, unreadCount: 0 }));
   const v = String(viewer);
-  return convos.map((c)=>{
-    const msgs = db.prepare("SELECT readBy FROM messages WHERE conversationId=?").all(Number(c.id));
+  return Promise.all(convos.map(async (c)=>{
+    const msgs = await stmt("SELECT readBy FROM messages WHERE conversationId=$1").all(Number(c.id));
     let unreadCount = 0;
     for(const m of msgs){
       const readBy = parseJsonArray(m.readBy || "[]").map(String);
       if(!readBy.includes(v)) unreadCount += 1;
     }
     return { ...c, unreadCount };
-  });
+  }));
 }
-function markConversationRead(conversationId, viewer){
+async function markConversationRead(conversationId, viewer){
   const v = String(viewer || "");
   if(!v) return { ok:false };
-  const rows = db.prepare("SELECT id, readBy FROM messages WHERE conversationId=?").all(Number(conversationId));
+  const rows = await stmt("SELECT id, readBy FROM messages WHERE conversationId=$1").all(Number(conversationId));
   for(const row of rows){
     const readBy = parseJsonArray(row.readBy || "[]").map(String);
     if(!readBy.includes(v)){
       readBy.push(v);
-      db.prepare("UPDATE messages SET readBy=? WHERE id=?")
+      await stmt("UPDATE messages SET readBy=$1 WHERE id=$2")
         .run(JSON.stringify(readBy), Number(row.id));
     }
   }
   return { ok:true };
 }
 
-function addSignup(payload){
+async function addSignup(payload){
   const name=(payload?.name||"").toString().trim();
   const email=normalizeEmail(payload?.email);
   const address1=(payload?.address1||"").toString().trim();
@@ -2194,29 +2269,31 @@ function addSignup(payload){
     ? "Address matches Sebastian pilot."
     : "Outside Sebastian/32958; added to waitlist.";
 
-  db.prepare("INSERT INTO signups (name,email,address1,address2,city,state,zip,status,reason,createdAt) VALUES (?,?,?,?,?,?,?,?,?,?)")
+  await stmt("INSERT INTO signups (name,email,address1,address2,city,state,zip,status,reason,createdAt) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)")
     .run(name,email,address1,address2,city,state,zip,status,reason,nowISO());
   return {status,reason};
 }
 
 // ---------- Events + sweep ----------
-function logEvent(evt){
+async function logEvent(evt){
   const metaJson = JSON.stringify(evt.meta || {});
   const createdAt = nowISO();
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO events (createdAt, eventType, townId, districtId, placeId, listingId, conversationId, userId, clientSessionId, metaJson)
-    VALUES (?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+    RETURNING id
   `).run(createdAt, evt.eventType, evt.townId ?? 1, evt.districtId ?? null, evt.placeId ?? null, evt.listingId ?? null, evt.conversationId ?? null, evt.userId ?? null, evt.clientSessionId, metaJson);
-  return info.lastInsertRowid;
+  return info.rows?.[0]?.id;
 }
-function getSweepBalance(userId){
-  const row=db.prepare("SELECT COALESCE(SUM(amount),0) AS bal FROM sweep_ledger WHERE userId=?").get(Number(userId));
+async function getSweepBalance(userId){
+  const row= await stmt("SELECT COALESCE(SUM(amount),0) AS bal FROM sweep_ledger WHERE userId=$1").get(Number(userId));
   return row?.bal || 0;
 }
-function addSweepLedgerEntry(payload){
-  const info = db.prepare(`
+async function addSweepLedgerEntry(payload){
+  const info = await stmt(`
     INSERT INTO sweep_ledger (createdAt, userId, amount, reason, eventId, metaJson)
-    VALUES (?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6)
+    RETURNING id
   `).run(
     nowISO(),
     Number(payload.userId),
@@ -2225,10 +2302,10 @@ function addSweepLedgerEntry(payload){
     payload.eventId == null ? null : Number(payload.eventId),
     JSON.stringify(payload.meta || {})
   );
-  return info.lastInsertRowid;
+  return info.rows?.[0]?.id;
 }
 
-function createSweepstake(payload){
+async function createSweepstake(payload){
   const createdAt = nowISO();
   const status = (payload.status || "scheduled").toString().trim().toLowerCase();
   const title = (payload.title || "").toString().trim();
@@ -2241,81 +2318,84 @@ function createSweepstake(payload){
   const endAt = toISOOrEmpty(payload.endAt);
   const drawAt = toISOOrEmpty(payload.drawAt);
   if(!title || !prize || !startAt || !endAt || !drawAt) return { error: "title, prize, startAt, endAt, drawAt required" };
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO sweepstakes (status, title, prize, entryCost, startAt, endAt, drawAt, maxEntriesPerUserPerDay, createdAt)
-    VALUES (?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING id
   `).run(status, title, prize, entryCost, startAt, endAt, drawAt, maxEntriesPerUserPerDay, createdAt);
-  return getSweepstakeById(info.lastInsertRowid);
+  return getSweepstakeById(info.rows?.[0]?.id);
 }
-function getSweepstakeById(id){
-  return db.prepare("SELECT * FROM sweepstakes WHERE id=?").get(Number(id)) || null;
+async function getSweepstakeById(id){
+  return (await stmt("SELECT * FROM sweepstakes WHERE id=$1").get(Number(id))) || null;
 }
-function getActiveSweepstake(){
+async function getActiveSweepstake(){
   const now = nowISO();
-  return db.prepare(`
+  return (await stmt(`
     SELECT * FROM sweepstakes
-    WHERE status='active' AND startAt <= ? AND endAt >= ?
+    WHERE status='active' AND startAt <= $1 AND endAt >= $2
     ORDER BY startAt DESC
     LIMIT 1
-  `).get(now, now) || null;
+  `).get(now, now)) || null;
 }
-function addSweepstakeEntry(sweepstakeId, userId, entries){
+async function addSweepstakeEntry(sweepstakeId, userId, entries){
   const dayKey = nowISO().slice(0,10);
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO sweepstake_entries (sweepstakeId, userId, entries, dayKey, createdAt)
-    VALUES (?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5)
+    RETURNING id
   `).run(Number(sweepstakeId), Number(userId), Number(entries), dayKey, nowISO());
-  return db.prepare("SELECT * FROM sweepstake_entries WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM sweepstake_entries WHERE id=$1").get(info.rows?.[0]?.id);
 }
-function getSweepstakeEntryTotals(sweepstakeId){
-  const row = db.prepare(`
+async function getSweepstakeEntryTotals(sweepstakeId){
+  const row = await stmt(`
     SELECT COALESCE(SUM(entries),0) AS totalEntries, COUNT(DISTINCT userId) AS totalUsers
     FROM sweepstake_entries
-    WHERE sweepstakeId=?
+    WHERE sweepstakeId=$1
   `).get(Number(sweepstakeId));
   return { totalEntries: row?.totalEntries || 0, totalUsers: row?.totalUsers || 0 };
 }
-function getUserEntriesForSweepstake(sweepstakeId, userId){
-  const row = db.prepare(`
+async function getUserEntriesForSweepstake(sweepstakeId, userId){
+  const row = await stmt(`
     SELECT COALESCE(SUM(entries),0) AS totalEntries
     FROM sweepstake_entries
-    WHERE sweepstakeId=? AND userId=?
+    WHERE sweepstakeId=$1 AND userId=$2
   `).get(Number(sweepstakeId), Number(userId));
   return row?.totalEntries || 0;
 }
-function listSweepstakeParticipants(sweepstakeId){
-  return db.prepare(`
+async function listSweepstakeParticipants(sweepstakeId){
+  return stmt(`
     SELECT userId, COALESCE(SUM(entries),0) AS entries
     FROM sweepstake_entries
-    WHERE sweepstakeId=?
+    WHERE sweepstakeId=$1
     GROUP BY userId
     ORDER BY entries DESC, userId ASC
   `).all(Number(sweepstakeId));
 }
-function getSweepDrawBySweepId(sweepId){
-  return db.prepare(`
+async function getSweepDrawBySweepId(sweepId){
+  return (await stmt(`
     SELECT * FROM sweep_draws
-    WHERE sweepId=?
+    WHERE sweepId=$1
     ORDER BY id DESC
     LIMIT 1
-  `).get(Number(sweepId)) || null;
+  `).get(Number(sweepId))) || null;
 }
-function getSweepDrawById(drawId){
-  return db.prepare("SELECT * FROM sweep_draws WHERE id=?").get(Number(drawId)) || null;
+async function getSweepDrawById(drawId){
+  return (await stmt("SELECT * FROM sweep_draws WHERE id=$1").get(Number(drawId))) || null;
 }
-function getLatestSweepDraw(){
-  return db.prepare(`
+async function getLatestSweepDraw(){
+  return (await stmt(`
     SELECT * FROM sweep_draws
     ORDER BY id DESC
     LIMIT 1
-  `).get() || null;
+  `).get()) || null;
 }
-function createSweepDraw(payload){
+async function createSweepDraw(payload){
   const createdAt = nowISO();
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO sweep_draws
       (sweepId, createdAt, createdByUserId, winnerUserId, totalEntries, snapshotJson)
-    VALUES (?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6)
+    RETURNING id
   `).run(
     Number(payload.sweepId),
     createdAt,
@@ -2324,53 +2404,53 @@ function createSweepDraw(payload){
     Number(payload.totalEntries || 0),
     JSON.stringify(payload.snapshot || {})
   );
-  return db.prepare("SELECT * FROM sweep_draws WHERE id=?").get(info.lastInsertRowid) || null;
+  return (await stmt("SELECT * FROM sweep_draws WHERE id=$1").get(info.rows?.[0]?.id)) || null;
 }
-function setSweepDrawNotified(drawId){
+async function setSweepDrawNotified(drawId){
   const id = Number(drawId);
   if(!id) return false;
-  db.prepare("UPDATE sweep_draws SET notified=1 WHERE id=?").run(id);
+  await stmt("UPDATE sweep_draws SET notified=1 WHERE id=$1").run(id);
   return true;
 }
-function setSweepClaimed(drawId, payload){
-  const draw = getSweepDrawById(drawId);
+async function setSweepClaimed(drawId, payload){
+  const draw = await getSweepDrawById(drawId);
   if(!draw) return null;
   if((draw.claimedAt || "").toString().trim()) return draw;
   const claimedAt = payload?.claimedAt || nowISO();
   const claimedByUserId = payload?.claimedByUserId == null ? null : Number(payload.claimedByUserId);
   const claimedMessage = (payload?.claimedMessage || "").toString();
   const claimedPhotoUrl = (payload?.claimedPhotoUrl || "").toString();
-  db.prepare(`
+  await stmt(`
     UPDATE sweep_draws
-    SET claimedAt=?, claimedByUserId=?, claimedMessage=?, claimedPhotoUrl=?
-    WHERE id=?
+    SET claimedAt=$1, claimedByUserId=$2, claimedMessage=$3, claimedPhotoUrl=$4
+    WHERE id=$5
   `).run(claimedAt, claimedByUserId, claimedMessage, claimedPhotoUrl, Number(drawId));
   return getSweepDrawById(drawId);
 }
-function setSweepClaimPostedMessageId(drawId, messageId){
+async function setSweepClaimPostedMessageId(drawId, messageId){
   const id = Number(drawId);
   const msgId = Number(messageId);
   if(!id || !msgId) return false;
-  db.prepare("UPDATE sweep_draws SET claimedPostedMessageId=? WHERE id=?").run(msgId, id);
+  await stmt("UPDATE sweep_draws SET claimedPostedMessageId=$1 WHERE id=$2").run(msgId, id);
   return true;
 }
-function setSweepstakeWinner(sweepstakeId, winnerUserId){
-  db.prepare("UPDATE sweepstakes SET winnerUserId=?, winnerEntryId=NULL, status='ended' WHERE id=?")
+async function setSweepstakeWinner(sweepstakeId, winnerUserId){
+  await stmt("UPDATE sweepstakes SET winnerUserId=$1, winnerEntryId=NULL, status='ended' WHERE id=$2")
     .run(Number(winnerUserId), Number(sweepstakeId));
   return getSweepstakeById(sweepstakeId);
 }
-function drawSweepstakeWinner(sweepstakeId){
-  const sweep = getSweepstakeById(sweepstakeId);
+async function drawSweepstakeWinner(sweepstakeId){
+  const sweep = await getSweepstakeById(sweepstakeId);
   if(!sweep) return null;
   if(sweep.winnerUserId) return sweep;
-  const entries = db.prepare(`
+  const entries = await stmt(`
     SELECT id, userId, entries FROM sweepstake_entries
-    WHERE sweepstakeId=?
+    WHERE sweepstakeId=$1
     ORDER BY id ASC
   `).all(Number(sweepstakeId));
   const total = entries.reduce((a,e)=>a + Number(e.entries || 0), 0);
   if(total <= 0){
-    db.prepare("UPDATE sweepstakes SET status='ended' WHERE id=?").run(Number(sweepstakeId));
+    await stmt("UPDATE sweepstakes SET status='ended' WHERE id=$1").run(Number(sweepstakeId));
     return getSweepstakeById(sweepstakeId);
   }
   const pick = Math.floor(Math.random() * total) + 1;
@@ -2381,12 +2461,12 @@ function drawSweepstakeWinner(sweepstakeId){
     if(acc >= pick){ winner = e; break; }
   }
   if(!winner) return sweep;
-  db.prepare("UPDATE sweepstakes SET winnerUserId=?, winnerEntryId=?, status='ended' WHERE id=?")
+  await stmt("UPDATE sweepstakes SET winnerUserId=$1, winnerEntryId=$2, status='ended' WHERE id=$3")
     .run(Number(winner.userId), Number(winner.id), Number(sweepstakeId));
   return getSweepstakeById(sweepstakeId);
 }
 
-function addCalendarEvent(payload, userId){
+async function addCalendarEvent(payload, userId){
   const createdAt = nowISO();
   const title = (payload.title || "").toString().trim();
   const description = (payload.description || "").toString().trim();
@@ -2395,11 +2475,12 @@ function addCalendarEvent(payload, userId){
   const locationName = (payload.locationName || "").toString().trim();
   const isPublic = payload.isPublic === false ? 0 : 1;
   const placeId = payload.placeId != null ? Number(payload.placeId) : null;
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO events
       (createdAt, eventType, townId, districtId, placeId, listingId, conversationId, userId, clientSessionId, metaJson,
        title, description, startsAt, endsAt, locationName, isPublic, organizerUserId)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+    RETURNING id
   `).run(
     createdAt,
     "calendar_event",
@@ -2419,10 +2500,10 @@ function addCalendarEvent(payload, userId){
     isPublic,
     Number(userId)
   );
-  return db.prepare("SELECT * FROM events WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM events WHERE id=$1").get(info.rows?.[0]?.id);
 }
 
-function addEventSubmission(payload){
+async function addEventSubmission(payload){
   const createdAt = nowISO();
   const title = (payload.title || "").toString().trim();
   const description = (payload.description || "").toString().trim();
@@ -2434,12 +2515,13 @@ function addEventSubmission(payload){
   if(!title || !description || !startAt || !endAt || !organizerName || !organizerEmail){
     return { error: "title, description, startAt, endAt, organizerName, organizerEmail required" };
   }
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO events_v1
       (townId, status, title, description, startAt, endAt, locationName, address, placeId,
        organizerName, organizerEmail, organizerPhone, website, category, imageUrl, notesToAdmin,
        createdAt, reviewedAt, reviewedByUserId, decisionReason)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+    RETURNING id
   `).run(
     1,
     "pending",
@@ -2462,31 +2544,32 @@ function addEventSubmission(payload){
     null,
     ""
   );
-  return db.prepare("SELECT * FROM events_v1 WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM events_v1 WHERE id=$1").get(info.rows?.[0]?.id);
 }
 
-function listApprovedEvents(range){
+async function listApprovedEvents(range){
   const now = new Date();
   const start = range?.from ? toISOOrEmpty(range.from) : now.toISOString();
   const end = range?.to ? toISOOrEmpty(range.to) : new Date(now.getTime()+30*24*60*60*1000).toISOString();
-  return db.prepare(`
+  return stmt(`
     SELECT *
     FROM events_v1
-    WHERE townId=1 AND status='approved' AND startAt >= ? AND startAt <= ?
+    WHERE townId=1 AND status='approved' AND startAt >= $1 AND startAt <= $2
     ORDER BY startAt ASC
   `).all(start, end);
 }
 
-function getEventById(id){
-  return db.prepare("SELECT * FROM events_v1 WHERE id=?").get(Number(id)) || null;
+async function getEventById(id){
+  return (await stmt("SELECT * FROM events_v1 WHERE id=$1").get(Number(id))) || null;
 }
 
-function addScheduledLiveShow(payload){
+async function addScheduledLiveShow(payload){
   const createdAt = nowISO();
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO live_show_schedule
     (townId, status, title, description, startAt, endAt, hostUserId, hostType, hostPlaceId, hostEventId, thumbnailUrl, createdAt, updatedAt)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+    RETURNING id
   `).run(
     Number(payload.townId || 1),
     String(payload.status || "scheduled"),
@@ -2502,57 +2585,58 @@ function addScheduledLiveShow(payload){
     createdAt,
     ""
   );
-  return db.prepare("SELECT * FROM live_show_schedule WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM live_show_schedule WHERE id=$1").get(info.rows?.[0]?.id);
 }
 
-function listScheduledLiveShows(range){
+async function listScheduledLiveShows(range){
   const now = new Date();
   const start = range?.from ? toISOOrEmpty(range.from) : now.toISOString();
   const end = range?.to ? toISOOrEmpty(range.to) : new Date(now.getTime()+7*24*60*60*1000).toISOString();
-  return db.prepare(`
+  return stmt(`
     SELECT *
     FROM live_show_schedule
-    WHERE townId=1 AND status IN ('scheduled','live') AND startAt >= ? AND startAt <= ?
+    WHERE townId=1 AND status IN ('scheduled','live') AND startAt >= $1 AND startAt <= $2
     ORDER BY startAt ASC
   `).all(start, end);
 }
 
-function toggleLiveShowBookmark(userId, showId){
-  const existing = db.prepare("SELECT id FROM live_show_bookmarks WHERE userId=? AND showId=?")
+async function toggleLiveShowBookmark(userId, showId){
+  const existing = await stmt("SELECT id FROM live_show_bookmarks WHERE userId=$1 AND showId=$2")
     .get(Number(userId), Number(showId));
   if(existing){
-    db.prepare("DELETE FROM live_show_bookmarks WHERE id=?").run(existing.id);
+    await stmt("DELETE FROM live_show_bookmarks WHERE id=$1").run(existing.id);
     return { bookmarked: false };
   }
-  db.prepare("INSERT INTO live_show_bookmarks (townId,userId,showId,createdAt) VALUES (?,?,?,?)")
+  await stmt("INSERT INTO live_show_bookmarks (townId,userId,showId,createdAt) VALUES ($1,$2,$3,$4)")
     .run(1, Number(userId), Number(showId), nowISO());
   return { bookmarked: true };
 }
 
-function getLiveShowBookmarksForUser(userId){
-  return db.prepare("SELECT showId FROM live_show_bookmarks WHERE userId=?").all(Number(userId));
+async function getLiveShowBookmarksForUser(userId){
+  return stmt("SELECT showId FROM live_show_bookmarks WHERE userId=$1").all(Number(userId));
 }
 
-function listEventsByStatus(status){
+async function listEventsByStatus(status){
   const s = (status || "pending").toString().trim().toLowerCase();
-  return db.prepare("SELECT * FROM events_v1 WHERE status=? ORDER BY createdAt DESC").all(s);
+  return stmt("SELECT * FROM events_v1 WHERE status=$1 ORDER BY createdAt DESC").all(s);
 }
 
-function updateEventDecision(id, status, reviewerUserId, decisionReason){
+async function updateEventDecision(id, status, reviewerUserId, decisionReason){
   const reviewedAt = nowISO();
-  db.prepare(`
+  await stmt(`
     UPDATE events_v1
-    SET status=?, reviewedAt=?, reviewedByUserId=?, decisionReason=?
-    WHERE id=?
+    SET status=$1, reviewedAt=$2, reviewedByUserId=$3, decisionReason=$4
+    WHERE id=$5
   `).run(String(status), reviewedAt, reviewerUserId == null ? null : Number(reviewerUserId), String(decisionReason || ""), Number(id));
-  return db.prepare("SELECT * FROM events_v1 WHERE id=?").get(Number(id)) || null;
+  return (await stmt("SELECT * FROM events_v1 WHERE id=$1").get(Number(id))) || null;
 }
 
-function addMediaObject(payload){
-  const info = db.prepare(`
+async function addMediaObject(payload){
+  const info = await stmt(`
     INSERT INTO media_objects
       (townId, ownerUserId, placeId, listingId, eventId, kind, storageDriver, key, url, mime, bytes, createdAt, deletedAt)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+    RETURNING id
   `).run(
     Number(payload.townId || 1),
     Number(payload.ownerUserId),
@@ -2568,44 +2652,44 @@ function addMediaObject(payload){
     nowISO(),
     ""
   );
-  return db.prepare("SELECT * FROM media_objects WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM media_objects WHERE id=$1").get(info.rows?.[0]?.id);
 }
 
-function listMediaObjects({ townId = 1, kind = "", limit = 200 } = {}){
+async function listMediaObjects({ townId = 1, kind = "", limit = 200 } = {}){
   if(kind){
-    return db.prepare(`
+    return stmt(`
       SELECT *
       FROM media_objects
-      WHERE townId=? AND kind=?
+      WHERE townId=$1 AND kind=$2
       ORDER BY createdAt DESC
-      LIMIT ?
+      LIMIT $3
     `).all(Number(townId), String(kind), Number(limit));
   }
-  return db.prepare(`
+  return stmt(`
     SELECT *
     FROM media_objects
-    WHERE townId=?
+    WHERE townId=$1
     ORDER BY createdAt DESC
-    LIMIT ?
+    LIMIT $2
   `).all(Number(townId), Number(limit));
 }
 
-function collectUsedMedia(townId = 1){
+async function collectUsedMedia(townId = 1){
   const used = new Set();
   const add = (v)=>{
     if(!v) return;
     used.add(v);
     if(typeof v === "string" && v.startsWith("/")) used.add(v.slice(1));
   };
-  const places = db.prepare("SELECT bannerUrl, avatarUrl FROM places WHERE townId=?").all(Number(townId));
+  const places = await stmt("SELECT bannerUrl, avatarUrl FROM places WHERE townId=$1").all(Number(townId));
   places.forEach(p=>{ add(p.bannerUrl); add(p.avatarUrl); });
-  const users = db.prepare("SELECT avatarUrl FROM users").all();
+  const users = await stmt("SELECT avatarUrl FROM users").all();
   users.forEach(u=>add(u.avatarUrl));
-  const events = db.prepare("SELECT imageUrl FROM events_v1 WHERE townId=?").all(Number(townId));
+  const events = await stmt("SELECT imageUrl FROM events_v1 WHERE townId=$1").all(Number(townId));
   events.forEach(e=>add(e.imageUrl));
-  const listings = db.prepare("SELECT photoUrlsJson FROM listings WHERE townId=?").all(Number(townId));
+  const listings = await stmt("SELECT photoUrlsJson FROM listings WHERE townId=$1").all(Number(townId));
   listings.forEach(l=>parseJsonArray(l.photoUrlsJson || "[]").forEach(add));
-  const archives = db.prepare("SELECT bodyMarkdown FROM archive_entries WHERE townId=?").all(Number(townId));
+  const archives = await stmt("SELECT bodyMarkdown FROM archive_entries WHERE townId=$1").all(Number(townId));
   const urlRe = /https?:\/\/[^\s)]+|\/uploads\/[^\s)]+/g;
   archives.forEach(a=>{
     const matches = (a.bodyMarkdown || "").match(urlRe) || [];
@@ -2614,9 +2698,9 @@ function collectUsedMedia(townId = 1){
   return used;
 }
 
-function listMediaOrphans(townId = 1, limit = 200){
-  const media = listMediaObjects({ townId, limit });
-  const used = collectUsedMedia(townId);
+async function listMediaOrphans(townId = 1, limit = 200){
+  const media = await listMediaObjects({ townId, limit });
+  const used = await collectUsedMedia(townId);
   return media.filter(m=>{
     if(used.has(m.url)) return false;
     if(used.has(m.key)) return false;
@@ -2625,8 +2709,8 @@ function listMediaOrphans(townId = 1, limit = 200){
   });
 }
 
-function listMissingLocalMedia(townId = 1, limit = 200){
-  const media = listMediaObjects({ townId, limit }).filter(m=>m.storageDriver === "local");
+async function listMissingLocalMedia(townId = 1, limit = 200){
+  const media = (await listMediaObjects({ townId, limit })).filter(m=>m.storageDriver === "local");
   const missing = [];
   for(const m of media){
     let key = (m.key || "").toString();
@@ -2638,8 +2722,8 @@ function listMissingLocalMedia(townId = 1, limit = 200){
   return missing;
 }
 
-function listArchiveEntries(){
-  return db.prepare(`
+async function listArchiveEntries(){
+  return stmt(`
     SELECT *
     FROM archive_entries
     WHERE townId=1 AND status='published'
@@ -2647,34 +2731,26 @@ function listArchiveEntries(){
   `).all();
 }
 
-function getArchiveEntryBySlug(slug){
-  return db.prepare(`
+async function getArchiveEntryBySlug(slug){
+  return (await stmt(`
     SELECT *
     FROM archive_entries
-    WHERE townId=1 AND status='published' AND slug=?
-  `).get(String(slug)) || null;
+    WHERE townId=1 AND status='published' AND slug=$1
+  `).get(String(slug))) || null;
 }
 
-function dayKeyFromDate(date){
+async function dayKeyFromDate(date){
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
-function dayRangeForKey(dayKey){
+async function dayRangeForKey(dayKey){
   const start = new Date(`${dayKey}T00:00:00`);
   const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
   return { startIso: start.toISOString(), endIso: end.toISOString() };
 }
-function parseJsonObject(text){
-  try{
-    const obj = JSON.parse(text || "{}");
-    return obj && typeof obj === "object" && !Array.isArray(obj) ? obj : {};
-  }catch{
-    return {};
-  }
-}
-function normalizePulseRow(row){
+async function normalizePulseRow(row){
   if(!row) return null;
   return {
     ...row,
@@ -2682,30 +2758,30 @@ function normalizePulseRow(row){
     highlights: parseJsonObject(row.highlightsJson)
   };
 }
-function getLatestPulse(townId = 1){
-  const row = db.prepare(`
+async function getLatestPulse(townId = 1){
+  const row = await stmt(`
     SELECT *
     FROM daily_pulses
-    WHERE townId=? AND status='published'
+    WHERE townId=$1 AND status='published'
     ORDER BY dayKey DESC, createdAt DESC
     LIMIT 1
   `).get(Number(townId));
   return normalizePulseRow(row);
 }
-function getPulseByDayKey(dayKey, townId = 1){
-  const row = db.prepare(`
+async function getPulseByDayKey(dayKey, townId = 1){
+  const row = await stmt(`
     SELECT *
     FROM daily_pulses
-    WHERE townId=? AND status='published' AND dayKey=?
+    WHERE townId=$1 AND status='published' AND dayKey=$2
   `).get(Number(townId), String(dayKey));
   return normalizePulseRow(row);
 }
-function upsertDailyPulse(payload){
+async function upsertDailyPulse(payload){
   const createdAt = payload.createdAt || nowISO();
-  db.prepare(`
+  await stmt(`
     INSERT INTO daily_pulses
       (townId, dayKey, status, metricsJson, highlightsJson, markdownBody, createdAt)
-    VALUES (?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7)
     ON CONFLICT(dayKey) DO UPDATE SET
       status=excluded.status,
       metricsJson=excluded.metricsJson,
@@ -2723,13 +2799,13 @@ function upsertDailyPulse(payload){
   );
   return getPulseByDayKey(payload.dayKey, payload.townId || 1);
 }
-function generateDailyPulse(townId = 1, dayKey){
+async function generateDailyPulse(townId = 1, dayKey){
   const key = (dayKey && String(dayKey).trim()) || dayKeyFromDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
   const { startIso, endIso } = dayRangeForKey(key);
-  const listingsByType = db.prepare(`
+  const listingsByType = await stmt(`
     SELECT listingType, COUNT(*) AS c
     FROM listings
-    WHERE townId=? AND createdAt>=? AND createdAt<?
+    WHERE townId=$1 AND createdAt>=$2 AND createdAt<$3
     GROUP BY listingType
   `).all(Number(townId), startIso, endIso);
   const listingTypeCounts = {};
@@ -2738,106 +2814,106 @@ function generateDailyPulse(townId = 1, dayKey){
     listingTypeCounts[r.listingType || "item"] = r.c;
     listingTotal += r.c;
   });
-  const listingsByCategory = db.prepare(`
+  const listingsByCategory = await stmt(`
     SELECT p.category AS category, COUNT(*) AS c
     FROM listings l
     JOIN places p ON p.id=l.placeId
-    WHERE l.townId=? AND l.createdAt>=? AND l.createdAt<?
+    WHERE l.townId=$1 AND l.createdAt>=$2 AND l.createdAt<$3
     GROUP BY p.category
     ORDER BY c DESC
   `).all(Number(townId), startIso, endIso);
-  const auctionsStartedCount = db.prepare(`
+  const auctionsStartedCount = await stmt(`
     SELECT COUNT(*) AS c
     FROM listings
-    WHERE townId=? AND listingType='auction' AND auctionStartAt>=? AND auctionStartAt<?
+    WHERE townId=$1 AND listingType='auction' AND auctionStartAt>=$2 AND auctionStartAt<$3
   `).get(Number(townId), startIso, endIso).c || 0;
-  const auctionsEndedCount = db.prepare(`
+  const auctionsEndedCount = await stmt(`
     SELECT COUNT(*) AS c
     FROM listings
-    WHERE townId=? AND listingType='auction' AND auctionEndAt>=? AND auctionEndAt<?
+    WHERE townId=$1 AND listingType='auction' AND auctionEndAt>=$2 AND auctionEndAt<$3
   `).get(Number(townId), startIso, endIso).c || 0;
-  const highestBidCents = db.prepare(`
+  const highestBidCents = await stmt(`
     SELECT MAX(amountCents) AS m
     FROM bids
-    WHERE townId=? AND createdAt>=? AND createdAt<?
+    WHERE townId=$1 AND createdAt>=$2 AND createdAt<$3
   `).get(Number(townId), startIso, endIso).m || 0;
 
-  const channelPostsCount = db.prepare(`
+  const channelPostsCount = await stmt(`
     SELECT COUNT(*) AS c
     FROM channel_messages
-    WHERE createdAt>=? AND createdAt<?
+    WHERE createdAt>=$1 AND createdAt<$2
   `).get(startIso, endIso).c || 0;
-  const channelImagePostsCount = db.prepare(`
+  const channelImagePostsCount = await stmt(`
     SELECT COUNT(*) AS c
     FROM channel_messages
-    WHERE createdAt>=? AND createdAt<? AND imageUrl!=''
+    WHERE createdAt>=$1 AND createdAt<$2 AND imageUrl!=''
   `).get(startIso, endIso).c || 0;
-  const storeMessagesCount = db.prepare(`
+  const storeMessagesCount = await stmt(`
     SELECT COUNT(*) AS c
     FROM messages
-    WHERE createdAt>=? AND createdAt<?
+    WHERE createdAt>=$1 AND createdAt<$2
   `).get(startIso, endIso).c || 0;
   const messagesSentCount = channelPostsCount + storeMessagesCount;
 
-  const newFollowsCount = db.prepare(`
+  const newFollowsCount = await stmt(`
     SELECT COUNT(*) AS c
     FROM store_follows
-    WHERE townId=? AND createdAt>=? AND createdAt<?
+    WHERE townId=$1 AND createdAt>=$2 AND createdAt<$3
   `).get(Number(townId), startIso, endIso).c || 0;
-  const trustApplicationsSubmittedCount = db.prepare(`
+  const trustApplicationsSubmittedCount = await stmt(`
     SELECT COUNT(*) AS c
     FROM trust_applications
-    WHERE townId=? AND createdAt>=? AND createdAt<?
+    WHERE townId=$1 AND createdAt>=$2 AND createdAt<$3
   `).get(Number(townId), startIso, endIso).c || 0;
-  const trustApprovalsCount = db.prepare(`
+  const trustApprovalsCount = await stmt(`
     SELECT COUNT(*) AS c
     FROM trust_applications
-    WHERE townId=? AND status='approved' AND reviewedAt>=? AND reviewedAt<?
+    WHERE townId=$1 AND status='approved' AND reviewedAt>=$2 AND reviewedAt<$3
   `).get(Number(townId), startIso, endIso).c || 0;
-  const eventsSubmittedCount = db.prepare(`
+  const eventsSubmittedCount = await stmt(`
     SELECT COUNT(*) AS c
     FROM events_v1
-    WHERE townId=? AND createdAt>=? AND createdAt<?
+    WHERE townId=$1 AND createdAt>=$2 AND createdAt<$3
   `).get(Number(townId), startIso, endIso).c || 0;
-  const eventsApprovedCount = db.prepare(`
+  const eventsApprovedCount = await stmt(`
     SELECT COUNT(*) AS c
     FROM events_v1
-    WHERE townId=? AND status='approved' AND reviewedAt>=? AND reviewedAt<?
+    WHERE townId=$1 AND status='approved' AND reviewedAt>=$2 AND reviewedAt<$3
   `).get(Number(townId), startIso, endIso).c || 0;
-  const liveShowsScheduledCount = db.prepare(`
+  const liveShowsScheduledCount = await stmt(`
     SELECT COUNT(*) AS c
     FROM live_show_schedule
-    WHERE townId=? AND createdAt>=? AND createdAt<?
+    WHERE townId=$1 AND createdAt>=$2 AND createdAt<$3
   `).get(Number(townId), startIso, endIso).c || 0;
-  const liveShowBookmarksCount = db.prepare(`
+  const liveShowBookmarksCount = await stmt(`
     SELECT COUNT(*) AS c
     FROM live_show_bookmarks
-    WHERE townId=? AND createdAt>=? AND createdAt<?
+    WHERE townId=$1 AND createdAt>=$2 AND createdAt<$3
   `).get(Number(townId), startIso, endIso).c || 0;
 
-  const topChannels = db.prepare(`
+  const topChannels = await stmt(`
     SELECT c.name AS name, COUNT(*) AS c
     FROM channel_messages m
     JOIN channels c ON c.id=m.channelId
-    WHERE m.createdAt>=? AND m.createdAt<?
+    WHERE m.createdAt>=$1 AND m.createdAt<$2
     GROUP BY m.channelId
     ORDER BY c DESC
     LIMIT 3
   `).all(startIso, endIso);
-  const topStores = db.prepare(`
+  const topStores = await stmt(`
     SELECT p.name AS name, COUNT(*) AS c
     FROM store_follows f
     JOIN places p ON p.id=f.placeId
-    WHERE f.createdAt>=? AND f.createdAt<?
+    WHERE f.createdAt>=$1 AND f.createdAt<$2
     GROUP BY f.placeId
     ORDER BY c DESC
     LIMIT 3
   `).all(startIso, endIso);
-  const topListings = db.prepare(`
+  const topListings = await stmt(`
     SELECT l.title AS title, p.name AS placeName
     FROM listings l
     LEFT JOIN places p ON p.id=l.placeId
-    WHERE l.createdAt>=? AND l.createdAt<?
+    WHERE l.createdAt>=$1 AND l.createdAt<$2
     ORDER BY l.createdAt DESC
     LIMIT 3
   `).all(startIso, endIso);
@@ -2908,7 +2984,7 @@ function generateDailyPulse(townId = 1, dayKey){
   lines.push(`- Shows scheduled: ${liveShowsScheduledCount}, bookmarks: ${liveShowBookmarksCount}`);
 
   const markdownBody = lines.join("\n");
-  const pulse = upsertDailyPulse({
+  const pulse = await upsertDailyPulse({
     townId,
     dayKey: key,
     status: "published",
@@ -2918,18 +2994,18 @@ function generateDailyPulse(townId = 1, dayKey){
   });
 
   const slug = `daily-pulse-${key}`;
-  const existing = db.prepare("SELECT id FROM archive_entries WHERE slug=?").get(slug);
+  const existing = await stmt("SELECT id FROM archive_entries WHERE slug=$1").get(slug);
   if(existing){
-    db.prepare(`
+    await stmt(`
       UPDATE archive_entries
-      SET title=?, bodyMarkdown=?, createdAt=?
-      WHERE slug=?
+      SET title=$1, bodyMarkdown=$2, createdAt=$3
+      WHERE slug=$4
     `).run(`Daily Pulse — Sebastian — ${key}`, markdownBody, nowISO(), slug);
   }else{
-    db.prepare(`
+    await stmt(`
       INSERT INTO archive_entries
         (townId, status, title, slug, bodyMarkdown, createdAt, createdByUserId, pinned, tagsJson)
-      VALUES (?,?,?,?,?,?,?,?,?)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
     `).run(
       Number(townId),
       "published",
@@ -2945,7 +3021,7 @@ function generateDailyPulse(townId = 1, dayKey){
   return pulse;
 }
 
-function addWaitlistSignup(payload){
+async function addWaitlistSignup(payload){
   const createdAt = nowISO();
   const email = normalizeEmail(payload?.email);
   if(!email) return { error: "email required" };
@@ -2958,27 +3034,28 @@ function addWaitlistSignup(payload){
   }else{
     interests = (payload?.interests || "").toString().trim();
   }
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO waitlist_signups
       (createdAt, name, email, phone, interests, notes, status)
-    VALUES (?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7)
+    RETURNING id
   `).run(createdAt, name, email, phone, interests, notes, "pending");
-  return db.prepare("SELECT * FROM waitlist_signups WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM waitlist_signups WHERE id=$1").get(info.rows?.[0]?.id);
 }
 
-function listWaitlistSignupsByStatus(status){
+async function listWaitlistSignupsByStatus(status){
   const s = (status || "pending").toString().trim().toLowerCase();
-  return db.prepare("SELECT * FROM waitlist_signups WHERE status=? ORDER BY createdAt DESC")
+  return stmt("SELECT * FROM waitlist_signups WHERE status=$1 ORDER BY createdAt DESC")
     .all(s);
 }
 
-function updateWaitlistStatus(id, status){
-  db.prepare("UPDATE waitlist_signups SET status=? WHERE id=?")
+async function updateWaitlistStatus(id, status){
+  await stmt("UPDATE waitlist_signups SET status=$1 WHERE id=$2")
     .run(String(status), Number(id));
-  return db.prepare("SELECT * FROM waitlist_signups WHERE id=?").get(Number(id)) || null;
+  return (await stmt("SELECT * FROM waitlist_signups WHERE id=$1").get(Number(id))) || null;
 }
 
-function addBusinessApplication(payload){
+async function addBusinessApplication(payload){
   const createdAt = nowISO();
   const contactName = (payload?.contactName || "").toString().trim();
   const email = normalizeEmail(payload?.email);
@@ -2989,10 +3066,11 @@ function addBusinessApplication(payload){
   if(!contactName || !email || !businessName || !type || !category || !inSebastian){
     return { error: "contactName, email, businessName, type, category, inSebastian required" };
   }
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO business_applications
       (createdAt, contactName, email, phone, businessName, type, category, website, inSebastian, address, notes, status)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+    RETURNING id
   `).run(
     createdAt,
     contactName,
@@ -3007,22 +3085,22 @@ function addBusinessApplication(payload){
     (payload?.notes || "").toString().trim(),
     "pending"
   );
-  return db.prepare("SELECT * FROM business_applications WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM business_applications WHERE id=$1").get(info.rows?.[0]?.id);
 }
 
-function listBusinessApplicationsByStatus(status){
+async function listBusinessApplicationsByStatus(status){
   const s = (status || "pending").toString().trim().toLowerCase();
-  return db.prepare("SELECT * FROM business_applications WHERE status=? ORDER BY createdAt DESC")
+  return stmt("SELECT * FROM business_applications WHERE status=$1 ORDER BY createdAt DESC")
     .all(s);
 }
 
-function updateBusinessApplicationStatus(id, status){
-  db.prepare("UPDATE business_applications SET status=? WHERE id=?")
+async function updateBusinessApplicationStatus(id, status){
+  await stmt("UPDATE business_applications SET status=$1 WHERE id=$2")
     .run(String(status), Number(id));
-  return db.prepare("SELECT * FROM business_applications WHERE id=?").get(Number(id)) || null;
+  return (await stmt("SELECT * FROM business_applications WHERE id=$1").get(Number(id))) || null;
 }
 
-function addResidentApplication(payload){
+async function addResidentApplication(payload){
   const createdAt = nowISO();
   const name = (payload?.name || "").toString().trim();
   const email = normalizeEmail(payload?.email);
@@ -3033,10 +3111,11 @@ function addResidentApplication(payload){
   if(!name || !email || !addressLine1 || !city || !state || !zip){
     return { error: "name, email, addressLine1, city, state, zip required" };
   }
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO resident_applications
       (createdAt, name, email, phone, addressLine1, city, state, zip, yearsInSebastian, notes, status)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    RETURNING id
   `).run(
     createdAt,
     name,
@@ -3050,26 +3129,26 @@ function addResidentApplication(payload){
     (payload?.notes || "").toString().trim(),
     "pending"
   );
-  return db.prepare("SELECT * FROM resident_applications WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM resident_applications WHERE id=$1").get(info.rows?.[0]?.id);
 }
 
-function listResidentApplicationsByStatus(status){
+async function listResidentApplicationsByStatus(status){
   const s = (status || "pending").toString().trim().toLowerCase();
-  return db.prepare("SELECT * FROM resident_applications WHERE status=? ORDER BY createdAt DESC")
+  return stmt("SELECT * FROM resident_applications WHERE status=$1 ORDER BY createdAt DESC")
     .all(s);
 }
 
-function getResidentApplicationById(id){
-  return db.prepare("SELECT * FROM resident_applications WHERE id=?").get(Number(id)) || null;
+async function getResidentApplicationById(id){
+  return (await stmt("SELECT * FROM resident_applications WHERE id=$1").get(Number(id))) || null;
 }
 
-function updateResidentApplicationStatus(id, status){
-  db.prepare("UPDATE resident_applications SET status=? WHERE id=?")
+async function updateResidentApplicationStatus(id, status){
+  await stmt("UPDATE resident_applications SET status=$1 WHERE id=$2")
     .run(String(status), Number(id));
-  return db.prepare("SELECT * FROM resident_applications WHERE id=?").get(Number(id)) || null;
+  return (await stmt("SELECT * FROM resident_applications WHERE id=$1").get(Number(id))) || null;
 }
 
-function addLocalBizApplication(payload, userId){
+async function addLocalBizApplication(payload, userId){
   const createdAt = nowISO();
   const businessName = (payload.businessName || "").toString().trim();
   const ownerName = (payload.ownerName || "").toString().trim();
@@ -3085,12 +3164,13 @@ function addLocalBizApplication(payload, userId){
     return { error: "businessName, ownerName, email, address, city, state, zip, category, description required" };
   }
   if(!confirm) return { error: "confirmSebastian required" };
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO local_business_applications
       (townId, status, businessName, ownerName, email, phone, address, city, state, zip, category,
        website, instagram, description, sustainabilityNotes, confirmSebastian, createdAt, reviewedAt,
        reviewedByUserId, decisionReason, userId)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+    RETURNING id
   `).run(
     1,
     "pending",
@@ -3114,61 +3194,66 @@ function addLocalBizApplication(payload, userId){
     "",
     userId == null ? null : Number(userId)
   );
-  return db.prepare("SELECT * FROM local_business_applications WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM local_business_applications WHERE id=$1").get(info.rows?.[0]?.id);
 }
 
-function listLocalBizApplicationsByUser(userId){
-  return db.prepare("SELECT * FROM local_business_applications WHERE userId=? ORDER BY createdAt DESC")
+async function listLocalBizApplicationsByUser(userId){
+  return stmt("SELECT * FROM local_business_applications WHERE userId=$1 ORDER BY createdAt DESC")
     .all(Number(userId));
 }
 
-function listLocalBizApplicationsByStatus(status){
+async function listLocalBizApplicationsByStatus(status){
   const s = (status || "pending").toString().trim().toLowerCase();
-  return db.prepare("SELECT * FROM local_business_applications WHERE townId=1 AND status=? ORDER BY createdAt DESC")
+  return stmt("SELECT * FROM local_business_applications WHERE townId=1 AND status=$1 ORDER BY createdAt DESC")
     .all(s);
 }
 
-function updateLocalBizDecision(id, status, reviewerUserId, decisionReason){
+async function updateLocalBizDecision(id, status, reviewerUserId, decisionReason){
   const reviewedAt = nowISO();
-  db.prepare(`
+  await stmt(`
     UPDATE local_business_applications
-    SET status=?, reviewedAt=?, reviewedByUserId=?, decisionReason=?
-    WHERE id=?
+    SET status=$1, reviewedAt=$2, reviewedByUserId=$3, decisionReason=$4
+    WHERE id=$5
   `).run(String(status), reviewedAt, reviewerUserId == null ? null : Number(reviewerUserId), String(decisionReason || ""), Number(id));
-  return db.prepare("SELECT * FROM local_business_applications WHERE id=?").get(Number(id)) || null;
+  return (await stmt("SELECT * FROM local_business_applications WHERE id=$1").get(Number(id))) || null;
 }
-function getCalendarEvents(range){
+async function getCalendarEvents(range){
   const now = new Date();
   const start = now.toISOString();
   const end = new Date(now.getTime() + (range==="month" ? 30 : 7) * 24 * 60 * 60 * 1000).toISOString();
-  return db.prepare(`
+  return stmt(`
     SELECT id, title, description, startsAt, endsAt, locationName, isPublic, placeId, organizerUserId, createdAt
     FROM events
-    WHERE eventType='calendar_event' AND startsAt >= ? AND startsAt <= ?
+    WHERE eventType='calendar_event' AND startsAt >= $1 AND startsAt <= $2
     ORDER BY startsAt ASC
   `).all(start, end);
 }
 
-function getCalendarEventById(id){
-  return db.prepare(`
+async function getCalendarEventById(id){
+  return (await stmt(`
     SELECT id, title, description, startsAt, endsAt, locationName, isPublic, placeId, organizerUserId, createdAt
     FROM events
-    WHERE id=? AND eventType='calendar_event'
-  `).get(Number(id)) || null;
+    WHERE id=$1 AND eventType='calendar_event'
+  `).get(Number(id))) || null;
 }
 
-function addEventRsvp(eventId, userId, status="going"){
-  db.prepare("INSERT OR REPLACE INTO event_rsvps (eventId, userId, status, createdAt) VALUES (?,?,?,?)")
-    .run(Number(eventId), Number(userId), status, nowISO());
+async function addEventRsvp(eventId, userId, status="going"){
+  await stmt(`
+    INSERT INTO event_rsvps (eventId, userId, status, createdAt)
+    VALUES ($1,$2,$3,$4)
+    ON CONFLICT (eventId, userId)
+    DO UPDATE SET status=EXCLUDED.status, createdAt=EXCLUDED.createdAt
+  `).run(Number(eventId), Number(userId), status, nowISO());
   return { ok:true };
 }
 
-function addOrder(payload){
+async function addOrder(payload){
   const createdAt = nowISO();
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO orders
       (listingId, buyerUserId, sellerUserId, quantity, amountCents, status, createdAt, completedAt, paymentProvider, paymentIntentId)
-    VALUES (?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+    RETURNING id
   `).run(
     Number(payload.listingId),
     Number(payload.buyerUserId),
@@ -3181,25 +3266,26 @@ function addOrder(payload){
     String(payload.paymentProvider || "stub"),
     String(payload.paymentIntentId || "")
   );
-  return db.prepare("SELECT * FROM orders WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM orders WHERE id=$1").get(info.rows?.[0]?.id);
 }
-function getOrderById(id){
-  return db.prepare("SELECT * FROM orders WHERE id=?").get(Number(id)) || null;
+async function getOrderById(id){
+  return (await stmt("SELECT * FROM orders WHERE id=$1").get(Number(id))) || null;
 }
-function completeOrder(id){
+async function completeOrder(id){
   const completedAt = nowISO();
-  db.prepare("UPDATE orders SET status='completed', completedAt=? WHERE id=?").run(completedAt, Number(id));
-  return db.prepare("SELECT * FROM orders WHERE id=?").get(Number(id));
+  await stmt("UPDATE orders SET status='completed', completedAt=$1 WHERE id=$2").run(completedAt, Number(id));
+  return stmt("SELECT * FROM orders WHERE id=$1").get(Number(id));
 }
 
-function getReviewForOrder(orderId, reviewerUserId){
-  return db.prepare("SELECT * FROM reviews WHERE orderId=? AND reviewerUserId=?")
-    .get(Number(orderId), Number(reviewerUserId)) || null;
+async function getReviewForOrder(orderId, reviewerUserId){
+  return (await stmt("SELECT * FROM reviews WHERE orderId=$1 AND reviewerUserId=$2")
+    .get(Number(orderId), Number(reviewerUserId))) || null;
 }
-function addReview(payload){
-  const info=db.prepare(`
+async function addReview(payload){
+  const info= await stmt(`
     INSERT INTO reviews (orderId, reviewerUserId, revieweeUserId, role, rating, text, createdAt)
-    VALUES (?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7)
+    RETURNING id
   `).run(
     Number(payload.orderId),
     Number(payload.reviewerUserId),
@@ -3209,12 +3295,13 @@ function addReview(payload){
     String(payload.text || ""),
     nowISO()
   );
-  return db.prepare("SELECT * FROM reviews WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM reviews WHERE id=$1").get(info.rows?.[0]?.id);
 }
-function addDispute(payload){
-  const info=db.prepare(`
+async function addDispute(payload){
+  const info= await stmt(`
     INSERT INTO disputes (orderId, reporterUserId, reason, status, createdAt)
-    VALUES (?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5)
+    RETURNING id
   `).run(
     Number(payload.orderId),
     Number(payload.reporterUserId),
@@ -3222,40 +3309,43 @@ function addDispute(payload){
     String(payload.status || "open"),
     nowISO()
   );
-  return db.prepare("SELECT * FROM disputes WHERE id=?").get(info.lastInsertRowid);
+  return stmt("SELECT * FROM disputes WHERE id=$1").get(info.rows?.[0]?.id);
 }
-function listReviews(limit=200){
-  return db.prepare("SELECT * FROM reviews ORDER BY createdAt DESC LIMIT ?").all(Number(limit));
+async function listReviews(limit=200){
+  return stmt("SELECT * FROM reviews ORDER BY createdAt DESC LIMIT $1").all(Number(limit));
 }
-function listDisputes(limit=200){
-  return db.prepare("SELECT * FROM disputes ORDER BY createdAt DESC LIMIT ?").all(Number(limit));
+async function listDisputes(limit=200){
+  return stmt("SELECT * FROM disputes ORDER BY createdAt DESC LIMIT $1").all(Number(limit));
 }
-function addTrustEvent(payload){
-  db.prepare("INSERT INTO trust_events (orderId, userId, eventType, metaJson, createdAt) VALUES (?,?,?,?,?)")
+async function addTrustEvent(payload){
+  await stmt("INSERT INTO trust_events (orderId, userId, eventType, metaJson, createdAt) VALUES ($1,$2,$3,$4,$5)")
     .run(Number(payload.orderId), Number(payload.userId), String(payload.eventType), JSON.stringify(payload.meta||{}), nowISO());
 }
 
-function getStoreFollowCount(placeId){
-  const row = db.prepare("SELECT COUNT(*) AS c FROM store_follows WHERE placeId=?").get(Number(placeId));
+async function getStoreFollowCount(placeId){
+  const row = await stmt("SELECT COUNT(*) AS c FROM store_follows WHERE placeId=$1").get(Number(placeId));
   return row?.c || 0;
 }
-function isFollowingStore(userId, placeId){
-  return !!db.prepare("SELECT 1 FROM store_follows WHERE userId=? AND placeId=?")
-    .get(Number(userId), Number(placeId));
+async function isFollowingStore(userId, placeId){
+  return !!(await stmt("SELECT 1 FROM store_follows WHERE userId=$1 AND placeId=$2")
+    .get(Number(userId), Number(placeId)));
 }
-function followStore(userId, placeId){
-  db.prepare("INSERT OR IGNORE INTO store_follows (createdAt, userId, placeId) VALUES (?,?,?)")
-    .run(nowISO(), Number(userId), Number(placeId));
+async function followStore(userId, placeId){
+  await stmt(`
+    INSERT INTO store_follows (createdAt, userId, placeId)
+    VALUES ($1,$2,$3)
+    ON CONFLICT (userId, placeId) DO NOTHING
+  `).run(nowISO(), Number(userId), Number(placeId));
   return { ok:true };
 }
-function unfollowStore(userId, placeId){
-  db.prepare("DELETE FROM store_follows WHERE userId=? AND placeId=?")
+async function unfollowStore(userId, placeId){
+  await stmt("DELETE FROM store_follows WHERE userId=$1 AND placeId=$2")
     .run(Number(userId), Number(placeId));
   return { ok:true };
 }
 
 // ---------- Listing creation (new) ----------
-function addListing(payload){
+async function addListing(payload){
   const listingType = sanitizeListingType(payload.listingType);
   const exchangeType = sanitizeExchangeType(payload.exchangeType);
   const startAt = toISOOrEmpty(payload.startAt);
@@ -3275,10 +3365,11 @@ function addListing(payload){
   const buyNowVal = Number.isFinite(buyNowCents) ? buyNowCents : null;
   const photoUrls = normalizePhotoUrls(payload.photoUrls || []);
 
-  const info = db.prepare(`
+  const info = await stmt(`
     INSERT INTO listings
       (placeId, title, description, quantity, price, status, createdAt, photoUrlsJson, listingType, exchangeType, startAt, endAt, offerCategory, availabilityWindow, compensationType, auctionStartAt, auctionEndAt, startBidCents, minIncrementCents, reserveCents, buyNowCents)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+    RETURNING id
   `).run(
     Number(payload.placeId),
     String(payload.title),
@@ -3303,7 +3394,7 @@ function addListing(payload){
     buyNowVal
   );
 
-  const row = db.prepare("SELECT * FROM listings WHERE id=?").get(info.lastInsertRowid);
+  const row = await stmt("SELECT * FROM listings WHERE id=$1").get(info.rows?.[0]?.id);
   return {
     ...row,
     photoUrls,
@@ -3324,7 +3415,8 @@ function addListing(payload){
 }
 
 module.exports = {
-  get places(){ return getPlaces(); },
+  initDb,
+  getPlaces,
   getPlaceById,
   getPlaceOwnerPublic,
   updatePlaceSettings,

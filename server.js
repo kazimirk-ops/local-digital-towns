@@ -23,14 +23,14 @@ const multer = require("multer");
 const trust = require("./lib/trust");
 const { sendAdminEmail } = require("./lib/notify");
 const TRUST_TIER_LABELS = trust.TRUST_TIER_LABELS;
-function getTrustBadgeForUser(userId){
-  const user = data.getUserById(userId);
+async function getTrustBadgeForUser(userId){
+  const user = await data.getUserById(userId);
   if(!user) return null;
-  const ctx = data.getTownContext(1, userId);
+  const ctx = await data.getTownContext(1, userId);
   const tier = trust.resolveTier(user, ctx);
   return {
     userId: user.id,
-    displayName: data.getDisplayNameForUser(user),
+    displayName: await data.getDisplayNameForUser(user),
     trustTier: tier,
     trustTierLabel: TRUST_TIER_LABELS[tier] || "Visitor"
   };
@@ -57,12 +57,12 @@ const loginLinkRateLimit = new Map();
 app.use(express.static(path.join(__dirname, "public")));
 const jsonParser = express.json({ limit: "5mb" });
 const urlencodedParser = express.urlencoded({ extended: false });
-app.use((req,res,next)=>{
+app.use(async (req,res,next)=>{
   if(req.path === "/api/stripe/webhook") return next();
   return jsonParser(req,res,next);
 });
 const LOCKDOWN = (process.env.LOCKDOWN_MODE || "").toLowerCase() === "true";
-app.use((req,res,next)=>{
+app.use(async (req,res,next)=>{
   if(!LOCKDOWN) return next();
   const pathName = req.path || "";
   const isGet = req.method === "GET";
@@ -92,8 +92,8 @@ app.use((req,res,next)=>{
       /\.[a-z0-9]+$/i.test(pathName);
     if(isStatic) return next();
   }
-  const userId = getUserId(req);
-  const user = userId ? data.getUserById(userId) : null;
+  const userId = await getUserId(req);
+  const user = userId ? await data.getUserById(userId) : null;
   if(isAdminUser(user)) return next();
   if(pathName.startsWith("/api")){
     return res.status(403).json({ error: "coming soon" });
@@ -101,26 +101,26 @@ app.use((req,res,next)=>{
   setCookie(res, "lockdown_logged_in", userId ? "1" : "0", { maxAge: 300 });
   return res.status(200).sendFile(path.join(__dirname,"public","coming_soon.html"));
 });
-app.use("/admin",(req,res,next)=>{
+app.use("/admin", async (req, res, next) =>{
   if(req.path === "/login" || req.path === "/bootstrap") return next();
-  const userId = getUserId(req);
-  const user = userId ? data.getUserById(userId) : null;
+  const userId = await getUserId(req);
+  const user = userId ? await data.getUserById(userId) : null;
   if(isAdminUser(user)) return next();
   if(req.method === "GET" || req.method === "HEAD"){
     return res.redirect("/ui");
   }
   return res.status(403).json({ error: "Admin access required" });
 });
-app.use("/api/admin",(req,res,next)=>{
-  const userId = getUserId(req);
-  const user = userId ? data.getUserById(userId) : null;
+app.use("/api/admin", async (req, res, next) =>{
+  const userId = await getUserId(req);
+  const user = userId ? await data.getUserById(userId) : null;
   if(isAdminUser(user)) return next();
   return res.status(403).json({ error: "Admin access required" });
 });
 
 // Health
-app.get("/health",(req,res)=>res.json({status:"ok"}));
-app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (req,res)=>{
+app.get("/health", async (req, res) =>res.json({status:"ok"}));
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) =>{
   if(!stripe || !process.env.STRIPE_WEBHOOK_SECRET){
     return res.status(400).json({error:"Stripe not configured"});
   }
@@ -136,12 +136,12 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (req,
     const session = event.data?.object;
     const orderId = Number(session?.metadata?.orderId || 0);
     if(orderId){
-      const order = data.getOrderById(orderId);
+      const order = await data.getOrderById(orderId);
       if(order && order.status !== "paid"){
-        data.updateOrderPayment(order.id, "stripe", session.id || "");
-        const existingPayment = data.getPaymentForOrder(order.id);
-        if(!existingPayment) data.createPaymentForOrder(order.id, Number(order.totalCents || 0), "stripe");
-        finalizeOrderPayment(order);
+        await data.updateOrderPayment(order.id, "stripe", session.id || "");
+        const existingPayment = await data.getPaymentForOrder(order.id);
+        if(!existingPayment) await data.createPaymentForOrder(order.id, Number(order.totalCents || 0), "stripe");
+        await finalizeOrderPayment(order);
       }
     }
   }
@@ -149,19 +149,19 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (req,
     const intent = event.data?.object;
     const orderId = Number(intent?.metadata?.orderId || 0);
     if(orderId){
-      const order = data.getOrderById(orderId);
+      const order = await data.getOrderById(orderId);
       if(order && order.status !== "paid"){
-        data.updateOrderPayment(order.id, "stripe", intent.id || "");
-        const existingPayment = data.getPaymentForOrder(order.id);
-        if(!existingPayment) data.createPaymentForOrder(order.id, Number(order.totalCents || 0), "stripe");
-        finalizeOrderPayment(order);
+        await data.updateOrderPayment(order.id, "stripe", intent.id || "");
+        const existingPayment = await data.getPaymentForOrder(order.id);
+        if(!existingPayment) await data.createPaymentForOrder(order.id, Number(order.totalCents || 0), "stripe");
+        await finalizeOrderPayment(order);
       }
     }
   }
   res.json({ received:true });
 });
-app.get("/debug/routes",(req,res)=>{
-  const admin=requireAdminOrDev(req,res); if(!admin) return;
+app.get("/debug/routes", async (req, res) =>{
+  const admin=await requireAdminOrDev(req,res); if(!admin) return;
   const routes = [];
   const stack = app._router?.stack || [];
   for(const layer of stack){
@@ -173,31 +173,31 @@ app.get("/debug/routes",(req,res)=>{
 });
 
 // Pages
-app.get("/ui",(req,res)=>res.sendFile(path.join(__dirname,"public","index.html")));
-app.get("/signup",(req,res)=>res.sendFile(path.join(__dirname,"public","signup.html")));
-app.get("/waitlist",(req,res)=>res.sendFile(path.join(__dirname,"public","waitlist.html")));
-app.get("/apply/business",(req,res)=>res.sendFile(path.join(__dirname,"public","apply_business.html")));
-app.get("/apply/resident",(req,res)=>res.sendFile(path.join(__dirname,"public","apply_resident.html")));
-app.get("/u/:id",(req,res)=>res.sendFile(path.join(__dirname,"public","profile.html")));
-app.get("/me/store",(req,res)=>res.sendFile(path.join(__dirname,"public","store_profile.html")));
-app.get("/me/profile",(req,res)=>res.sendFile(path.join(__dirname,"public","my_profile.html")));
-app.get("/me/orders",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.get("/ui", async (req, res) =>res.sendFile(path.join(__dirname,"public","index.html")));
+app.get("/signup", async (req, res) =>res.sendFile(path.join(__dirname,"public","signup.html")));
+app.get("/waitlist", async (req, res) =>res.sendFile(path.join(__dirname,"public","waitlist.html")));
+app.get("/apply/business", async (req, res) =>res.sendFile(path.join(__dirname,"public","apply_business.html")));
+app.get("/apply/resident", async (req, res) =>res.sendFile(path.join(__dirname,"public","apply_resident.html")));
+app.get("/u/:id", async (req, res) =>res.sendFile(path.join(__dirname,"public","profile.html")));
+app.get("/me/store", async (req, res) =>res.sendFile(path.join(__dirname,"public","store_profile.html")));
+app.get("/me/profile", async (req, res) =>res.sendFile(path.join(__dirname,"public","my_profile.html")));
+app.get("/me/orders", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   res.sendFile(path.join(__dirname,"public","my_orders.html"));
 });
-app.get("/me/seller/orders",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.get("/me/seller/orders", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   res.sendFile(path.join(__dirname,"public","seller_orders.html"));
 });
-app.get("/me/hub",(req,res)=>res.redirect("/me/store"));
-app.get("/pay/:id",(req,res)=>res.sendFile(path.join(__dirname,"public","pay.html")));
-app.get("/pay/success",(req,res)=>res.sendFile(path.join(__dirname,"public","pay_success.html")));
-app.get("/pay/cancel",(req,res)=>res.sendFile(path.join(__dirname,"public","pay_cancel.html")));
-app.get("/debug/context",(req,res)=>{
-  const admin=requireAdminOrDev(req,res); if(!admin) return;
-  const u = getUserId(req);
-  const user = u ? data.getUserById(u) : null;
-  const ctx = data.getTownContext(1, u);
+app.get("/me/hub", async (req, res) =>res.redirect("/me/store"));
+app.get("/pay/:id", async (req, res) =>res.sendFile(path.join(__dirname,"public","pay.html")));
+app.get("/pay/success", async (req, res) =>res.sendFile(path.join(__dirname,"public","pay_success.html")));
+app.get("/pay/cancel", async (req, res) =>res.sendFile(path.join(__dirname,"public","pay_cancel.html")));
+app.get("/debug/context", async (req, res) =>{
+  const admin=await requireAdminOrDev(req,res); if(!admin) return;
+  const u = await getUserId(req);
+  const user = u ? await data.getUserById(u) : null;
+  const ctx = await data.getTownContext(1, u);
   const tier = trust.resolveTier(user, ctx);
   res.json({
     user: user ? { id: user.id, email: user.email } : null,
@@ -214,21 +214,21 @@ app.get("/debug/context",(req,res)=>{
     } : null
   });
 });
-app.get("/debug/context/ui",(req,res)=>res.sendFile(path.join(__dirname,"public","debug_context.html")));
-app.get("/live/:id",(req,res)=>res.sendFile(path.join(__dirname,"public","live.html")));
-app.get("/me/live",(req,res)=>res.sendFile(path.join(__dirname,"public","live_host.html")));
-function requireAdminPage(req,res){
-  const uid = getUserId(req);
+app.get("/debug/context/ui", async (req, res) =>res.sendFile(path.join(__dirname,"public","debug_context.html")));
+app.get("/live/:id", async (req, res) =>res.sendFile(path.join(__dirname,"public","live.html")));
+app.get("/me/live", async (req, res) =>res.sendFile(path.join(__dirname,"public","live_host.html")));
+async function requireAdminPage(req,res){
+  const uid = await getUserId(req);
   if(!uid){ res.redirect("/admin/login"); return null; }
-  const user = data.getUserById(uid);
+  const user = await data.getUserById(uid);
   if(!isAdminUser(user)){
     res.status(403).sendFile(path.join(__dirname,"public","admin_login.html"));
     return null;
   }
   return user;
 }
-app.get("/admin/login",(req,res)=>res.sendFile(path.join(__dirname,"public","admin_login.html")));
-app.post("/admin/login", urlencodedParser, (req,res)=>{
+app.get("/admin/login", async (req, res) =>res.sendFile(path.join(__dirname,"public","admin_login.html")));
+app.post("/admin/login", urlencodedParser, async (req, res) =>{
   const wantsHtml = (req.headers.accept || "").includes("text/html");
   const email = (req.body?.email || "").toString().trim().toLowerCase();
   const passphrase = (req.body?.passphrase || "").toString();
@@ -241,68 +241,68 @@ app.post("/admin/login", urlencodedParser, (req,res)=>{
     if(wantsHtml) return res.redirect("/admin/login?error=Invalid%20passphrase");
     return res.status(403).json({ error: "Invalid passphrase" });
   }
-  const user = data.upsertUserByEmail(email);
+  const user = await data.upsertUserByEmail(email);
   if(!user){
     if(wantsHtml) return res.redirect("/admin/login?error=Invalid%20email");
     return res.status(400).json({ error: "Invalid email" });
   }
-  const adminUser = data.setUserAdmin(user.id, true);
+  const adminUser = await data.setUserAdmin(user.id, true);
   if(adminUser?.error){
     if(wantsHtml) return res.redirect("/admin/login?error=Failed%20to%20set%20admin");
     return res.status(500).json({ error: "Failed to set admin" });
   }
-  const s = data.createSession(user.id);
+  const s = await data.createSession(user.id);
   setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30,secure:isHttpsRequest(req)});
   if(wantsHtml) return res.redirect("/admin");
   return res.json({ ok:true });
 });
-app.get("/admin/bootstrap",(req,res)=>{
+app.get("/admin/bootstrap", async (req, res) =>{
   const token = (req.query.token || "").toString();
   const expected = (process.env.ADMIN_BOOTSTRAP_TOKEN || "").toString();
   if(!token || token !== expected) return res.status(403).send("Forbidden");
   const email = (req.query.email || "").toString().trim().toLowerCase();
   if(!email) return res.status(400).send("Email required");
-  const user = data.upsertUserByEmail(email);
+  const user = await data.upsertUserByEmail(email);
   if(!user) return res.status(400).send("Invalid email");
-  const adminUser = data.setUserAdmin(user.id, true);
+  const adminUser = await data.setUserAdmin(user.id, true);
   if(adminUser?.error) return res.status(500).send("Failed to set admin");
   console.log("ADMIN_BOOTSTRAP_USED", email);
-  const s = data.createSession(user.id);
+  const s = await data.createSession(user.id);
   setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30,secure:isHttpsRequest(req)});
   res.redirect("/admin");
 });
-app.get("/admin",(req,res)=>{
-  const admin=requireAdminPage(req,res); if(!admin) return;
+app.get("/admin", async (req, res) =>{
+  const admin=await requireAdminPage(req,res); if(!admin) return;
   res.sendFile(path.join(__dirname,"public","admin.html"));
 });
-app.get("/admin/analytics",(req,res)=>{
-  const admin=requireAdminPage(req,res); if(!admin) return;
+app.get("/admin/analytics", async (req, res) =>{
+  const admin=await requireAdminPage(req,res); if(!admin) return;
   res.sendFile(path.join(__dirname,"public","admin_analytics.html"));
 });
-app.get("/admin/media",(req,res)=>{
-  const admin=requireAdminPage(req,res); if(!admin) return;
+app.get("/admin/media", async (req, res) =>{
+  const admin=await requireAdminPage(req,res); if(!admin) return;
   res.sendFile(path.join(__dirname,"public","admin_media.html"));
 });
-app.get("/store/:id",(req,res)=>res.sendFile(path.join(__dirname,"public","store.html")));
-app.get("/admin/sweep",(req,res)=>{
-  const admin=requireAdminPage(req,res); if(!admin) return;
+app.get("/store/:id", async (req, res) =>res.sendFile(path.join(__dirname,"public","store.html")));
+app.get("/admin/sweep", async (req, res) =>{
+  const admin=await requireAdminPage(req,res); if(!admin) return;
   res.sendFile(path.join(__dirname,"public","admin_sweep.html"));
 });
-app.get("/admin/trust",(req,res)=>{
-  const admin=requireAdminPage(req,res); if(!admin) return;
+app.get("/admin/trust", async (req, res) =>{
+  const admin=await requireAdminPage(req,res); if(!admin) return;
   res.sendFile(path.join(__dirname,"public","admin_trust.html"));
 });
-app.get("/admin/applications",(req,res)=>{
-  const admin=requireAdminPage(req,res); if(!admin) return;
+app.get("/admin/applications", async (req, res) =>{
+  const admin=await requireAdminPage(req,res); if(!admin) return;
   res.sendFile(path.join(__dirname,"public","admin_applications.html"));
 });
-app.get("/admin/waitlist",(req,res)=>{
-  const admin=requireAdminPage(req,res); if(!admin) return;
+app.get("/admin/waitlist", async (req, res) =>{
+  const admin=await requireAdminPage(req,res); if(!admin) return;
   res.sendFile(path.join(__dirname,"public","admin_applications.html"));
 });
 
 // Neighbor towns (directory only; no identity sharing)
-app.get("/towns/neighbor",(req,res)=>res.json({towns:TOWN_DIRECTORY}));
+app.get("/towns/neighbor", async (req, res) =>res.json({towns:TOWN_DIRECTORY}));
 
 // Cookies
 function parseCookies(req){
@@ -326,14 +326,14 @@ function setCookie(res,n,v,o={}){
   if(o.maxAge!=null) p.push(`Max-Age=${o.maxAge}`);
   res.setHeader("Set-Cookie",p.join("; "));
 }
-function getUserId(req){
+async function getUserId(req){
   const sid=parseCookies(req).sid;
   if(!sid) return null;
-  const r=data.getUserBySession(sid);
+  const r=await data.getUserBySession(sid);
   return r?.user?.id ?? null;
 }
-function requireLogin(req,res){
-  const u=getUserId(req);
+async function requireLogin(req,res){
+  const u=await getUserId(req);
   if(!u){res.status(401).json({error:"Login required"});return null;}
   return u;
 }
@@ -345,9 +345,9 @@ function isAdminUser(user){
   if(email && ADMIN_EMAIL_ALLOWLIST.has(email)) return true;
   return false;
 }
-function requireAdmin(req,res,options={}){
-  const u=requireLogin(req,res); if(!u) return null;
-  const user=data.getUserById(u);
+async function requireAdmin(req,res,options={}){
+  const u=await requireLogin(req,res); if(!u) return null;
+  const user=await data.getUserById(u);
   if(!isAdminUser(user)){
     const message = (options.message || "Admin required").toString();
     res.status(403).json({error: message});
@@ -355,12 +355,12 @@ function requireAdmin(req,res,options={}){
   }
   return user;
 }
-function requireAdminOrDev(req,res){
+async function requireAdminOrDev(req,res){
   if(process.env.NODE_ENV !== "production"){
-    const u=requireLogin(req,res); if(!u) return null;
-    return data.getUserById(u);
+    const u=await requireLogin(req,res); if(!u) return null;
+    return await data.getUserById(u);
   }
-  return requireAdmin(req,res);
+  return await requireAdmin(req,res);
 }
 
 function getAdminReviewLink(){
@@ -369,9 +369,9 @@ function getAdminReviewLink(){
   return `${base.replace(/\/$/,"")}/admin/applications`;
 }
 
-function getSweepPrizeInfo(sweep, snapshotPrize){
+async function getSweepPrizeInfo(sweep, snapshotPrize){
   if(snapshotPrize && snapshotPrize.title) return snapshotPrize;
-  const offers = data.listActivePrizeOffers ? data.listActivePrizeOffers() : [];
+  const offers = await data.listActivePrizeOffers();
   const offer = offers[0];
   const title = (offer?.title || sweep?.prize || sweep?.title || "").toString().trim();
   const donorName = (offer?.donorDisplayName || "").toString().trim();
@@ -384,113 +384,112 @@ function getSweepPrizeInfo(sweep, snapshotPrize){
   };
 }
 
-function getSweepDrawContext(draw){
+async function getSweepDrawContext(draw){
   if(!draw) return { sweep: null, prize: null, snapshot: {} };
-  const sweep = data.getSweepstakeById(draw.sweepId);
+  const sweep = await data.getSweepstakeById(draw.sweepId);
   let snapshot = {};
   try{ snapshot = JSON.parse(draw.snapshotJson || "{}"); }catch(_){}
-  const prize = getSweepPrizeInfo(sweep, snapshot.prize);
+  const prize = await getSweepPrizeInfo(sweep, snapshot.prize);
   return { sweep, prize, snapshot };
 }
 
-function resolveSweepDonorUserId(prize){
+async function resolveSweepDonorUserId(prize){
   if(!prize) return null;
   if(prize.donorUserId) return Number(prize.donorUserId);
   if(prize.donorPlaceId){
-    const place = data.getPlaceById(prize.donorPlaceId);
+    const place = await data.getPlaceById(prize.donorPlaceId);
     if(place?.ownerUserId) return Number(place.ownerUserId);
   }
   return null;
 }
 
-function resolveSweepDonorName(prize, donorUserId){
+async function resolveSweepDonorName(prize, donorUserId){
   const name = (prize?.donorName || "").toString().trim();
   if(name) return name;
   if(donorUserId){
-    const donorUser = data.getUserById(donorUserId);
-    return donorUser ? data.getDisplayNameForUser(donorUser) : "";
+    const donorUser = await data.getUserById(donorUserId);
+    return donorUser ? await data.getDisplayNameForUser(donorUser) : "";
   }
   return "";
 }
 
-function notifySweepDrawUsers({ draw, sweep, winner, prize, adminId }){
+async function notifySweepDrawUsers({ draw, sweep, winner, prize, adminId }){
   if(!draw?.id || !winner?.userId) return;
   if(Number(draw.notified) === 1) return;
   const prizeTitle = (prize?.title || sweep?.prize || sweep?.title || "Prize").toString().trim();
-  const donorUserId = resolveSweepDonorUserId(prize);
-  const donorName = resolveSweepDonorName(prize, donorUserId) || "Donor";
-  const winnerUser = data.getUserById(winner.userId);
-  const winnerName = winner.displayName || (winnerUser ? data.getDisplayNameForUser(winnerUser) : "Winner");
+  const donorUserId = await resolveSweepDonorUserId(prize);
+  const donorName = await resolveSweepDonorName(prize, donorUserId) || "Donor";
+  const winnerUser = await data.getUserById(winner.userId);
+  const winnerName = winner.displayName || (winnerUser ? await data.getDisplayNameForUser(winnerUser) : "Winner");
   const drawnAt = draw.createdAt || new Date().toISOString();
   const systemPrefix = "[SYSTEM] ";
 
   try{
     if(donorUserId && Number(donorUserId) !== Number(winner.userId)){
-      const convo = data.addDirectConversation(winner.userId, donorUserId);
+      const convo = await data.addDirectConversation(winner.userId, donorUserId);
       const longText = `${systemPrefix}🎉 You won: ${prizeTitle} (Donor: ${donorName}). Please coordinate pickup/delivery here. Winner: reply with preferred pickup time/location. Donor: reply with instructions.\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}`;
       if(convo?.id){
-        data.addDirectMessage(convo.id, adminId, longText);
+        await data.addDirectMessage(convo.id, adminId, longText);
         const winnerNote = `${systemPrefix}🎉 You won ${prizeTitle}! Check your inbox thread with ${donorName} for instructions.`;
-        data.addDirectMessage(convo.id, adminId, winnerNote);
+        await data.addDirectMessage(convo.id, adminId, winnerNote);
         const donorNote = `${systemPrefix}${winnerName} won your prize ${prizeTitle}. Please send pickup instructions in this thread.`;
-        data.addDirectMessage(convo.id, adminId, donorNote);
+        await data.addDirectMessage(convo.id, adminId, donorNote);
       }
     }else{
-      const convo = data.addDirectConversation(adminId, winner.userId);
+      const convo = await data.addDirectConversation(adminId, winner.userId);
       if(convo?.id){
         const winnerNote = `${systemPrefix}🎉 You won ${prizeTitle}! We will follow up with donor details soon.`;
-        data.addDirectMessage(convo.id, adminId, winnerNote);
+        await data.addDirectMessage(convo.id, adminId, winnerNote);
       }
       if(donorUserId){
-        const donorConvo = data.addDirectConversation(adminId, donorUserId);
+        const donorConvo = await data.addDirectConversation(adminId, donorUserId);
         if(donorConvo?.id){
           const donorNote = `${systemPrefix}${winnerName} won your prize ${prizeTitle}. Please send pickup instructions in the winner thread.`;
-          data.addDirectMessage(donorConvo.id, adminId, donorNote);
+          await data.addDirectMessage(donorConvo.id, adminId, donorNote);
         }
       }
     }
-    data.setSweepDrawNotified(draw.id);
+    await data.setSweepDrawNotified(draw.id);
   }catch(err){
     console.warn("Sweep draw notify failed", err?.message || err);
   }
 }
 
-function buildSweepParticipants(sweepId){
-  const rows = data.listSweepstakeParticipants(sweepId);
-  return rows
-    .map((row)=>{
-      const user = data.getUserById(row.userId);
-      return {
-        userId: Number(row.userId),
-        displayName: data.getDisplayNameForUser(user),
-        entries: Number(row.entries || 0)
-      };
-    })
-    .filter((p)=>p.entries > 0);
+async function buildSweepParticipants(sweepId){
+  const rows = await data.listSweepstakeParticipants(sweepId);
+  const participants = await Promise.all(rows.map(async (row)=>{
+    const user = await data.getUserById(row.userId);
+    return {
+      userId: Number(row.userId),
+      displayName: await data.getDisplayNameForUser(user),
+      entries: Number(row.entries || 0)
+    };
+  }));
+  return participants.filter((p)=>p.entries > 0);
 }
 
-function getSweepstakeActivePayload(req){
-  const sweep = data.getActiveSweepstake();
+async function getSweepstakeActivePayload(req){
+  const sweep = await data.getActiveSweepstake();
   if(!sweep) return { sweepstake:null };
-  const totals = data.getSweepstakeEntryTotals(sweep.id);
-  const participants = buildSweepParticipants(sweep.id);
-  const draw = data.getSweepDrawBySweepId(sweep.id);
+  const totals = await data.getSweepstakeEntryTotals(sweep.id);
+  const participants = await buildSweepParticipants(sweep.id);
+  const draw = await data.getSweepDrawBySweepId(sweep.id);
   let snapshot = {};
   if(draw?.snapshotJson){
     try{ snapshot = JSON.parse(draw.snapshotJson || "{}"); }catch(_){}
   }
-  const prize = getSweepPrizeInfo(sweep, snapshot.prize);
+  const prize = await getSweepPrizeInfo(sweep, snapshot.prize);
   const winnerUserId = draw?.winnerUserId || sweep.winnerUserId || null;
   const winner = winnerUserId
     ? {
       userId: Number(winnerUserId),
-      displayName: data.getDisplayNameForUser(data.getUserById(winnerUserId)),
+      displayName: await data.getDisplayNameForUser(await data.getUserById(winnerUserId)),
       entries: participants.find(p=>Number(p.userId)===Number(winnerUserId))?.entries || 0
     }
     : null;
-  const u = getUserId(req);
-  const userEntries = u ? data.getUserEntriesForSweepstake(sweep.id, u) : 0;
-  const balance = u ? data.getSweepBalance(u) : 0;
+  const u = await getUserId(req);
+  const userEntries = u ? await data.getUserEntriesForSweepstake(sweep.id, u) : 0;
+  const balance = u ? await data.getSweepBalance(u) : 0;
   return {
     sweepstake: sweep,
     totals,
@@ -536,31 +535,31 @@ async function sendLoginEmail(toEmail, magicUrl){
   }
 }
 
-function getUserTier(req){
-  const userId = getUserId(req);
-  const user = userId ? data.getUserById(userId) : null;
-  const ctx = data.getTownContext(1, userId);
+async function getUserTier(req){
+  const userId = await getUserId(req);
+  const user = userId ? await data.getUserById(userId) : null;
+  const ctx = await data.getTownContext(1, userId);
   const tier = trust.resolveTier(user, ctx);
   return { userId, user, ctx, tier };
 }
-function hasPerm(user, perm, ctx){
+async function hasPerm(user, perm, ctx){
   if(!user) return false;
-  const context = ctx || data.getTownContext(1, user.id);
+  const context = ctx || await data.getTownContext(1, user.id);
   return trust.hasPerm(user, context, perm);
 }
-function requirePerm(req,res,perm){
-  const userId = requireLogin(req,res); if(!userId) return null;
-  const user = data.getUserById(userId);
-  const ctx = data.getTownContext(1, userId);
-  if(!hasPerm(user, perm, ctx)){
+async function requirePerm(req,res,perm){
+  const userId = await requireLogin(req,res); if(!userId) return null;
+  const user = await data.getUserById(userId);
+  const ctx = await data.getTownContext(1, userId);
+  if(!await hasPerm(user, perm, ctx)){
     res.status(403).json({error:`Requires ${perm}`});
     return null;
   }
   return { userId, user, ctx };
 }
 
-function requireBuyerTier(req,res){
-  const access = requirePerm(req,res,"BUY_MARKET");
+async function requireBuyerTier(req,res){
+  const access = await requirePerm(req,res,"BUY_MARKET");
   return access ? access.userId : null;
 }
 function requireStripeConfig(res){
@@ -590,16 +589,16 @@ function rangeToBounds(range){
   }
   return { from: start.toISOString(), to: now.toISOString(), range: key };
 }
-function finalizeOrderPayment(order){
+async function finalizeOrderPayment(order){
   if(!order) return { ok:false, error:"Order not found" };
   if(order.status === "paid") return { ok:true, alreadyPaid:true, order };
-  const items = data.getOrderItems(order.id);
+  const items = await data.getOrderItems(order.id);
   const listingId = items[0]?.listingId || order.listingId;
-  const listing = listingId ? data.getListingById(listingId) : null;
-  const updated = data.markOrderPaid(order.id);
-  data.markPaymentPaid(order.id);
+  const listing = listingId ? await data.getListingById(listingId) : null;
+  const updated = await data.markOrderPaid(order.id);
+  await data.markPaymentPaid(order.id);
   if(listing && (listing.listingType||"item")==="auction"){
-    data.updateListingAuctionState(listing.id, {
+    await data.updateListingAuctionState(listing.id, {
       auctionStatus: "paid",
       paymentStatus: "paid",
       winningBidId: listing.winningBidId,
@@ -607,7 +606,9 @@ function finalizeOrderPayment(order){
       paymentDueAt: listing.paymentDueAt || ""
     });
   }else if(items.length){
-    items.forEach((i)=>data.decrementListingQuantity(i.listingId, i.quantity));
+    for(const item of items){
+      await data.decrementListingQuantity(item.listingId, item.quantity);
+    }
   }
   return { ok:true, order: updated };
 }
@@ -662,7 +663,7 @@ async function createCallsRoom(){
 }
 
 // Auth
-app.post("/auth/request-link",(req,res)=>{
+app.post("/auth/request-link", async (req, res) =>{
   const email=(req.body?.email||"").toLowerCase().trim();
   const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").toString().split(",")[0].trim();
   const rateKey = `${ip}|${email}`;
@@ -673,7 +674,7 @@ app.post("/auth/request-link",(req,res)=>{
   }
   loginLinkRateLimit.set(rateKey, now);
 
-  const c=data.createMagicLink(email);
+  const c=await data.createMagicLink(email);
   const base=(process.env.PUBLIC_BASE_URL || "").replace(/\/$/,"");
   const magicUrl = c?.token ? `${base}/auth/magic?token=${c.token}` : "";
   if(process.env.NODE_ENV === "production"){
@@ -689,28 +690,28 @@ app.post("/auth/request-link",(req,res)=>{
   }
   res.json({ ok:true, message: "Check your email for your login link." });
 });
-app.get("/auth/magic",(req,res)=>{
-  const c=data.consumeMagicToken(req.query.token);
+app.get("/auth/magic", async (req, res) =>{
+  const c=await data.consumeMagicToken(req.query.token);
   if(c.error) return res.status(400).send(c.error);
-  const s=data.createSession(c.userId);
+  const s=await data.createSession(c.userId);
   setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30,secure:isHttpsRequest(req)});
   res.redirect("/ui");
 });
-app.get("/auth/logout",(req,res)=>{
+app.get("/auth/logout", async (req, res) =>{
   const sid=parseCookies(req).sid;
-  if(sid) data.deleteSession(sid);
+  if(sid) await data.deleteSession(sid);
   setCookie(res,"sid","",{httpOnly:true,maxAge:0,secure:isHttpsRequest(req)});
   res.redirect("/ui");
 });
-app.post("/auth/logout",(req,res)=>{
+app.post("/auth/logout", async (req, res) =>{
   const sid=parseCookies(req).sid;
-  if(sid) data.deleteSession(sid);
+  if(sid) await data.deleteSession(sid);
   setCookie(res,"sid","",{httpOnly:true,maxAge:0,secure:isHttpsRequest(req)});
   res.json({ok:true});
 });
 
-app.post("/api/public/waitlist",(req,res)=>{
-  const result = data.addWaitlistSignup(req.body || {});
+app.post("/api/public/waitlist", async (req, res) =>{
+  const result = await data.addWaitlistSignup(req.body || {});
   if(result?.error) return res.status(400).json({ error: result.error });
   const waitlistSummary = {
     name: (req.body?.name || "").toString().trim(),
@@ -731,8 +732,8 @@ app.post("/api/public/waitlist",(req,res)=>{
   res.json({ ok:true });
 });
 
-app.post("/api/public/apply/business",(req,res)=>{
-  const result = data.addBusinessApplication(req.body || {});
+app.post("/api/public/apply/business", async (req, res) =>{
+  const result = await data.addBusinessApplication(req.body || {});
   if(result?.error) return res.status(400).json({ error: result.error });
   const businessSummary = {
     contactName: (req.body?.contactName || "").toString().trim(),
@@ -758,8 +759,8 @@ app.post("/api/public/apply/business",(req,res)=>{
   res.json({ ok:true });
 });
 
-app.post("/api/public/apply/resident",(req,res)=>{
-  const result = data.addResidentApplication(req.body || {});
+app.post("/api/public/apply/resident", async (req, res) =>{
+  const result = await data.addResidentApplication(req.body || {});
   if(result?.error) return res.status(400).json({ error: result.error });
   const residentSummary = {
     name: (req.body?.name || "").toString().trim(),
@@ -798,9 +799,9 @@ function prefixForKind(kind){
 }
 
 app.post("/api/uploads", upload.single("file"), async (req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const ctx=data.getTownContext(1, u);
-  const user=data.getUserById(u);
+  const u=await requireLogin(req,res); if(!u) return;
+  const ctx=await data.getTownContext(1, u);
+  const user=await data.getUserById(u);
   const file = req.file;
   if(!file) return res.status(400).json({error:"file required"});
   if(!file.mimetype || !file.mimetype.startsWith("image/")){
@@ -827,7 +828,7 @@ app.post("/api/uploads", upload.single("file"), async (req,res)=>{
       contentType: file.mimetype,
       prefix: prefixForKind(kind)
     });
-    const media = data.addMediaObject({
+    const media = await data.addMediaObject({
       townId: 1,
       ownerUserId: u,
       placeId: placeId == null ? null : Number(placeId),
@@ -845,30 +846,30 @@ app.post("/api/uploads", upload.single("file"), async (req,res)=>{
     res.status(500).json({error: e.message});
   }
 });
-app.get("/me",(req,res)=>{
+app.get("/me", async (req, res) =>{
   const sid=parseCookies(req).sid;
   if(!sid) return res.json({user:null});
-  const r=data.getUserBySession(sid);
+  const r=await data.getUserBySession(sid);
   if(!r) return res.json({user:null});
-  data.ensureTownMembership(1,r.user.id);
+  await data.ensureTownMembership(1,r.user.id);
   res.json(r);
 });
-app.get("/api/users/:id",(req,res)=>{
-  const profile = data.getUserProfilePublic(req.params.id);
+app.get("/api/users/:id", async (req, res) =>{
+  const profile = await data.getUserProfilePublic(req.params.id);
   if(!profile) return res.status(404).json({error:"User not found"});
-  const user = data.getUserById(profile.id);
-  const ctx = data.getTownContext(1, profile.id);
+  const user = await data.getUserById(profile.id);
+  const ctx = await data.getTownContext(1, profile.id);
   const tier = trust.resolveTier(user, ctx);
   res.json({ ...profile, trustTier: tier, trustTierLabel: TRUST_TIER_LABELS[tier] || "Visitor" });
 });
-app.get("/api/me/profile",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const profile = data.getUserProfilePrivate(u);
+app.get("/api/me/profile", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const profile = await data.getUserProfilePrivate(u);
   if(!profile) return res.status(404).json({error:"User not found"});
   res.json(profile);
 });
-app.patch("/api/me/profile",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.patch("/api/me/profile", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   const displayName = (req.body?.displayName || "").toString();
   const bio = (req.body?.bio || "").toString();
   const avatarUrl = (req.body?.avatarUrl || "").toString();
@@ -882,7 +883,7 @@ app.patch("/api/me/profile",(req,res)=>{
   for(const t of interests){
     if((t || "").toString().length > 24) return res.status(400).json({error:"interest too long"});
   }
-  const updated = data.updateUserProfile(u, {
+  const updated = await data.updateUserProfile(u, {
     displayName,
     bio,
     avatarUrl,
@@ -896,49 +897,51 @@ app.patch("/api/me/profile",(req,res)=>{
   res.json(updated);
 });
 
-app.get("/dm",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const convos = data.listDirectConversationsForUser(u).map((c)=>{
-    const other = c.otherUser?.id ? getTrustBadgeForUser(c.otherUser.id) : null;
+app.get("/dm", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const convos = await data.listDirectConversationsForUser(u);
+  const rows = await Promise.all(convos.map(async (c)=>{
+    const other = c.otherUser?.id ? await getTrustBadgeForUser(c.otherUser.id) : null;
     return { ...c, otherUser: other || c.otherUser };
-  });
-  res.json(convos);
+  }));
+  res.json(rows);
 });
-app.post("/dm/start",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.post("/dm/start", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   const otherUserId = Number(req.body?.otherUserId);
   if(!otherUserId) return res.status(400).json({error:"otherUserId required"});
   if(Number(otherUserId)===Number(u)) return res.status(400).json({error:"Cannot message self"});
-  const other = data.getUserById(otherUserId);
+  const other = await data.getUserById(otherUserId);
   if(!other) return res.status(404).json({error:"User not found"});
-  const convo = data.addDirectConversation(u, otherUserId);
+  const convo = await data.addDirectConversation(u, otherUserId);
   res.status(201).json({ id: convo.id, otherUserId });
 });
-app.get("/dm/:id/messages",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  if(!data.isDirectConversationMember(req.params.id, u)) return res.status(403).json({error:"Forbidden"});
-  const msgs = data.getDirectMessages(req.params.id).map((m)=>({
+app.get("/dm/:id/messages", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  if(!await data.isDirectConversationMember(req.params.id, u)) return res.status(403).json({error:"Forbidden"});
+  const messages = await data.getDirectMessages(req.params.id);
+  const msgs = await Promise.all(messages.map(async (m)=>({
     ...m,
-    sender: getTrustBadgeForUser(m.senderUserId)
-  }));
+    sender: await getTrustBadgeForUser(m.senderUserId)
+  })));
   res.json(msgs);
 });
-app.post("/dm/:id/messages",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const ctx=data.getTownContext(1, u);
-  const user=data.getUserById(u);
+app.post("/dm/:id/messages", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const ctx=await data.getTownContext(1, u);
+  const user=await data.getUserById(u);
   const gate = trust.can(user, ctx, "chat_text");
   if(!gate.ok) return res.status(403).json({error:"Chat requires verified access"});
-  if(!data.isDirectConversationMember(req.params.id, u)) return res.status(403).json({error:"Forbidden"});
+  if(!await data.isDirectConversationMember(req.params.id, u)) return res.status(403).json({error:"Forbidden"});
   const text = (req.body?.text || "").toString().trim();
   if(!text) return res.status(400).json({error:"text required"});
-  const msg = data.addDirectMessage(req.params.id, u, text);
+  const msg = await data.addDirectMessage(req.params.id, u, text);
   res.status(201).json({ ok:true, id: msg.id });
 });
-app.get("/town/context",(req,res)=>{
-  const u=getUserId(req);
-  const ctx = data.getTownContext(1, u);
-  const user = u ? data.getUserById(u) : null;
+app.get("/town/context", async (req, res) =>{
+  const u=await getUserId(req);
+  const ctx = await data.getTownContext(1, u);
+  const user = u ? await data.getUserById(u) : null;
   const tier = trust.resolveTier(user, ctx);
   const tierName = TRUST_TIER_LABELS[tier] || "Visitor";
   const permissions = trust.permissionsForTier(tier);
@@ -981,56 +984,56 @@ function isInsideSebastianBox(lat, lng){
   return { ok:true };
 }
 
-app.post("/api/presence/verify",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.post("/api/presence/verify", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   const lat = Number(req.body?.lat);
   const lng = Number(req.body?.lng);
   const accuracyMeters = Number(req.body?.accuracyMeters);
   const check = isInsideSebastian(lat, lng, accuracyMeters);
   if(!check.ok) return res.status(400).json({ ok:false, inside:false, error: check.error });
-  const updated = data.updateUserPresence(u, { lat, lng, accuracyMeters });
+  const updated = await data.updateUserPresence(u, { lat, lng, accuracyMeters });
   res.json({ ok:true, inside:true, presenceVerifiedAt: updated.presenceVerifiedAt });
 });
 
-app.post("/api/verify/location",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.post("/api/verify/location", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   const lat = Number(req.body?.lat);
   const lng = Number(req.body?.lng);
   const check = isInsideSebastianBox(lat, lng);
   if(!check.ok) return res.status(400).json({ ok:false, inside:false, error: check.error });
-  data.setUserLocationVerifiedSebastian(u, true);
+  await data.setUserLocationVerifiedSebastian(u, true);
   res.json({ ok:true, inside:true });
 });
 
-app.post("/api/verify/resident",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const created = data.addResidentVerificationRequest(req.body || {}, u);
+app.post("/api/verify/resident", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const created = await data.addResidentVerificationRequest(req.body || {}, u);
   if(created?.error) return res.status(400).json(created);
   res.status(201).json(created);
 });
 
-app.post("/api/admin/verify/resident/approve",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.post("/api/admin/verify/resident/approve", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const userId = Number(req.body?.userId);
   if(!userId) return res.status(400).json({error:"userId required"});
-  const approved = data.approveResidentVerification(userId, admin.id);
+  const approved = await data.approveResidentVerification(userId, admin.id);
   if(approved?.error) return res.status(400).json(approved);
-  const updated = data.setUserTrustTier(1, userId, 2);
+  const updated = await data.setUserTrustTier(1, userId, 2);
   if(updated?.error) return res.status(400).json(updated);
   res.json({ ok:true });
 });
 
-app.post("/api/admin/verify/business/approve",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.post("/api/admin/verify/business/approve", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const userId = Number(req.body?.userId);
   if(!userId) return res.status(400).json({error:"userId required"});
-  const updated = data.setUserTrustTier(1, userId, 3);
+  const updated = await data.setUserTrustTier(1, userId, 3);
   if(updated?.error) return res.status(400).json(updated);
   res.json({ ok:true });
 });
 
-app.post("/api/trust/apply",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.post("/api/trust/apply", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   const requestedTier = Number(req.body?.requestedTier);
   if(![1,2,3].includes(requestedTier)) return res.status(400).json({error:"requestedTier must be 1, 2, or 3"});
   const payload = {
@@ -1046,14 +1049,14 @@ app.post("/api/trust/apply",(req,res)=>{
   if(!payload.email || !payload.phone || !payload.address1 || !payload.city || !payload.state || !payload.zip || !payload.identityMethod){
     return res.status(400).json({error:"Missing required fields"});
   }
-  const user = data.getUserById(u);
+  const user = await data.getUserById(u);
   if(requestedTier === 1){
     if(Number(user?.locationVerifiedSebastian || 0) !== 1){
       return res.status(400).json({error:"Location verified in Sebastian required."});
     }
   }
   if(requestedTier === 2){
-    const reqRow = data.addResidentVerificationRequest({
+    const reqRow = await data.addResidentVerificationRequest({
       addressLine1: payload.address1,
       city: payload.city,
       state: payload.state,
@@ -1061,7 +1064,7 @@ app.post("/api/trust/apply",(req,res)=>{
     }, u);
     if(reqRow?.error) return res.status(400).json(reqRow);
   }
-  data.updateUserContact(u, {
+  await data.updateUserContact(u, {
     phone: payload.phone,
     address: {
       address1: payload.address1,
@@ -1072,7 +1075,7 @@ app.post("/api/trust/apply",(req,res)=>{
     }
   });
   const autoApprove = requestedTier === 1;
-  const appRow = data.addTrustApplication({
+  const appRow = await data.addTrustApplication({
     townId: 1,
     userId: u,
     requestedTier,
@@ -1091,38 +1094,39 @@ app.post("/api/trust/apply",(req,res)=>{
   res.status(201).json({ ok:true, id: appRow.id, status: autoApprove ? "approved" : "pending" });
 });
 
-app.get("/api/trust/my",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const ctx = data.getTownContext(1, u);
-  const user = data.getUserById(u);
+app.get("/api/trust/my", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const ctx = await data.getTownContext(1, u);
+  const user = await data.getUserById(u);
   const tier = trust.resolveTier(user, ctx);
-  const apps = data.getTrustApplicationsByUser(u);
+  const apps = await data.getTrustApplicationsByUser(u);
   res.json({ trustTier: tier, tierName: TRUST_TIER_LABELS[tier] || "Visitor", applications: apps });
 });
 
-app.get("/api/admin/trust/apps",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.get("/api/admin/trust/apps", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const status = (req.query?.status || "pending").toString();
-  res.json(data.getTrustApplicationsByStatus(status));
+  res.json(await data.getTrustApplicationsByStatus(status));
 });
-app.post("/api/admin/trust/apps/:id/approve",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
-  const appRow = data.getTrustApplicationsByStatus("pending").find(a=>a.id==req.params.id);
+app.post("/api/admin/trust/apps/:id/approve", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const pendingApps = await data.getTrustApplicationsByStatus("pending");
+  const appRow = pendingApps.find(a=>a.id==req.params.id);
   if(!appRow) return res.status(404).json({error:"Application not found"});
-  data.updateTrustApplicationStatus(appRow.id, "approved", admin.id, "");
-  data.setUserTrustTier(1, appRow.userId, appRow.requestedTier);
+  await data.updateTrustApplicationStatus(appRow.id, "approved", admin.id, "");
+  await data.setUserTrustTier(1, appRow.userId, appRow.requestedTier);
   res.json({ ok:true });
 });
-app.post("/api/admin/trust/apps/:id/reject",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.post("/api/admin/trust/apps/:id/reject", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const reason = (req.body?.reason || "").toString().trim();
   if(!reason) return res.status(400).json({error:"reason required"});
-  data.updateTrustApplicationStatus(Number(req.params.id), "rejected", admin.id, reason);
+  await data.updateTrustApplicationStatus(Number(req.params.id), "rejected", admin.id, reason);
   res.json({ ok:true });
 });
 
 app.post("/api/live/rooms/create", async (req,res)=>{
-  const access = requirePerm(req,res,"LIVE_HOST"); if(!access) return;
+  const access = await requirePerm(req,res,"LIVE_HOST"); if(!access) return;
   const u=access.userId;
   const user=access.user;
   const title=(req.body?.title||"").toString().trim();
@@ -1136,20 +1140,20 @@ app.post("/api/live/rooms/create", async (req,res)=>{
   if(hostType === "individual" && (hostPlaceId || hostEventId)) return res.status(400).json({error:"No linkage allowed for individual"});
   if(hostPlaceId && hostEventId) return res.status(400).json({error:"Only one linkage allowed"});
   if(hostType === "place"){
-    const place = data.getPlaceById(hostPlaceId);
+    const place = await data.getPlaceById(hostPlaceId);
     if(!place) return res.status(404).json({error:"Place not found"});
     if(Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Only owner can host for place"});
   }
   if(hostType === "event"){
-    const ev = data.getEventById(hostEventId);
+    const ev = await data.getEventById(hostEventId);
     if(!ev) return res.status(404).json({error:"Event not found"});
     const isOrganizer = (ev.organizerEmail || "").toLowerCase() === (user.email || "").toLowerCase();
     if(!isOrganizer && !isAdminUser(user)) return res.status(403).json({error:"Only organizer or admin can host"});
   }
   const calls = await createCallsRoom();
   const channelName = `live-${Date.now()}-${Math.random().toString(16).slice(2,6)}`;
-  const channel = data.createChannel(channelName, `Live room: ${title || "Untitled"}`, 1);
-  const room = data.createLiveRoom({
+  const channel = await data.createChannel(channelName, `Live room: ${title || "Untitled"}`, 1);
+  const room = await data.createLiveRoom({
     townId: 1,
     status: "idle",
     title,
@@ -1165,71 +1169,72 @@ app.post("/api/live/rooms/create", async (req,res)=>{
   res.status(201).json({ roomId: room.id, joinUrl: `/live/${room.id}`, cfRoomId: room.cfRoomId, mock: calls.mock, error: calls.error || "" });
 });
 
-app.post("/api/live/rooms/:id/start",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const room = data.getLiveRoomById(req.params.id);
+app.post("/api/live/rooms/:id/start", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const room = await data.getLiveRoomById(req.params.id);
   if(!room) return res.status(404).json({error:"Room not found"});
-  if(Number(room.hostUserId)!==Number(u) && !isAdminUser(data.getUserById(u))){
+  if(Number(room.hostUserId)!==Number(u) && !isAdminUser(await data.getUserById(u))){
     return res.status(403).json({error:"Only host or admin can start"});
   }
-  const updated = data.updateLiveRoom(room.id, { status:"live", startedAt: new Date().toISOString() });
+  const updated = await data.updateLiveRoom(room.id, { status:"live", startedAt: new Date().toISOString() });
   res.json(updated);
 });
 
-app.post("/api/live/rooms/:id/end",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const room = data.getLiveRoomById(req.params.id);
+app.post("/api/live/rooms/:id/end", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const room = await data.getLiveRoomById(req.params.id);
   if(!room) return res.status(404).json({error:"Room not found"});
-  if(Number(room.hostUserId)!==Number(u) && !isAdminUser(data.getUserById(u))){
+  if(Number(room.hostUserId)!==Number(u) && !isAdminUser(await data.getUserById(u))){
     return res.status(403).json({error:"Only host or admin can end"});
   }
-  const updated = data.updateLiveRoom(room.id, { status:"ended", endedAt: new Date().toISOString() });
+  const updated = await data.updateLiveRoom(room.id, { status:"ended", endedAt: new Date().toISOString() });
   res.json(updated);
 });
 
-app.post("/api/live/rooms/:id/pin",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const room = data.getLiveRoomById(req.params.id);
+app.post("/api/live/rooms/:id/pin", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const room = await data.getLiveRoomById(req.params.id);
   if(!room) return res.status(404).json({error:"Room not found"});
-  if(Number(room.hostUserId)!==Number(u) && !isAdminUser(data.getUserById(u))){
+  if(Number(room.hostUserId)!==Number(u) && !isAdminUser(await data.getUserById(u))){
     return res.status(403).json({error:"Only host or admin can pin"});
   }
   const listingId = Number(req.body?.listingId);
   if(!listingId) return res.status(400).json({error:"listingId required"});
-  const listing = data.getListingById(listingId);
+  const listing = await data.getListingById(listingId);
   if(!listing) return res.status(404).json({error:"Listing not found"});
-  const place = data.getPlaceById(listing.placeId);
+  const place = await data.getPlaceById(listing.placeId);
   if(room.hostPlaceId && Number(listing.placeId)!==Number(room.hostPlaceId)){
     return res.status(403).json({error:"Listing must belong to host store"});
   }
   if(place && Number(place.ownerUserId)!==Number(room.hostUserId)){
     return res.status(403).json({error:"Only host listings can be pinned"});
   }
-  const updated = data.updateLiveRoom(room.id, { pinnedListingId: listing.id });
+  const updated = await data.updateLiveRoom(room.id, { pinnedListingId: listing.id });
   res.json(updated);
 });
 
-app.get("/api/live/rooms/active",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
-  const rooms = data.listActiveLiveRooms(1).map(r=>({ id:r.id, title:r.title, hostType:r.hostType || "individual", joinUrl:`/live/${r.id}` }));
-  res.json(rooms);
+app.get("/api/live/rooms/active", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
+  const rooms = await data.listActiveLiveRooms(1);
+  const rows = rooms.map((r)=>({ id:r.id, title:r.title, hostType:r.hostType || "individual", joinUrl:`/live/${r.id}` }));
+  res.json(rows);
 });
 
-app.get("/api/live/rooms/:id",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
-  const room = data.getLiveRoomById(req.params.id);
+app.get("/api/live/rooms/:id", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
+  const room = await data.getLiveRoomById(req.params.id);
   if(!room) return res.status(404).json({error:"Room not found"});
-  const hostUser = data.getUserById(room.hostUserId);
-  const hostPlace = room.hostPlaceId ? data.getPlaceById(room.hostPlaceId) : null;
-  const hostEvent = room.hostEventId ? data.getEventById(room.hostEventId) : null;
-  const pinned = room.pinnedListingId ? data.getListingById(room.pinnedListingId) : null;
-  const pinnedPlace = pinned ? data.getPlaceById(pinned.placeId) : null;
+  const hostUser = await data.getUserById(room.hostUserId);
+  const hostPlace = room.hostPlaceId ? await data.getPlaceById(room.hostPlaceId) : null;
+  const hostEvent = room.hostEventId ? await data.getEventById(room.hostEventId) : null;
+  const pinned = room.pinnedListingId ? await data.getListingById(room.pinnedListingId) : null;
+  const pinnedPlace = pinned ? await data.getPlaceById(pinned.placeId) : null;
   res.json({
     ...room,
     joinUrl: `/live/${room.id}`,
     host: {
       type: room.hostType || "individual",
-      displayName: data.getDisplayNameForUser(hostUser),
+      displayName: await data.getDisplayNameForUser(hostUser),
       placeName: hostPlace?.name || "",
       eventTitle: hostEvent?.title || "",
       eventStartAt: hostEvent?.startAt || "",
@@ -1249,26 +1254,26 @@ app.get("/api/live/rooms/:id",(req,res)=>{
   });
 });
 
-app.get("/api/live/scheduled",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
+app.get("/api/live/scheduled", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
   const from = req.query.from;
   const to = req.query.to;
-  const shows = data.listScheduledLiveShows({ from, to });
+  const shows = await data.listScheduledLiveShows({ from, to });
   const u = access.userId;
   let bookmarks = new Set();
   if(u){
-    const rows = data.getLiveShowBookmarksForUser(u);
+    const rows = await data.getLiveShowBookmarksForUser(u);
     bookmarks = new Set(rows.map(r=>Number(r.showId)));
   }
-  const activeRooms = data.listActiveLiveRooms(1);
+  const activeRooms = await data.listActiveLiveRooms(1);
   const matchKey = (r)=>`${r.hostType || "individual"}:${r.hostUserId}:${r.hostPlaceId || ""}:${r.hostEventId || ""}`;
   const activeMap = new Map(activeRooms.map(r=>[matchKey(r), r]));
-  const out = shows.map(s=>{
-    const hostUser = data.getUserById(s.hostUserId);
-    const place = s.hostPlaceId ? data.getPlaceById(s.hostPlaceId) : null;
-    const ev = s.hostEventId ? data.getEventById(s.hostEventId) : null;
+  const out = await Promise.all(shows.map(async (s)=>{
+    const hostUser = await data.getUserById(s.hostUserId);
+    const place = s.hostPlaceId ? await data.getPlaceById(s.hostPlaceId) : null;
+    const ev = s.hostEventId ? await data.getEventById(s.hostEventId) : null;
     const active = activeMap.get(`${s.hostType || "individual"}:${s.hostUserId}:${s.hostPlaceId || ""}:${s.hostEventId || ""}`);
-    const hostName = data.getDisplayNameForUser(hostUser);
+    const hostName = await data.getDisplayNameForUser(hostUser);
     const hostAvatarUrl = (hostUser?.avatarUrl || place?.avatarUrl || "").toString().trim();
     return {
       ...s,
@@ -1281,12 +1286,12 @@ app.get("/api/live/scheduled",(req,res)=>{
       hostAvatarUrl,
       joinUrl: active ? `/live/${active.id}` : ""
     };
-  });
+  }));
   res.json(out);
 });
 
-app.post("/api/live/scheduled",(req,res)=>{
-  const access = requirePerm(req,res,"LIVE_SCHEDULE"); if(!access) return;
+app.post("/api/live/scheduled", async (req, res) =>{
+  const access = await requirePerm(req,res,"LIVE_SCHEDULE"); if(!access) return;
   const u=access.userId;
   const user=access.user;
   const title=(req.body?.title||"").toString().trim();
@@ -1304,17 +1309,17 @@ app.post("/api/live/scheduled",(req,res)=>{
   if(hostType === "individual" && (hostPlaceId || hostEventId)) return res.status(400).json({error:"No linkage allowed for individual"});
   if(hostPlaceId && hostEventId) return res.status(400).json({error:"Only one linkage allowed"});
   if(hostType === "place"){
-    const place = data.getPlaceById(hostPlaceId);
+    const place = await data.getPlaceById(hostPlaceId);
     if(!place) return res.status(404).json({error:"Place not found"});
     if(Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Only owner can host for place"});
   }
   if(hostType === "event"){
-    const ev = data.getEventById(hostEventId);
+    const ev = await data.getEventById(hostEventId);
     if(!ev) return res.status(404).json({error:"Event not found"});
     const isOrganizer = (ev.organizerEmail || "").toLowerCase() === (user.email || "").toLowerCase();
     if(!isOrganizer && !isAdminUser(user)) return res.status(403).json({error:"Only organizer or admin can host"});
   }
-  const created = data.addScheduledLiveShow({
+  const created = await data.addScheduledLiveShow({
     townId: 1,
     status: "scheduled",
     title,
@@ -1330,177 +1335,180 @@ app.post("/api/live/scheduled",(req,res)=>{
   res.status(201).json(created);
 });
 
-app.get("/api/live/scheduled/:id/bookmark",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
+app.get("/api/live/scheduled/:id/bookmark", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
   const u=access.userId;
   const showId = Number(req.params.id);
-  const rows = data.getLiveShowBookmarksForUser(u);
+  const rows = await data.getLiveShowBookmarksForUser(u);
   const bookmarked = rows.some(r=>Number(r.showId)===showId);
   res.json({ bookmarked });
 });
-app.post("/api/live/scheduled/:id/bookmark",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
+app.post("/api/live/scheduled/:id/bookmark", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_SCHEDULED"); if(!access) return;
   const u=access.userId;
   const showId = Number(req.params.id);
-  const toggled = data.toggleLiveShowBookmark(u, showId);
+  const toggled = await data.toggleLiveShowBookmark(u, showId);
   res.json(toggled);
 });
 
-app.post("/api/signup",(req,res)=>{
-  const r=data.addSignup(req.body||{});
+app.post("/api/signup", async (req, res) =>{
+  const r=await data.addSignup(req.body||{});
   if(r?.error) return res.status(400).json(r);
   res.json(r);
 });
 
 // Events v1 (submission + approvals)
-app.post("/api/events/submit",(req,res)=>{
-  const access = requirePerm(req,res,"CREATE_EVENTS"); if(!access) return;
-  const created=data.addEventSubmission(req.body || {});
+app.post("/api/events/submit", async (req, res) =>{
+  const access = await requirePerm(req,res,"CREATE_EVENTS"); if(!access) return;
+  const created=await data.addEventSubmission(req.body || {});
   if(created?.error) return res.status(400).json(created);
   res.status(201).json(created);
 });
-app.get("/api/events",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_EVENTS"); if(!access) return;
+app.get("/api/events", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_EVENTS"); if(!access) return;
   const status=(req.query.status || "approved").toString().trim().toLowerCase();
   if(status && status !== "approved") return res.status(400).json({error:"Only approved events can be listed"});
   const from=req.query.from;
   const to=req.query.to;
-  const events = data.listApprovedEvents({ from, to }).map((ev)=>{
+  const events = await data.listApprovedEvents({ from, to });
+  const rows = await Promise.all(events.map(async (ev)=>{
     if(!ev.organizerUserId) return ev;
-    const badge = getTrustBadgeForUser(ev.organizerUserId);
+    const badge = await getTrustBadgeForUser(ev.organizerUserId);
     return { ...ev, organizerTrustTierLabel: badge?.trustTierLabel || null };
-  });
-  res.json(events);
+  }));
+  res.json(rows);
 });
 
 // Local businesses (applications)
-app.post("/api/localbiz/apply",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_LOCALBIZ"); if(!access) return;
-  const created=data.addLocalBizApplication(req.body || {}, access.userId);
+app.post("/api/localbiz/apply", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_LOCALBIZ"); if(!access) return;
+  const created=await data.addLocalBizApplication(req.body || {}, access.userId);
   if(created?.error) return res.status(400).json(created);
   res.status(201).json(created);
 });
-app.get("/api/localbiz/my",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_LOCALBIZ"); if(!access) return;
-  res.json(data.listLocalBizApplicationsByUser(access.userId));
+app.get("/api/localbiz/my", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_LOCALBIZ"); if(!access) return;
+  res.json(await data.listLocalBizApplicationsByUser(access.userId));
 });
 
 // Prize offers
-app.post("/api/prizes/submit",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const ctx=data.getTownContext(1, u);
-  const user=data.getUserById(u);
+app.post("/api/prizes/submit", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const ctx=await data.getTownContext(1, u);
+  const user=await data.getUserById(u);
   const gate = trust.can(user, ctx, "prize_submit");
   if(!gate.ok) return res.status(403).json({error:"Prize offers require resident trust"});
-  const created=data.addPrizeOffer(req.body || {}, u);
+  const created=await data.addPrizeOffer(req.body || {}, u);
   if(created?.error) return res.status(400).json(created);
   res.status(201).json(created);
 });
-app.get("/api/prizes/active",(req,res)=>{
-  const rows = data.listActivePrizeOffers().map(p=>{
-    const badge = getTrustBadgeForUser(p.donorUserId);
+app.get("/api/prizes/active", async (req, res) =>{
+  const offers = await data.listActivePrizeOffers();
+  const rows = await Promise.all(offers.map(async (p)=>{
+    const badge = await getTrustBadgeForUser(p.donorUserId);
     return { ...p, donorTrustTierLabel: badge?.trustTierLabel || null };
-  });
+  }));
   res.json(rows);
 });
 
 // Archive
-app.get("/api/archive",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_ARCHIVE"); if(!access) return;
-  res.json(data.listArchiveEntries());
+app.get("/api/archive", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_ARCHIVE"); if(!access) return;
+  res.json(await data.listArchiveEntries());
 });
-app.get("/api/archive/:slug",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_ARCHIVE"); if(!access) return;
-  const entry=data.getArchiveEntryBySlug(req.params.slug);
+app.get("/api/archive/:slug", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_ARCHIVE"); if(!access) return;
+  const entry=await data.getArchiveEntryBySlug(req.params.slug);
   if(!entry) return res.status(404).json({error:"Not found"});
   res.json(entry);
 });
 
-app.get("/api/prize_awards/my",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.get("/api/prize_awards/my", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   const placeId = req.query.placeId ? Number(req.query.placeId) : null;
   if(placeId){
-    const place = data.getPlaceById(placeId);
+    const place = await data.getPlaceById(placeId);
     if(!place || Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Only owner"});
   }
-  res.json(data.listPrizeAwardsForUser(u, placeId));
+  res.json(await data.listPrizeAwardsForUser(u, placeId));
 });
-app.post("/api/prize_awards/:id/claim",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const award = data.getPrizeAwardById(req.params.id);
+app.post("/api/prize_awards/:id/claim", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const award = await data.getPrizeAwardById(req.params.id);
   if(!award) return res.status(404).json({error:"Not found"});
   if(Number(award.winnerUserId)!==Number(u)) return res.status(403).json({error:"Winner only"});
-  const updated = data.updatePrizeAwardStatus(award.id, "claimed", {});
+  const updated = await data.updatePrizeAwardStatus(award.id, "claimed", {});
   res.json(updated);
 });
-app.post("/api/prize_awards/:id/scheduled",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const award = data.getPrizeAwardById(req.params.id);
+app.post("/api/prize_awards/:id/scheduled", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const award = await data.getPrizeAwardById(req.params.id);
   if(!award) return res.status(404).json({error:"Not found"});
   if(Number(award.donorUserId)!==Number(u)) return res.status(403).json({error:"Donor only"});
-  const updated = data.updatePrizeAwardStatus(award.id, "scheduled", {});
+  const updated = await data.updatePrizeAwardStatus(award.id, "scheduled", {});
   res.json(updated);
 });
-app.post("/api/prize_awards/:id/fulfilled",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const award = data.getPrizeAwardById(req.params.id);
+app.post("/api/prize_awards/:id/fulfilled", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const award = await data.getPrizeAwardById(req.params.id);
   if(!award) return res.status(404).json({error:"Not found"});
   if(Number(award.donorUserId)!==Number(u)) return res.status(403).json({error:"Donor only"});
   const proofUrl = (req.body?.proofUrl || "").toString().trim();
-  const updated = data.updatePrizeAwardStatus(award.id, "fulfilled", { proofUrl });
+  const updated = await data.updatePrizeAwardStatus(award.id, "fulfilled", { proofUrl });
   res.json(updated);
 });
-app.post("/api/prize_awards/:id/confirm_received",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const award = data.getPrizeAwardById(req.params.id);
+app.post("/api/prize_awards/:id/confirm_received", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const award = await data.getPrizeAwardById(req.params.id);
   if(!award) return res.status(404).json({error:"Not found"});
   if(Number(award.winnerUserId)!==Number(u)) return res.status(403).json({error:"Winner only"});
-  const updated = data.updatePrizeAwardStatus(award.id, "fulfilled", {});
+  const updated = await data.updatePrizeAwardStatus(award.id, "fulfilled", {});
   res.json(updated);
 });
-app.post("/api/prize_awards/:id/report_issue",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const award = data.getPrizeAwardById(req.params.id);
+app.post("/api/prize_awards/:id/report_issue", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const award = await data.getPrizeAwardById(req.params.id);
   if(!award) return res.status(404).json({error:"Not found"});
   if(Number(award.winnerUserId)!==Number(u)) return res.status(403).json({error:"Winner only"});
-  const updated = data.updatePrizeAwardStatus(award.id, "disputed", {});
+  const updated = await data.updatePrizeAwardStatus(award.id, "disputed", {});
   res.json(updated);
 });
 
 // Events (boot + calendar)
-app.get("/events",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_EVENTS"); if(!access) return;
+app.get("/events", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_EVENTS"); if(!access) return;
   const range = (req.query.range || "week").toString();
   const safeRange = (range === "month") ? "month" : "week";
-  res.json(data.getCalendarEvents(safeRange));
+  res.json(await data.getCalendarEvents(safeRange));
 });
-app.post("/events",(req,res)=>{
+app.post("/events", async (req, res) =>{
   if(req.body?.eventType || req.body?.clientSessionId){
-    data.logEvent(req.body || {});
+    await data.logEvent(req.body || {});
     return res.json({ok:true});
   }
-  const access = requirePerm(req,res,"CREATE_EVENTS"); if(!access) return;
+  const access = await requirePerm(req,res,"CREATE_EVENTS"); if(!access) return;
   const u=access.userId;
   if(!req.body?.title || !req.body?.startsAt) return res.status(400).json({error:"title and startsAt required"});
-  const created=data.addCalendarEvent(req.body, u);
+  const created = await data.addCalendarEvent(req.body, u);
   res.status(201).json(created);
 });
-app.post("/events/:id/rsvp",(req,res)=>{
-  const access = requirePerm(req,res,"RSVP_EVENTS"); if(!access) return;
+app.post("/events/:id/rsvp", async (req, res) =>{
+  const access = await requirePerm(req,res,"RSVP_EVENTS"); if(!access) return;
   const u=access.userId;
-  const ev=data.getCalendarEventById(req.params.id);
+  const ev = await data.getCalendarEventById(req.params.id);
   if(!ev) return res.status(404).json({error:"Event not found"});
-  data.addEventRsvp(ev.id, u, req.body?.status || "going");
+  await data.addEventRsvp(ev.id, u, req.body?.status || "going");
   res.json({ok:true});
 });
 
 // Orders (payment scaffolding)
-app.get("/api/cart",(req,res)=>{
-  const access = requirePerm(req,res,"BUY_MARKET"); if(!access) return;
+app.get("/api/cart", async (req, res) =>{
+  const access = await requirePerm(req,res,"BUY_MARKET"); if(!access) return;
   const u=access.userId;
-  const items = data.getCartItemsByUser(u);
-  const listings = data.getListings();
-  const placeMap = new Map((data.getPlaces ? data.getPlaces() : data.places || []).map(p=>[Number(p.id), p]));
+  const items = await data.getCartItemsByUser(u);
+  const listings = await data.getListings();
+  const places = await data.getPlaces();
+  const placeMap = new Map(places.map(p=>[Number(p.id), p]));
   const enriched = items.map((item)=>{
     const listing = listings.find(l=>Number(l.id)===Number(item.listingId));
     const place = listing ? placeMap.get(Number(listing.placeId)) : null;
@@ -1518,44 +1526,45 @@ app.get("/api/cart",(req,res)=>{
   });
   res.json({ items: enriched });
 });
-app.post("/api/cart/add",(req,res)=>{
-  const u=requireBuyerTier(req,res); if(!u) return;
+app.post("/api/cart/add", async (req, res) =>{
+  const u=await requireBuyerTier(req,res); if(!u) return;
   const listingId = Number(req.body?.listingId || 0);
   const quantity = Number(req.body?.quantity || 1);
   if(!listingId || !Number.isFinite(quantity) || quantity === 0) return res.status(400).json({error:"listingId and quantity required"});
-  const listing = data.getListingById(listingId);
+  const listing = await data.getListingById(listingId);
   if(!listing) return res.status(404).json({error:"Listing not found"});
   if((listing.listingType||"item")!=="item") return res.status(400).json({error:"Only item listings can be added to cart"});
   if((listing.status || "active")!=="active") return res.status(400).json({error:"Listing not active"});
   if(quantity > 0){
-    const existing = data.getCartItem(u, listingId);
+    const existing = await data.getCartItem(u, listingId);
     const existingQty = Number(existing?.quantity || 0);
     if(Number(listing.quantity || 0) < (existingQty + quantity)) return res.status(400).json({error:"Insufficient quantity"});
   }
-  const created = data.addCartItem(u, listingId, quantity);
+  const created = await data.addCartItem(u, listingId, quantity);
   res.json({ ok:true, item: created });
 });
-app.post("/api/cart/remove",(req,res)=>{
-  const access = requirePerm(req,res,"BUY_MARKET"); if(!access) return;
+app.post("/api/cart/remove", async (req, res) =>{
+  const access = await requirePerm(req,res,"BUY_MARKET"); if(!access) return;
   const u=access.userId;
   const listingId = Number(req.body?.listingId || 0);
   if(!listingId) return res.status(400).json({error:"listingId required"});
-  data.removeCartItem(u, listingId);
+  await data.removeCartItem(u, listingId);
   res.json({ ok:true });
 });
-app.post("/api/cart/clear",(req,res)=>{
-  const access = requirePerm(req,res,"BUY_MARKET"); if(!access) return;
+app.post("/api/cart/clear", async (req, res) =>{
+  const access = await requirePerm(req,res,"BUY_MARKET"); if(!access) return;
   const u=access.userId;
-  data.clearCart(u);
+  await data.clearCart(u);
   res.json({ ok:true });
 });
 
-app.post("/api/checkout/create",(req,res)=>{
-  const u=requireBuyerTier(req,res); if(!u) return;
-  const cart = data.getCartItemsByUser(u);
+app.post("/api/checkout/create", async (req, res) =>{
+  const u=await requireBuyerTier(req,res); if(!u) return;
+  const cart = await data.getCartItemsByUser(u);
   if(!cart.length) return res.status(400).json({error:"Cart is empty"});
-  const listings = data.getListings();
-  const placeMap = new Map((data.getPlaces ? data.getPlaces() : data.places || []).map(p=>[Number(p.id), p]));
+  const listings = await data.getListings();
+  const places = await data.getPlaces();
+  const placeMap = new Map(places.map(p=>[Number(p.id), p]));
   const items = [];
   let placeId = null;
   let sellerUserId = null;
@@ -1581,7 +1590,7 @@ app.post("/api/checkout/create",(req,res)=>{
   }
   const serviceGratuityCents = Math.ceil(subtotalCents * 0.05);
   const totalCents = subtotalCents + serviceGratuityCents;
-  const order = data.createOrderFromCart({
+  const order = await data.createOrderFromCart({
     townId: 1,
     listingId: items[0].listingId,
     buyerUserId: u,
@@ -1598,20 +1607,20 @@ app.post("/api/checkout/create",(req,res)=>{
     fulfillmentType: (req.body?.fulfillmentType || "").toString(),
     fulfillmentNotes: (req.body?.fulfillmentNotes || "").toString()
   }, items);
-  data.createPaymentForOrder(order.id, totalCents, "stripe");
-  data.clearCart(u);
+  await data.createPaymentForOrder(order.id, totalCents, "stripe");
+  await data.clearCart(u);
   res.json({ orderId: order.id, paymentStatus: "requires_payment", totals: { subtotalCents, serviceGratuityCents, totalCents } });
 });
 app.post("/api/checkout/stripe", async (req,res)=>{
-  const u=requireBuyerTier(req,res); if(!u) return;
+  const u=await requireBuyerTier(req,res); if(!u) return;
   const s = requireStripeConfig(res); if(!s) return;
   const orderId = Number(req.body?.orderId || 0);
   if(!orderId) return res.status(400).json({error:"orderId required"});
-  const order = data.getOrderById(orderId);
+  const order = await data.getOrderById(orderId);
   if(!order) return res.status(404).json({error:"Order not found"});
   if(Number(order.buyerUserId)!==Number(u)) return res.status(403).json({error:"Buyer only"});
   if(!["pending_payment","requires_payment"].includes(String(order.status||""))) return res.status(400).json({error:"Order not payable"});
-  const items = data.getOrderItems(order.id);
+  const items = await data.getOrderItems(order.id);
   if(!items.length) return res.status(400).json({error:"Order has no items"});
   const lineItems = items.map((item)=>({
     price_data: {
@@ -1646,47 +1655,48 @@ app.post("/api/checkout/stripe", async (req,res)=>{
       },
       client_reference_id: String(order.id)
     });
-    data.updateOrderPayment(order.id, "stripe", session.id || "");
-    const existingPayment = data.getPaymentForOrder(order.id);
-    if(!existingPayment) data.createPaymentForOrder(order.id, Number(order.totalCents || 0), "stripe");
+    await data.updateOrderPayment(order.id, "stripe", session.id || "");
+    const existingPayment = await data.getPaymentForOrder(order.id);
+    if(!existingPayment) await data.createPaymentForOrder(order.id, Number(order.totalCents || 0), "stripe");
     res.json({ checkoutUrl: session.url });
   }catch(e){
     res.status(500).json({error:"Stripe checkout failed"});
   }
 });
 
-app.get("/api/orders",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  res.json(data.getOrdersForBuyer(u));
+app.get("/api/orders", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  res.json(await data.getOrdersForBuyer(u));
 });
-app.get("/api/seller/orders",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const places = (data.getPlaces ? data.getPlaces() : data.places || []).filter(p=>Number(p.ownerUserId)===Number(u));
+app.get("/api/seller/orders", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const places = (await data.getPlaces()).filter(p=>Number(p.ownerUserId)===Number(u));
   const placeIds = places.map(p=>Number(p.id));
-  const orders = data.getOrdersForSellerPlaces(placeIds);
+  const orders = await data.getOrdersForSellerPlaces(placeIds);
   res.json(orders);
 });
 
-app.post("/orders",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.post("/orders", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   const listingId=Number(req.body?.listingId);
   const qtyRaw=req.body?.quantity;
   const quantity=Number.isFinite(Number(qtyRaw)) ? Number(qtyRaw) : 1;
   if(!listingId) return res.status(400).json({error:"listingId required"});
-  const listing=data.getListingById(listingId);
+  const listing=await data.getListingById(listingId);
   if(!listing) return res.status(404).json({error:"Listing not found"});
   if(quantity < 1) return res.status(400).json({error:"quantity must be >= 1"});
   const amountCents=Math.round(Number(listing.price || 0) * 100) * quantity;
-  const placeList = (data.getPlaces ? data.getPlaces() : data.places || []);
+  const placeList = await data.getPlaces();
   const place = placeList.find(p=>Number(p.id)===Number(listing.placeId));
   if(!place) return res.status(404).json({error:"Place not found"});
-  const intent = paymentProvider.createPaymentIntent({
-    amountCents,
-    currency: "usd",
-    metadata: { listingId, buyerUserId: u, placeId: place.id }
-  });
-  Promise.resolve(intent).then((pi)=>{
-    const order=data.addOrder({
+  try{
+    const intent = paymentProvider.createPaymentIntent({
+      amountCents,
+      currency: "usd",
+      metadata: { listingId, buyerUserId: u, placeId: place.id }
+    });
+    const pi = await Promise.resolve(intent);
+    const order = await data.addOrder({
       listingId,
       buyerUserId: u,
       sellerUserId: place.ownerUserId ?? null,
@@ -1697,109 +1707,114 @@ app.post("/orders",(req,res)=>{
       paymentIntentId: pi.paymentIntentId
     });
     res.status(201).json({order, payment: pi});
-  }).catch((e)=>res.status(500).json({error:e.message}));
+  }catch(e){
+    res.status(500).json({error:e.message});
+  }
 });
-app.get("/api/orders/:id",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const order=data.getOrderById(req.params.id);
+app.get("/api/orders/:id", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const order=await data.getOrderById(req.params.id);
   if(!order) return res.status(404).json({error:"Order not found"});
   if(Number(order.buyerUserId)!==Number(u) && Number(order.sellerUserId)!==Number(u)){
     return res.status(403).json({error:"Forbidden"});
   }
-  const items = data.getOrderItems(order.id);
+  const items = await data.getOrderItems(order.id);
   const listingId = items[0]?.listingId || order.listingId;
-  const listing = listingId ? data.getListingById(listingId) : null;
+  const listing = listingId ? await data.getListingById(listingId) : null;
   res.json({ order, items, listing });
 });
-app.post("/api/orders/:id/pay",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.post("/api/orders/:id/pay", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   if(process.env.NODE_ENV === "production") return res.status(403).json({error:"Dev-only endpoint"});
-  const order=data.getOrderById(req.params.id);
+  const order=await data.getOrderById(req.params.id);
   if(!order) return res.status(404).json({error:"Order not found"});
   if(Number(order.buyerUserId)!==Number(u)) return res.status(403).json({error:"Buyer only"});
   if(order.status === "paid") return res.status(400).json({error:"Already paid"});
-  const items = data.getOrderItems(order.id);
+  const items = await data.getOrderItems(order.id);
   const listingId = items[0]?.listingId || order.listingId;
-  const listing = listingId ? data.getListingById(listingId) : null;
+  const listing = listingId ? await data.getListingById(listingId) : null;
   if(listing?.paymentDueAt){
     const dueAt = Date.parse(listing.paymentDueAt);
     if(Number.isFinite(dueAt) && Date.now() > dueAt) return res.status(400).json({error:"Payment overdue"});
   }
-  const existingPayment = data.getPaymentForOrder(order.id);
+  const existingPayment = await data.getPaymentForOrder(order.id);
   if(existingPayment && existingPayment.status === "paid") return res.status(400).json({error:"Already paid"});
   if(!existingPayment){
-    data.createPaymentForOrder(order.id, Number(order.totalCents || 0), "stub");
+    await data.createPaymentForOrder(order.id, Number(order.totalCents || 0), "stub");
   }
-  const result = finalizeOrderPayment(order);
+  const result = await finalizeOrderPayment(order);
   if(!result.ok) return res.status(400).json({error: result.error || "Payment failed"});
   res.json({ok:true, order: result.order || order});
 });
-app.get("/orders/:id",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const order=data.getOrderById(req.params.id);
+app.get("/orders/:id", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const order=await data.getOrderById(req.params.id);
   if(!order) return res.status(404).json({error:"Order not found"});
   if(Number(order.buyerUserId)!==Number(u) && Number(order.sellerUserId)!==Number(u)){
     return res.status(403).json({error:"Forbidden"});
   }
   res.json(order);
 });
-app.post("/orders/:id/complete",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const order=data.getOrderById(req.params.id);
+app.post("/orders/:id/complete", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const order=await data.getOrderById(req.params.id);
   if(!order) return res.status(404).json({error:"Order not found"});
   if(Number(order.buyerUserId)!==Number(u) && Number(order.sellerUserId)!==Number(u)){
     return res.status(403).json({error:"Forbidden"});
   }
-  Promise.resolve(paymentProvider.capturePaymentIntent(order.paymentIntentId)).then(()=>{
-    const updated=data.completeOrder(order.id);
+  try{
+    await paymentProvider.capturePaymentIntent(order.paymentIntentId);
+    const updated = await data.completeOrder(order.id);
     res.json(updated);
-  }).catch((e)=>res.status(500).json({error:e.message}));
+  }catch(e){
+    res.status(500).json({error:e.message});
+  }
 });
 
 // Trust: reviews + disputes
-app.post("/orders/:id/review",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const order=data.getOrderById(req.params.id);
+app.post("/orders/:id/review", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const order=await data.getOrderById(req.params.id);
   if(!order) return res.status(404).json({error:"Order not found"});
   if(order.status!=="completed") return res.status(400).json({error:"Order must be completed"});
   if(Number(order.buyerUserId)!==Number(u) && Number(order.sellerUserId)!==Number(u)){
     return res.status(403).json({error:"Forbidden"});
   }
-  if(data.getReviewForOrder(order.id, u)) return res.status(400).json({error:"Review already submitted"});
+  if(await data.getReviewForOrder(order.id, u)) return res.status(400).json({error:"Review already submitted"});
   const rating=Number(req.body?.rating);
   const text=(req.body?.text||"").toString().trim();
   if(!Number.isFinite(rating) || rating<1 || rating>5) return res.status(400).json({error:"rating 1-5 required"});
   const reviewerIsBuyer = Number(order.buyerUserId)===Number(u);
   const revieweeUserId = reviewerIsBuyer ? order.sellerUserId : order.buyerUserId;
   const role = reviewerIsBuyer ? "buyer" : "seller";
-  const created=data.addReview({orderId:order.id, reviewerUserId:u, revieweeUserId, role, rating, text});
-  data.addTrustEvent({orderId:order.id, userId:revieweeUserId, eventType:"review_received", meta:{rating, role}});
+  const created=await data.addReview({orderId:order.id, reviewerUserId:u, revieweeUserId, role, rating, text});
+  await data.addTrustEvent({orderId:order.id, userId:revieweeUserId, eventType:"review_received", meta:{rating, role}});
   res.status(201).json(created);
 });
-app.post("/orders/:id/dispute",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const order=data.getOrderById(req.params.id);
+app.post("/orders/:id/dispute", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const order=await data.getOrderById(req.params.id);
   if(!order) return res.status(404).json({error:"Order not found"});
   if(Number(order.buyerUserId)!==Number(u) && Number(order.sellerUserId)!==Number(u)){
     return res.status(403).json({error:"Forbidden"});
   }
   const reason=(req.body?.reason||"").toString().trim();
   if(!reason) return res.status(400).json({error:"reason required"});
-  const created=data.addDispute({orderId:order.id, reporterUserId:u, reason, status:"open"});
-  data.addTrustEvent({orderId:order.id, userId:u, eventType:"dispute_opened", meta:{reason}});
+  const created=await data.addDispute({orderId:order.id, reporterUserId:u, reason, status:"open"});
+  await data.addTrustEvent({orderId:order.id, userId:u, eventType:"dispute_opened", meta:{reason}});
   res.status(201).json(created);
 });
 
 // Admin moderation (basic)
-app.get("/api/admin/pulse",(req,res)=>{
+app.get("/api/admin/pulse", async (req, res) =>{
   const hours = Number(req.query.hours || 24);
   const since = new Date(Date.now() - (Number.isFinite(hours) ? hours : 24) * 60 * 60 * 1000).toISOString();
   res.json({ since, sessions: 0, counts: [] });
 });
-app.get("/api/admin/analytics/summary",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.get("/api/admin/analytics/summary", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const { from, to, range } = rangeToBounds(req.query?.range);
-  const listings = data.getListings();
+  const listings = await data.getListings();
   const now = Date.now();
   const auctions = listings.filter((l)=> (l.listingType || "item") === "auction" || l.auctionId);
   const auctionsActive = auctions.filter((l)=>{
@@ -1816,28 +1831,28 @@ app.get("/api/admin/analytics/summary",(req,res)=>{
     return String(l.status || "active").toLowerCase() === "active";
   }).length;
 
-  const places = (data.getPlaces ? data.getPlaces() : data.places || []);
-  const pendingPlaces = data.listPlacesByStatus ? data.listPlacesByStatus("pending") : places.filter(p=>String(p.status||"").toLowerCase()==="pending");
-  const trustPending = data.getTrustApplicationsByStatus("pending").length;
-  const residentPending = data.listResidentVerificationRequestsByStatus("pending").length;
-  const businessPending = data.listLocalBizApplicationsByStatus("pending").length;
+  const places = await data.getPlaces();
+  const pendingPlaces = await data.listPlacesByStatus("pending");
+  const trustPending = (await data.getTrustApplicationsByStatus("pending")).length;
+  const residentPending = (await data.listResidentVerificationRequestsByStatus("pending")).length;
+  const businessPending = (await data.listLocalBizApplicationsByStatus("pending")).length;
 
-  const usersTotal = data.countUsers();
-  const usersNew = data.countUsersSince(from);
-  const ordersTotal = data.countOrders();
-  const ordersRange = data.countOrdersSince(from);
-  const revenueTotalCents = data.sumOrderRevenue();
-  const revenueRangeCents = data.sumOrderRevenueSince(from);
+  const usersTotal = await data.countUsers();
+  const usersNew = await data.countUsersSince(from);
+  const ordersTotal = await data.countOrders();
+  const ordersRange = await data.countOrdersSince(from);
+  const revenueTotalCents = await data.sumOrderRevenue();
+  const revenueRangeCents = await data.sumOrderRevenueSince(from);
 
-  const liveActive = data.listActiveLiveRooms(1).length;
-  const liveScheduled = data.listScheduledLiveShows({}).length;
+  const liveActive = (await data.listActiveLiveRooms(1)).length;
+  const liveScheduled = (await data.listScheduledLiveShows({})).length;
 
-  const sweep = data.getActiveSweepstake();
+  const sweep = await data.getActiveSweepstake();
   let sweepStatus = "inactive";
   let sweepEntries = 0;
   if(sweep){
     sweepStatus = String(sweep.status || "active");
-    const totals = data.getSweepstakeEntryTotals(sweep.id);
+    const totals = await data.getSweepstakeEntryTotals(sweep.id);
     sweepEntries = Number(totals?.totalEntries || 0);
   }
 
@@ -1854,16 +1869,16 @@ app.get("/api/admin/analytics/summary",(req,res)=>{
     sweep: { status: sweepStatus, totalEntries: sweepEntries }
   });
 });
-app.get("/api/seller/sales/summary",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.get("/api/seller/sales/summary", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   const placeId = Number(req.query.placeId || 0);
   if(!placeId) return res.status(400).json({error:"placeId required"});
-  const place = data.getPlaceById(placeId);
+  const place = await data.getPlaceById(placeId);
   if(!place) return res.status(404).json({error:"Place not found"});
   if(Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Owner only"});
   const range = (req.query.range || "7d").toString();
   const { fromIso, toIso, label } = parseRange(range, req.query.from, req.query.to);
-  const summary = data.getSellerSalesSummary(placeId, fromIso, toIso);
+  const summary = await data.getSellerSalesSummary(placeId, fromIso, toIso);
   const revenueCents = Number(summary.totals.revenueCents || 0);
   const orderCount = Number(summary.totals.orderCount || 0);
   const avgOrderValueCents = orderCount ? Math.round(revenueCents / orderCount) : 0;
@@ -1876,15 +1891,15 @@ app.get("/api/seller/sales/summary",(req,res)=>{
     recentOrders: summary.recentOrders
   });
 });
-app.get("/api/seller/sales/export.csv",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.get("/api/seller/sales/export.csv", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   const placeId = Number(req.query.placeId || 0);
   if(!placeId) return res.status(400).json({error:"placeId required"});
-  const place = data.getPlaceById(placeId);
+  const place = await data.getPlaceById(placeId);
   if(!place) return res.status(404).json({error:"Place not found"});
   if(Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Owner only"});
   const { fromIso, toIso } = parseRange("custom", req.query.from, req.query.to);
-  const rows = data.getSellerSalesExport(placeId, fromIso, toIso);
+  const rows = await data.getSellerSalesExport(placeId, fromIso, toIso);
   const header = "orderId,createdAt,status,totalCents,subtotalCents,serviceGratuityCents,listingId,titleSnapshot,quantity,priceCentsSnapshot";
   const csv = rows.map(r=>[
     r.orderId, r.createdAt, r.status, r.totalCents, r.subtotalCents, r.serviceGratuityCents,
@@ -1893,69 +1908,69 @@ app.get("/api/seller/sales/export.csv",(req,res)=>{
   res.setHeader("Content-Type","text/csv");
   res.send([header, ...csv].join("\n"));
 });
-app.post("/api/admin/pulse/generate",(req,res)=>{
-  const admin=requireAdminOrDev(req,res); if(!admin) return;
+app.post("/api/admin/pulse/generate", async (req, res) =>{
+  const admin=await requireAdminOrDev(req,res); if(!admin) return;
   const dayKey=(req.body?.dayKey || "").toString().trim() || null;
-  const pulse=data.generateDailyPulse(1, dayKey || undefined);
+  const pulse=await data.generateDailyPulse(1, dayKey || undefined);
   res.json(pulse);
 });
-app.get("/api/pulse/latest",(req,res)=>{
-  const pulse=data.getLatestPulse(1);
+app.get("/api/pulse/latest", async (req, res) =>{
+  const pulse=await data.getLatestPulse(1);
   if(!pulse) return res.status(404).json({error:"No pulse found"});
   res.json(pulse);
 });
-app.get("/api/pulse/:dayKey",(req,res)=>{
+app.get("/api/pulse/:dayKey", async (req, res) =>{
   const dayKey=(req.params.dayKey || "").toString().trim();
   if(!dayKey) return res.status(400).json({error:"dayKey required"});
-  const pulse=data.getPulseByDayKey(dayKey, 1);
+  const pulse=await data.getPulseByDayKey(dayKey, 1);
   if(!pulse) return res.status(404).json({error:"Pulse not found"});
   res.json(pulse);
 });
-app.get("/api/admin/places",(req,res)=>{
+app.get("/api/admin/places", async (req, res) =>{
   res.json([]);
 });
-app.get("/api/admin/events",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.get("/api/admin/events", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const status=(req.query.status || "pending").toString().trim().toLowerCase();
-  res.json(data.listEventsByStatus(status));
+  res.json(await data.listEventsByStatus(status));
 });
-app.post("/api/admin/events/:id/approve",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
-  const updated=data.updateEventDecision(req.params.id, "approved", admin.id, "");
+app.post("/api/admin/events/:id/approve", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const updated=await data.updateEventDecision(req.params.id, "approved", admin.id, "");
   if(!updated) return res.status(404).json({error:"Not found"});
   res.json(updated);
 });
-app.post("/api/admin/events/:id/deny",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.post("/api/admin/events/:id/deny", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const reason=(req.body?.decisionReason || "").toString().trim();
   if(!reason) return res.status(400).json({error:"decisionReason required"});
-  const updated=data.updateEventDecision(req.params.id, "denied", admin.id, reason);
+  const updated=await data.updateEventDecision(req.params.id, "denied", admin.id, reason);
   if(!updated) return res.status(404).json({error:"Not found"});
   res.json(updated);
 });
 
-app.get("/api/admin/localbiz",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.get("/api/admin/localbiz", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const status=(req.query.status || "pending").toString().trim().toLowerCase();
-  res.json(data.listLocalBizApplicationsByStatus(status));
+  res.json(await data.listLocalBizApplicationsByStatus(status));
 });
-app.post("/api/admin/localbiz/:id/approve",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
-  const updated=data.updateLocalBizDecision(req.params.id, "approved", admin.id, "");
+app.post("/api/admin/localbiz/:id/approve", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const updated=await data.updateLocalBizDecision(req.params.id, "approved", admin.id, "");
   if(!updated) return res.status(404).json({error:"Not found"});
   res.json(updated);
 });
-app.post("/api/admin/localbiz/:id/deny",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.post("/api/admin/localbiz/:id/deny", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const reason=(req.body?.reason || "").toString().trim();
   if(!reason) return res.status(400).json({error:"reason required"});
-  const updated=data.updateLocalBizDecision(req.params.id, "denied", admin.id, reason);
+  const updated=await data.updateLocalBizDecision(req.params.id, "denied", admin.id, reason);
   if(!updated) return res.status(404).json({error:"Not found"});
   res.json(updated);
 });
 
 app.post("/api/admin/test-email", async (req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+  const admin=await requireAdmin(req,res); if(!admin) return;
   console.log("POSTMARK_TEST_SEND", {
     hasToken: !!process.env.POSTMARK_SERVER_TOKEN,
     hasFrom: !!process.env.EMAIL_FROM,
@@ -1978,89 +1993,89 @@ app.post("/api/admin/test-email", async (req,res)=>{
   res.json({ ok:true });
 });
 
-app.get("/api/admin/waitlist",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.get("/api/admin/waitlist", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const status=(req.query.status || "pending").toString().trim().toLowerCase();
-  res.json(data.listWaitlistSignupsByStatus(status));
+  res.json(await data.listWaitlistSignupsByStatus(status));
 });
-app.post("/api/admin/waitlist/:id/status",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.post("/api/admin/waitlist/:id/status", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const status=(req.body?.status || "").toString().trim().toLowerCase();
   if(status !== "approved" && status !== "rejected" && status !== "pending"){
     return res.status(400).json({error:"status must be approved, rejected, or pending"});
   }
-  const updated = data.updateWaitlistStatus(req.params.id, status);
+  const updated = await data.updateWaitlistStatus(req.params.id, status);
   if(!updated) return res.status(404).json({error:"Not found"});
   res.json(updated);
 });
 
-app.get("/api/admin/applications/business",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.get("/api/admin/applications/business", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const status=(req.query.status || "pending").toString().trim().toLowerCase();
-  res.json(data.listBusinessApplicationsByStatus(status));
+  res.json(await data.listBusinessApplicationsByStatus(status));
 });
-app.post("/api/admin/applications/business/:id/status",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.post("/api/admin/applications/business/:id/status", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const status=(req.body?.status || "").toString().trim().toLowerCase();
   if(status !== "approved" && status !== "rejected" && status !== "pending"){
     return res.status(400).json({error:"status must be approved, rejected, or pending"});
   }
-  const updated = data.updateBusinessApplicationStatus(req.params.id, status);
+  const updated = await data.updateBusinessApplicationStatus(req.params.id, status);
   if(!updated) return res.status(404).json({error:"Not found"});
   res.json(updated);
 });
 
-app.get("/api/admin/applications/resident",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.get("/api/admin/applications/resident", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const status=(req.query.status || "pending").toString().trim().toLowerCase();
-  res.json(data.listResidentApplicationsByStatus(status));
+  res.json(await data.listResidentApplicationsByStatus(status));
 });
-app.post("/api/admin/applications/resident/:id/status",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.post("/api/admin/applications/resident/:id/status", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const status=(req.body?.status || "").toString().trim().toLowerCase();
   if(status !== "approved" && status !== "rejected" && status !== "pending"){
     return res.status(400).json({error:"status must be approved, rejected, or pending"});
   }
-  const updated = data.updateResidentApplicationStatus(req.params.id, status);
+  const updated = await data.updateResidentApplicationStatus(req.params.id, status);
   if(!updated) return res.status(404).json({error:"Not found"});
   if(status === "approved"){
-    const app = data.getResidentApplicationById(req.params.id);
+    const app = await data.getResidentApplicationById(req.params.id);
     if(app?.email){
-      const user = data.getUserByEmail(app.email);
-      if(user) data.setUserResidentVerified(user.id, true);
+      const user = await data.getUserByEmail(app.email);
+      if(user) await data.setUserResidentVerified(user.id, true);
     }
   }
   res.json(updated);
 });
 
-app.get("/api/admin/prizes",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.get("/api/admin/prizes", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const status=(req.query.status || "pending").toString().trim().toLowerCase();
-  res.json(data.listPrizeOffersByStatus(status));
+  res.json(await data.listPrizeOffersByStatus(status));
 });
-app.post("/api/admin/prizes/:id/approve",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
-  const updated=data.updatePrizeOfferDecision(req.params.id, "approved", admin.id, "");
+app.post("/api/admin/prizes/:id/approve", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const updated=await data.updatePrizeOfferDecision(req.params.id, "approved", admin.id, "");
   if(!updated) return res.status(404).json({error:"Not found"});
   res.json(updated);
 });
-app.post("/api/admin/prizes/:id/reject",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.post("/api/admin/prizes/:id/reject", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const reason=(req.body?.reason || "").toString().trim();
   if(!reason) return res.status(400).json({error:"reason required"});
-  const updated=data.updatePrizeOfferDecision(req.params.id, "rejected", admin.id, reason);
+  const updated=await data.updatePrizeOfferDecision(req.params.id, "rejected", admin.id, reason);
   if(!updated) return res.status(404).json({error:"Not found"});
   res.json(updated);
 });
-app.post("/api/admin/prizes/:id/award",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.post("/api/admin/prizes/:id/award", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const winnerUserId = Number(req.body?.winnerUserId);
   if(!winnerUserId) return res.status(400).json({error:"winnerUserId required"});
-  const offer = data.getPrizeOfferById(req.params.id);
+  const offer = await data.getPrizeOfferById(req.params.id);
   if(!offer) return res.status(404).json({error:"Not found"});
-  const convo = data.addDirectConversation(offer.donorUserId, winnerUserId);
+  const convo = await data.addDirectConversation(offer.donorUserId, winnerUserId);
   const dueBy = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  const award = data.addPrizeAward({
+  const award = await data.addPrizeAward({
     prizeOfferId: offer.id,
     winnerUserId,
     donorUserId: offer.donorUserId,
@@ -2070,87 +2085,89 @@ app.post("/api/admin/prizes/:id/award",(req,res)=>{
     convoId: convo.id,
     proofUrl: ""
   });
-  data.updatePrizeOfferDecision(offer.id, "awarded", admin.id, "");
+  await data.updatePrizeOfferDecision(offer.id, "awarded", admin.id, "");
   res.json({ ok:true, award });
 });
 
-app.get("/api/admin/media",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.get("/api/admin/media", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const townId = Number(req.query.townId || 1);
   const kind = (req.query.kind || "").toString().trim();
   const limit = Number(req.query.limit || 200);
-  res.json(data.listMediaObjects({ townId, kind, limit: Number.isFinite(limit) ? limit : 200 }));
+  res.json(await data.listMediaObjects({ townId, kind, limit: Number.isFinite(limit) ? limit : 200 }));
 });
-app.get("/api/admin/media/orphans",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.get("/api/admin/media/orphans", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const townId = Number(req.query.townId || 1);
   const limit = Number(req.query.limit || 200);
-  const orphans = data.listMediaOrphans(townId, Number.isFinite(limit) ? limit : 200);
-  const missingLocal = data.listMissingLocalMedia(townId, Number.isFinite(limit) ? limit : 200);
+  const orphans = await data.listMediaOrphans(townId, Number.isFinite(limit) ? limit : 200);
+  const missingLocal = await data.listMissingLocalMedia(townId, Number.isFinite(limit) ? limit : 200);
   res.json({ orphans, missingLocal });
 });
-app.get("/api/admin/trust/reviews",(req,res)=>{
-  const rows = data.listReviews(200).map((r)=>{
-    const reviewer = getTrustBadgeForUser(r.reviewerUserId);
-    const reviewee = getTrustBadgeForUser(r.revieweeUserId);
+app.get("/api/admin/trust/reviews", async (req, res) =>{
+  const reviews = await data.listReviews(200);
+  const rows = await Promise.all(reviews.map(async (r)=>{
+    const reviewer = await getTrustBadgeForUser(r.reviewerUserId);
+    const reviewee = await getTrustBadgeForUser(r.revieweeUserId);
     return {
       ...r,
       reviewerTrustTierLabel: reviewer?.trustTierLabel || null,
       revieweeTrustTierLabel: reviewee?.trustTierLabel || null
     };
-  });
+  }));
   res.json(rows);
 });
-app.get("/api/admin/trust/disputes",(req,res)=>{
-  const rows = data.listDisputes(200).map((d)=>{
-    const reporter = getTrustBadgeForUser(d.reporterUserId);
+app.get("/api/admin/trust/disputes", async (req, res) =>{
+  const disputes = await data.listDisputes(200);
+  const rows = await Promise.all(disputes.map(async (d)=>{
+    const reporter = await getTrustBadgeForUser(d.reporterUserId);
     return { ...d, reporterTrustTierLabel: reporter?.trustTierLabel || null };
-  });
+  }));
   res.json(rows);
 });
-app.get("/api/admin/stores",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.get("/api/admin/stores", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   const status = (req.query.status || "").toString().trim();
-  res.json(data.listPlacesByStatus(status));
+  res.json(await data.listPlacesByStatus(status));
 });
-app.patch("/api/admin/stores/:id",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
+app.patch("/api/admin/stores/:id", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
   const status = (req.body?.status || "").toString().trim().toLowerCase();
   if(!["pending","approved","rejected"].includes(status)) return res.status(400).json({error:"Invalid status"});
-  const updated = data.updatePlaceStatus(req.params.id, status);
+  const updated = await data.updatePlaceStatus(req.params.id, status);
   if(!updated) return res.status(404).json({error:"not found"});
   res.json(updated);
 });
 
 // Sweep
-app.get("/sweep/balance",(req,res)=>{
-  const u=getUserId(req);
+app.get("/sweep/balance", async (req, res) =>{
+  const u=await getUserId(req);
   if(!u) return res.json({loggedIn:false,balance:0});
-  res.json({loggedIn:true,balance:data.getSweepBalance(u)});
+  res.json({loggedIn:true,balance:await data.getSweepBalance(u)});
 });
-app.get("/sweepstake/active",(req,res)=>{
-  return res.json(getSweepstakeActivePayload(req));
+app.get("/sweepstake/active", async (req, res) =>{
+  return res.json(await getSweepstakeActivePayload(req));
 });
-app.get("/api/sweepstake/active",(req,res)=>{
-  return res.json(getSweepstakeActivePayload(req));
+app.get("/api/sweepstake/active", async (req, res) =>{
+  return res.json(await getSweepstakeActivePayload(req));
 });
-app.get("/sweep/claim/:drawId",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const draw = data.getSweepDrawById(req.params.drawId);
+app.get("/sweep/claim/:drawId", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const draw = await data.getSweepDrawById(req.params.drawId);
   if(!draw) return res.status(404).send("Draw not found");
   if(Number(draw.winnerUserId) !== Number(u)){
     return res.status(403).send("Forbidden");
   }
   res.sendFile(path.join(__dirname,"public","sweep_claim.html"));
 });
-app.get("/api/sweep/claim/:drawId",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const draw = data.getSweepDrawById(req.params.drawId);
+app.get("/api/sweep/claim/:drawId", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const draw = await data.getSweepDrawById(req.params.drawId);
   if(!draw) return res.status(404).json({error:"Draw not found"});
   if(Number(draw.winnerUserId) !== Number(u)){
     return res.status(403).json({error:"Forbidden"});
   }
-  const { sweep, prize } = getSweepDrawContext(draw);
+  const { sweep, prize } = await getSweepDrawContext(draw);
   res.json({
     ok:true,
     drawId: draw.id,
@@ -2165,14 +2182,14 @@ app.get("/api/sweep/claim/:drawId",(req,res)=>{
     sweepPrize: sweep?.prize || ""
   });
 });
-app.post("/sweepstake/enter",(req,res)=>{
-  const access = requirePerm(req,res,"SWEEP_ENTER"); if(!access) return;
+app.post("/sweepstake/enter", async (req, res) =>{
+  const access = await requirePerm(req,res,"SWEEP_ENTER"); if(!access) return;
   const u=access.userId;
   const isSweepTestMode = process.env.SWEEP_TEST_MODE === "true" && isAdminUser(access.user);
   const sweepId = Number(req.body?.sweepstakeId);
   const entries = Number(req.body?.entries);
   if(!Number.isFinite(entries) || entries <= 0) return res.status(400).json({error:"entries must be > 0"});
-  const sweep = data.getSweepstakeById(sweepId);
+  const sweep = await data.getSweepstakeById(sweepId);
   if(!sweep) return res.status(404).json({error:"Sweepstake not found"});
   if(String(sweep.status) !== "active") return res.status(400).json({error:"Sweepstake not active"});
   const now = Date.now();
@@ -2181,20 +2198,20 @@ app.post("/sweepstake/enter",(req,res)=>{
   if(Number.isFinite(startAt) && now < startAt) return res.status(400).json({error:"Sweepstake not started"});
   if(Number.isFinite(endAt) && now > endAt) return res.status(400).json({error:"Sweepstake ended"});
   const cost = Number(sweep.entryCost || 1) * entries;
-  const balance = data.getSweepBalance(u);
+  const balance = await data.getSweepBalance(u);
   if(!isSweepTestMode){
     if(balance < cost) return res.status(400).json({error:"Insufficient sweep balance"});
-    data.addSweepLedgerEntry({ userId: u, amount: -cost, reason: "sweepstake_entry", meta: { sweepstakeId: sweep.id, entries } });
+    await data.addSweepLedgerEntry({ userId: u, amount: -cost, reason: "sweepstake_entry", meta: { sweepstakeId: sweep.id, entries } });
   }
-  data.addSweepstakeEntry(sweep.id, u, entries);
-  const totals = data.getSweepstakeEntryTotals(sweep.id);
-  const userEntries = data.getUserEntriesForSweepstake(sweep.id, u);
+  await data.addSweepstakeEntry(sweep.id, u, entries);
+  const totals = await data.getSweepstakeEntryTotals(sweep.id);
+  const userEntries = await data.getUserEntriesForSweepstake(sweep.id, u);
   const nextBalance = isSweepTestMode ? balance : balance - cost;
   res.json({ ok:true, balance: nextBalance, totals, userEntries });
 });
-app.post("/api/sweep/claim/:drawId",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const draw = data.getSweepDrawById(req.params.drawId);
+app.post("/api/sweep/claim/:drawId", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const draw = await data.getSweepDrawById(req.params.drawId);
   if(!draw) return res.status(404).json({error:"Draw not found"});
   if(Number(draw.winnerUserId) !== Number(u)){
     return res.status(403).json({error:"Forbidden"});
@@ -2211,17 +2228,17 @@ app.post("/api/sweep/claim/:drawId",(req,res)=>{
   }
   const messageToDonor = (req.body?.messageToDonor || "").toString().trim();
   const photoUrl = (req.body?.photoUrl || "").toString().trim();
-  const claimed = data.setSweepClaimed(draw.id, {
+  const claimed = await data.setSweepClaimed(draw.id, {
     claimedByUserId: u,
     claimedMessage: messageToDonor,
     claimedPhotoUrl: photoUrl
   });
-  const { sweep, prize } = getSweepDrawContext(draw);
+  const { sweep, prize } = await getSweepDrawContext(draw);
   const prizeTitle = (prize?.title || sweep?.prize || sweep?.title || "Prize").toString().trim();
-  const donorUserId = resolveSweepDonorUserId(prize);
-  const donorName = resolveSweepDonorName(prize, donorUserId) || "Donor";
-  const winnerUser = data.getUserById(u);
-  const winnerName = winnerUser ? data.getDisplayNameForUser(winnerUser) : "Winner";
+  const donorUserId = await resolveSweepDonorUserId(prize);
+  const donorName = await resolveSweepDonorName(prize, donorUserId) || "Donor";
+  const winnerUser = await data.getUserById(u);
+  const winnerName = winnerUser ? await data.getDisplayNameForUser(winnerUser) : "Winner";
   const systemSenderId = draw.createdByUserId || u;
   const claimLines = [`[SYSTEM] ✅ Prize claimed: ${winnerName} confirmed receipt of ${prizeTitle}.`];
   if(messageToDonor) claimLines.push(`Message: ${messageToDonor}`);
@@ -2229,11 +2246,11 @@ app.post("/api/sweep/claim/:drawId",(req,res)=>{
   const claimText = claimLines.join("\n");
   try{
     if(donorUserId && Number(donorUserId) !== Number(u)){
-      const convo = data.addDirectConversation(u, donorUserId);
-      if(convo?.id) data.addDirectMessage(convo.id, systemSenderId, claimText);
+      const convo = await data.addDirectConversation(u, donorUserId);
+      if(convo?.id) await data.addDirectMessage(convo.id, systemSenderId, claimText);
     }else if(draw.createdByUserId && Number(draw.createdByUserId) !== Number(u)){
-      const convo = data.addDirectConversation(u, draw.createdByUserId);
-      if(convo?.id) data.addDirectMessage(convo.id, systemSenderId, claimText);
+      const convo = await data.addDirectConversation(u, draw.createdByUserId);
+      if(convo?.id) await data.addDirectMessage(convo.id, systemSenderId, claimText);
     }
   }catch(err){
     console.warn("Sweep claim DM failed", err?.message || err);
@@ -2243,13 +2260,13 @@ app.post("/api/sweep/claim/:drawId",(req,res)=>{
     if(!claimed?.claimedPostedMessageId){
       let channelId = Number(process.env.SWEETSTAKE_ANNOUNCE_CHANNEL_ID || 0);
       if(!channelId){
-        const chans = data.getChannels ? data.getChannels() : [];
+        const chans = await data.getChannels();
         channelId = chans[0]?.id ? Number(chans[0].id) : 0;
       }
       if(channelId){
         const announceText = `🎉 Prize Claimed! ${winnerName} received: ${prizeTitle} (Donor: ${donorName}).`;
-        const msg = data.addChannelMessage(channelId, systemSenderId, announceText, photoUrl || "");
-        if(msg?.id) data.setSweepClaimPostedMessageId(draw.id, msg.id);
+        const msg = await data.addChannelMessage(channelId, systemSenderId, announceText, photoUrl || "");
+        if(msg?.id) await data.setSweepClaimPostedMessageId(draw.id, msg.id);
       }else{
         console.warn("Sweep claim announce channel missing");
       }
@@ -2267,17 +2284,17 @@ app.post("/api/sweep/claim/:drawId",(req,res)=>{
     claimedPostedMessageId: claimed?.claimedPostedMessageId || null
   });
 });
-app.post("/api/admin/sweep/draw",(req,res)=>{
-  const admin = requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
-  const sweep = data.getActiveSweepstake();
+app.post("/api/admin/sweep/draw", async (req, res) =>{
+  const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+  const sweep = await data.getActiveSweepstake();
   if(!sweep) return res.status(400).json({ error: "No active sweepstake" });
-  const existing = data.getSweepDrawBySweepId(sweep.id);
+  const existing = await data.getSweepDrawBySweepId(sweep.id);
   if(existing){
     let snapshot = {};
     try{ snapshot = JSON.parse(existing.snapshotJson || "{}"); }catch(_){}
-    const participants = Array.isArray(snapshot.participants) ? snapshot.participants : buildSweepParticipants(sweep.id);
+    const participants = Array.isArray(snapshot.participants) ? snapshot.participants : await buildSweepParticipants(sweep.id);
     const winner = snapshot.winner || participants.find(p=>Number(p.userId)===Number(existing.winnerUserId)) || null;
-    const prize = getSweepPrizeInfo(sweep, snapshot.prize);
+    const prize = await getSweepPrizeInfo(sweep, snapshot.prize);
     return res.json({
       ok:true,
       drawId: existing.id,
@@ -2290,7 +2307,7 @@ app.post("/api/admin/sweep/draw",(req,res)=>{
       claimedAt: existing.claimedAt || ""
     });
   }
-  const participants = buildSweepParticipants(sweep.id);
+  const participants = await buildSweepParticipants(sweep.id);
   const totalEntries = participants.reduce((sum,p)=>sum + Number(p.entries || 0), 0);
   if(totalEntries <= 0) return res.status(400).json({ error: "No entries to draw" });
   const r = crypto.randomInt(totalEntries);
@@ -2301,17 +2318,17 @@ app.post("/api/admin/sweep/draw",(req,res)=>{
     if(r < acc){ winner = p; break; }
   }
   if(!winner) return res.status(500).json({ error: "Failed to select winner" });
-  const prize = getSweepPrizeInfo(sweep);
+  const prize = await getSweepPrizeInfo(sweep);
   const snapshot = { participants, winner, totalEntries, prize };
-  const draw = data.createSweepDraw({
+  const draw = await data.createSweepDraw({
     sweepId: sweep.id,
     createdByUserId: admin.id,
     winnerUserId: winner.userId,
     totalEntries,
     snapshot
   });
-  data.setSweepstakeWinner(sweep.id, winner.userId);
-  notifySweepDrawUsers({ draw, sweep, winner, prize, adminId: admin.id });
+  await data.setSweepstakeWinner(sweep.id, winner.userId);
+  await notifySweepDrawUsers({ draw, sweep, winner, prize, adminId: admin.id });
   return res.json({
     ok:true,
     drawId: draw?.id || null,
@@ -2324,22 +2341,22 @@ app.post("/api/admin/sweep/draw",(req,res)=>{
     claimedAt: draw?.claimedAt || ""
   });
 });
-app.post("/api/admin/sweep/grant_test_balance",(req,res)=>{
-  const admin = requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+app.post("/api/admin/sweep/grant_test_balance", async (req, res) =>{
+  const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
   if(process.env.SWEEP_TEST_MODE !== "true") return res.status(403).json({error:"Sweep test mode disabled"});
-  data.addSweepLedgerEntry({ userId: admin.id, amount: 999999, reason: "sweep_test_grant", meta: { mode: "test" } });
-  res.json({ ok:true, balance: data.getSweepBalance(admin.id) });
+  await data.addSweepLedgerEntry({ userId: admin.id, amount: 999999, reason: "sweep_test_grant", meta: { mode: "test" } });
+  res.json({ ok:true, balance: await data.getSweepBalance(admin.id) });
 });
-app.get("/api/admin/sweep/last",(req,res)=>{
-  const admin = requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
-  const existing = data.getLatestSweepDraw();
+app.get("/api/admin/sweep/last", async (req, res) =>{
+  const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+  const existing = await data.getLatestSweepDraw();
   if(!existing) return res.status(404).json({ error: "No draw yet" });
   let snapshot = {};
   try{ snapshot = JSON.parse(existing.snapshotJson || "{}"); }catch(_){}
-  const participants = Array.isArray(snapshot.participants) ? snapshot.participants : buildSweepParticipants(existing.sweepId);
+  const participants = Array.isArray(snapshot.participants) ? snapshot.participants : await buildSweepParticipants(existing.sweepId);
   const winner = snapshot.winner || participants.find(p=>Number(p.userId)===Number(existing.winnerUserId)) || null;
-  const sweep = data.getSweepstakeById(existing.sweepId);
-  const prize = getSweepPrizeInfo(sweep, snapshot.prize);
+  const sweep = await data.getSweepstakeById(existing.sweepId);
+  const prize = await getSweepPrizeInfo(sweep, snapshot.prize);
   return res.json({
     ok:true,
     drawId: existing.id,
@@ -2352,10 +2369,10 @@ app.get("/api/admin/sweep/last",(req,res)=>{
     claimedAt: existing.claimedAt || ""
   });
 });
-app.get("/api/admin/sweep/rules",(req,res)=>{
+app.get("/api/admin/sweep/rules", async (req, res) =>{
   res.json(adminSweepRules);
 });
-app.post("/api/admin/sweep/rules",(req,res)=>{
+app.post("/api/admin/sweep/rules", async (req, res) =>{
   const matchEventType = (req.body?.matchEventType || "").toString().trim();
   if(!matchEventType) return res.status(400).json({error:"matchEventType required"});
   const rule = {
@@ -2370,7 +2387,7 @@ app.post("/api/admin/sweep/rules",(req,res)=>{
   adminSweepRules.push(rule);
   res.status(201).json(rule);
 });
-app.patch("/api/admin/sweep/rules/:id",(req,res)=>{
+app.patch("/api/admin/sweep/rules/:id", async (req, res) =>{
   const id = Number(req.params.id);
   const rule = adminSweepRules.find(r=>Number(r.id)===id);
   if(!rule) return res.status(404).json({error:"Rule not found"});
@@ -2382,8 +2399,8 @@ app.patch("/api/admin/sweep/rules/:id",(req,res)=>{
   rule.cooldownSeconds = Number.isFinite(Number(req.body?.cooldownSeconds)) ? Number(req.body.cooldownSeconds) : rule.cooldownSeconds;
   res.json(rule);
 });
-app.post("/api/admin/sweep/sweepstake",(req,res)=>{
-  const created = data.createSweepstake({
+app.post("/api/admin/sweep/sweepstake", async (req, res) =>{
+  const created = await data.createSweepstake({
     status: (req.body?.status || "").toString(),
     title: (req.body?.title || "").toString(),
     prize: (req.body?.prize || "").toString(),
@@ -2398,26 +2415,27 @@ app.post("/api/admin/sweep/sweepstake",(req,res)=>{
 });
 
 // Districts
-app.get("/districts/:id/places",(req,res)=>{
+app.get("/districts/:id/places", async (req, res) =>{
   const did=Number(req.params.id);
-  const places=(data.getPlaces ? data.getPlaces() : data.places || []).filter(p=>Number(p.districtId)===did);
+  const places = (await data.getPlaces()).filter(p=>Number(p.districtId)===did);
   res.json(places);
 });
 
-app.get("/market/listings",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_MARKET"); if(!access) return;
+app.get("/market/listings", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_MARKET"); if(!access) return;
   const townId = Number(req.query.townId || 1);
-  const places = (data.getPlaces ? data.getPlaces() : data.places || []);
+  const places = await data.getPlaces();
   const placeById = new Map(places.map(p=>[Number(p.id), p]));
   const out = [];
-  data.getListings().forEach((l)=>{
+  const listings = await data.getListings();
+  for(const l of listings){
     const p = placeById.get(Number(l.placeId));
-    if(!p) return;
-    if(townId && Number(p.townId)!==Number(townId)) return;
+    if(!p) continue;
+    if(townId && Number(p.townId)!==Number(townId)) continue;
     const listingType = l.listingType || "item";
     const hasAuctionFields = !!(l.auctionStartAt || l.auctionEndAt || Number(l.startBidCents || 0) || Number(l.minIncrementCents || 0) || Number(l.reserveCents || 0));
     const hasAuctionId = !!l.auctionId;
-    if(listingType === "auction" || hasAuctionFields || hasAuctionId) return;
+    if(listingType === "auction" || hasAuctionFields || hasAuctionId) continue;
     const joined = {
       id: l.id,
       placeId: l.placeId,
@@ -2432,27 +2450,28 @@ app.get("/market/listings",(req,res)=>{
       districtId: p.districtId
     };
     if((l.listingType||"item")==="auction"){
-      const summary = data.getAuctionSummary(l.id);
+      const summary = await data.getAuctionSummary(l.id);
       joined.highestBidCents = summary.highestBidCents || 0;
     }
     out.push(joined);
-  });
+  }
   res.json(out);
 });
 
-app.get("/market/auctions",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_AUCTIONS"); if(!access) return;
+app.get("/market/auctions", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_AUCTIONS"); if(!access) return;
   const townId = Number(req.query.townId || 1);
-  const places = (data.getPlaces ? data.getPlaces() : data.places || []);
+  const places = await data.getPlaces();
   const placeById = new Map(places.map(p=>[Number(p.id), p]));
   const out = [];
-  data.getListings().forEach((l)=>{
+  const listings = await data.getListings();
+  for(const l of listings){
     const p = placeById.get(Number(l.placeId));
-    if(!p) return;
-    if(townId && Number(p.townId)!==Number(townId)) return;
+    if(!p) continue;
+    if(townId && Number(p.townId)!==Number(townId)) continue;
     const listingType = l.listingType || "item";
     const hasAuctionId = !!l.auctionId;
-    if(listingType !== "auction" && !hasAuctionId) return;
+    if(listingType !== "auction" && !hasAuctionId) continue;
     const joined = {
       id: l.id,
       placeId: l.placeId,
@@ -2466,47 +2485,48 @@ app.get("/market/auctions",(req,res)=>{
       placeCategory: p.category || "",
       districtId: p.districtId
     };
-    const summary = data.getAuctionSummary(l.id);
+    const summary = await data.getAuctionSummary(l.id);
     joined.highestBidCents = summary.highestBidCents || 0;
     out.push(joined);
-  });
+  }
   res.json(out);
 });
 
 // Channels
-app.get("/channels",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_CHANNELS"); if(!access) return;
+app.get("/channels", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_CHANNELS"); if(!access) return;
   const u=access.userId;
-  const channels=data.getChannels();
+  const channels=await data.getChannels();
   if(!u) return res.json(channels.filter(c=>Number(c.isPublic)===1));
   res.json(channels);
 });
-app.get("/channels/:id/messages",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_CHANNELS"); if(!access) return;
-  const channel=data.getChannelById(req.params.id);
+app.get("/channels/:id/messages", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_CHANNELS"); if(!access) return;
+  const channel=await data.getChannelById(req.params.id);
   if(!channel) return res.status(404).json({error:"Channel not found"});
   const isPublic=Number(channel.isPublic)===1;
   if(!isPublic){
     const u=access.userId;
-    if(!data.isChannelMember(channel.id,u)) return res.status(403).json({error:"Not a member"});
+    if(!await data.isChannelMember(channel.id,u)) return res.status(403).json({error:"Not a member"});
   }
-  const msgs = data.getChannelMessages(channel.id, 200).map((m)=>({
+  const messages = await data.getChannelMessages(channel.id, 200);
+  const msgs = await Promise.all(messages.map(async (m)=>({
     ...m,
-    user: getTrustBadgeForUser(m.userId)
-  }));
+    user: await getTrustBadgeForUser(m.userId)
+  })));
   res.json(msgs);
 });
-app.post("/channels/:id/messages",(req,res)=>{
-  const access = requirePerm(req,res,"COMMENT_CHANNELS"); if(!access) return;
+app.post("/channels/:id/messages", async (req, res) =>{
+  const access = await requirePerm(req,res,"COMMENT_CHANNELS"); if(!access) return;
   const u=access.userId;
   const ctx=access.ctx;
   const user=access.user;
   const gate = trust.can(user, ctx, "chat_text");
   if(!gate.ok) return res.status(403).json({error:"Chat requires verified access"});
-  const channel=data.getChannelById(req.params.id);
+  const channel=await data.getChannelById(req.params.id);
   if(!channel) return res.status(404).json({error:"Channel not found"});
   const isPublic=Number(channel.isPublic)===1;
-  if(!isPublic && !data.isChannelMember(channel.id,u)) return res.status(403).json({error:"Not a member"});
+  if(!isPublic && !await data.isChannelMember(channel.id,u)) return res.status(403).json({error:"Not a member"});
   const text=(req.body?.text||"").toString().trim();
   const imageUrl=(req.body?.imageUrl||"").toString().trim();
   if(!text && !imageUrl) return res.status(400).json({error:"text or imageUrl required"});
@@ -2524,33 +2544,33 @@ app.post("/channels/:id/messages",(req,res)=>{
   let threadId=null;
   if(replyToId){
     if(!canPost) return res.status(403).json({error:"Posting requires tier 1+"});
-    const parent=data.getChannelMessageById(replyToId);
+    const parent=await data.getChannelMessageById(replyToId);
     if(!parent || Number(parent.channelId)!==Number(channel.id)) return res.status(400).json({error:"Invalid replyToId"});
     threadId=parent.threadId;
   }else{
     if(!canCreateThread) return res.status(403).json({error:"Thread creation requires tier 1+"});
-    threadId=data.createChannelThread(channel.id, u);
+    threadId=await data.createChannelThread(channel.id, u);
   }
-  const created=data.addChannelMessage(channel.id, u, text, imageUrl, replyToId, threadId);
+  const created=await data.addChannelMessage(channel.id, u, text, imageUrl, replyToId, threadId);
   res.status(201).json({ok:true, id: created.id, threadId});
 });
 
 // Place meta
-app.get("/places/:id",(req,res)=>{
-  const p=data.getPlaceById(req.params.id);
+app.get("/places/:id", async (req, res) =>{
+  const p=await data.getPlaceById(req.params.id);
   if(!p) return res.status(404).json({error:"not found"});
-  const u = getUserId(req);
-  const followCount = data.getStoreFollowCount(p.id);
-  const isFollowing = u ? data.isFollowingStore(u, p.id) : false;
-  const reviewSummary = p.ownerUserId ? data.getReviewSummaryForUserDetailed(p.ownerUserId) : { count:0, average:0, buyerCount:0, sellerCount:0 };
-  const owner = p.ownerUserId ? getTrustBadgeForUser(p.ownerUserId) : null;
+  const u = await getUserId(req);
+  const followCount = await data.getStoreFollowCount(p.id);
+  const isFollowing = u ? await data.isFollowingStore(u, p.id) : false;
+  const reviewSummary = p.ownerUserId ? await data.getReviewSummaryForUserDetailed(p.ownerUserId) : { count:0, average:0, buyerCount:0, sellerCount:0 };
+  const owner = p.ownerUserId ? await getTrustBadgeForUser(p.ownerUserId) : null;
   res.json({ ...p, followCount, isFollowing, reviewSummary, owner });
 });
-app.post("/places",(req,res)=>{
-  const access = requirePerm(req,res,"SELL_LISTINGS"); if(!access) return;
+app.post("/places", async (req, res) =>{
+  const access = await requirePerm(req,res,"SELL_LISTINGS"); if(!access) return;
   const u=access.userId;
   const payload = req.body || {};
-  const created = data.addPlace({
+  const created = await data.addPlace({
     ...payload,
     ownerUserId: u,
     townId: 1
@@ -2558,80 +2578,81 @@ app.post("/places",(req,res)=>{
   if(created?.error) return res.status(400).json(created);
   res.status(201).json(created);
 });
-app.get("/places/:id/owner",(req,res)=>{
-  const owner = data.getPlaceOwnerPublic(req.params.id);
+app.get("/places/:id/owner", async (req, res) =>{
+  const owner = await data.getPlaceOwnerPublic(req.params.id);
   if(!owner) return res.json({owner:null});
-  const trustBadge = getTrustBadgeForUser(owner.id);
+  const trustBadge = await getTrustBadgeForUser(owner.id);
   res.json({owner: { ...owner, trustTier: trustBadge?.trustTier, trustTierLabel: trustBadge?.trustTierLabel }});
 });
-app.patch("/places/:id/settings",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const updated = data.updatePlaceSettings(req.params.id, req.body || {});
+app.patch("/places/:id/settings", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const updated = await data.updatePlaceSettings(req.params.id, req.body || {});
   if(!updated) return res.status(404).json({error:"not found"});
   res.json(updated);
 });
-app.patch("/places/:id/profile",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const place = data.getPlaceById(req.params.id);
+app.patch("/places/:id/profile", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const place = await data.getPlaceById(req.params.id);
   if(!place) return res.status(404).json({error:"not found"});
   if(Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Only owner can edit"});
   if((place.status || "").toLowerCase() !== "approved") return res.status(403).json({error:"Store not approved"});
-  const updated = data.updatePlaceProfile(place.id, req.body || {});
+  const updated = await data.updatePlaceProfile(place.id, req.body || {});
   res.json(updated);
 });
-app.post("/places/:id/follow",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const place = data.getPlaceById(req.params.id);
+app.post("/places/:id/follow", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const place = await data.getPlaceById(req.params.id);
   if(!place) return res.status(404).json({error:"not found"});
-  data.followStore(u, place.id);
+  await data.followStore(u, place.id);
   res.json({ ok:true });
 });
-app.delete("/places/:id/follow",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  data.unfollowStore(u, req.params.id);
+app.delete("/places/:id/follow", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  await data.unfollowStore(u, req.params.id);
   res.json({ ok:true });
 });
-app.get("/places/:id/conversations",(req,res)=>{
+app.get("/places/:id/conversations", async (req, res) =>{
   const viewer = (req.query.viewer || "").toString();
-  res.json(data.getConversationsForPlace(req.params.id, viewer));
+  res.json(await data.getConversationsForPlace(req.params.id, viewer));
 });
-app.get("/conversations/:id/messages",(req,res)=>{
-  const convo = data.getConversationById(req.params.id);
+app.get("/conversations/:id/messages", async (req, res) =>{
+  const convo = await data.getConversationById(req.params.id);
   if(!convo) return res.status(404).json({error:"Conversation not found"});
-  res.json(data.getConversationMessages(convo.id));
+  res.json(await data.getConversationMessages(convo.id));
 });
-app.post("/conversations/:id/messages",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const ctx=data.getTownContext(1, u);
-  const user=data.getUserById(u);
+app.post("/conversations/:id/messages", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const ctx=await data.getTownContext(1, u);
+  const user=await data.getUserById(u);
   const gate = trust.can(user, ctx, "chat_text");
   if(!gate.ok) return res.status(403).json({error:"Chat requires verified access"});
-  const convo = data.getConversationById(req.params.id);
+  const convo = await data.getConversationById(req.params.id);
   if(!convo) return res.status(404).json({error:"Conversation not found"});
   const sender = (req.body?.sender || "buyer").toString().trim() || "buyer";
   const text = (req.body?.text || "").toString().trim();
   if(!text) return res.status(400).json({error:"text required"});
-  const msg = data.addMessage({ conversationId: convo.id, sender, text });
+  const msg = await data.addMessage({ conversationId: convo.id, sender, text });
   res.status(201).json({ ok:true, id: msg.id });
 });
-app.patch("/conversations/:id/read",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const convo = data.getConversationById(req.params.id);
+app.patch("/conversations/:id/read", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const convo = await data.getConversationById(req.params.id);
   if(!convo) return res.status(404).json({error:"Conversation not found"});
   const viewer = (req.query.viewer || "").toString();
-  const result = data.markConversationRead(convo.id, viewer);
+  const result = await data.markConversationRead(convo.id, viewer);
   res.json(result);
 });
 
 // Listings
-app.get("/places/:id/listings",(req,res)=>{
+app.get("/places/:id/listings", async (req, res) =>{
   const pid=Number(req.params.id);
-  res.json(data.getListings().filter(l=>Number(l.placeId)===pid));
+  const listings = await data.getListings();
+  res.json(listings.filter(l=>Number(l.placeId)===pid));
 });
-app.post("/places/:id/listings",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const ctx=data.getTownContext(1, u);
-  const user=data.getUserById(u);
+app.post("/places/:id/listings", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const ctx=await data.getTownContext(1, u);
+  const user=await data.getUserById(u);
   const listingGate = trust.can(user, ctx, "listing_create");
   if(!listingGate.ok) return res.status(403).json({error:"Listing creation requires Sebastian Resident trust"});
   const pid=Number(req.params.id);
@@ -2643,7 +2664,7 @@ app.post("/places/:id/listings",(req,res)=>{
   const exchangeType=(req.body?.exchangeType||"money").toString();
   const offerCategory=(req.body?.offerCategory||"").toString().trim().toLowerCase();
   if(listingType==="offer" || listingType==="request"){
-    const placeList = (data.getPlaces ? data.getPlaces() : data.places || []);
+    const placeList = await data.getPlaces();
     const place = placeList.find(p=>Number(p.id)===pid);
     if(!place) return res.status(404).json({error:"Place not found"});
     if(Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Only store owner can post offers/requests"});
@@ -2651,28 +2672,29 @@ app.post("/places/:id/listings",(req,res)=>{
     if(tier < 2) return res.status(403).json({error:"Sebastian Resident required for offers/requests"});
   }
   if(!req.body?.title) return res.status(400).json({error:"title required"});
-  const created=data.addListing({...req.body,placeId:pid});
+  const created=await data.addListing({...req.body,placeId:pid});
   res.status(201).json(created);
 });
-app.patch("/listings/:id/sold",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const listing = data.getListingById(req.params.id);
+app.patch("/listings/:id/sold", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const listing = await data.getListingById(req.params.id);
   if(!listing) return res.status(404).json({error:"Listing not found"});
-  const updated = data.updateListingStatus(listing.id, "sold");
+  const updated = await data.updateListingStatus(listing.id, "sold");
   res.json(updated);
 });
 
 // ✅ Apply / Message → creates conversation
-app.post("/listings/:id/apply",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const ctx=data.getTownContext(1, u);
-  const user=data.getUserById(u);
+app.post("/listings/:id/apply", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const ctx=await data.getTownContext(1, u);
+  const user=await data.getUserById(u);
   const gate = trust.can(user, ctx, "chat_text");
   if(!gate.ok) return res.status(403).json({error:"Chat requires verified access"});
-  const listing=data.getListings().find(l=>l.id==req.params.id);
+  const listings = await data.getListings();
+  const listing = listings.find(l=>l.id==req.params.id);
   if(!listing) return res.status(404).json({error:"Listing not found"});
-  const convo=data.addConversation({placeId:listing.placeId,participant:"buyer"});
-  data.addMessage({
+  const convo=await data.addConversation({placeId:listing.placeId,participant:"buyer"});
+  await data.addMessage({
     conversationId:convo.id,
     sender:"buyer",
     text:req.body?.message||"Interested in this offer."
@@ -2681,13 +2703,13 @@ app.post("/listings/:id/apply",(req,res)=>{
 });
 
 // Auctions
-app.get("/listings/:id/auction",(req,res)=>{
-  const access = requirePerm(req,res,"VIEW_AUCTIONS"); if(!access) return;
-  const listing = data.getListingById(req.params.id);
+app.get("/listings/:id/auction", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_AUCTIONS"); if(!access) return;
+  const listing = await data.getListingById(req.params.id);
   if(!listing) return res.status(404).json({error:"Listing not found"});
   if((listing.listingType||"item")!=="auction") return res.status(400).json({error:"Not an auction"});
-  const summary = data.getAuctionSummary(listing.id);
-  const order = listing.winnerUserId ? data.getLatestOrderForListingAndBuyer(listing.id, listing.winnerUserId) : null;
+  const summary = await data.getAuctionSummary(listing.id);
+  const order = listing.winnerUserId ? await data.getLatestOrderForListingAndBuyer(listing.id, listing.winnerUserId) : null;
   res.json({
     listingId: listing.id,
     auctionStartAt: listing.auctionStartAt || "",
@@ -2706,13 +2728,13 @@ app.get("/listings/:id/auction",(req,res)=>{
     orderId: order?.id || null
   });
 });
-app.post("/listings/:id/bid",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const ctx=data.getTownContext(1, u);
-  const user=data.getUserById(u);
+app.post("/listings/:id/bid", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const ctx=await data.getTownContext(1, u);
+  const user=await data.getUserById(u);
   const gate = trust.can(user, ctx, "auction_bid");
   if(!gate.ok) return res.status(403).json({error:"Auction bidding requires verified access"});
-  const listing = data.getListingById(req.params.id);
+  const listing = await data.getListingById(req.params.id);
   if(!listing) return res.status(404).json({error:"Listing not found"});
   if((listing.listingType||"item")!=="auction") return res.status(400).json({error:"Not an auction"});
   const endAt = Date.parse(listing.auctionEndAt || "");
@@ -2720,36 +2742,36 @@ app.post("/listings/:id/bid",(req,res)=>{
   if(endAt && Date.now() > endAt) return res.status(400).json({error:"Auction ended"});
   const amountCents = Number(req.body?.amountCents);
   if(!Number.isFinite(amountCents) || amountCents<=0) return res.status(400).json({error:"amountCents required"});
-  const last = data.getLastBidForUser(listing.id, u);
+  const last = await data.getLastBidForUser(listing.id, u);
   if(last?.createdAt){
     const lastTs = Date.parse(last.createdAt);
     if(!Number.isNaN(lastTs) && (Date.now()-lastTs) < 2000) return res.status(429).json({error:"Rate limit: one bid per 2s"});
   }
-  const highest = data.getHighestBidForListing(listing.id);
+  const highest = await data.getHighestBidForListing(listing.id);
   const minBid = highest ? (highest.amountCents + (listing.minIncrementCents||0)) : (listing.startBidCents||0);
   if(amountCents < minBid) return res.status(400).json({error:`Bid too low. Minimum ${minBid}`});
-  const bid = data.addBid(listing.id, u, amountCents);
-  const summary = data.getAuctionSummary(listing.id);
+  const bid = await data.addBid(listing.id, u, amountCents);
+  const summary = await data.getAuctionSummary(listing.id);
   res.json({ok:true, bidId: bid.id, highestBidCents: summary.highestBidCents, bidCount: summary.bidCount});
 });
 
-app.post("/api/auctions/:listingId/close",(req,res)=>{
-  const u=requireLogin(req,res); if(!u) return;
-  const listing = data.getListingById(req.params.listingId);
+app.post("/api/auctions/:listingId/close", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const listing = await data.getListingById(req.params.listingId);
   if(!listing) return res.status(404).json({error:"Listing not found"});
   if((listing.listingType||"item")!=="auction") return res.status(400).json({error:"Not an auction"});
   const endAt = Date.parse(listing.auctionEndAt || "");
   if(!listing.auctionEndAt || Number.isNaN(endAt)) return res.status(400).json({error:"Invalid auctionEndAt"});
   if(Date.now() < endAt) return res.status(400).json({error:"Auction not ended yet"});
-  const place = data.getPlaceById(listing.placeId);
+  const place = await data.getPlaceById(listing.placeId);
   if(!place) return res.status(404).json({error:"Place not found"});
-  const user = data.getUserById(u);
+  const user = await data.getUserById(u);
   if(!isAdminUser(user) && Number(place.ownerUserId)!==Number(u)){
     return res.status(403).json({error:"Only owner or admin can close"});
   }
-  const highest = data.getHighestBidForListing(listing.id);
+  const highest = await data.getHighestBidForListing(listing.id);
   if(!highest){
-    data.updateListingAuctionState(listing.id, {
+    await data.updateListingAuctionState(listing.id, {
       auctionStatus: "ended",
       paymentStatus: "none",
       winningBidId: null,
@@ -2761,7 +2783,7 @@ app.post("/api/auctions/:listingId/close",(req,res)=>{
   const subtotalCents = Number(highest.amountCents || 0);
   const serviceGratuityCents = Math.ceil(subtotalCents * 0.05);
   const totalCents = subtotalCents + serviceGratuityCents;
-  const order = data.createOrderWithItems({
+  const order = await data.createOrderWithItems({
     townId: listing.townId || 1,
     listingId: listing.id,
     buyerUserId: highest.userId,
@@ -2781,7 +2803,7 @@ app.post("/api/auctions/:listingId/close",(req,res)=>{
     priceCentsSnapshot: subtotalCents
   });
   const paymentDueAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-  data.updateListingAuctionState(listing.id, {
+  await data.updateListingAuctionState(listing.id, {
     auctionStatus: "pending_payment",
     paymentStatus: "required",
     winningBidId: highest.id,
@@ -2791,9 +2813,9 @@ app.post("/api/auctions/:listingId/close",(req,res)=>{
   res.json({ok:true, winnerUserId: highest.userId, orderId: order.id, payUrl: `/pay/${order.id}`});
 });
 
-app.post("/api/auctions/:listingId/expire_winner",(req,res)=>{
-  const admin=requireAdminOrDev(req,res); if(!admin) return;
-  const listing = data.getListingById(req.params.listingId);
+app.post("/api/auctions/:listingId/expire_winner", async (req, res) =>{
+  const admin=await requireAdminOrDev(req,res); if(!admin) return;
+  const listing = await data.getListingById(req.params.listingId);
   if(!listing) return res.status(404).json({error:"Listing not found"});
   if((listing.listingType||"item")!=="auction") return res.status(400).json({error:"Not an auction"});
   const dueAt = Date.parse(listing.paymentDueAt || "");
@@ -2801,9 +2823,9 @@ app.post("/api/auctions/:listingId/expire_winner",(req,res)=>{
   if(Date.now() < dueAt) return res.status(400).json({error:"Payment not overdue"});
   if(listing.paymentStatus === "paid") return res.status(400).json({error:"Already paid"});
   const previousWinner = listing.winnerUserId;
-  const nextBid = data.getNextHighestBidForListing(listing.id, previousWinner);
+  const nextBid = await data.getNextHighestBidForListing(listing.id, previousWinner);
   if(!nextBid){
-    data.updateListingAuctionState(listing.id, {
+    await data.updateListingAuctionState(listing.id, {
       auctionStatus: "failed",
       paymentStatus: "failed",
       winningBidId: null,
@@ -2812,12 +2834,12 @@ app.post("/api/auctions/:listingId/expire_winner",(req,res)=>{
     });
     return res.json({ok:true, winnerUserId:null, orderId:null, payUrl:null});
   }
-  const place = data.getPlaceById(listing.placeId);
+  const place = await data.getPlaceById(listing.placeId);
   if(!place) return res.status(404).json({error:"Place not found"});
   const subtotalCents = Number(nextBid.amountCents || 0);
   const serviceGratuityCents = Math.ceil(subtotalCents * 0.05);
   const totalCents = subtotalCents + serviceGratuityCents;
-  const order = data.createOrderWithItems({
+  const order = await data.createOrderWithItems({
     townId: listing.townId || 1,
     listingId: listing.id,
     buyerUserId: nextBid.userId,
@@ -2837,7 +2859,7 @@ app.post("/api/auctions/:listingId/expire_winner",(req,res)=>{
     priceCentsSnapshot: subtotalCents
   });
   const paymentDueAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-  data.updateListingAuctionState(listing.id, {
+  await data.updateListingAuctionState(listing.id, {
     auctionStatus: "pending_payment",
     paymentStatus: "required",
     winningBidId: nextBid.id,
@@ -2849,33 +2871,40 @@ app.post("/api/auctions/:listingId/expire_winner",(req,res)=>{
 // =====================
 // ADMIN VERIFY (TEMP)
 // =====================
-app.post("/admin/verify/buyer", (req,res)=>{
-  const admin=requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+app.post("/admin/verify/buyer", async (req, res) =>{
+  const admin=await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
   const id = Number(req.body?.userId);
   if(!id) return res.status(400).json({error:"userId required"});
-  const r = data.verifyBuyer(id, "verified", "admin");
+  const r = await data.verifyBuyer(id, "verified", "admin");
   res.json(r);
 });
 
-app.post("/admin/verify/store", (req,res)=>{
-  const admin=requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+app.post("/admin/verify/store", async (req, res) =>{
+  const admin=await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
   const id = Number(req.body?.placeId);
   if(!id) return res.status(400).json({error:"placeId required"});
-  const r = data.verifyStore(id);
+  const r = await data.verifyStore(id);
   if(r?.error) return res.status(400).json(r);
   res.json(r);
 });
 
-app.post("/api/admin/trust/tiers",(req,res)=>{
-  const admin=requireAdmin(req,res); if(!admin) return;
+app.post("/api/admin/trust/tiers", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
   const userId = Number(req.body?.userId);
   const trustTier = Number(req.body?.trustTier);
   if(!userId || !Number.isFinite(trustTier)) return res.status(400).json({error:"userId and trustTier required"});
   if(trustTier < 0 || trustTier > 3) return res.status(400).json({error:"trustTier must be 0-3 (0 resets to automatic)"});
-  const updated = data.setUserTrustTier(1, userId, trustTier);
+  const updated = await data.setUserTrustTier(1, userId, trustTier);
   if(updated?.error) return res.status(400).json(updated);
   res.json({ ok:true, membership: updated });
 });
 
 const PORT = Number(process.env.PORT || 3000);
-app.listen(PORT, "0.0.0.0", () => console.log(`Server running on http://localhost:${PORT}`));
+async function start(){
+  await data.initDb();
+  app.listen(PORT, "0.0.0.0", () => console.log(`Server running on http://localhost:${PORT}`));
+}
+start().catch((err)=>{
+  console.error("Failed to start server:", err);
+  process.exit(1);
+});
