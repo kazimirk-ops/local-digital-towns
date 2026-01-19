@@ -805,6 +805,32 @@ async function consumeMagicToken(token){
   await stmt("DELETE FROM magic_links WHERE token=$1").run(token);
   return {userId: row.userId};
 }
+async function createAuthCode(email, codeHash, expiresAt, maxAttempts=5){
+  const e = normalizeEmail(email);
+  if(!e) return null;
+  const info = await stmt(`
+    INSERT INTO auth_codes (email, code_hash, expires_at, max_attempts, created_at)
+    VALUES ($1,$2,$3,$4,$5)
+    RETURNING id
+  `).run(e, String(codeHash), String(expiresAt), Number(maxAttempts) || 5, nowISO());
+  return { id: info.rows?.[0]?.id };
+}
+async function getLatestAuthCode(email){
+  const e = normalizeEmail(email);
+  if(!e) return null;
+  return stmt(`
+    SELECT * FROM auth_codes
+    WHERE email=$1
+    ORDER BY created_at DESC, id DESC
+    LIMIT 1
+  `).get(e);
+}
+async function incrementAuthCodeAttempts(id){
+  await stmt("UPDATE auth_codes SET attempts=attempts+1 WHERE id=$1").run(Number(id));
+}
+async function deleteAuthCode(id){
+  await stmt("DELETE FROM auth_codes WHERE id=$1").run(Number(id));
+}
 async function createSession(userId){
   const sid = randToken(24);
   const expiresAt = new Date(Date.now()+30*24*60*60*1000).toISOString();
@@ -2710,8 +2736,12 @@ module.exports = {
 
   // auth
   createMagicLink,
+  createAuthCode,
   upsertUserByEmail,
   consumeMagicToken,
+  getLatestAuthCode,
+  incrementAuthCodeAttempts,
+  deleteAuthCode,
   createSession,
   deleteSession,
   getUserBySession,
