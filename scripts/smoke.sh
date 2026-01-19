@@ -48,14 +48,14 @@ assert_status_optional() {
 }
 
 assert_status "$BASE_URL/health" '^200$'
-assert_status_optional "$BASE_URL/waitlist" '^200$' '^404$'
 assert_status "$BASE_URL/ui" '^(200|302)$'
 
-# TODO (Stage 1): auth request/verify and /api/me
-# TODO (Stage 2): intake submission + admin approve/reject
-# TODO (Stage 3): listing read + buy-it-now purchase
-# TODO (Stage 4): auction bid + close
-# TODO (Stage 5): giveaway entry + draw + claim
-# TODO (Stage 6): channels post/read + pulse read
-# TODO (Stage 7): admin permissions gating
-# TODO (Stage 8): persistence checks across restart
+# TODO (Phase 1): auth request/verify and /api/me
+# TODO (Phase 1): admin permission gating
+# TODO (Phase 1): intake submission + approve/reject
+# TODO (Phase 1): marketplace buy-it-now purchase
+# TODO (Phase 1): giveaway draw + claim
+# TODO (Phase 2): auctions payment due + ghost tracking
+# TODO (Phase 2): channel post + moderation
+# TODO (Phase 2): uploads + public access
+# TODO (Phase 2): pulse generation + archive
