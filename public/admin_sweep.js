@@ -131,6 +131,45 @@ document.getElementById("createSweepstake").onclick = async () => {
   }
 };
 
+function storeSweepDrawPayload(payload){
+  try{
+    localStorage.setItem("lastSweepDrawPayload", JSON.stringify(payload));
+  }catch(_){}
+}
+
+async function runSweepDraw(){
+  const status = document.getElementById("sweepDrawStatus");
+  if(status) status.textContent = "Running draw...";
+  try{
+    const res = await api("/api/admin/sweep/draw", { method: "POST", headers: { "Content-Type":"application/json" }, body: "{}" });
+    storeSweepDrawPayload(res);
+    if(status) status.textContent = `Draw #${res.drawId || "—"} winner: ${res.winner?.displayName || "—"}`;
+    window.location.href = "/ui#sweepdraw";
+  }catch(e){
+    if(status) status.textContent = `ERROR: ${e.message}`;
+  }
+}
+
+async function replaySweepDraw(){
+  const status = document.getElementById("sweepDrawStatus");
+  if(status) status.textContent = "Loading last draw...";
+  try{
+    const res = await api("/api/admin/sweep/last");
+    storeSweepDrawPayload(res);
+    if(status) status.textContent = `Replay draw #${res.drawId || "—"} winner: ${res.winner?.displayName || "—"}`;
+    window.location.href = "/ui#sweepdraw";
+  }catch(e){
+    if(status) status.textContent = `ERROR: ${e.message}`;
+  }
+}
+
+const sweepDrawRunBtn = document.getElementById("sweepDrawRunBtn");
+if(sweepDrawRunBtn) sweepDrawRunBtn.onclick = runSweepDraw;
+const sweepDrawReplayBtn = document.getElementById("sweepDrawReplayBtn");
+if(sweepDrawReplayBtn) sweepDrawReplayBtn.onclick = replaySweepDraw;
+const sweepDrawOpenBtn = document.getElementById("sweepDrawOpenBtn");
+if(sweepDrawOpenBtn) sweepDrawOpenBtn.onclick = ()=>{ window.location.href = "/ui#sweepdraw"; };
+
 loadRules().catch((e) => {
   document.getElementById("ruleMsg").textContent = `ERROR: ${e.message} (login required)`;
 });

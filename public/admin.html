@@ -331,6 +331,17 @@
         </div>
 
         <div class="card">
+          <strong class="card-title">Sweep Draw Test</strong>
+          <div class="muted">Admin-only draw + replay controls.</div>
+          <div class="row" style="margin-top:10px;">
+            <button id="sweepDrawRunBtn" class="btn-primary">Run Draw (Idempotent)</button>
+            <button id="sweepDrawReplayBtn">Replay Last Draw</button>
+            <button id="sweepDrawOpenBtn">Open Wheel Overlay</button>
+          </div>
+          <div class="mono" id="sweepDrawStatus" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="card">
           <strong class="card-title">Recent Events</strong>
           <div class="muted">Most recent 80 events (raw).</div>
           <div class="mono" id="recentEvents" style="margin-top:10px;"></div>

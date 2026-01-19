@@ -366,6 +366,49 @@ function getAdminReviewLink(){
   return `${base.replace(/\/$/,"")}/admin/applications`;
 }
 
+function buildSweepParticipants(sweepId){
+  const rows = data.listSweepstakeParticipants(sweepId);
+  return rows
+    .map((row)=>{
+      const user = data.getUserById(row.userId);
+      return {
+        userId: Number(row.userId),
+        displayName: data.getDisplayNameForUser(user),
+        entries: Number(row.entries || 0)
+      };
+    })
+    .filter((p)=>p.entries > 0);
+}
+
+function getSweepstakeActivePayload(req){
+  const sweep = data.getActiveSweepstake();
+  if(!sweep) return { sweepstake:null };
+  const totals = data.getSweepstakeEntryTotals(sweep.id);
+  const participants = buildSweepParticipants(sweep.id);
+  const draw = data.getSweepDrawBySweepId(sweep.id);
+  const winnerUserId = draw?.winnerUserId || sweep.winnerUserId || null;
+  const winner = winnerUserId
+    ? {
+      userId: Number(winnerUserId),
+      displayName: data.getDisplayNameForUser(data.getUserById(winnerUserId)),
+      entries: participants.find(p=>Number(p.userId)===Number(winnerUserId))?.entries || 0
+    }
+    : null;
+  const u = getUserId(req);
+  const userEntries = u ? data.getUserEntriesForSweepstake(sweep.id, u) : 0;
+  const balance = u ? data.getSweepBalance(u) : 0;
+  return {
+    sweepstake: sweep,
+    totals,
+    participants,
+    winner,
+    drawId: draw?.id || null,
+    createdAt: draw?.createdAt || "",
+    userEntries,
+    balance
+  };
+}
+
 async function sendLoginEmail(toEmail, magicUrl){
   const token = (process.env.POSTMARK_SERVER_TOKEN || "").trim();
   const from = (process.env.EMAIL_FROM || "").trim();
@@ -1991,18 +2034,10 @@ app.get("/sweep/balance",(req,res)=>{
   res.json({loggedIn:true,balance:data.getSweepBalance(u)});
 });
 app.get("/sweepstake/active",(req,res)=>{
-  let sweep = data.getActiveSweepstake();
-  if(!sweep) return res.json({sweepstake:null});
-  const drawAt = Date.parse(sweep.drawAt || "");
-  if(Number.isFinite(drawAt) && Date.now() >= drawAt && !sweep.winnerUserId){
-    sweep = data.drawSweepstakeWinner(sweep.id);
-  }
-  const totals = data.getSweepstakeEntryTotals(sweep.id);
-  const winnerProfile = sweep.winnerUserId ? data.getUserProfilePublic(sweep.winnerUserId) : null;
-  const u = getUserId(req);
-  const userEntries = u ? data.getUserEntriesForSweepstake(sweep.id, u) : 0;
-  const balance = u ? data.getSweepBalance(u) : 0;
-  res.json({ sweepstake: sweep, totals, winner: winnerProfile, userEntries, balance });
+  return res.json(getSweepstakeActivePayload(req));
+});
+app.get("/api/sweepstake/active",(req,res)=>{
+  return res.json(getSweepstakeActivePayload(req));
 });
 app.post("/sweepstake/enter",(req,res)=>{
   const access = requirePerm(req,res,"SWEEP_ENTER"); if(!access) return;
@@ -2026,6 +2061,74 @@ app.post("/sweepstake/enter",(req,res)=>{
   const totals = data.getSweepstakeEntryTotals(sweep.id);
   const userEntries = data.getUserEntriesForSweepstake(sweep.id, u);
   res.json({ ok:true, balance: balance - cost, totals, userEntries });
+});
+app.post("/api/admin/sweep/draw",(req,res)=>{
+  const admin = requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+  const sweep = data.getActiveSweepstake();
+  if(!sweep) return res.status(400).json({ error: "No active sweepstake" });
+  const existing = data.getSweepDrawBySweepId(sweep.id);
+  if(existing){
+    let snapshot = {};
+    try{ snapshot = JSON.parse(existing.snapshotJson || "{}"); }catch(_){}
+    const participants = Array.isArray(snapshot.participants) ? snapshot.participants : buildSweepParticipants(sweep.id);
+    const winner = snapshot.winner || participants.find(p=>Number(p.userId)===Number(existing.winnerUserId)) || null;
+    return res.json({
+      ok:true,
+      drawId: existing.id,
+      sweepId: sweep.id,
+      totalEntries: Number(existing.totalEntries || 0),
+      participants,
+      winner,
+      createdAt: existing.createdAt || ""
+    });
+  }
+  const participants = buildSweepParticipants(sweep.id);
+  const totalEntries = participants.reduce((sum,p)=>sum + Number(p.entries || 0), 0);
+  if(totalEntries <= 0) return res.status(400).json({ error: "No entries to draw" });
+  const r = crypto.randomInt(totalEntries);
+  let acc = 0;
+  let winner = null;
+  for(const p of participants){
+    acc += Number(p.entries || 0);
+    if(r < acc){ winner = p; break; }
+  }
+  if(!winner) return res.status(500).json({ error: "Failed to select winner" });
+  const snapshot = { participants, winner, totalEntries };
+  const draw = data.createSweepDraw({
+    sweepId: sweep.id,
+    createdByUserId: admin.id,
+    winnerUserId: winner.userId,
+    totalEntries,
+    snapshot
+  });
+  data.setSweepstakeWinner(sweep.id, winner.userId);
+  return res.json({
+    ok:true,
+    drawId: draw?.id || null,
+    sweepId: sweep.id,
+    totalEntries,
+    participants,
+    winner,
+    createdAt: draw?.createdAt || ""
+  });
+});
+app.get("/api/admin/sweep/last",(req,res)=>{
+  const admin = requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+  const existing = data.getLatestSweepDraw();
+  if(!existing) return res.status(404).json({ error: "No draw yet" });
+  let snapshot = {};
+  try{ snapshot = JSON.parse(existing.snapshotJson || "{}"); }catch(_){}
+  const participants = Array.isArray(snapshot.participants) ? snapshot.participants : buildSweepParticipants(existing.sweepId);
+  const winner = snapshot.winner || participants.find(p=>Number(p.userId)===Number(existing.winnerUserId)) || null;
+  return res.json({
+    ok:true,
+    drawId: existing.id,
+    sweepId: Number(existing.sweepId),
+    totalEntries: Number(existing.totalEntries || 0),
+    participants,
+    winner,
+    createdAt: existing.createdAt || ""
+  });
 });
 app.get("/api/admin/sweep/rules",(req,res)=>{
   res.json(adminSweepRules);

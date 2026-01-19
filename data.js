@@ -563,6 +563,16 @@ CREATE TABLE IF NOT EXISTS sweepstake_entries (
   createdAt TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS sweep_draws (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sweepId INTEGER NOT NULL,
+  createdAt TEXT NOT NULL,
+  createdByUserId INTEGER,
+  winnerUserId INTEGER NOT NULL,
+  totalEntries INTEGER NOT NULL,
+  snapshotJson TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS store_follows (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   townId INTEGER NOT NULL DEFAULT 1,
@@ -2240,6 +2250,51 @@ function getUserEntriesForSweepstake(sweepstakeId, userId){
   `).get(Number(sweepstakeId), Number(userId));
   return row?.totalEntries || 0;
 }
+function listSweepstakeParticipants(sweepstakeId){
+  return db.prepare(`
+    SELECT userId, COALESCE(SUM(entries),0) AS entries
+    FROM sweepstake_entries
+    WHERE sweepstakeId=?
+    GROUP BY userId
+    ORDER BY entries DESC, userId ASC
+  `).all(Number(sweepstakeId));
+}
+function getSweepDrawBySweepId(sweepId){
+  return db.prepare(`
+    SELECT * FROM sweep_draws
+    WHERE sweepId=?
+    ORDER BY id DESC
+    LIMIT 1
+  `).get(Number(sweepId)) || null;
+}
+function getLatestSweepDraw(){
+  return db.prepare(`
+    SELECT * FROM sweep_draws
+    ORDER BY id DESC
+    LIMIT 1
+  `).get() || null;
+}
+function createSweepDraw(payload){
+  const createdAt = nowISO();
+  const info = db.prepare(`
+    INSERT INTO sweep_draws
+      (sweepId, createdAt, createdByUserId, winnerUserId, totalEntries, snapshotJson)
+    VALUES (?,?,?,?,?,?)
+  `).run(
+    Number(payload.sweepId),
+    createdAt,
+    payload.createdByUserId == null ? null : Number(payload.createdByUserId),
+    Number(payload.winnerUserId),
+    Number(payload.totalEntries || 0),
+    JSON.stringify(payload.snapshot || {})
+  );
+  return db.prepare("SELECT * FROM sweep_draws WHERE id=?").get(info.lastInsertRowid) || null;
+}
+function setSweepstakeWinner(sweepstakeId, winnerUserId){
+  db.prepare("UPDATE sweepstakes SET winnerUserId=?, winnerEntryId=NULL, status='ended' WHERE id=?")
+    .run(Number(winnerUserId), Number(sweepstakeId));
+  return getSweepstakeById(sweepstakeId);
+}
 function drawSweepstakeWinner(sweepstakeId){
   const sweep = getSweepstakeById(sweepstakeId);
   if(!sweep) return null;
@@ -3317,6 +3372,11 @@ module.exports = {
   addSweepstakeEntry,
   getSweepstakeEntryTotals,
   getUserEntriesForSweepstake,
+  listSweepstakeParticipants,
+  getSweepDrawBySweepId,
+  getLatestSweepDraw,
+  createSweepDraw,
+  setSweepstakeWinner,
   drawSweepstakeWinner,
   addCalendarEvent,
   getCalendarEvents,

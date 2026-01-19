@@ -132,13 +132,22 @@ $("requestLink").onclick = async () => {
 
     const data = await postJSON("/auth/request-link", { email });
 
-    showLogin(`
-      <div class="ok">
-        <strong>✅ Magic link created</strong>
-        <div class="muted">Expires: ${data.expiresAt}</div>
-        <div style="margin-top:8px;"><a href="${data.magicUrl}">Click here to log in</a></div>
-      </div>
-    `);
+    if(data.magicUrl){
+      showLogin(`
+        <div class="ok">
+          <strong>✅ Magic link created</strong>
+          <div class="muted">Expires: ${data.expiresAt}</div>
+          <div style="margin-top:8px;"><a href="${data.magicUrl}">Click here to log in</a></div>
+        </div>
+      `);
+    }else{
+      showLogin(`
+        <div class="ok">
+          <strong>✅ Request received</strong>
+          <div class="muted">Check your email for your login link.</div>
+        </div>
+      `);
+    }
   } catch (e) {
     dbg(`ERROR: ${e.message}`);
   }
