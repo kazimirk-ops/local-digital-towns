@@ -28,17 +28,24 @@
       </div>
 
       <div class="card">
-        <div class="muted" id="adminStatus">Checking session…</div>
-        <div class="row" style="margin-top:10px;">
-          <input id="adminEmail" placeholder="admin email" />
-          <button id="adminLoginBtn">Request Admin Login Link</button>
-          <button id="adminLogoutBtn" style="display:none;">Logout</button>
-        </div>
-        <div id="adminLoginResult" style="margin-top:10px;"></div>
-        <div class="muted" id="adminLoginDebug" style="margin-top:8px;"></div>
+        <form method="post" action="/admin/login">
+          <div class="row" style="margin-top:10px;">
+            <input id="adminEmail" name="email" type="email" placeholder="admin email" required />
+            <input id="adminPassphrase" name="passphrase" type="password" placeholder="admin passphrase" required />
+            <button type="submit">Login</button>
+          </div>
+          <div id="adminLoginError" style="margin-top:10px;color:#b00020;"></div>
+        </form>
       </div>
     </div>
     <script src="/theme.js?v=1"></script>
-    <script src="/admin_login.js"></script>
+    <script>
+      (function(){
+        const error = new URLSearchParams(window.location.search).get("error");
+        if(!error) return;
+        const el = document.getElementById("adminLoginError");
+        if(el) el.textContent = error;
+      })();
+    </script>
   </body>
 </html>

@@ -56,6 +56,7 @@ const loginLinkRateLimit = new Map();
 
 app.use(express.static(path.join(__dirname, "public")));
 const jsonParser = express.json({ limit: "5mb" });
+const urlencodedParser = express.urlencoded({ extended: false });
 app.use((req,res,next)=>{
   if(req.path === "/api/stripe/webhook") return next();
   return jsonParser(req,res,next);
@@ -71,6 +72,7 @@ app.use((req,res,next)=>{
   if(isGet && pathName === "/auth/magic") return next();
   if(pathName === "/auth/logout" && (req.method === "GET" || req.method === "POST")) return next();
   if(req.method === "POST" && pathName === "/auth/request-link") return next();
+  if(req.method === "POST" && pathName === "/admin/login") return next();
   if(req.method === "POST"){
     if(pathName === "/api/public/waitlist") return next();
     if(pathName === "/api/public/apply/business") return next();
@@ -223,6 +225,34 @@ function requireAdminPage(req,res){
   return user;
 }
 app.get("/admin/login",(req,res)=>res.sendFile(path.join(__dirname,"public","admin_login.html")));
+app.post("/admin/login", urlencodedParser, (req,res)=>{
+  const wantsHtml = (req.headers.accept || "").includes("text/html");
+  const email = (req.body?.email || "").toString().trim().toLowerCase();
+  const passphrase = (req.body?.passphrase || "").toString();
+  const expected = (process.env.ADMIN_LOGIN_PASSPHRASE || "").toString();
+  if(!email){
+    if(wantsHtml) return res.redirect("/admin/login?error=Email%20required");
+    return res.status(400).json({ error: "Email required" });
+  }
+  if(!expected || passphrase !== expected){
+    if(wantsHtml) return res.redirect("/admin/login?error=Invalid%20passphrase");
+    return res.status(403).json({ error: "Invalid passphrase" });
+  }
+  const user = data.upsertUserByEmail(email);
+  if(!user){
+    if(wantsHtml) return res.redirect("/admin/login?error=Invalid%20email");
+    return res.status(400).json({ error: "Invalid email" });
+  }
+  const adminUser = data.setUserAdmin(user.id, true);
+  if(adminUser?.error){
+    if(wantsHtml) return res.redirect("/admin/login?error=Failed%20to%20set%20admin");
+    return res.status(500).json({ error: "Failed to set admin" });
+  }
+  const s = data.createSession(user.id);
+  setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30,secure:isHttpsRequest(req)});
+  if(wantsHtml) return res.redirect("/admin");
+  return res.json({ ok:true });
+});
 app.get("/admin/bootstrap",(req,res)=>{
   const token = (req.query.token || "").toString();
   const expected = (process.env.ADMIN_BOOTSTRAP_TOKEN || "").toString();
