@@ -67,12 +67,15 @@ app.use((req,res,next)=>{
   const isGet = req.method === "GET";
   if(isGet && pathName === "/health") return next();
   if(isGet && (pathName === "/waitlist" || pathName === "/apply/business" || pathName === "/apply/resident")) return next();
+  if(isGet && (pathName === "/admin/login" || pathName === "/admin/bootstrap")) return next();
+  if(isGet && pathName === "/auth/magic") return next();
+  if(pathName === "/auth/logout" && (req.method === "GET" || req.method === "POST")) return next();
+  if(req.method === "POST" && pathName === "/auth/request-link") return next();
   if(req.method === "POST"){
     if(pathName === "/api/public/waitlist") return next();
     if(pathName === "/api/public/apply/business") return next();
     if(pathName === "/api/public/apply/resident") return next();
   }
-  if(pathName.startsWith("/admin/login")) return next();
   if(isGet){
     const isStatic =
       pathName === "/favicon.ico" ||
@@ -94,7 +97,7 @@ app.use((req,res,next)=>{
   return res.status(200).sendFile(path.join(__dirname,"public","coming_soon.html"));
 });
 app.use("/admin",(req,res,next)=>{
-  if(req.path === "/login") return next();
+  if(req.path === "/login" || req.path === "/bootstrap") return next();
   const userId = getUserId(req);
   const user = userId ? data.getUserById(userId) : null;
   if(isAdminUser(user)) return next();
@@ -220,6 +223,21 @@ function requireAdminPage(req,res){
   return user;
 }
 app.get("/admin/login",(req,res)=>res.sendFile(path.join(__dirname,"public","admin_login.html")));
+app.get("/admin/bootstrap",(req,res)=>{
+  const token = (req.query.token || "").toString();
+  const expected = (process.env.ADMIN_BOOTSTRAP_TOKEN || "").toString();
+  if(!token || token !== expected) return res.status(403).send("Forbidden");
+  const email = (req.query.email || "").toString().trim().toLowerCase();
+  if(!email) return res.status(400).send("Email required");
+  const user = data.upsertUserByEmail(email);
+  if(!user) return res.status(400).send("Invalid email");
+  const adminUser = data.setUserAdmin(user.id, true);
+  if(adminUser?.error) return res.status(500).send("Failed to set admin");
+  console.log("ADMIN_BOOTSTRAP_USED", email);
+  const s = data.createSession(user.id);
+  setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30,secure:isHttpsRequest(req)});
+  res.redirect("/admin");
+});
 app.get("/admin",(req,res)=>{
   const admin=requireAdminPage(req,res); if(!admin) return;
   res.sendFile(path.join(__dirname,"public","admin.html"));
@@ -264,9 +282,14 @@ function parseCookies(req){
   }
   return out;
 }
+function isHttpsRequest(req){
+  const proto = (req.headers["x-forwarded-proto"] || "").toString().split(",")[0].trim().toLowerCase();
+  return req.secure || proto === "https";
+}
 function setCookie(res,n,v,o={}){
   const p=[`${n}=${encodeURIComponent(v)}`,"Path=/","SameSite=Lax"];
   if(o.httpOnly) p.push("HttpOnly");
+  if(o.secure) p.push("Secure");
   if(o.maxAge!=null) p.push(`Max-Age=${o.maxAge}`);
   res.setHeader("Set-Cookie",p.join("; "));
 }
@@ -502,19 +525,19 @@ app.get("/auth/magic",(req,res)=>{
   const c=data.consumeMagicToken(req.query.token);
   if(c.error) return res.status(400).send(c.error);
   const s=data.createSession(c.userId);
-  setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30});
+  setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30,secure:isHttpsRequest(req)});
   res.redirect("/ui");
 });
 app.get("/auth/logout",(req,res)=>{
   const sid=parseCookies(req).sid;
   if(sid) data.deleteSession(sid);
-  setCookie(res,"sid","",{httpOnly:true,maxAge:0});
+  setCookie(res,"sid","",{httpOnly:true,maxAge:0,secure:isHttpsRequest(req)});
   res.redirect("/ui");
 });
 app.post("/auth/logout",(req,res)=>{
   const sid=parseCookies(req).sid;
   if(sid) data.deleteSession(sid);
-  setCookie(res,"sid","",{httpOnly:true,maxAge:0});
+  setCookie(res,"sid","",{httpOnly:true,maxAge:0,secure:isHttpsRequest(req)});
   res.json({ok:true});
 });
 

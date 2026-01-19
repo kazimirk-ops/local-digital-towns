@@ -1465,6 +1465,18 @@ function upsertUserByEmail(email){
   const info = db.prepare("INSERT INTO users (email, createdAt) VALUES (?,?)").run(e, nowISO());
   return db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
 }
+function setUserAdmin(userId, isAdmin){
+  const uid = Number(userId);
+  if(!uid) return { error:"Invalid userId" };
+  db.prepare("UPDATE users SET isAdmin=? WHERE id=?")
+    .run(isAdmin ? 1 : 0, uid);
+  return db.prepare("SELECT * FROM users WHERE id=?").get(uid) || null;
+}
+function setUserAdminByEmail(email, isAdmin){
+  const user = upsertUserByEmail(email);
+  if(!user) return { error:"Invalid email" };
+  return setUserAdmin(user.id, isAdmin);
+}
 function createMagicLink(email){
   const user = upsertUserByEmail(email);
   if(!user) return {error:"Invalid email"};
@@ -3270,6 +3282,8 @@ module.exports = {
   setUserLocationVerifiedSebastian,
   setUserFacebookVerified,
   setUserResidentVerified,
+  setUserAdmin,
+  setUserAdminByEmail,
   addResidentVerificationRequest,
   approveResidentVerification,
   updateUserContact,
@@ -3281,6 +3295,7 @@ module.exports = {
 
   // auth
   createMagicLink,
+  upsertUserByEmail,
   consumeMagicToken,
   createSession,
   deleteSession,
