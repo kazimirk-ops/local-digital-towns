@@ -7,17 +7,25 @@ assert_status() {
   local url="$1"
   local expected_regex="$2"
   local status
-  status=$(curl -s -o /tmp/smoke_body.$$ -w "%{http_code}" "$url" || true)
+  local body_file="/tmp/smoke_body.$$"
+  : > "$body_file"
+  status=$(curl -s --max-time 10 --connect-timeout 5 -o "$body_file" -w "%{http_code}" "$url" || true)
+
+  if [[ "$status" == "000" ]]; then
+    echo "FAIL: Server not reachable ($url)" >&2
+    rm -f "$body_file"
+    exit 1
+  fi
 
   if [[ ! "$status" =~ $expected_regex ]]; then
     echo "FAIL: $url returned $status" >&2
     echo "Body:" >&2
-    cat /tmp/smoke_body.$$ >&2
-    rm -f /tmp/smoke_body.$$
+    [ -f "$body_file" ] && cat "$body_file" >&2
+    rm -f "$body_file"
     exit 1
   fi
 
-  rm -f /tmp/smoke_body.$$
+  rm -f "$body_file"
   echo "OK: $url ($status)"
 }
 
@@ -26,24 +34,32 @@ assert_status_optional() {
   local expected_regex="$2"
   local optional_regex="$3"
   local status
-  status=$(curl -s -o /tmp/smoke_body.$$ -w "%{http_code}" "$url" || true)
+  local body_file="/tmp/smoke_body.$$"
+  : > "$body_file"
+  status=$(curl -s --max-time 10 --connect-timeout 5 -o "$body_file" -w "%{http_code}" "$url" || true)
+
+  if [[ "$status" == "000" ]]; then
+    echo "FAIL: Server not reachable ($url)" >&2
+    rm -f "$body_file"
+    exit 1
+  fi
 
   if [[ "$status" =~ $expected_regex ]]; then
-    rm -f /tmp/smoke_body.$$
+    rm -f "$body_file"
     echo "OK: $url ($status)"
     return 0
   fi
 
   if [[ "$status" =~ $optional_regex ]]; then
-    rm -f /tmp/smoke_body.$$
+    rm -f "$body_file"
     echo "SKIP: $url ($status)"
     return 0
   fi
 
   echo "FAIL: $url returned $status" >&2
   echo "Body:" >&2
-  cat /tmp/smoke_body.$$ >&2
-  rm -f /tmp/smoke_body.$$
+  [ -f "$body_file" ] && cat "$body_file" >&2
+  rm -f "$body_file"
   exit 1
 }
 
