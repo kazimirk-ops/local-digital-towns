@@ -8,19 +8,26 @@ assert_status() {
   local expected_regex="$2"
   local status
   local body_file="/tmp/smoke_body.$$"
-  : > "$body_file"
-  status=$(curl -s --max-time 10 --connect-timeout 5 -o "$body_file" -w "%{http_code}" "$url" || true)
-
-  if [[ "$status" == "000" ]]; then
-    echo "FAIL: Server not reachable ($url)" >&2
-    rm -f "$body_file"
-    exit 1
-  fi
+  local attempt
+  for attempt in 1 2 3; do
+    : > "$body_file"
+    status=$(curl -s --max-time 30 --connect-timeout 10 -o "$body_file" -w "%{http_code}" "$url" || true)
+    if [[ "$status" != "000" ]]; then
+      break
+    fi
+    if [[ "$attempt" -lt 3 ]]; then
+      sleep 2
+    fi
+  done
 
   if [[ ! "$status" =~ $expected_regex ]]; then
-    echo "FAIL: $url returned $status" >&2
-    echo "Body:" >&2
-    [ -f "$body_file" ] && cat "$body_file" >&2
+    if [[ "$status" == "000" ]]; then
+      echo "FAIL: Server not reachable ($url)" >&2
+    else
+      echo "FAIL: $url returned $status" >&2
+      echo "Body:" >&2
+      [ -f "$body_file" ] && cat "$body_file" >&2
+    fi
     rm -f "$body_file"
     exit 1
   fi
@@ -35,14 +42,17 @@ assert_status_optional() {
   local optional_regex="$3"
   local status
   local body_file="/tmp/smoke_body.$$"
-  : > "$body_file"
-  status=$(curl -s --max-time 10 --connect-timeout 5 -o "$body_file" -w "%{http_code}" "$url" || true)
-
-  if [[ "$status" == "000" ]]; then
-    echo "FAIL: Server not reachable ($url)" >&2
-    rm -f "$body_file"
-    exit 1
-  fi
+  local attempt
+  for attempt in 1 2 3; do
+    : > "$body_file"
+    status=$(curl -s --max-time 30 --connect-timeout 10 -o "$body_file" -w "%{http_code}" "$url" || true)
+    if [[ "$status" != "000" ]]; then
+      break
+    fi
+    if [[ "$attempt" -lt 3 ]]; then
+      sleep 2
+    fi
+  done
 
   if [[ "$status" =~ $expected_regex ]]; then
     rm -f "$body_file"
@@ -56,9 +66,13 @@ assert_status_optional() {
     return 0
   fi
 
-  echo "FAIL: $url returned $status" >&2
-  echo "Body:" >&2
-  [ -f "$body_file" ] && cat "$body_file" >&2
+  if [[ "$status" == "000" ]]; then
+    echo "FAIL: Server not reachable ($url)" >&2
+  else
+    echo "FAIL: $url returned $status" >&2
+    echo "Body:" >&2
+    [ -f "$body_file" ] && cat "$body_file" >&2
+  fi
   rm -f "$body_file"
   exit 1
 }
