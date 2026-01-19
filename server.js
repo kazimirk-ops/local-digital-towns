@@ -52,6 +52,7 @@ const adminSweepRules = [];
 let nextSweepRuleId = 1;
 let nextSweepstakeId = 1;
 const chatImageUploadRate = new Map();
+const loginLinkRateLimit = new Map();
 
 app.use(express.static(path.join(__dirname, "public")));
 const jsonParser = express.json({ limit: "5mb" });
@@ -312,6 +313,38 @@ function getAdminReviewLink(){
   return `${base.replace(/\/$/,"")}/admin/applications`;
 }
 
+async function sendLoginEmail(toEmail, magicUrl){
+  const token = (process.env.POSTMARK_SERVER_TOKEN || "").trim();
+  const from = (process.env.EMAIL_FROM || "").trim();
+  if(!token || !from){
+    console.warn("Login email not configured");
+    return { ok:false, skipped:true };
+  }
+  const payload = {
+    From: from,
+    To: toEmail,
+    Subject: "Your Sebastian Digital Town login link",
+    TextBody: `Here is your login link:\n${magicUrl}\n\nThis link expires soon.`
+  };
+  try{
+    const resp = await fetch("https://api.postmarkapp.com/email", {
+      method: "POST",
+      headers: {
+        "X-Postmark-Server-Token": token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+    if(!resp.ok){
+      const errText = await resp.text().catch(()=> "");
+      return { ok:false, error: errText || `Postmark error ${resp.status}` };
+    }
+    return { ok:true };
+  }catch(err){
+    return { ok:false, error: err.message || String(err) };
+  }
+}
+
 function getUserTier(req){
   const userId = getUserId(req);
   const user = userId ? data.getUserById(userId) : null;
@@ -440,10 +473,30 @@ async function createCallsRoom(){
 // Auth
 app.post("/auth/request-link",(req,res)=>{
   const email=(req.body?.email||"").toLowerCase().trim();
+  const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").toString().split(",")[0].trim();
+  const rateKey = `${ip}|${email}`;
+  const now = Date.now();
+  const last = loginLinkRateLimit.get(rateKey) || 0;
+  if(now - last < 30000){
+    return res.json({ ok:true, message: "Check your email for your login link." });
+  }
+  loginLinkRateLimit.set(rateKey, now);
+
   const c=data.createMagicLink(email);
+  const base=(process.env.PUBLIC_BASE_URL || "").replace(/\/$/,"");
+  const magicUrl = c?.token ? `${base}/auth/magic?token=${c.token}` : "";
+  if(process.env.NODE_ENV === "production"){
+    if(c?.token){
+      sendLoginEmail(email, magicUrl)
+        .catch((err)=>console.warn("Login email failed", err?.message || err));
+    }
+    return res.json({ ok:true, message: "Check your email for your login link." });
+  }
   if(c.error) return res.status(400).json(c);
-  const base=`${req.protocol}://${req.get("host")}`;
-  res.json({ok:true,magicUrl:`${base}/auth/magic?token=${c.token}`});
+  if(process.env.NODE_ENV !== "production" || process.env.SHOW_MAGIC_LINK === "true"){
+    return res.json({ok:true, magicUrl});
+  }
+  res.json({ ok:true, message: "Check your email for your login link." });
 });
 app.get("/auth/magic",(req,res)=>{
   const c=data.consumeMagicToken(req.query.token);
