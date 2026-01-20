@@ -754,7 +754,13 @@ app.post("/api/auth/request-code", async (req, res) =>{
   if(testCode){
     await data.deleteAuthCodesForEmail(email);
   }
-  await data.createAuthCode(email, codeHash, expiresAt, 5);
+  try{
+    await data.createAuthCode(email, codeHash, expiresAt, 5);
+  }catch(err){
+    console.error("AUTH_REQUEST_CODE_ERROR", { message: err.message, code: err.code });
+    const debug = (process.env.NODE_ENV || "").toLowerCase() === "production" ? {} : { debug: "request-code-error" };
+    return res.json({ ok:true, ...debug });
+  }
 
   if(testCode) return res.json({ ok:true });
   try{
