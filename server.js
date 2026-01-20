@@ -1594,6 +1594,10 @@ app.get("/api/archive/:slug", async (req, res) =>{
   if(!entry) return res.status(404).json({error:"Not found"});
   res.json(entry);
 });
+app.get("/api/pulse/archive", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  res.json(await data.listDailyPulses(1, 90));
+});
 
 app.get("/api/prize_awards/my", async (req, res) =>{
   const u=await requireLogin(req,res); if(!u) return;

@@ -2031,6 +2031,15 @@ async function getPulseByDayKey(dayKey, townId = 1){
   `).get(Number(townId), String(dayKey));
   return normalizePulseRow(row);
 }
+async function listDailyPulses(townId=1, limit=60){
+  return stmt(`
+    SELECT dayKey AS "dayKey", title AS "title", createdAt AS "createdAt"
+    FROM daily_pulses
+    WHERE townId=$1
+    ORDER BY dayKey DESC
+    LIMIT $2
+  `).all(Number(townId), Number(limit));
+}
 async function upsertDailyPulse(payload){
   const createdAt = payload.createdAt || nowISO();
   await stmt(`
@@ -2818,6 +2827,7 @@ module.exports = {
   getArchiveEntryBySlug,
   getLatestPulse,
   getPulseByDayKey,
+  listDailyPulses,
   generateDailyPulse,
   getSellerSalesSummary,
   getSellerSalesExport,
