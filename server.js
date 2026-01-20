@@ -137,6 +137,25 @@ app.get("/api/health/db", async (_req, res) =>{
     res.status(500).json({ ok:false, error: err?.message || "db error", code: err?.code || "" });
   }
 });
+app.get("/api/health/auth-codes-schema", async (_req, res) =>{
+  try{
+    const rows = await db.many(`
+      SELECT column_name, data_type, is_nullable, column_default
+      FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='auth_codes'
+      ORDER BY ordinal_position ASC
+    `);
+    const columns = rows.map(r=>({
+      name: r.column_name,
+      type: r.data_type,
+      is_nullable: r.is_nullable,
+      default: r.column_default
+    }));
+    res.json({ ok:true, columns });
+  }catch(err){
+    res.status(500).json({ ok:false, error: err?.message || "db error", code: err?.code || "" });
+  }
+});
 app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) =>{
   if(!stripe || !process.env.STRIPE_WEBHOOK_SECRET){
     return res.status(400).json({error:"Stripe not configured"});
@@ -768,9 +787,8 @@ app.post("/api/auth/request-code", async (req, res) =>{
   try{
     await data.createAuthCode(email, codeHash, expiresAt, 5);
   }catch(err){
-    console.error("AUTH_REQUEST_CODE_ERROR", { message: err.message, code: err.code });
-    const debug = (process.env.NODE_ENV || "").toLowerCase() === "production" ? {} : { debug: "request-code-error" };
-    return res.json({ ok:true, ...debug });
+    console.error("AUTH_CODE_INSERT_FAIL", { code: err.code, message: err.message });
+    return res.json({ ok:true });
   }
 
   if(testCode) return res.json({ ok:true });
