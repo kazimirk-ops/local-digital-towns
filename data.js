@@ -2172,7 +2172,7 @@ async function generateDailyPulse(townId = 1, dayKey){
     FROM channel_messages m
     JOIN channels c ON c.id=m.channelId
     WHERE m.createdAt>=$1 AND m.createdAt<$2
-    GROUP BY m.channelId
+    GROUP BY m.channelId, c.name
     ORDER BY c DESC
     LIMIT 3
   `).all(startIso, endIso);
@@ -2181,7 +2181,7 @@ async function generateDailyPulse(townId = 1, dayKey){
     FROM store_follows f
     JOIN places p ON p.id=f.placeId
     WHERE f.createdAt>=$1 AND f.createdAt<$2
-    GROUP BY f.placeId
+    GROUP BY f.placeId, p.name
     ORDER BY c DESC
     LIMIT 3
   `).all(startIso, endIso);
