@@ -1595,8 +1595,13 @@ app.get("/api/archive/:slug", async (req, res) =>{
   res.json(entry);
 });
 app.get("/api/pulse/archive", async (req, res) =>{
-  const u=await requireLogin(req,res); if(!u) return;
-  res.json(await data.listDailyPulses(1, 90));
+  try{
+    const u=await requireLogin(req,res); if(!u) return;
+    res.json(await data.listDailyPulses(1, 90));
+  }catch(err){
+    console.error("PULSE_ARCHIVE_ERROR", err?.message);
+    res.status(500).json({ error: "internal error" });
+  }
 });
 
 app.get("/api/prize_awards/my", async (req, res) =>{
@@ -2092,10 +2097,15 @@ app.get("/api/seller/sales/export.csv", async (req, res) =>{
   res.send([header, ...csv].join("\n"));
 });
 app.post("/api/admin/pulse/generate", async (req, res) =>{
-  const admin=await requireAdminOrDev(req,res); if(!admin) return;
-  const dayKey=(req.body?.dayKey || "").toString().trim() || null;
-  const pulse=await data.generateDailyPulse(1, dayKey || undefined);
-  res.json(pulse);
+  try{
+    const admin=await requireAdminOrDev(req,res); if(!admin) return;
+    const dayKey=(req.body?.dayKey || "").toString().trim() || null;
+    const pulse=await data.generateDailyPulse(1, dayKey || undefined);
+    res.json(pulse);
+  }catch(err){
+    console.error("PULSE_GENERATE_ERROR", err?.message);
+    res.status(500).json({ error: "internal error" });
+  }
 });
 app.get("/api/pulse/latest", async (req, res) =>{
   const pulse=await data.getLatestPulse(1);
