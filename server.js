@@ -43,6 +43,7 @@ const { TOWN_DIRECTORY } = require("./town_directory");
 const { StubPaymentProvider } = require("./payment_provider");
 const paymentProvider = new StubPaymentProvider();
 const { uploadImage } = require("./lib/r2");
+const permissions = require("./lib/permissions");
 const stripe = process.env.STRIPE_SECRET_KEY ? require("stripe")(process.env.STRIPE_SECRET_KEY) : null;
 const CF_CALLS_APP_ID = process.env.CF_CALLS_APP_ID || "";
 const CF_CALLS_APP_SECRET = process.env.CF_CALLS_APP_SECRET || "";
@@ -78,10 +79,13 @@ app.use(async (req,res,next)=>{
     if(pathName === "/api/public/waitlist") return next();
     if(pathName === "/api/public/apply/business") return next();
     if(pathName === "/api/public/apply/resident") return next();
+    if(pathName === "/api/auth/request-code") return next();
+    if(pathName === "/api/auth/verify-code") return next();
     if(pathName.startsWith("/api/sweep/claim/")) return next();
     if(pathName === "/api/admin/test-email") return next();
   }
   if(isGet && pathName.startsWith("/api/sweep/claim/")) return next();
+  if(isGet && pathName === "/api/me") return next();
   if(isGet){
     const isStatic =
       pathName === "/favicon.ico" ||
@@ -172,6 +176,18 @@ app.get("/debug/routes", async (req, res) =>{
     routes.push({ methods, path: layer.route.path });
   }
   res.json(routes);
+});
+app.get("/api/debug/env", async (req, res) =>{
+  if((process.env.NODE_ENV || "").toLowerCase() === "production"){
+    return res.status(404).json({ error: "not found" });
+  }
+  res.json({
+    hasTestAuthCode: !!(process.env.TEST_AUTH_CODE || "").toString().trim(),
+    hasAdminEmails: !!(process.env.ADMIN_EMAILS || "").toString().trim()
+  });
+});
+app.get("/api/version", async (req, res) =>{
+  res.json({ sha: process.env.RENDER_GIT_COMMIT || process.env.GIT_SHA || "unknown" });
 });
 
 // Pages
@@ -338,6 +354,11 @@ function redactEmail(email){
   const dots = local.length > 3 ? "..." : "";
   return `${prefix}${dots}@${domain}`;
 }
+function hashAuthCode(email, code){
+  const secret = (process.env.AUTH_CODE_SECRET || "").toString();
+  const payload = `${email}|${code}|${secret}`;
+  return crypto.createHash("sha256").update(payload).digest("hex");
+}
 async function getUserId(req){
   const sid=parseCookies(req).sid;
   if(!sid) return null;
@@ -349,13 +370,17 @@ async function requireLogin(req,res){
   if(!u){res.status(401).json({error:"Login required"});return null;}
   return u;
 }
+function isAdminEmail(email){
+  const e = (email || "").toString().trim().toLowerCase();
+  return !!(e && ADMIN_EMAIL_ALLOWLIST.has(e));
+}
 function isAdminUser(user){
   if(!user) return false;
   const email=(user.email||"").toString().trim().toLowerCase();
   const adminFlag = user.isAdmin ?? user.isadmin;
   if(adminFlag === true) return true;
   if(Number(adminFlag)===1) return true;
-  if(email && ADMIN_EMAIL_ALLOWLIST.has(email)) return true;
+  if(isAdminEmail(email)) return true;
   return false;
 }
 async function requireAdmin(req,res,options={}){
@@ -547,6 +572,37 @@ async function sendLoginEmail(toEmail, magicUrl){
     return { ok:false, error: err.message || String(err), statusCode: null };
   }
 }
+async function sendCodeEmail(toEmail, code){
+  const token = (process.env.POSTMARK_SERVER_TOKEN || "").trim();
+  const from = (process.env.EMAIL_FROM || "").trim();
+  if(!token || !from){
+    console.warn("Auth code email not configured");
+    return { ok:false, skipped:true, statusCode: null };
+  }
+  const payload = {
+    From: from,
+    To: toEmail,
+    Subject: "Your Sebastian Digital Town login code",
+    TextBody: `Your login code is: ${code}\n\nThis code expires in 10 minutes.`
+  };
+  try{
+    const resp = await fetch("https://api.postmarkapp.com/email", {
+      method: "POST",
+      headers: {
+        "X-Postmark-Server-Token": token,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+    if(!resp.ok){
+      const errBody = await resp.text().catch(()=>"");
+      return { ok:false, statusCode: resp.status, error: errBody };
+    }
+    return { ok:true, statusCode: resp.status };
+  }catch(err){
+    return { ok:false, error: err?.message || String(err) };
+  }
+}
 
 async function getUserTier(req){
   const userId = await getUserId(req);
@@ -564,7 +620,10 @@ async function requirePerm(req,res,perm){
   const userId = await requireLogin(req,res); if(!userId) return null;
   const user = await data.getUserById(userId);
   const ctx = await data.getTownContext(1, userId);
-  if(!await hasPerm(user, perm, ctx)){
+  const trustTier = (ctx.membership?.trustTier ?? ctx.membership?.trusttier ?? user.trustTier ?? 0);
+  const effectiveUser = { ...user, trustTier };
+  const permKey = permissions.PERMS[perm] || perm;
+  if(!permissions.hasPerm(effectiveUser, permKey)){
     res.status(403).json({error:`Requires ${perm}`});
     return null;
   }
@@ -676,62 +735,67 @@ async function createCallsRoom(){
 }
 
 // Auth
-app.post("/auth/request-link", async (req, res) =>{
-  const email=(req.body?.email||"").toLowerCase().trim();
+app.post("/api/auth/request-code", async (req, res) =>{
+  const email = (req.body?.email || "").toString().trim().toLowerCase();
+  const testCode = (process.env.TEST_AUTH_CODE || "").toString().trim();
   const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").toString().split(",")[0].trim();
   const rateKey = `${ip}|${email}`;
   const now = Date.now();
   const last = loginLinkRateLimit.get(rateKey) || 0;
-  console.log("MAGICLINK_SEND_ATTEMPT", {
-    email: redactEmail(email),
-    hasPostmarkToken: !!process.env.POSTMARK_SERVER_TOKEN,
-    hasEmailFrom: !!process.env.EMAIL_FROM,
-    hasBaseUrl: !!process.env.PUBLIC_BASE_URL,
-    nodeEnv: process.env.NODE_ENV || "",
-    lockdownMode: LOCKDOWN
-  });
-  if(now - last < 30000){
-    return res.json({ ok:true, message: "Check your email for your login link." });
+  if(!testCode){
+    if(now - last < 30000) return res.json({ ok:true });
+    loginLinkRateLimit.set(rateKey, now);
   }
-  loginLinkRateLimit.set(rateKey, now);
 
-  const c=await data.createMagicLink(email);
-  const baseFromEnv = (process.env.PUBLIC_BASE_URL || "").replace(/\/$/,"");
-  const fallbackBase = req.headers.host
-    ? `${isHttpsRequest(req) ? "https" : "http"}://${req.headers.host}`
-    : "";
-  const base = (baseFromEnv || fallbackBase).replace(/\/$/,"");
-  const magicUrl = c?.token ? `${base}/auth/magic?token=${c.token}` : "";
-  if(process.env.NODE_ENV === "production"){
-    if(c?.token){
-      let result;
-      try{
-        result = await sendLoginEmail(email, magicUrl);
-      }catch(err){
-        result = { ok:false, error: err?.message || String(err) };
-      }
-      const statusCode = typeof result?.statusCode === "number" ? result.statusCode : null;
-      console.log("MAGICLINK_SEND_RESULT", { ok: !!result?.ok, statusCode });
-      if(!result?.ok && result?.error){
-        console.warn("MAGICLINK_SEND_ERROR", result.error);
-      }
-    }else{
-      console.log("MAGICLINK_SEND_RESULT", { ok:false, statusCode: null });
-    }
-    return res.json({ ok:true, message: "Check your email for your login link." });
+  if(!email) return res.json({ ok:true });
+  const code = testCode || String(Math.floor(100000 + Math.random() * 900000));
+  const codeHash = hashAuthCode(email, code);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  if(testCode){
+    await data.deleteAuthCodesForEmail(email);
   }
-  if(c.error) return res.status(400).json(c);
-  if(process.env.NODE_ENV !== "production" || process.env.SHOW_MAGIC_LINK === "true"){
-    return res.json({ok:true, magicUrl});
+  await data.createAuthCode(email, codeHash, expiresAt, 5);
+
+  if(testCode) return res.json({ ok:true });
+  try{
+    await sendCodeEmail(email, code);
+  }catch(_err){
+    // Always return 200 to avoid enumeration.
   }
-  res.json({ ok:true, message: "Check your email for your login link." });
+  res.json({ ok:true });
 });
-app.get("/auth/magic", async (req, res) =>{
-  const c=await data.consumeMagicToken(req.query.token);
-  if(c.error) return res.status(400).send(c.error);
-  const s=await data.createSession(c.userId);
+app.post("/api/auth/verify-code", async (req, res) =>{
+  const email = (req.body?.email || "").toString().trim().toLowerCase();
+  const code = (req.body?.code || "").toString().trim();
+  if(!email || !code) return res.status(400).json({ error: "invalid code" });
+
+  const record = await data.getLatestAuthCode(email);
+  if(!record) return res.status(400).json({ error: "invalid code" });
+  if(new Date(record.expires_at).getTime() < Date.now()){
+    await data.deleteAuthCode(record.id);
+    return res.status(400).json({ error: "code expired" });
+  }
+  if(Number(record.attempts || 0) >= Number(record.max_attempts || 0)){
+    return res.status(400).json({ error: "too many attempts" });
+  }
+  const codeHash = hashAuthCode(email, code);
+  if(codeHash !== record.code_hash){
+    await data.incrementAuthCodeAttempts(record.id);
+    return res.status(400).json({ error: "invalid code" });
+  }
+
+  await data.deleteAuthCode(record.id);
+  const user = await data.upsertUserByEmail(email);
+  if(!user) return res.status(400).json({ error: "invalid email" });
+  const s = await data.createSession(user.id);
   setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30,secure:isHttpsRequest(req)});
-  res.redirect("/ui");
+  res.json({ ok:true });
+});
+app.post("/auth/request-link", async (_req, res) =>{
+  res.status(410).json({ error: "deprecated" });
+});
+app.get("/auth/magic", async (_req, res) =>{
+  res.status(410).json({ error: "deprecated" });
 });
 app.get("/auth/logout", async (req, res) =>{
   const sid=parseCookies(req).sid;
@@ -890,6 +954,27 @@ app.get("/me", async (req, res) =>{
   await data.ensureTownMembership(1,r.user.id);
   r.user.isAdmin = isAdminUser(r.user);
   res.json(r);
+});
+app.get("/api/me", async (req, res) =>{
+  const sid = parseCookies(req).sid;
+  if(!sid) return res.status(401).json({ error: "not logged in" });
+  const r = await data.getUserBySession(sid);
+  if(!r) return res.status(401).json({ error: "not logged in" });
+  const ctx = await data.getTownContext(1, r.user.id);
+  const trustTier = ctx.membership?.trustTier ?? r.user.trustTier ?? 0;
+  const tierName = permissions.tierName(trustTier);
+  res.json({
+    ok: true,
+    user: {
+      id: r.user.id,
+      email: r.user.email,
+      trustLevel: ctx.trustLevel,
+      trustTier,
+      trustTierLabel: tierName,
+      level: trustTier,
+      isAdmin: isAdminUser(r.user)
+    }
+  });
 });
 app.get("/api/users/:id", async (req, res) =>{
   const profile = await data.getUserProfilePublic(req.params.id);
@@ -1849,7 +1934,12 @@ app.get("/api/admin/pulse", async (req, res) =>{
   res.json({ since, sessions: 0, counts: [] });
 });
 app.get("/api/admin/analytics/summary", async (req, res) =>{
-  const admin=await requireAdmin(req,res); if(!admin) return;
+  const u=await requireLogin(req,res); if(!u) return;
+  const user = await data.getUserById(u);
+  user.isAdmin = isAdminUser(user);
+  if(!permissions.hasPerm(user, permissions.PERMS.ADMIN)){
+    return res.status(403).json({ error: "forbidden" });
+  }
   const { from, to, range } = rangeToBounds(req.query?.range);
   const listings = await data.getListings();
   const now = Date.now();
@@ -2613,12 +2703,11 @@ app.get("/places/:id", async (req, res) =>{
   res.json({ ...p, followCount, isFollowing, reviewSummary, owner });
 });
 app.post("/places", async (req, res) =>{
-  const access = await requirePerm(req,res,"SELL_LISTINGS"); if(!access) return;
-  const u=access.userId;
+  const access = await requirePerm(req, res, "CREATE_LISTING"); if(!access) return;
   const payload = req.body || {};
   const created = await data.addPlace({
     ...payload,
-    ownerUserId: u,
+    ownerUserId: access.userId,
     townId: 1
   });
   if(created?.error) return res.status(400).json(created);

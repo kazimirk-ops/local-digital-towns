@@ -6,5 +6,16 @@ export R2_SECRET_ACCESS_KEY=bf5907c0b2b52a45d72acedc0eb1323502d3158356b36718b7f7
 export R2_BUCKET="sebastian-assets"
 export R2_PUBLIC_BASE_URL=https://pub-303c7bb64756430cb1d3395ea28e0e92.r2.dev
 
-node server.js
+if [ -f .env.local ]; then
+  set -a
+  . .env.local
+  set +a
+fi
 
+if [ -f .env ]; then
+  set -a
+  . .env
+  set +a
+fi
+
+node server.js
