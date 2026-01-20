@@ -831,6 +831,11 @@ async function incrementAuthCodeAttempts(id){
 async function deleteAuthCode(id){
   await stmt("DELETE FROM auth_codes WHERE id=$1").run(Number(id));
 }
+async function deleteAuthCodesForEmail(email){
+  const e = normalizeEmail(email);
+  if(!e) return;
+  await stmt("DELETE FROM auth_codes WHERE email=$1").run(e);
+}
 async function createSession(userId){
   const sid = randToken(24);
   const expiresAt = new Date(Date.now()+30*24*60*60*1000).toISOString();
@@ -2742,6 +2747,7 @@ module.exports = {
   getLatestAuthCode,
   incrementAuthCodeAttempts,
   deleteAuthCode,
+  deleteAuthCodesForEmail,
   createSession,
   deleteSession,
   getUserBySession,
