@@ -766,38 +766,47 @@ async function createCallsRoom(){
 
 // Auth
 app.post("/api/auth/request-code", async (req, res) =>{
-  const email = (req.body?.email || "").toString().trim().toLowerCase();
-  const testCode = (process.env.TEST_AUTH_CODE || "").toString().trim();
-  const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").toString().split(",")[0].trim();
-  const rateKey = `${ip}|${email}`;
-  const now = Date.now();
-  const last = loginLinkRateLimit.get(rateKey) || 0;
-  if(!testCode){
-    if(now - last < 30000) return res.json({ ok:true });
-    loginLinkRateLimit.set(rateKey, now);
-  }
-
-  if(!email) return res.json({ ok:true });
-  const code = testCode || String(Math.floor(100000 + Math.random() * 900000));
-  const codeHash = hashAuthCode(email, code);
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-  if(testCode){
-    await data.deleteAuthCodesForEmail(email);
-  }
   try{
-    await data.createAuthCode(email, codeHash, expiresAt, 5);
+    const email = (req.body?.email || "").toString().trim().toLowerCase();
+    const testCode = (process.env.TEST_AUTH_CODE || "").toString().trim();
+    const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").toString().split(",")[0].trim();
+    const rateKey = `${ip}|${email}`;
+    const now = Date.now();
+    const last = loginLinkRateLimit.get(rateKey) || 0;
+    if(!testCode){
+      if(now - last < 30000) return res.json({ ok:true });
+      loginLinkRateLimit.set(rateKey, now);
+    }
+
+    if(!email) return res.json({ ok:true });
+    const code = testCode || String(Math.floor(100000 + Math.random() * 900000));
+    const codeHash = hashAuthCode(email, code);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    if(testCode){
+      await data.deleteAuthCodesForEmail(email);
+    }
+    try{
+      await data.createAuthCode(email, codeHash, expiresAt, 5);
+    }catch(err){
+      console.error("AUTH_CODE_INSERT_FAIL", { code: err.code, message: err.message });
+      return res.json({ ok:true });
+    }
+
+    if(testCode) return res.json({ ok:true });
+    try{
+      await sendCodeEmail(email, code);
+    }catch(_err){
+      // Always return 200 to avoid enumeration.
+    }
+    res.json({ ok:true });
   }catch(err){
-    console.error("AUTH_CODE_INSERT_FAIL", { code: err.code, message: err.message });
+    console.error("AUTH_REQUEST_CODE_FATAL", { message: err.message, code: err.code });
+    const host = (req.headers.host || "").toString();
+    if(host.includes("onrender.com")){
+      return res.status(200).json({ ok:true, debugError: err.message });
+    }
     return res.json({ ok:true });
   }
-
-  if(testCode) return res.json({ ok:true });
-  try{
-    await sendCodeEmail(email, code);
-  }catch(_err){
-    // Always return 200 to avoid enumeration.
-  }
-  res.json({ ok:true });
 });
 app.post("/api/auth/verify-code", async (req, res) =>{
   const email = (req.body?.email || "").toString().trim().toLowerCase();
