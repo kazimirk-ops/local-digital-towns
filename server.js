@@ -2615,27 +2615,34 @@ app.get("/market/listings", async (req, res) =>{
   const out = [];
   const listings = await data.getListings();
   for(const l of listings){
-    const p = placeById.get(Number(l.placeId));
+    const placeId = Number(l.placeId ?? l.placeid);
+    const p = placeById.get(placeId);
     if(!p) continue;
     if(townId && Number(p.townId)!==Number(townId)) continue;
-    const listingType = l.listingType || "item";
-    const hasAuctionFields = !!(l.auctionStartAt || l.auctionEndAt || Number(l.startBidCents || 0) || Number(l.minIncrementCents || 0) || Number(l.reserveCents || 0));
-    const hasAuctionId = !!l.auctionId;
+    const listingType = l.listingType ?? l.listingtype ?? "item";
+    const auctionStartAt = l.auctionStartAt ?? l.auctionstartat;
+    const auctionEndAt = l.auctionEndAt ?? l.auctionendat;
+    const startBidCents = l.startBidCents ?? l.startbidcents ?? 0;
+    const minIncrementCents = l.minIncrementCents ?? l.minincrementcents ?? 0;
+    const reserveCents = l.reserveCents ?? l.reservecents ?? 0;
+    const auctionId = l.auctionId ?? l.auctionid;
+    const hasAuctionFields = !!(auctionStartAt || auctionEndAt || Number(startBidCents || 0) || Number(minIncrementCents || 0) || Number(reserveCents || 0));
+    const hasAuctionId = !!auctionId;
     if(listingType === "auction" || hasAuctionFields || hasAuctionId) continue;
     const joined = {
       id: l.id,
-      placeId: l.placeId,
+      placeId,
       title: l.title,
       description: l.description,
       price: l.price,
       listingType,
-      auctionEndAt: l.auctionEndAt || "",
-      startBidCents: l.startBidCents || 0,
+      auctionEndAt: auctionEndAt || "",
+      startBidCents: startBidCents || 0,
       placeName: p.name || "Store",
       placeCategory: p.category || "",
       districtId: p.districtId
     };
-    if((l.listingType||"item")==="auction"){
+    if(listingType === "auction"){
       const summary = await data.getAuctionSummary(l.id);
       joined.highestBidCents = summary.highestBidCents || 0;
     }
@@ -2651,27 +2658,34 @@ app.get("/api/market/listings", async (req, res) =>{
   const out = [];
   const listings = await data.getListings();
   for(const l of listings){
-    const p = placeById.get(Number(l.placeId));
+    const placeId = Number(l.placeId ?? l.placeid);
+    const p = placeById.get(placeId);
     if(!p) continue;
     if(townId && Number(p.townId)!==Number(townId)) continue;
-    const listingType = l.listingType || "item";
-    const hasAuctionFields = !!(l.auctionStartAt || l.auctionEndAt || Number(l.startBidCents || 0) || Number(l.minIncrementCents || 0) || Number(l.reserveCents || 0));
-    const hasAuctionId = !!l.auctionId;
+    const listingType = l.listingType ?? l.listingtype ?? "item";
+    const auctionStartAt = l.auctionStartAt ?? l.auctionstartat;
+    const auctionEndAt = l.auctionEndAt ?? l.auctionendat;
+    const startBidCents = l.startBidCents ?? l.startbidcents ?? 0;
+    const minIncrementCents = l.minIncrementCents ?? l.minincrementcents ?? 0;
+    const reserveCents = l.reserveCents ?? l.reservecents ?? 0;
+    const auctionId = l.auctionId ?? l.auctionid;
+    const hasAuctionFields = !!(auctionStartAt || auctionEndAt || Number(startBidCents || 0) || Number(minIncrementCents || 0) || Number(reserveCents || 0));
+    const hasAuctionId = !!auctionId;
     if(listingType === "auction" || hasAuctionFields || hasAuctionId) continue;
     const joined = {
       id: l.id,
-      placeId: l.placeId,
+      placeId,
       title: l.title,
       description: l.description,
       price: l.price,
       listingType,
-      auctionEndAt: l.auctionEndAt || "",
-      startBidCents: l.startBidCents || 0,
+      auctionEndAt: auctionEndAt || "",
+      startBidCents: startBidCents || 0,
       placeName: p.name || "Store",
       placeCategory: p.category || "",
       districtId: p.districtId
     };
-    if((l.listingType||"item")==="auction"){
+    if(listingType === "auction"){
       const summary = await data.getAuctionSummary(l.id);
       joined.highestBidCents = summary.highestBidCents || 0;
     }
