@@ -43,6 +43,7 @@ const { TOWN_DIRECTORY } = require("./town_directory");
 const { StubPaymentProvider } = require("./payment_provider");
 const paymentProvider = new StubPaymentProvider();
 const { uploadImage } = require("./lib/r2");
+const permissions = require("./lib/permissions");
 const stripe = process.env.STRIPE_SECRET_KEY ? require("stripe")(process.env.STRIPE_SECRET_KEY) : null;
 const CF_CALLS_APP_ID = process.env.CF_CALLS_APP_ID || "";
 const CF_CALLS_APP_SECRET = process.env.CF_CALLS_APP_SECRET || "";
@@ -175,6 +176,18 @@ app.get("/debug/routes", async (req, res) =>{
     routes.push({ methods, path: layer.route.path });
   }
   res.json(routes);
+});
+app.get("/api/debug/env", async (req, res) =>{
+  if((process.env.NODE_ENV || "").toLowerCase() === "production"){
+    return res.status(404).json({ error: "not found" });
+  }
+  res.json({
+    hasTestAuthCode: !!(process.env.TEST_AUTH_CODE || "").toString().trim(),
+    hasAdminEmails: !!(process.env.ADMIN_EMAILS || "").toString().trim()
+  });
+});
+app.get("/api/version", async (req, res) =>{
+  res.json({ sha: process.env.RENDER_GIT_COMMIT || process.env.GIT_SHA || "unknown" });
 });
 
 // Pages
@@ -607,7 +620,10 @@ async function requirePerm(req,res,perm){
   const userId = await requireLogin(req,res); if(!userId) return null;
   const user = await data.getUserById(userId);
   const ctx = await data.getTownContext(1, userId);
-  if(!await hasPerm(user, perm, ctx)){
+  const trustTier = (ctx.membership?.trustTier ?? ctx.membership?.trusttier ?? user.trustTier ?? 0);
+  const effectiveUser = { ...user, trustTier };
+  const permKey = permissions.PERMS[perm] || perm;
+  if(!permissions.hasPerm(effectiveUser, permKey)){
     res.status(403).json({error:`Requires ${perm}`});
     return null;
   }
@@ -721,18 +737,23 @@ async function createCallsRoom(){
 // Auth
 app.post("/api/auth/request-code", async (req, res) =>{
   const email = (req.body?.email || "").toString().trim().toLowerCase();
+  const testCode = (process.env.TEST_AUTH_CODE || "").toString().trim();
   const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").toString().split(",")[0].trim();
   const rateKey = `${ip}|${email}`;
   const now = Date.now();
   const last = loginLinkRateLimit.get(rateKey) || 0;
-  if(now - last < 30000) return res.json({ ok:true });
-  loginLinkRateLimit.set(rateKey, now);
+  if(!testCode){
+    if(now - last < 30000) return res.json({ ok:true });
+    loginLinkRateLimit.set(rateKey, now);
+  }
 
   if(!email) return res.json({ ok:true });
-  const testCode = (process.env.TEST_AUTH_CODE || "").toString().trim();
   const code = testCode || String(Math.floor(100000 + Math.random() * 900000));
   const codeHash = hashAuthCode(email, code);
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  if(testCode){
+    await data.deleteAuthCodesForEmail(email);
+  }
   await data.createAuthCode(email, codeHash, expiresAt, 5);
 
   if(testCode) return res.json({ ok:true });
@@ -941,6 +962,7 @@ app.get("/api/me", async (req, res) =>{
   if(!r) return res.status(401).json({ error: "not logged in" });
   const ctx = await data.getTownContext(1, r.user.id);
   const trustTier = ctx.membership?.trustTier ?? r.user.trustTier ?? 0;
+  const tierName = permissions.tierName(trustTier);
   res.json({
     ok: true,
     user: {
@@ -948,6 +970,7 @@ app.get("/api/me", async (req, res) =>{
       email: r.user.email,
       trustLevel: ctx.trustLevel,
       trustTier,
+      trustTierLabel: tierName,
       level: trustTier,
       isAdmin: isAdminUser(r.user)
     }
@@ -1911,7 +1934,12 @@ app.get("/api/admin/pulse", async (req, res) =>{
   res.json({ since, sessions: 0, counts: [] });
 });
 app.get("/api/admin/analytics/summary", async (req, res) =>{
-  const admin=await requireAdmin(req,res); if(!admin) return;
+  const u=await requireLogin(req,res); if(!u) return;
+  const user = await data.getUserById(u);
+  user.isAdmin = isAdminUser(user);
+  if(!permissions.hasPerm(user, permissions.PERMS.ADMIN)){
+    return res.status(403).json({ error: "forbidden" });
+  }
   const { from, to, range } = rangeToBounds(req.query?.range);
   const listings = await data.getListings();
   const now = Date.now();
@@ -2675,12 +2703,11 @@ app.get("/places/:id", async (req, res) =>{
   res.json({ ...p, followCount, isFollowing, reviewSummary, owner });
 });
 app.post("/places", async (req, res) =>{
-  const access = await requirePerm(req,res,"SELL_LISTINGS"); if(!access) return;
-  const u=access.userId;
+  const access = await requirePerm(req, res, "CREATE_LISTING"); if(!access) return;
   const payload = req.body || {};
   const created = await data.addPlace({
     ...payload,
-    ownerUserId: u,
+    ownerUserId: access.userId,
     townId: 1
   });
   if(created?.error) return res.status(400).json(created);
