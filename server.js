@@ -22,6 +22,7 @@ const path = require("path");
 const multer = require("multer");
 const trust = require("./lib/trust");
 const { sendAdminEmail } = require("./lib/notify");
+const db = require("./lib/db");
 const TRUST_TIER_LABELS = trust.TRUST_TIER_LABELS;
 async function getTrustBadgeForUser(userId){
   const user = await data.getUserById(userId);
@@ -126,6 +127,16 @@ app.use("/api/admin", async (req, res, next) =>{
 
 // Health
 app.get("/health", async (req, res) =>res.json({status:"ok"}));
+app.get("/api/health/db", async (_req, res) =>{
+  try{
+    const dbRow = await db.one("SELECT current_database() AS db");
+    const regRow = await db.one("SELECT to_regclass('public.auth_codes') AS t");
+    const hasAuthCodes = !!(regRow && regRow.t);
+    res.json({ ok:true, db: dbRow?.db || null, hasAuthCodes });
+  }catch(err){
+    res.status(500).json({ ok:false, error: err?.message || "db error", code: err?.code || "" });
+  }
+});
 app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) =>{
   if(!stripe || !process.env.STRIPE_WEBHOOK_SECRET){
     return res.status(400).json({error:"Stripe not configured"});
