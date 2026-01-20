@@ -2045,11 +2045,12 @@ async function getPulseByDayKey(dayKey, townId = 1){
 }
 async function listDailyPulses(townId=1, limit=60){
   return stmt(`
-   SELECT daykey AS "dayKey", title AS "title", createdat AS "createdAt"
+   SELECT daykey AS "dayKey", createdat AS "createdAt"
 FROM daily_pulses
 WHERE townId=$1
 ORDER BY daykey DESC
 LIMIT $2
+
 
   `).all(Number(townId), Number(limit));
 }
