@@ -1745,12 +1745,13 @@ app.post("/api/checkout/create", async (req, res) =>{
     const itemListingId = item.listingId ?? item.listingid;
     const listing = listings.find(l=>Number(l.id)===Number(itemListingId));
     if(!listing) return res.status(400).json({error:"Listing not found"});
+    const listingPlaceId = listing.placeId ?? listing.placeid;
     if((listing.listingType||"item")!=="item") return res.status(400).json({error:"Only item listings can be purchased"});
     if((listing.status || "active")!=="active") return res.status(400).json({error:"Listing not active"});
     if(Number(listing.quantity || 0) < Number(item.quantity || 0)) return res.status(400).json({error:"Insufficient quantity"});
-    if(placeId == null) placeId = listing.placeId;
-    if(Number(placeId) !== Number(listing.placeId)) return res.status(400).json({error:"Checkout supports a single store per order"});
-    const place = placeMap.get(Number(listing.placeId));
+    if(placeId == null) placeId = listingPlaceId;
+    if(Number(placeId) !== Number(listingPlaceId)) return res.status(400).json({error:"Checkout supports a single store per order"});
+    const place = placeMap.get(Number(listingPlaceId));
     if(place) sellerUserId = place.ownerUserId ?? null;
     const priceCents = Math.round(Number(listing.price || 0) * 100);
     subtotalCents += priceCents * Number(item.quantity || 0);
