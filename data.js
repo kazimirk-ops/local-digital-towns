@@ -403,6 +403,24 @@ async function addChannelMessage(channelId, userId, text, imageUrl, replyToId, t
     .run(Number(channelId), Number(userId), String(text), String(imageUrl || ""), nowISO(), replyToId ?? null, Number(threadId));
   return { id: info.rows?.[0]?.id };
 }
+async function isUserMutedInChannel(channelId, userId){
+  return !!(await stmt("SELECT 1 FROM channel_mutes WHERE channel_id=$1 AND user_id=$2")
+    .get(Number(channelId), Number(userId)));
+}
+async function upsertChannelMute(channelId, userId, mutedByUserId, reason){
+  await stmt(`
+    INSERT INTO channel_mutes (channel_id, user_id, muted_by_user_id, reason)
+    VALUES ($1,$2,$3,$4)
+    ON CONFLICT (channel_id, user_id)
+    DO UPDATE SET muted_by_user_id=EXCLUDED.muted_by_user_id, reason=EXCLUDED.reason, created_at=now()
+  `).run(Number(channelId), Number(userId), Number(mutedByUserId), String(reason || ""));
+  return { ok:true };
+}
+async function deleteChannelMute(channelId, userId){
+  await stmt("DELETE FROM channel_mutes WHERE channel_id=$1 AND user_id=$2")
+    .run(Number(channelId), Number(userId));
+  return { ok:true };
+}
 
 async function createLiveRoom(payload){
   const info = await stmt(`
@@ -2708,6 +2726,9 @@ module.exports = {
   getChannelMessageById,
   createChannelThread,
   addChannelMessage,
+  isUserMutedInChannel,
+  upsertChannelMute,
+  deleteChannelMute,
   createLiveRoom,
   getLiveRoomById,
   listActiveLiveRooms,

@@ -2706,6 +2706,7 @@ app.post("/channels/:id/messages", async (req, res) =>{
   if(!gate.ok) return res.status(403).json({error:"Chat requires verified access"});
   const channel=await data.getChannelById(req.params.id);
   if(!channel) return res.status(404).json({error:"Channel not found"});
+  if(await data.isUserMutedInChannel(channel.id, u)) return res.status(403).json({error:"Muted"});
   const text=(req.body?.text||"").toString().trim();
   const imageUrl=(req.body?.imageUrl||"").toString().trim();
   if(!text && !imageUrl) return res.status(400).json({error:"text or imageUrl required"});
@@ -2733,6 +2734,25 @@ app.post("/channels/:id/messages", async (req, res) =>{
   }
   const created=await data.addChannelMessage(channel.id, u, text, imageUrl, replyToId, threadId);
   res.status(201).json({ok:true, id: created.id, threadId});
+});
+app.post("/api/mod/channels/:id/mute", async (req, res) =>{
+  const access = await requirePerm(req,res,"MODERATE_CHANNELS"); if(!access) return;
+  const channel=await data.getChannelById(req.params.id);
+  if(!channel) return res.status(404).json({error:"Channel not found"});
+  const userId = Number(req.body?.userId);
+  if(!userId) return res.status(400).json({error:"userId required"});
+  const reason = (req.body?.reason || "").toString();
+  await data.upsertChannelMute(channel.id, userId, access.userId, reason);
+  res.json({ ok:true });
+});
+app.post("/api/mod/channels/:id/unmute", async (req, res) =>{
+  const access = await requirePerm(req,res,"MODERATE_CHANNELS"); if(!access) return;
+  const channel=await data.getChannelById(req.params.id);
+  if(!channel) return res.status(404).json({error:"Channel not found"});
+  const userId = Number(req.body?.userId);
+  if(!userId) return res.status(400).json({error:"userId required"});
+  await data.deleteChannelMute(channel.id, userId);
+  res.json({ ok:true });
 });
 
 // Place meta
