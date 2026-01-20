@@ -1011,8 +1011,8 @@ app.get("/api/me", async (req, res) =>{
   const r = await data.getUserBySession(sid);
   if(!r) return res.status(401).json({ error: "not logged in" });
   const ctx = await data.getTownContext(1, r.user.id);
-  const trustTier = ctx.membership?.trustTier ?? r.user.trustTier ?? 0;
-  const tierName = permissions.tierName(trustTier);
+  const trustTier = (ctx.membership?.trustTier ?? ctx.membership?.trusttier ?? r.user.trustTier ?? 0);
+const tierName = permissions.tierName(trustTier);
   res.json({
     ok: true,
     user: {
