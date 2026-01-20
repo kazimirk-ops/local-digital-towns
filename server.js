@@ -156,6 +156,12 @@ app.get("/api/health/auth-codes-schema", async (_req, res) =>{
     res.status(500).json({ ok:false, error: err?.message || "db error", code: err?.code || "" });
   }
 });
+app.get("/api/health/session", async (req, res) =>{
+  const sid = parseCookies(req).sid;
+  if(!sid) return res.json({ ok:true, hasSid:false, sessionFound:false });
+  const row = await db.one("SELECT sid, userid, expiresat FROM sessions WHERE sid=$1", [sid]).catch(()=>null);
+  res.json({ ok:true, hasSid:true, sessionFound: !!row, keys: Object.keys(row || {}) });
+});
 app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) =>{
   if(!stripe || !process.env.STRIPE_WEBHOOK_SECRET){
     return res.status(400).json({error:"Stripe not configured"});
