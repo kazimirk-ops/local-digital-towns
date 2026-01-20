@@ -2107,6 +2107,11 @@ app.post("/api/admin/pulse/generate", async (req, res) =>{
     res.status(500).json({ error: "internal error" });
   }
 });
+app.post("/api/admin/pulse/cleanup", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const deletedCount = await data.cleanupDailyPulses(1);
+  res.json({ ok:true, deletedCount });
+});
 app.get("/api/pulse/latest", async (req, res) =>{
   const pulse=await data.getLatestPulse(1);
   if(!pulse) return res.status(404).json({error:"No pulse found"});

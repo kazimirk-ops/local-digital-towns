@@ -2054,6 +2054,10 @@ LIMIT $2
 
   `).all(Number(townId), Number(limit));
 }
+async function cleanupDailyPulses(townId=1){
+  const r = await stmt("DELETE FROM daily_pulses WHERE townId=$1 AND dayKey NOT LIKE '____-__-__'").run(Number(townId));
+  return Number(r.rowCount || 0);
+}
 async function upsertDailyPulse(payload){
   const createdAt = payload.createdAt || nowISO();
   await stmt(`
@@ -2842,6 +2846,7 @@ module.exports = {
   getLatestPulse,
   getPulseByDayKey,
   listDailyPulses,
+  cleanupDailyPulses,
   generateDailyPulse,
   getSellerSalesSummary,
   getSellerSalesExport,
