@@ -1994,7 +1994,7 @@ async function getArchiveEntryBySlug(slug){
   `).get(String(slug))) || null;
 }
 
-async function dayKeyFromDate(date){
+function dayKeyFromDate(date){
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
