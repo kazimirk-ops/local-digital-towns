@@ -2690,11 +2690,6 @@ app.get("/channels/:id/messages", async (req, res) =>{
   const access = await requirePerm(req,res,"VIEW_CHANNELS"); if(!access) return;
   const channel=await data.getChannelById(req.params.id);
   if(!channel) return res.status(404).json({error:"Channel not found"});
-  const isPublic=Number(channel.isPublic)===1;
-  if(!isPublic){
-    const u=access.userId;
-    if(!await data.isChannelMember(channel.id,u)) return res.status(403).json({error:"Not a member"});
-  }
   const messages = await data.getChannelMessages(channel.id, 200);
   const msgs = await Promise.all(messages.map(async (m)=>({
     ...m,
@@ -2711,8 +2706,6 @@ app.post("/channels/:id/messages", async (req, res) =>{
   if(!gate.ok) return res.status(403).json({error:"Chat requires verified access"});
   const channel=await data.getChannelById(req.params.id);
   if(!channel) return res.status(404).json({error:"Channel not found"});
-  const isPublic=Number(channel.isPublic)===1;
-  if(!isPublic && !await data.isChannelMember(channel.id,u)) return res.status(403).json({error:"Not a member"});
   const text=(req.body?.text||"").toString().trim();
   const imageUrl=(req.body?.imageUrl||"").toString().trim();
   if(!text && !imageUrl) return res.status(400).json({error:"text or imageUrl required"});
@@ -2724,17 +2717,18 @@ app.post("/channels/:id/messages", async (req, res) =>{
     if(!imageGate.ok) return res.status(403).json({error:"Chat images require tier 1+"});
   }
   const tier = trust.resolveTier(user, ctx);
-  const canPost = tier >= 1;
-  const canCreateThread = tier >= 1;
+  if(tier < 2) return res.status(403).json({error:"Posting requires tier 2+"});
+  const canPost = tier >= 2;
+  const canCreateThread = tier >= 2;
   const replyToId=req.body?.replyToId ? Number(req.body.replyToId) : null;
   let threadId=null;
   if(replyToId){
-    if(!canPost) return res.status(403).json({error:"Posting requires tier 1+"});
+    if(!canPost) return res.status(403).json({error:"Posting requires tier 2+"});
     const parent=await data.getChannelMessageById(replyToId);
     if(!parent || Number(parent.channelId)!==Number(channel.id)) return res.status(400).json({error:"Invalid replyToId"});
     threadId=parent.threadId;
   }else{
-    if(!canCreateThread) return res.status(403).json({error:"Thread creation requires tier 1+"});
+    if(!canCreateThread) return res.status(403).json({error:"Thread creation requires tier 2+"});
     threadId=await data.createChannelThread(channel.id, u);
   }
   const created=await data.addChannelMessage(channel.id, u, text, imageUrl, replyToId, threadId);
