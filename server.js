@@ -1742,7 +1742,8 @@ app.post("/api/checkout/create", async (req, res) =>{
   let sellerUserId = null;
   let subtotalCents = 0;
   for(const item of cart){
-    const listing = listings.find(l=>Number(l.id)===Number(item.listingId));
+    const itemListingId = item.listingId ?? item.listingid;
+    const listing = listings.find(l=>Number(l.id)===Number(itemListingId));
     if(!listing) return res.status(400).json({error:"Listing not found"});
     if((listing.listingType||"item")!=="item") return res.status(400).json({error:"Only item listings can be purchased"});
     if((listing.status || "active")!=="active") return res.status(400).json({error:"Listing not active"});
