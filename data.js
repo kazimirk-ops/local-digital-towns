@@ -2000,8 +2000,20 @@ async function dayKeyFromDate(date){
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
+function isValidDate(d){
+  return d instanceof Date && !Number.isNaN(d.getTime());
+}
 async function dayRangeForKey(dayKey){
-  const start = new Date(`${dayKey}T00:00:00`);
+  const key = (dayKey || "").toString().trim();
+  let start = key ? new Date(`${key}T00:00:00`) : null;
+  if(!isValidDate(start)){
+    const now = new Date();
+    const todayKey = await dayKeyFromDate(now);
+    start = new Date(`${todayKey}T00:00:00`);
+    if(!isValidDate(start)){
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+  }
   const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
   return { startIso: start.toISOString(), endIso: end.toISOString() };
 }
