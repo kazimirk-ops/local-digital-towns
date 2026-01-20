@@ -3209,6 +3209,17 @@ app.post("/api/admin/trust/tiers", async (req, res) =>{
   if(updated?.error) return res.status(400).json(updated);
   res.json({ ok:true, membership: updated });
 });
+app.post("/api/admin/places/status", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const placeId = Number(req.body?.placeId);
+  const status = (req.body?.status || "").toString().trim().toLowerCase();
+  if(!placeId || !status) return res.status(400).json({ error: "placeId and status required" });
+  const allowed = new Set(["approved","pending","rejected"]);
+  if(!allowed.has(status)) return res.status(400).json({ error: "invalid status" });
+  const place = await data.updatePlaceStatus(placeId, status);
+  if(!place) return res.status(404).json({ error: "Place not found" });
+  res.json({ ok:true, place });
+});
 
 const PORT = Number(process.env.PORT || 3000);
 async function start(){
