@@ -2008,7 +2008,7 @@ async function dayRangeForKey(dayKey){
   let start = key ? new Date(`${key}T00:00:00`) : null;
   if(!isValidDate(start)){
     const now = new Date();
-    const todayKey = await dayKeyFromDate(now);
+    const todayKey = dayKeyFromDate(now);
     start = new Date(`${todayKey}T00:00:00`);
     if(!isValidDate(start)){
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
