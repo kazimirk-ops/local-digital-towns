@@ -2958,7 +2958,10 @@ app.patch("/conversations/:id/read", async (req, res) =>{
 app.get("/places/:id/listings", async (req, res) =>{
   const pid=Number(req.params.id);
   const listings = await data.getListings();
-  res.json(listings.filter(l=>Number(l.placeId)===pid));
+  res.json(listings.filter(l=>{
+    const placeId = Number(l.placeId ?? l.placeid);
+    return placeId === pid;
+  }));
 });
 app.post("/places/:id/listings", async (req, res) =>{
   const u=await requireLogin(req,res); if(!u) return;
