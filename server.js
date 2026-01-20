@@ -2643,6 +2643,42 @@ app.get("/market/listings", async (req, res) =>{
   }
   res.json(out);
 });
+app.get("/api/market/listings", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_MARKET"); if(!access) return;
+  const townId = Number(req.query.townId || 1);
+  const places = await data.getPlaces();
+  const placeById = new Map(places.map(p=>[Number(p.id), p]));
+  const out = [];
+  const listings = await data.getListings();
+  for(const l of listings){
+    const p = placeById.get(Number(l.placeId));
+    if(!p) continue;
+    if(townId && Number(p.townId)!==Number(townId)) continue;
+    const listingType = l.listingType || "item";
+    const hasAuctionFields = !!(l.auctionStartAt || l.auctionEndAt || Number(l.startBidCents || 0) || Number(l.minIncrementCents || 0) || Number(l.reserveCents || 0));
+    const hasAuctionId = !!l.auctionId;
+    if(listingType === "auction" || hasAuctionFields || hasAuctionId) continue;
+    const joined = {
+      id: l.id,
+      placeId: l.placeId,
+      title: l.title,
+      description: l.description,
+      price: l.price,
+      listingType,
+      auctionEndAt: l.auctionEndAt || "",
+      startBidCents: l.startBidCents || 0,
+      placeName: p.name || "Store",
+      placeCategory: p.category || "",
+      districtId: p.districtId
+    };
+    if((l.listingType||"item")==="auction"){
+      const summary = await data.getAuctionSummary(l.id);
+      joined.highestBidCents = summary.highestBidCents || 0;
+    }
+    out.push(joined);
+  }
+  res.json(out);
+});
 
 app.get("/market/auctions", async (req, res) =>{
   const access = await requirePerm(req,res,"VIEW_AUCTIONS"); if(!access) return;
@@ -2658,6 +2694,82 @@ app.get("/market/auctions", async (req, res) =>{
     const listingType = l.listingType || "item";
     const hasAuctionId = !!l.auctionId;
     if(listingType !== "auction" && !hasAuctionId) continue;
+    const joined = {
+      id: l.id,
+      placeId: l.placeId,
+      title: l.title,
+      description: l.description,
+      price: l.price,
+      listingType: l.listingType || "item",
+      auctionEndAt: l.auctionEndAt || "",
+      startBidCents: l.startBidCents || 0,
+      placeName: p.name || "Store",
+      placeCategory: p.category || "",
+      districtId: p.districtId
+    };
+    const summary = await data.getAuctionSummary(l.id);
+    joined.highestBidCents = summary.highestBidCents || 0;
+    out.push(joined);
+  }
+  res.json(out);
+});
+app.get("/api/auctions/active", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_AUCTIONS"); if(!access) return;
+  const townId = Number(req.query.townId || 1);
+  const places = await data.getPlaces();
+  const placeById = new Map(places.map(p=>[Number(p.id), p]));
+  const out = [];
+  const listings = await data.getListings();
+  const now = Date.now();
+  for(const l of listings){
+    const p = placeById.get(Number(l.placeId));
+    if(!p) continue;
+    if(townId && Number(p.townId)!==Number(townId)) continue;
+    const listingType = l.listingType || "item";
+    const hasAuctionId = !!l.auctionId;
+    if(listingType !== "auction" && !hasAuctionId) continue;
+    const endAt = Date.parse(l.auctionEndAt || "");
+    const ended = (String(l.auctionStatus || "").toLowerCase() === "ended") ||
+      (Number.isFinite(endAt) && now > endAt);
+    if(ended) continue;
+    const joined = {
+      id: l.id,
+      placeId: l.placeId,
+      title: l.title,
+      description: l.description,
+      price: l.price,
+      listingType: l.listingType || "item",
+      auctionEndAt: l.auctionEndAt || "",
+      startBidCents: l.startBidCents || 0,
+      placeName: p.name || "Store",
+      placeCategory: p.category || "",
+      districtId: p.districtId
+    };
+    const summary = await data.getAuctionSummary(l.id);
+    joined.highestBidCents = summary.highestBidCents || 0;
+    out.push(joined);
+  }
+  res.json(out);
+});
+app.get("/api/auctions/ended", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_AUCTIONS"); if(!access) return;
+  const townId = Number(req.query.townId || 1);
+  const places = await data.getPlaces();
+  const placeById = new Map(places.map(p=>[Number(p.id), p]));
+  const out = [];
+  const listings = await data.getListings();
+  const now = Date.now();
+  for(const l of listings){
+    const p = placeById.get(Number(l.placeId));
+    if(!p) continue;
+    if(townId && Number(p.townId)!==Number(townId)) continue;
+    const listingType = l.listingType || "item";
+    const hasAuctionId = !!l.auctionId;
+    if(listingType !== "auction" && !hasAuctionId) continue;
+    const endAt = Date.parse(l.auctionEndAt || "");
+    const ended = (String(l.auctionStatus || "").toLowerCase() === "ended") ||
+      (Number.isFinite(endAt) && now > endAt);
+    if(!ended) continue;
     const joined = {
       id: l.id,
       placeId: l.placeId,
