@@ -886,6 +886,15 @@ async function getUserByEmail(email){
   if(!e) return null;
   return normalizeUserRow((await stmt("SELECT * FROM users WHERE email=$1").get(e)) || null);
 }
+async function setUserReferredByUserId(userId, referrerUserId){
+  const u = await getUserById(userId);
+  if(!u) return null;
+  const existing = u.referredByUserId ?? u.referredbyuserid;
+  if(existing) return u;
+  await stmt("UPDATE users SET referredByUserId=$1 WHERE id=$2")
+    .run(Number(referrerUserId), Number(userId));
+  return getUserById(userId);
+}
 async function getDisplayNameForUser(user){
   const name = (user?.displayName || "").toString().trim();
   if(name) return name;
@@ -1558,6 +1567,174 @@ async function addSweepLedgerEntry(payload){
     JSON.stringify(payload.meta || {})
   );
   return info.rows?.[0]?.id;
+}
+async function listSweepRules(townId=1){
+  const rows = await stmt("SELECT * FROM sweep_rules WHERE town_id=$1 ORDER BY id").all(Number(townId));
+  return rows.map((r)=>({
+    id: r.id,
+    townId: r.town_id ?? r.townid ?? r.townId ?? Number(townId),
+    ruleType: r.rule_type ?? r.ruleType ?? "",
+    enabled: r.enabled === true || Number(r.enabled) === 1,
+    amount: Number(r.amount || 0),
+    buyerAmount: Number(r.buyer_amount || 0),
+    sellerAmount: Number(r.seller_amount || 0),
+    dailyCap: Number(r.daily_cap || 0),
+    cooldownSeconds: Number(r.cooldown_seconds || 0),
+    meta: parseJsonObject(r.meta_json),
+    createdAt: r.created_at || r.createdAt || "",
+    updatedAt: r.updated_at || r.updatedAt || ""
+  }));
+}
+async function createSweepRule(townId=1, payload){
+  const ruleType = (payload.ruleType || payload.rule_type || payload.matchEventType || "").toString().trim();
+  if(!ruleType) return { error: "ruleType required" };
+  const enabled = payload.enabled == null ? true : !!payload.enabled;
+  const amount = Number(payload.amount || 0);
+  const buyerAmount = Number(payload.buyerAmount || payload.buyer_amount || 0);
+  const sellerAmount = Number(payload.sellerAmount || payload.seller_amount || 0);
+  const dailyCap = Number(payload.dailyCap || payload.daily_cap || 0);
+  const cooldownSeconds = Number(payload.cooldownSeconds || payload.cooldown_seconds || 0);
+  const meta = payload.meta || payload.meta_json || {};
+  const info = await stmt(`
+    INSERT INTO sweep_rules
+      (town_id, rule_type, enabled, amount, buyer_amount, seller_amount, daily_cap, cooldown_seconds, meta_json)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING id
+  `).run(
+    Number(townId),
+    ruleType,
+    enabled ? 1 : 0,
+    amount,
+    buyerAmount,
+    sellerAmount,
+    dailyCap,
+    cooldownSeconds,
+    JSON.stringify(meta || {})
+  );
+  const row = await stmt("SELECT * FROM sweep_rules WHERE id=$1").get(info.rows?.[0]?.id);
+  return row || null;
+}
+async function updateSweepRule(townId=1, ruleId, patch){
+  const existing = await stmt("SELECT * FROM sweep_rules WHERE town_id=$1 AND id=$2").get(Number(townId), Number(ruleId));
+  if(!existing) return null;
+  const ruleType = (patch.ruleType || patch.rule_type || patch.matchEventType || existing.rule_type || "").toString().trim();
+  const enabled = patch.enabled == null ? existing.enabled : (patch.enabled ? 1 : 0);
+  const amount = Number.isFinite(Number(patch.amount)) ? Number(patch.amount) : Number(existing.amount || 0);
+  const buyerAmount = Number.isFinite(Number(patch.buyerAmount ?? patch.buyer_amount))
+    ? Number(patch.buyerAmount ?? patch.buyer_amount)
+    : Number(existing.buyer_amount || 0);
+  const sellerAmount = Number.isFinite(Number(patch.sellerAmount ?? patch.seller_amount))
+    ? Number(patch.sellerAmount ?? patch.seller_amount)
+    : Number(existing.seller_amount || 0);
+  const dailyCap = Number.isFinite(Number(patch.dailyCap ?? patch.daily_cap))
+    ? Number(patch.dailyCap ?? patch.daily_cap)
+    : Number(existing.daily_cap || 0);
+  const cooldownSeconds = Number.isFinite(Number(patch.cooldownSeconds ?? patch.cooldown_seconds))
+    ? Number(patch.cooldownSeconds ?? patch.cooldown_seconds)
+    : Number(existing.cooldown_seconds || 0);
+  const meta = patch.meta == null && patch.meta_json == null ? parseJsonObject(existing.meta_json) : (patch.meta || patch.meta_json || {});
+  await stmt(`
+    UPDATE sweep_rules
+    SET rule_type=$1, enabled=$2, amount=$3, buyer_amount=$4, seller_amount=$5, daily_cap=$6, cooldown_seconds=$7, meta_json=$8, updated_at=now()
+    WHERE town_id=$9 AND id=$10
+  `).run(
+    ruleType,
+    enabled,
+    amount,
+    buyerAmount,
+    sellerAmount,
+    dailyCap,
+    cooldownSeconds,
+    JSON.stringify(meta || {}),
+    Number(townId),
+    Number(ruleId)
+  );
+  return stmt("SELECT * FROM sweep_rules WHERE id=$1").get(Number(ruleId));
+}
+async function deleteSweepRule(townId=1, ruleId){
+  const result = await stmt("DELETE FROM sweep_rules WHERE town_id=$1 AND id=$2").run(Number(townId), Number(ruleId));
+  return Number(result?.rowCount || 0) > 0;
+}
+async function tryAwardSweepForEvent({ townId=1, userId, ruleType, eventKey, meta }){
+  if(!userId || !ruleType || !eventKey) return { awarded:false, reason:"invalid" };
+  const rules = await stmt("SELECT * FROM sweep_rules WHERE town_id=$1 AND rule_type=$2 AND enabled=true ORDER BY id")
+    .all(Number(townId), String(ruleType));
+  if(!rules.length) return { awarded:false, reason:"no_rules" };
+  let awardedTotal = 0;
+  let lastReason = "no_rules";
+  for(const rule of rules){
+    const cooldownSeconds = Number(rule.cooldown_seconds || 0);
+    const dailyCap = Number(rule.daily_cap || 0);
+    const ruleMeta = parseJsonObject(rule.meta_json);
+    const entriesPerDollar = Number(ruleMeta.entriesPerDollar ?? ruleMeta.perDollar ?? 0);
+    let amount = Number(rule.amount || 0);
+    if(String(ruleType) === "purchase"){
+      if(meta?.role === "buyer") amount = Number(rule.buyer_amount || 0) || amount;
+      if(meta?.role === "seller") amount = Number(rule.seller_amount || 0) || amount;
+    }
+    if(entriesPerDollar > 0){
+      const totalCents = Number(meta?.totalCents || 0);
+      const dollars = Math.floor(totalCents / 100);
+      amount = dollars * entriesPerDollar;
+    }
+    if(amount <= 0){
+      lastReason = "zero_amount";
+      continue;
+    }
+    if(cooldownSeconds > 0){
+      const last = await stmt(`
+        SELECT created_at
+        FROM sweep_award_events
+        WHERE rule_id=$1 AND user_id=$2
+        ORDER BY created_at DESC
+        LIMIT 1
+      `).get(Number(rule.id), Number(userId));
+      if(last?.created_at){
+        const lastTs = Date.parse(last.created_at);
+        if(!Number.isNaN(lastTs) && (Date.now() - lastTs) < (cooldownSeconds * 1000)){
+          lastReason = "cooldown";
+          continue;
+        }
+      }
+    }
+    if(dailyCap > 0){
+      const row = await stmt(`
+        SELECT COUNT(*) AS c
+        FROM sweep_award_events
+        WHERE rule_id=$1 AND user_id=$2
+          AND created_at >= date_trunc('day', now())
+          AND created_at < date_trunc('day', now()) + interval '1 day'
+      `).get(Number(rule.id), Number(userId));
+      if(Number(row?.c || 0) >= dailyCap){
+        lastReason = "daily_cap";
+        continue;
+      }
+    }
+    const inserted = await stmt(`
+      INSERT INTO sweep_award_events (town_id, user_id, rule_id, event_key)
+      VALUES ($1,$2,$3,$4)
+      ON CONFLICT (rule_id, event_key) DO NOTHING
+      RETURNING id
+    `).run(Number(townId), Number(userId), Number(rule.id), String(eventKey));
+    if(!inserted?.rowCount){
+      lastReason = "duplicate";
+      continue;
+    }
+    await addSweepLedgerEntry({
+      userId,
+      amount,
+      reason: "sweep_award",
+      meta: {
+        ruleId: rule.id,
+        ruleType,
+        eventKey,
+        ...meta
+      }
+    });
+    awardedTotal += amount;
+  }
+  if(awardedTotal > 0) return { awarded:true, amount: awardedTotal };
+  return { awarded:false, reason:lastReason };
 }
 
 async function createSweepstake(payload){
@@ -2803,6 +2980,7 @@ module.exports = {
   getUserBySession,
   getUserById,
   getUserByEmail,
+  setUserReferredByUserId,
   getUserProfilePublic,
   getUserProfilePrivate,
   updateUserProfile,
@@ -2812,6 +2990,11 @@ module.exports = {
   logEvent,
   getSweepBalance,
   addSweepLedgerEntry,
+  listSweepRules,
+  createSweepRule,
+  updateSweepRule,
+  deleteSweepRule,
+  tryAwardSweepForEvent,
   createSweepstake,
   getSweepstakeById,
   getActiveSweepstake,

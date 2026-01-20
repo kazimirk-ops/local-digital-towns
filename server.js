@@ -745,6 +745,19 @@ function parseRange(range, from, to){
   const e = new Date(startOfDay(today).getTime() + 24*60*60*1000);
   return { fromIso: s.toISOString(), toIso: e.toISOString(), label: "7d" };
 }
+function isProfileComplete(user){
+  if(!user) return false;
+  const displayName = (user.displayName || "").toString().trim();
+  const phone = (user.phone || "").toString().trim();
+  const ageRange = (user.ageRange || "").toString().trim();
+  let address = {};
+  if(user.addressJson && typeof user.addressJson === "object") address = user.addressJson;
+  if(typeof user.addressJson === "string"){
+    try{ address = JSON.parse(user.addressJson || "{}"); }catch(_e){}
+  }
+  const address1 = (address.address1 || address.addressLine1 || address.line1 || "").toString().trim();
+  return !!(displayName && phone && ageRange && address1);
+}
 
 async function createCallsRoom(){
   if(!CF_CALLS_APP_ID || !CF_CALLS_APP_SECRET){
@@ -835,8 +848,34 @@ app.post("/api/auth/verify-code", async (req, res) =>{
   }
 
   await data.deleteAuthCode(record.id);
+  const existingUser = await data.getUserByEmail(email);
   const user = await data.upsertUserByEmail(email);
   if(!user) return res.status(400).json({ error: "invalid email" });
+  if(!existingUser){
+    const referralCode = (req.body?.referralCode || req.headers["x-referral-code"] || "").toString().trim();
+    if(referralCode){
+      let referrer = null;
+      if(/^\d+$/.test(referralCode)){
+        referrer = await data.getUserById(Number(referralCode));
+      }else if(referralCode.includes("@")){
+        referrer = await data.getUserByEmail(referralCode);
+      }
+      if(referrer && Number(referrer.id) !== Number(user.id)){
+        await data.setUserReferredByUserId(user.id, referrer.id);
+        try{
+          await data.tryAwardSweepForEvent({
+            townId: 1,
+            userId: referrer.id,
+            ruleType: "referral_verified",
+            eventKey: `ref:${referrer.id}->${user.id}`,
+            meta: { referredUserId: user.id }
+          });
+        }catch(err){
+          console.error("SWEEP_AWARD_REFERRAL_ERROR", err?.message);
+        }
+      }
+    }
+  }
   const s = await data.createSession(user.id);
   setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30,secure:isHttpsRequest(req)});
   res.json({ ok:true });
@@ -1042,6 +1081,8 @@ app.get("/api/me/profile", async (req, res) =>{
 });
 app.patch("/api/me/profile", async (req, res) =>{
   const u=await requireLogin(req,res); if(!u) return;
+  const beforeUser = await data.getUserById(u);
+  const beforeComplete = isProfileComplete(beforeUser);
   const displayName = (req.body?.displayName || "").toString();
   const bio = (req.body?.bio || "").toString();
   const avatarUrl = (req.body?.avatarUrl || "").toString();
@@ -1066,6 +1107,21 @@ app.patch("/api/me/profile", async (req, res) =>{
     showInterests: req.body?.showInterests == null ? undefined : !!req.body.showInterests,
     showAgeRange: req.body?.showAgeRange == null ? undefined : !!req.body.showAgeRange
   });
+  const afterUser = await data.getUserById(u);
+  const afterComplete = isProfileComplete(afterUser);
+  if(!beforeComplete && afterComplete){
+    try{
+      await data.tryAwardSweepForEvent({
+        townId: 1,
+        userId: u,
+        ruleType: "profile_complete",
+        eventKey: `profile_complete:${u}`,
+        meta: {}
+      });
+    }catch(err){
+      console.error("SWEEP_AWARD_PROFILE_ERROR", err?.message);
+    }
+  }
   res.json(updated);
 });
 
@@ -1679,6 +1735,17 @@ app.post("/events/:id/rsvp", async (req, res) =>{
   const ev = await data.getCalendarEventById(req.params.id);
   if(!ev) return res.status(404).json({error:"Event not found"});
   await data.addEventRsvp(ev.id, u, req.body?.status || "going");
+  try{
+    await data.tryAwardSweepForEvent({
+      townId: 1,
+      userId: u,
+      ruleType: "rsvp_event",
+      eventKey: `rsvp:${ev.id}:${u}`,
+      meta: { eventId: ev.id }
+    });
+  }catch(err){
+    console.error("SWEEP_AWARD_RSVP_ERROR", err?.message);
+  }
   res.json({ok:true});
 });
 
@@ -1792,6 +1859,26 @@ app.post("/api/checkout/create", async (req, res) =>{
   }, items);
   await data.createPaymentForOrder(order.id, totalCents, "stripe");
   await data.clearCart(u);
+  try{
+    await data.tryAwardSweepForEvent({
+      townId: 1,
+      userId: u,
+      ruleType: "purchase",
+      eventKey: `order:${order.id}:buyer`,
+      meta: { totalCents, role: "buyer" }
+    });
+    if(sellerUserId){
+      await data.tryAwardSweepForEvent({
+        townId: 1,
+        userId: sellerUserId,
+        ruleType: "purchase",
+        eventKey: `order:${order.id}:seller`,
+        meta: { totalCents, role: "seller" }
+      });
+    }
+  }catch(err){
+    console.error("SWEEP_AWARD_PURCHASE_ERROR", err?.message);
+  }
   res.json({ orderId: order.id, paymentStatus: "requires_payment", totals: { subtotalCents, serviceGratuityCents, totalCents } });
 });
 app.post("/api/checkout/stripe", async (req,res)=>{
@@ -2577,34 +2664,57 @@ app.get("/api/admin/sweep/last", async (req, res) =>{
   });
 });
 app.get("/api/admin/sweep/rules", async (req, res) =>{
-  res.json(adminSweepRules);
+  const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+  const rows = await data.listSweepRules(1);
+  res.json(rows.map(r=>({
+    id: r.id,
+    matchEventType: r.ruleType || "",
+    enabled: !!r.enabled,
+    amount: Number(r.amount || 0),
+    buyerAmount: Number(r.buyerAmount || 0),
+    sellerAmount: Number(r.sellerAmount || 0),
+    dailyCap: Number(r.dailyCap || 0),
+    cooldownSeconds: Number(r.cooldownSeconds || 0),
+    meta: r.meta || {}
+  })));
 });
 app.post("/api/admin/sweep/rules", async (req, res) =>{
-  const matchEventType = (req.body?.matchEventType || "").toString().trim();
-  if(!matchEventType) return res.status(400).json({error:"matchEventType required"});
-  const rule = {
-    id: nextSweepRuleId++,
-    matchEventType,
-    enabled: !!req.body?.enabled,
-    buyerAmount: Number(req.body?.buyerAmount) || 0,
-    sellerAmount: Number(req.body?.sellerAmount) || 0,
-    dailyCap: Number(req.body?.dailyCap) || 0,
-    cooldownSeconds: Number(req.body?.cooldownSeconds) || 0
-  };
-  adminSweepRules.push(rule);
-  res.status(201).json(rule);
+  const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+  const created = await data.createSweepRule(1, req.body || {});
+  if(created?.error) return res.status(400).json({ error: created.error });
+  res.status(201).json({
+    id: created.id,
+    matchEventType: created.rule_type || created.ruleType || "",
+    enabled: created.enabled === true || Number(created.enabled) === 1,
+    amount: Number(created.amount || 0),
+    buyerAmount: Number(created.buyer_amount || created.buyerAmount || 0),
+    sellerAmount: Number(created.seller_amount || created.sellerAmount || 0),
+    dailyCap: Number(created.daily_cap || created.dailyCap || 0),
+    cooldownSeconds: Number(created.cooldown_seconds || created.cooldownSeconds || 0),
+    meta: created.meta_json || created.meta || {}
+  });
 });
 app.patch("/api/admin/sweep/rules/:id", async (req, res) =>{
-  const id = Number(req.params.id);
-  const rule = adminSweepRules.find(r=>Number(r.id)===id);
-  if(!rule) return res.status(404).json({error:"Rule not found"});
-  rule.matchEventType = (req.body?.matchEventType || rule.matchEventType).toString().trim();
-  rule.enabled = req.body?.enabled == null ? rule.enabled : !!req.body.enabled;
-  rule.buyerAmount = Number.isFinite(Number(req.body?.buyerAmount)) ? Number(req.body.buyerAmount) : rule.buyerAmount;
-  rule.sellerAmount = Number.isFinite(Number(req.body?.sellerAmount)) ? Number(req.body.sellerAmount) : rule.sellerAmount;
-  rule.dailyCap = Number.isFinite(Number(req.body?.dailyCap)) ? Number(req.body.dailyCap) : rule.dailyCap;
-  rule.cooldownSeconds = Number.isFinite(Number(req.body?.cooldownSeconds)) ? Number(req.body.cooldownSeconds) : rule.cooldownSeconds;
-  res.json(rule);
+  const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+  const updated = await data.updateSweepRule(1, req.params.id, req.body || {});
+  if(!updated) return res.status(404).json({error:"Rule not found"});
+  res.json({
+    id: updated.id,
+    matchEventType: updated.rule_type || updated.ruleType || "",
+    enabled: updated.enabled === true || Number(updated.enabled) === 1,
+    amount: Number(updated.amount || 0),
+    buyerAmount: Number(updated.buyer_amount || updated.buyerAmount || 0),
+    sellerAmount: Number(updated.seller_amount || updated.sellerAmount || 0),
+    dailyCap: Number(updated.daily_cap || updated.dailyCap || 0),
+    cooldownSeconds: Number(updated.cooldown_seconds || updated.cooldownSeconds || 0),
+    meta: updated.meta_json || updated.meta || {}
+  });
+});
+app.delete("/api/admin/sweep/rules/:id", async (req, res) =>{
+  const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+  const ok = await data.deleteSweepRule(1, req.params.id);
+  if(!ok) return res.status(404).json({error:"Rule not found"});
+  res.json({ ok:true });
 });
 app.post("/api/admin/sweep/sweepstake", async (req, res) =>{
   const created = await data.createSweepstake({
@@ -2880,6 +2990,19 @@ app.post("/channels/:id/messages", async (req, res) =>{
     threadId=await data.createChannelThread(channel.id, u);
   }
   const created=await data.addChannelMessage(channel.id, u, text, imageUrl, replyToId, threadId);
+  try{
+    const ruleType = imageUrl ? "channel_photo" : "channel_post";
+    const eventKey = imageUrl ? `msgimg:${created.id}` : `msg:${created.id}`;
+    await data.tryAwardSweepForEvent({
+      townId: 1,
+      userId: u,
+      ruleType,
+      eventKey,
+      meta: { channelId: channel.id }
+    });
+  }catch(err){
+    console.error("SWEEP_AWARD_CHANNEL_ERROR", err?.message);
+  }
   res.status(201).json({ok:true, id: created.id, threadId});
 });
 app.post("/api/mod/channels/:id/mute", async (req, res) =>{

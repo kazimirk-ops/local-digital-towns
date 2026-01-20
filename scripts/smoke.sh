@@ -267,10 +267,25 @@ fi
 post_json_expect_status "$BASE_URL/api/admin/trust/tiers" "{\"userId\":$mod_id,\"trustTier\":3}" '^200$' "$ADMIN_COOKIE" "$ADMIN_COOKIE"
 post_json_expect_status "$BASE_URL/api/admin/trust/tiers" "{\"userId\":$user_id,\"trustTier\":2}" '^200$' "$ADMIN_COOKIE" "$ADMIN_COOKIE"
 
+post_json_fetch "$BASE_URL/api/admin/sweep/rules" "{\"matchEventType\":\"channel_post\",\"enabled\":true,\"amount\":2}" '^201$' "$ADMIN_COOKIE" "$ADMIN_COOKIE" >/dev/null
+post_json_fetch "$BASE_URL/api/admin/sweep/rules" "{\"matchEventType\":\"purchase\",\"enabled\":true,\"buyerAmount\":3}" '^201$' "$ADMIN_COOKIE" "$ADMIN_COOKIE" >/dev/null
+
 post_json_expect_status "$BASE_URL/api/mod/channels/1/mute" "{\"userId\":$user_id,\"reason\":\"smoke\"}" '^200$' "$MOD_COOKIE" "$MOD_COOKIE"
 post_json_expect_status "$BASE_URL/channels/1/messages" "{\"text\":\"smoke muted\"}" '^403$' "$USER_COOKIE" "$USER_COOKIE"
 post_json_expect_status "$BASE_URL/api/mod/channels/1/unmute" "{\"userId\":$user_id}" '^200$' "$MOD_COOKIE" "$MOD_COOKIE"
-post_json_expect_status "$BASE_URL/channels/1/messages" "{\"text\":\"smoke unmuted\"}" '^201$' "$USER_COOKIE" "$USER_COOKIE"
+user_balance_before_json=$(fetch_json_with_cookie "$BASE_URL/sweep/balance" "$USER_COOKIE")
+user_balance_before=$(node -e 'const s=process.argv[1]; try{const j=JSON.parse(s); process.stdout.write(String(j?.balance||0));}catch(e){}' "$user_balance_before_json")
+post_json_expect_status "$BASE_URL/channels/1/messages" "{\"text\":\"smoke sweep post\"}" '^201$' "$USER_COOKIE" "$USER_COOKIE"
+user_balance_after_json=$(fetch_json_with_cookie "$BASE_URL/sweep/balance" "$USER_COOKIE")
+user_balance_after=$(node -e 'const s=process.argv[1]; try{const j=JSON.parse(s); process.stdout.write(String(j?.balance||0));}catch(e){}' "$user_balance_after_json")
+if [[ -z "$user_balance_before" || -z "$user_balance_after" ]]; then
+  echo "FAIL: sweep balance missing" >&2
+  exit 1
+fi
+if (( user_balance_after <= user_balance_before )); then
+  echo "FAIL: sweep balance did not increase after channel post" >&2
+  exit 1
+fi
 
 # Phase 2.3: buy-it-now checkout
 SELLER_COOKIE="/tmp/smoke_seller_cookie.$$"
@@ -323,11 +338,24 @@ post_json_expect_status "$BASE_URL/api/admin/trust/tiers" "{\"userId\":$buyer_id
 post_json_expect_status "$BASE_URL/api/cart/clear" "{}" '^200$' "$BUYER_COOKIE" "$BUYER_COOKIE"
 post_json_expect_status "$BASE_URL/api/cart/add" "{\"listingId\":$listing_id,\"quantity\":1}" '^200$' "$BUYER_COOKIE" "$BUYER_COOKIE"
 
+buyer_balance_before_json=$(fetch_json_with_cookie "$BASE_URL/sweep/balance" "$BUYER_COOKIE")
+buyer_balance_before=$(node -e 'const s=process.argv[1]; try{const j=JSON.parse(s); process.stdout.write(String(j?.balance||0));}catch(e){}' "$buyer_balance_before_json")
+
 checkout_json=$(post_json_fetch "$BASE_URL/api/checkout/create" "{\"fulfillmentType\":\"pickup\"}" '^200$' "$BUYER_COOKIE" "$BUYER_COOKIE")
 checkout_status=$(node -e 'const s=process.argv[1]; try{const j=JSON.parse(s); process.stdout.write(String(j?.paymentStatus||""));}catch(e){}' "$checkout_json")
 checkout_order_id=$(node -e 'const s=process.argv[1]; try{const j=JSON.parse(s); process.stdout.write(String(j?.orderId||""));}catch(e){}' "$checkout_json")
 if [[ "$checkout_status" != "requires_payment" || -z "$checkout_order_id" ]]; then
   echo "FAIL: checkout did not return requires_payment and orderId" >&2
+  exit 1
+fi
+buyer_balance_after_json=$(fetch_json_with_cookie "$BASE_URL/sweep/balance" "$BUYER_COOKIE")
+buyer_balance_after=$(node -e 'const s=process.argv[1]; try{const j=JSON.parse(s); process.stdout.write(String(j?.balance||0));}catch(e){}' "$buyer_balance_after_json")
+if [[ -z "$buyer_balance_before" || -z "$buyer_balance_after" ]]; then
+  echo "FAIL: buyer sweep balance missing" >&2
+  exit 1
+fi
+if (( buyer_balance_after <= buyer_balance_before )); then
+  echo "FAIL: sweep balance did not increase after checkout" >&2
   exit 1
 fi
 
