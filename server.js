@@ -2618,7 +2618,7 @@ app.get("/market/listings", async (req, res) =>{
     const placeId = Number(l.placeId ?? l.placeid);
     const p = placeById.get(placeId);
     if(!p) continue;
-    if(townId && Number(p.townId)!==Number(townId)) continue;
+    if(townId && Number(p.townId ?? p.townid)!==Number(townId)) continue;
     const listingType = l.listingType ?? l.listingtype ?? "item";
     const auctionStartAt = l.auctionStartAt ?? l.auctionstartat;
     const auctionEndAt = l.auctionEndAt ?? l.auctionendat;
@@ -2640,7 +2640,7 @@ app.get("/market/listings", async (req, res) =>{
       startBidCents: startBidCents || 0,
       placeName: p.name || "Store",
       placeCategory: p.category || "",
-      districtId: p.districtId
+      districtId: p.districtId ?? p.districtid
     };
     if(listingType === "auction"){
       const summary = await data.getAuctionSummary(l.id);
@@ -2661,7 +2661,7 @@ app.get("/api/market/listings", async (req, res) =>{
     const placeId = Number(l.placeId ?? l.placeid);
     const p = placeById.get(placeId);
     if(!p) continue;
-    if(townId && Number(p.townId)!==Number(townId)) continue;
+    if(townId && Number(p.townId ?? p.townid)!==Number(townId)) continue;
     const listingType = l.listingType ?? l.listingtype ?? "item";
     const auctionStartAt = l.auctionStartAt ?? l.auctionstartat;
     const auctionEndAt = l.auctionEndAt ?? l.auctionendat;
@@ -2683,7 +2683,7 @@ app.get("/api/market/listings", async (req, res) =>{
       startBidCents: startBidCents || 0,
       placeName: p.name || "Store",
       placeCategory: p.category || "",
-      districtId: p.districtId
+      districtId: p.districtId ?? p.districtid
     };
     if(listingType === "auction"){
       const summary = await data.getAuctionSummary(l.id);
