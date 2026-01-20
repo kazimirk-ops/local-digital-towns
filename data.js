@@ -855,7 +855,6 @@ async function getUserBySession(sid){
   const userId = sess.userId ?? sess.userid;
   if(new Date(expiresAt).getTime() < Date.now()){ await deleteSession(sid); return null; }
   const user = normalizeUserRow(await stmt("SELECT * FROM users WHERE id=$1").get(userId));
-.get(sess.userId));
   if(!user) return null;
   const signup= await stmt("SELECT * FROM signups WHERE email=$1 ORDER BY id DESC LIMIT 1").get(user.email) || null;
   return {user,signup};
