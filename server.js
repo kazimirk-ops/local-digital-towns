@@ -2318,10 +2318,6 @@ app.post("/api/admin/localbiz/:id/approve", async (req, res) =>{
       });
       console.log("CREATED_APPROVED_PLACE", { placeId: newPlace?.id, userId });
     }
-
-    // Set user's trust tier to LOCAL_BUSINESS (4)
-    await data.setUserTrustTier(1, userId, 4);
-    console.log("SET_USER_TIER_LOCAL_BUSINESS", { userId, tier: 4 });
   }
 
   res.json(updated);
