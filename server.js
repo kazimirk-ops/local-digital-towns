@@ -2406,20 +2406,25 @@ app.post("/api/admin/applications/business/:id/status", async (req, res) =>{
   }
   const updated = await data.updateBusinessApplicationStatus(req.params.id, status, status === "approved" ? approvedTier : null);
   if(!updated) return res.status(404).json({error:"Not found"});
+  console.log("BUSINESS_APP_STATUS_UPDATE", { id: req.params.id, status, email: updated.email, approvedTier });
   // Set trust tier if user exists, send approval notification, create store
   if(status === "approved" && updated.email){
     const user = await data.getUserByEmail(updated.email);
+    console.log("BUSINESS_APP_USER_LOOKUP", { email: updated.email, userFound: !!user, userId: user?.id });
     if(user){
       if(approvedTier){
         await data.setUserTrustTier(1, user.id, approvedTier);
       }
       // Create/approve store for user
       const existingPlaces = await data.listPlacesByOwner(user.id);
+      console.log("BUSINESS_APP_EXISTING_PLACES", { userId: user.id, count: existingPlaces.length, places: existingPlaces.map(p=>({id:p.id,status:p.status})) });
       if(existingPlaces.length > 0){
         const pending = existingPlaces.find(p => (p.status || "").toLowerCase() === "pending");
         if(pending){
           await data.updatePlaceStatus(pending.id, "approved");
           console.log("APPROVED_EXISTING_PLACE", { placeId: pending.id, userId: user.id });
+        } else {
+          console.log("BUSINESS_APP_NO_PENDING_PLACE", { userId: user.id });
         }
       } else {
         const newPlace = await data.addPlace({
@@ -2434,8 +2439,10 @@ app.post("/api/admin/applications/business/:id/status", async (req, res) =>{
           ownerUserId: user.id,
           status: "approved"
         });
-        console.log("CREATED_APPROVED_PLACE", { placeId: newPlace?.id, userId: user.id });
+        console.log("CREATED_APPROVED_PLACE", { placeId: newPlace?.id, userId: user.id, newPlace });
       }
+    } else {
+      console.log("BUSINESS_APP_NO_USER_FOUND", { email: updated.email });
     }
     if(approvedTier){
       const tierName = trust.TRUST_TIER_LABELS[approvedTier] || `Tier ${approvedTier}`;
