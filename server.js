@@ -2406,16 +2406,43 @@ app.post("/api/admin/applications/business/:id/status", async (req, res) =>{
   }
   const updated = await data.updateBusinessApplicationStatus(req.params.id, status, status === "approved" ? approvedTier : null);
   if(!updated) return res.status(404).json({error:"Not found"});
-  // Set trust tier if user exists, send approval notification
-  if(status === "approved" && updated.email && approvedTier){
+  // Set trust tier if user exists, send approval notification, create store
+  if(status === "approved" && updated.email){
     const user = await data.getUserByEmail(updated.email);
     if(user){
-      await data.setUserTrustTier(1, user.id, approvedTier);
+      if(approvedTier){
+        await data.setUserTrustTier(1, user.id, approvedTier);
+      }
+      // Create/approve store for user
+      const existingPlaces = await data.listPlacesByOwner(user.id);
+      if(existingPlaces.length > 0){
+        const pending = existingPlaces.find(p => (p.status || "").toLowerCase() === "pending");
+        if(pending){
+          await data.updatePlaceStatus(pending.id, "approved");
+          console.log("APPROVED_EXISTING_PLACE", { placeId: pending.id, userId: user.id });
+        }
+      } else {
+        const newPlace = await data.addPlace({
+          townId: 1,
+          districtId: 1,
+          name: updated.businessName || updated.businessname,
+          category: updated.category || "Business",
+          description: updated.notes || "",
+          sellerType: "business",
+          addressPrivate: updated.address || "",
+          website: updated.website || "",
+          ownerUserId: user.id,
+          status: "approved"
+        });
+        console.log("CREATED_APPROVED_PLACE", { placeId: newPlace?.id, userId: user.id });
+      }
     }
-    const tierName = trust.TRUST_TIER_LABELS[approvedTier] || `Tier ${approvedTier}`;
-    sendApprovalEmail(updated.email, "Business", tierName).catch(err => {
-      console.error("Failed to send business approval email:", err);
-    });
+    if(approvedTier){
+      const tierName = trust.TRUST_TIER_LABELS[approvedTier] || `Tier ${approvedTier}`;
+      sendApprovalEmail(updated.email, "Business", tierName).catch(err => {
+        console.error("Failed to send business approval email:", err);
+      });
+    }
   }
   res.json(updated);
 });
