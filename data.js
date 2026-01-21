@@ -2527,9 +2527,14 @@ async function listWaitlistSignupsByStatus(status){
     .all(s);
 }
 
-async function updateWaitlistStatus(id, status){
-  await stmt("UPDATE waitlist_signups SET status=$1 WHERE id=$2")
-    .run(String(status), Number(id));
+async function updateWaitlistStatus(id, status, approvedTier = null){
+  if(approvedTier != null){
+    await stmt("UPDATE waitlist_signups SET status=$1, approvedTier=$2 WHERE id=$3")
+      .run(String(status), Number(approvedTier), Number(id));
+  } else {
+    await stmt("UPDATE waitlist_signups SET status=$1 WHERE id=$2")
+      .run(String(status), Number(id));
+  }
   return (await stmt("SELECT * FROM waitlist_signups WHERE id=$1").get(Number(id))) || null;
 }
 
@@ -2572,9 +2577,14 @@ async function listBusinessApplicationsByStatus(status){
     .all(s);
 }
 
-async function updateBusinessApplicationStatus(id, status){
-  await stmt("UPDATE business_applications SET status=$1 WHERE id=$2")
-    .run(String(status), Number(id));
+async function updateBusinessApplicationStatus(id, status, approvedTier = null){
+  if(approvedTier != null){
+    await stmt("UPDATE business_applications SET status=$1, approvedTier=$2 WHERE id=$3")
+      .run(String(status), Number(approvedTier), Number(id));
+  } else {
+    await stmt("UPDATE business_applications SET status=$1 WHERE id=$2")
+      .run(String(status), Number(id));
+  }
   return (await stmt("SELECT * FROM business_applications WHERE id=$1").get(Number(id))) || null;
 }
 
@@ -2620,10 +2630,35 @@ async function getResidentApplicationById(id){
   return (await stmt("SELECT * FROM resident_applications WHERE id=$1").get(Number(id))) || null;
 }
 
-async function updateResidentApplicationStatus(id, status){
-  await stmt("UPDATE resident_applications SET status=$1 WHERE id=$2")
-    .run(String(status), Number(id));
+async function updateResidentApplicationStatus(id, status, approvedTier = null){
+  if(approvedTier != null){
+    await stmt("UPDATE resident_applications SET status=$1, approvedTier=$2 WHERE id=$3")
+      .run(String(status), Number(approvedTier), Number(id));
+  } else {
+    await stmt("UPDATE resident_applications SET status=$1 WHERE id=$2")
+      .run(String(status), Number(id));
+  }
   return (await stmt("SELECT * FROM resident_applications WHERE id=$1").get(Number(id))) || null;
+}
+
+async function getApprovedApplicationTier(email){
+  const e = normalizeEmail(email);
+  if(!e) return null;
+
+  // Check all application types for approved applications with a tier
+  const waitlist = await stmt("SELECT approvedTier FROM waitlist_signups WHERE email=$1 AND status='approved' AND approvedTier IS NOT NULL ORDER BY id DESC LIMIT 1").get(e);
+  const business = await stmt("SELECT approvedTier FROM business_applications WHERE email=$1 AND status='approved' AND approvedTier IS NOT NULL ORDER BY id DESC LIMIT 1").get(e);
+  const resident = await stmt("SELECT approvedTier FROM resident_applications WHERE email=$1 AND status='approved' AND approvedTier IS NOT NULL ORDER BY id DESC LIMIT 1").get(e);
+
+  // Return the highest approved tier
+  const tiers = [
+    waitlist?.approvedtier ?? waitlist?.approvedTier,
+    business?.approvedtier ?? business?.approvedTier,
+    resident?.approvedtier ?? resident?.approvedTier
+  ].filter(t => t != null).map(Number);
+
+  if(tiers.length === 0) return null;
+  return Math.max(...tiers);
 }
 
 async function addLocalBizApplication(payload, userId){
@@ -3069,6 +3104,7 @@ module.exports = {
   listResidentApplicationsByStatus,
   getResidentApplicationById,
   updateResidentApplicationStatus,
+  getApprovedApplicationTier,
   addLocalBizApplication,
   listLocalBizApplicationsByUser,
   listLocalBizApplicationsByStatus,

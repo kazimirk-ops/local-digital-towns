@@ -1,3 +1,11 @@
+const TIERS = {
+  1: "Tier 1: Verified Visitor",
+  2: "Tier 2: Verified Resident",
+  3: "Tier 3: Moderator",
+  4: "Tier 4: Local Business",
+  5: "Tier 5: Admin"
+};
+
 async function api(url, options = {}){
   const res = await fetch(url, { credentials: "include", ...options });
   const data = await res.json().catch(()=>({}));
@@ -5,11 +13,11 @@ async function api(url, options = {}){
   return data;
 }
 
-async function postStatus(url, status){
+async function postStatusWithTier(url, status, approvedTier){
   return api(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status })
+    body: JSON.stringify({ status, approvedTier })
   });
 }
 
@@ -19,23 +27,52 @@ function td(text){
   return cell;
 }
 
-function actionsCell(onApprove, onReject){
+function tierSelect(id, defaultTier){
+  const select = document.createElement("select");
+  select.id = id;
+  select.style.marginRight = "8px";
+  for(const [value, label] of Object.entries(TIERS)){
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    if(Number(value) === defaultTier) opt.selected = true;
+    select.appendChild(opt);
+  }
+  return select;
+}
+
+function actionsCell(rowId, prefix, defaultTier, onApprove, onReject){
   const cell = document.createElement("td");
-  const row = document.createElement("div");
-  row.className = "row";
+  const container = document.createElement("div");
+  container.style.display = "flex";
+  container.style.flexDirection = "column";
+  container.style.gap = "6px";
+
+  const tierRow = document.createElement("div");
+  const select = tierSelect(`${prefix}-tier-${rowId}`, defaultTier);
+  tierRow.appendChild(select);
+  container.appendChild(tierRow);
+
+  const btnRow = document.createElement("div");
+  btnRow.className = "row";
   const approve = document.createElement("button");
   approve.className = "btn btn-approve";
   approve.type = "button";
   approve.textContent = "Approve";
-  approve.onclick = onApprove;
+  approve.onclick = () => {
+    const tier = Number(document.getElementById(`${prefix}-tier-${rowId}`).value);
+    onApprove(tier);
+  };
   const reject = document.createElement("button");
   reject.className = "btn btn-reject";
   reject.type = "button";
   reject.textContent = "Reject";
   reject.onclick = onReject;
-  row.appendChild(approve);
-  row.appendChild(reject);
-  cell.appendChild(row);
+  btnRow.appendChild(approve);
+  btnRow.appendChild(reject);
+  container.appendChild(btnRow);
+
+  cell.appendChild(container);
   return cell;
 }
 
@@ -57,10 +94,10 @@ async function loadWaitlist(){
       tr.appendChild(td(row.name || ""));
       tr.appendChild(td(row.email));
       tr.appendChild(td(row.interests || ""));
-      tr.appendChild(td(row.status));
-      tr.appendChild(actionsCell(
-        async ()=>{ await postStatus(`/api/admin/waitlist/${row.id}/status`, "approved"); loadWaitlist(); },
-        async ()=>{ await postStatus(`/api/admin/waitlist/${row.id}/status`, "rejected"); loadWaitlist(); }
+      tr.appendChild(td(row.status + (row.approvedTier ? ` (Tier ${row.approvedTier})` : "")));
+      tr.appendChild(actionsCell(row.id, "waitlist", row.approvedtier || 1,
+        async (tier)=>{ await postStatusWithTier(`/api/admin/waitlist/${row.id}/status`, "approved", tier); loadWaitlist(); },
+        async ()=>{ await postStatusWithTier(`/api/admin/waitlist/${row.id}/status`, "rejected", null); loadWaitlist(); }
       ));
       body.appendChild(tr);
     });
@@ -90,10 +127,10 @@ async function loadBusiness(){
       tr.appendChild(td(row.type));
       tr.appendChild(td(row.category));
       tr.appendChild(td(row.inSebastian));
-      tr.appendChild(td(row.status));
-      tr.appendChild(actionsCell(
-        async ()=>{ await postStatus(`/api/admin/applications/business/${row.id}/status`, "approved"); loadBusiness(); },
-        async ()=>{ await postStatus(`/api/admin/applications/business/${row.id}/status`, "rejected"); loadBusiness(); }
+      tr.appendChild(td(row.status + (row.approvedTier ? ` (Tier ${row.approvedTier})` : "")));
+      tr.appendChild(actionsCell(row.id, "business", row.approvedtier || 4,
+        async (tier)=>{ await postStatusWithTier(`/api/admin/applications/business/${row.id}/status`, "approved", tier); loadBusiness(); },
+        async ()=>{ await postStatusWithTier(`/api/admin/applications/business/${row.id}/status`, "rejected", null); loadBusiness(); }
       ));
       body.appendChild(tr);
     });
@@ -122,10 +159,10 @@ async function loadResident(){
       tr.appendChild(td(row.email));
       tr.appendChild(td(`${row.city}, ${row.state}`));
       tr.appendChild(td(row.yearsInSebastian || ""));
-      tr.appendChild(td(row.status));
-      tr.appendChild(actionsCell(
-        async ()=>{ await postStatus(`/api/admin/applications/resident/${row.id}/status`, "approved"); loadResident(); },
-        async ()=>{ await postStatus(`/api/admin/applications/resident/${row.id}/status`, "rejected"); loadResident(); }
+      tr.appendChild(td(row.status + (row.approvedTier ? ` (Tier ${row.approvedTier})` : "")));
+      tr.appendChild(actionsCell(row.id, "resident", row.approvedtier || 2,
+        async (tier)=>{ await postStatusWithTier(`/api/admin/applications/resident/${row.id}/status`, "approved", tier); loadResident(); },
+        async ()=>{ await postStatusWithTier(`/api/admin/applications/resident/${row.id}/status`, "rejected", null); loadResident(); }
       ));
       body.appendChild(tr);
     });

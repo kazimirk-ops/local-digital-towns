@@ -883,6 +883,17 @@ app.post("/api/auth/verify-code", async (req, res) =>{
 
   // Handle referral for new users
   const user = await data.getUserById(result.userId);
+
+  // Apply approved application tier on first login
+  const currentTier = user?.trustTier ?? user?.trusttier ?? 0;
+  if(currentTier === 0){
+    const approvedTier = await data.getApprovedApplicationTier(email);
+    if(approvedTier && approvedTier > 0){
+      await data.setUserTrustTier(1, result.userId, approvedTier);
+      console.log("APPLIED_APPROVED_TIER", { userId: result.userId, email, tier: approvedTier });
+    }
+  }
+
   const referralCode = (req.body?.referralCode || req.headers["x-referral-code"] || "").toString().trim();
   if(referralCode && user){
     const existingReferrer = user.referredByUserId ?? user.referredbyuserid;
@@ -2324,14 +2335,20 @@ app.get("/api/admin/waitlist", async (req, res) =>{
 app.post("/api/admin/waitlist/:id/status", async (req, res) =>{
   const admin=await requireAdmin(req,res); if(!admin) return;
   const status=(req.body?.status || "").toString().trim().toLowerCase();
+  const approvedTier = req.body?.approvedTier != null ? Number(req.body.approvedTier) : null;
   if(status !== "approved" && status !== "rejected" && status !== "pending"){
     return res.status(400).json({error:"status must be approved, rejected, or pending"});
   }
-  const updated = await data.updateWaitlistStatus(req.params.id, status);
+  const updated = await data.updateWaitlistStatus(req.params.id, status, status === "approved" ? approvedTier : null);
   if(!updated) return res.status(404).json({error:"Not found"});
-  // Send approval notification
-  if(status === "approved" && updated.email){
-    sendApprovalEmail(updated.email, "Waitlist", "Tier 1: Verified Visitor").catch(err => {
+  // Set trust tier if user exists, send approval notification
+  if(status === "approved" && updated.email && approvedTier){
+    const user = await data.getUserByEmail(updated.email);
+    if(user){
+      await data.setUserTrustTier(1, user.id, approvedTier);
+    }
+    const tierName = trust.TRUST_TIER_LABELS[approvedTier] || `Tier ${approvedTier}`;
+    sendApprovalEmail(updated.email, "Waitlist", tierName).catch(err => {
       console.error("Failed to send waitlist approval email:", err);
     });
   }
@@ -2346,18 +2363,20 @@ app.get("/api/admin/applications/business", async (req, res) =>{
 app.post("/api/admin/applications/business/:id/status", async (req, res) =>{
   const admin=await requireAdmin(req,res); if(!admin) return;
   const status=(req.body?.status || "").toString().trim().toLowerCase();
+  const approvedTier = req.body?.approvedTier != null ? Number(req.body.approvedTier) : null;
   if(status !== "approved" && status !== "rejected" && status !== "pending"){
     return res.status(400).json({error:"status must be approved, rejected, or pending"});
   }
-  const updated = await data.updateBusinessApplicationStatus(req.params.id, status);
+  const updated = await data.updateBusinessApplicationStatus(req.params.id, status, status === "approved" ? approvedTier : null);
   if(!updated) return res.status(404).json({error:"Not found"});
-  // Set trust tier and send approval notification
-  if(status === "approved" && updated.email){
+  // Set trust tier if user exists, send approval notification
+  if(status === "approved" && updated.email && approvedTier){
     const user = await data.getUserByEmail(updated.email);
     if(user){
-      await data.setUserTrustTier(1, user.id, trust.LEVELS.LOCAL_BUSINESS);
+      await data.setUserTrustTier(1, user.id, approvedTier);
     }
-    sendApprovalEmail(updated.email, "Business", "Tier 4: Local Business").catch(err => {
+    const tierName = trust.TRUST_TIER_LABELS[approvedTier] || `Tier ${approvedTier}`;
+    sendApprovalEmail(updated.email, "Business", tierName).catch(err => {
       console.error("Failed to send business approval email:", err);
     });
   }
@@ -2372,20 +2391,24 @@ app.get("/api/admin/applications/resident", async (req, res) =>{
 app.post("/api/admin/applications/resident/:id/status", async (req, res) =>{
   const admin=await requireAdmin(req,res); if(!admin) return;
   const status=(req.body?.status || "").toString().trim().toLowerCase();
+  const approvedTier = req.body?.approvedTier != null ? Number(req.body.approvedTier) : null;
   if(status !== "approved" && status !== "rejected" && status !== "pending"){
     return res.status(400).json({error:"status must be approved, rejected, or pending"});
   }
-  const updated = await data.updateResidentApplicationStatus(req.params.id, status);
+  const updated = await data.updateResidentApplicationStatus(req.params.id, status, status === "approved" ? approvedTier : null);
   if(!updated) return res.status(404).json({error:"Not found"});
-  if(status === "approved" && updated.email){
-    // Set trust tier for resident
+  if(status === "approved" && updated.email && approvedTier){
+    // Set trust tier if user exists
     const user = await data.getUserByEmail(updated.email);
     if(user){
-      await data.setUserResidentVerified(user.id, true);
-      await data.setUserTrustTier(1, user.id, trust.LEVELS.VERIFIED_RESIDENT);
+      if(approvedTier >= trust.LEVELS.VERIFIED_RESIDENT){
+        await data.setUserResidentVerified(user.id, true);
+      }
+      await data.setUserTrustTier(1, user.id, approvedTier);
     }
     // Send approval notification
-    sendApprovalEmail(updated.email, "Resident", "Tier 2: Verified Resident").catch(err => {
+    const tierName = trust.TRUST_TIER_LABELS[approvedTier] || `Tier ${approvedTier}`;
+    sendApprovalEmail(updated.email, "Resident", tierName).catch(err => {
       console.error("Failed to send resident approval email:", err);
     });
   }
