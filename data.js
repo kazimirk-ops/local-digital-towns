@@ -3,7 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const db = require("./lib/db");
 const { runMigrations } = require("./db/migrate");
-const { TRUST, getTownConfig } = require("./town_config");
+const { getTownConfig } = require("./town_config");
+const trust = require("./lib/trust");
 
 function nowISO() { return new Date().toISOString(); }
 function normalizeEmail(e) { return (e || "").toString().trim().toLowerCase(); }
@@ -482,8 +483,7 @@ async function updateLiveRoom(id, fields){
 async function ensureTownMembership(townId, userId){
   const tid = Number(townId || 1);
   const uid = Number(userId);
-  const cfg = await getTownConfig(tid);
-  const defaultLevel = cfg.trustDefaults?.defaultLevel || TRUST.VISITOR;
+  const defaultLevel = trust.getDefaultTrustLevel();
 
   const existing = await stmt("SELECT * FROM town_memberships WHERE townId=$1 AND userId=$2").get(tid, uid);
   if(existing) return existing;
@@ -632,9 +632,8 @@ async function updateTrustApplicationStatus(id, status, reviewedByUserId, decisi
   return { ok:true };
 }
 
-async function getCapabilitiesFor(townId, trustLevel){
-  const cfg = await getTownConfig(Number(townId || 1));
-  return cfg.capabilitiesByTrust?.[trustLevel] || cfg.capabilitiesByTrust?.[TRUST.VISITOR] || {};
+async function getCapabilitiesFor(townId, trustTier){
+  return trust.permissionsForTier(trustTier);
 }
 
 async function getTownContext(townId, userId){
@@ -642,13 +641,15 @@ async function getTownContext(townId, userId){
   const cfg = await getTownConfig(tid);
 
   if(!userId){
-    const trustLevel = cfg.trustDefaults?.defaultLevel || TRUST.VISITOR;
-    return { town: cfg, membership: null, trustLevel, capabilities: await getCapabilitiesFor(tid, trustLevel) };
+    const trustTier = trust.LEVELS.VISITOR;
+    return { town: cfg, membership: null, trustTier, trustLevel: trust.getDefaultTrustLevel(), capabilities: await getCapabilitiesFor(tid, trustTier) };
   }
 
+  const user = await getUserById(userId);
   const membership = await ensureTownMembership(tid, userId);
-  const trustLevel = membership.trustLevel;
-  return { town: cfg, membership, trustLevel, capabilities: await getCapabilitiesFor(tid, trustLevel) };
+  const trustTier = trust.resolveTier(user, { membership });
+  const tierName = trust.TRUST_TIER_LABELS[trustTier] || "Visitor";
+  return { town: cfg, membership, trustTier, tierName, trustLevel: membership.trustLevel, capabilities: await getCapabilitiesFor(tid, trustTier) };
 }
 
 // ---------- Prize offers ----------
@@ -804,55 +805,73 @@ async function setUserAdminByEmail(email, isAdmin){
   if(!user) return { error:"Invalid email" };
   return setUserAdmin(user.id, isAdmin);
 }
-async function createMagicLink(email){
-  const user = await upsertUserByEmail(email);
-  if(!user) return {error:"Invalid email"};
-  const token = randToken(24);
-  const expiresAt = new Date(Date.now()+15*60*1000).toISOString();
-  await stmt("INSERT INTO magic_links (token,userId,expiresAt,createdAt) VALUES ($1,$2,$3,$4)")
-    .run(token,user.id,expiresAt,nowISO());
-  return {token,userId:user.id,expiresAt};
+function generateSixDigitCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
 }
-async function consumeMagicToken(token){
-  const row = await stmt("SELECT * FROM magic_links WHERE token=$1").get(token);
-  if(!row) return {error:"Invalid token"};
-  if(new Date(row.expiresAt).getTime() < Date.now()){
-    await stmt("DELETE FROM magic_links WHERE token=$1").run(token);
-    return {error:"Token expired"};
-  }
-  await stmt("DELETE FROM magic_links WHERE token=$1").run(token);
-  return {userId: row.userId};
-}
-async function createAuthCode(email, codeHash, expiresAt, maxAttempts=5){
+
+async function createAuthCode(email) {
   const e = normalizeEmail(email);
-  if(!e) return null;
-  const info = await stmt(`
-    INSERT INTO auth_codes (email, code_hash, expires_at, max_attempts, created_at)
-    VALUES ($1,$2,$3,$4,$5)
-    RETURNING id
-  `).run(e, String(codeHash), String(expiresAt), Number(maxAttempts) || 5, nowISO());
-  return { id: info.rows?.[0]?.id };
-}
-async function getLatestAuthCode(email){
-  const e = normalizeEmail(email);
-  if(!e) return null;
-  return stmt(`
+  if (!e) return { error: "Invalid email" };
+
+  // Rate limit: 1 code per 60 seconds
+  const recent = await stmt(`
     SELECT * FROM auth_codes
-    WHERE email=$1
-    ORDER BY created_at DESC, id DESC
+    WHERE email=$1 AND createdAt > $2
+    ORDER BY createdAt DESC
     LIMIT 1
-  `).get(e);
+  `).get(e, new Date(Date.now() - 60 * 1000).toISOString());
+
+  if (recent) {
+    return { error: "Please wait 60 seconds before requesting another code" };
+  }
+
+  const code = generateSixDigitCode();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  const createdAt = nowISO();
+
+  await stmt(`
+    INSERT INTO auth_codes (email, code, expiresAt, createdAt)
+    VALUES ($1, $2, $3, $4)
+  `).run(e, code, expiresAt, createdAt);
+
+  return { ok: true, code, email: e, expiresAt };
 }
-async function incrementAuthCodeAttempts(id){
-  await stmt("UPDATE auth_codes SET attempts=attempts+1 WHERE id=$1").run(Number(id));
-}
-async function deleteAuthCode(id){
-  await stmt("DELETE FROM auth_codes WHERE id=$1").run(Number(id));
-}
-async function deleteAuthCodesForEmail(email){
+
+async function verifyAuthCode(email, code) {
   const e = normalizeEmail(email);
-  if(!e) return;
-  await stmt("DELETE FROM auth_codes WHERE email=$1").run(e);
+  if (!e) return { error: "Invalid email" };
+
+  const row = await stmt(`
+    SELECT * FROM auth_codes
+    WHERE email=$1 AND code=$2 AND used=0
+    ORDER BY createdAt DESC
+    LIMIT 1
+  `).get(e, String(code));
+
+  if (!row) {
+    return { error: "Invalid code" };
+  }
+
+  const expiresAt = row.expiresAt ?? row.expiresat;
+  if (new Date(expiresAt).getTime() < Date.now()) {
+    return { error: "Code expired" };
+  }
+
+  // Mark as used
+  await stmt("UPDATE auth_codes SET used=1 WHERE id=$1").run(row.id);
+
+  // Get or create user
+  const user = await upsertUserByEmail(e);
+  if (!user) {
+    return { error: "Failed to create user" };
+  }
+
+  return { ok: true, userId: user.id };
+}
+
+async function cleanupExpiredAuthCodes() {
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  await stmt("DELETE FROM auth_codes WHERE createdAt < $1").run(cutoff);
 }
 async function createSession(userId){
   const sid = randToken(24);
@@ -2967,14 +2986,10 @@ module.exports = {
   getCapabilitiesFor,
 
   // auth
-  createMagicLink,
   createAuthCode,
+  verifyAuthCode,
+  cleanupExpiredAuthCodes,
   upsertUserByEmail,
-  consumeMagicToken,
-  getLatestAuthCode,
-  incrementAuthCodeAttempts,
-  deleteAuthCode,
-  deleteAuthCodesForEmail,
   createSession,
   deleteSession,
   getUserBySession,

@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 let presenceOk = false;
+let pendingEmail = "";
 
 function showSignup(html) { $("signupResult").innerHTML = html; }
 function showLogin(html) { $("loginResult").innerHTML = html; }
@@ -14,7 +15,10 @@ async function postJSON(url, payload) {
   const text = await res.text();
   let data;
   try { data = JSON.parse(text); } catch { data = { raw: text }; }
-  if (!res.ok) throw new Error(`${res.status}: ${JSON.stringify(data)}`);
+  if (!res.ok) {
+    const msg = data && (data.error || data.message) ? (data.error || data.message) : "Request failed.";
+    throw new Error(msg);
+  }
   return data;
 }
 
@@ -64,7 +68,7 @@ async function loadTrustStatus(){
 }
 
 $("verifyPresenceBtn").onclick = async () => {
-  const user = await requireLogin("Log in with the magic link below before location verification.");
+  const user = await requireLogin("Log in with the email code below before location verification.");
   if(!user) return;
   presenceOk = false;
   $("presenceStatus").textContent = "Checking location...";
@@ -94,7 +98,7 @@ $("verifyPresenceBtn").onclick = async () => {
 $("submitTrust").onclick = async () => {
   try {
     dbg("");
-    const user = await requireLogin("Log in with the magic link below before submitting a tier application.");
+    const user = await requireLogin("Log in with the email code below before submitting a tier application.");
     if(!user) return;
     const payload = {
       requestedTier: Number($("requestedTier").value || 1),
@@ -124,32 +128,73 @@ $("submitTrust").onclick = async () => {
   }
 };
 
-$("requestLink").onclick = async () => {
+function showCodeVerifySection(show) {
+  $("codeVerifySection").style.display = show ? "block" : "none";
+}
+
+$("requestCode").onclick = async () => {
   try {
     dbg("");
     const email = $("loginEmail").value.trim();
     if (!email) return dbg("Enter email for login.");
 
-    const data = await postJSON("/auth/request-link", { email });
-
-    if(data.magicUrl){
-      showLogin(`
-        <div class="ok">
-          <strong>✅ Magic link created</strong>
-          <div class="muted">Expires: ${data.expiresAt}</div>
-          <div style="margin-top:8px;"><a href="${data.magicUrl}">Click here to log in</a></div>
-        </div>
-      `);
-    }else{
-      showLogin(`
-        <div class="ok">
-          <strong>✅ Request received</strong>
-          <div class="muted">Check your email for your login link.</div>
-        </div>
-      `);
-    }
+    await postJSON("/api/auth/request-code", { email });
+    pendingEmail = email;
+    showCodeVerifySection(true);
+    $("loginCode").value = "";
+    $("loginCode").focus();
+    showLogin(`
+      <div class="ok">
+        <strong>✅ Code sent</strong>
+        <div class="muted">Check your email for the 6-digit code.</div>
+      </div>
+    `);
   } catch (e) {
     dbg(`ERROR: ${e.message}`);
+  }
+};
+
+async function verifyCode() {
+  try {
+    dbg("");
+    const email = (pendingEmail || $("loginEmail").value.trim()).trim();
+    const code = $("loginCode").value.trim();
+    if (!email) return dbg("Enter email for login.");
+    if (!code || code.length !== 6) return dbg("Enter the 6-digit code.");
+
+    await postJSON("/api/auth/verify-code", { email, code });
+    showLogin(`
+      <div class="ok">
+        <strong>✅ Logged in</strong>
+        <div class="muted">Redirecting to town...</div>
+      </div>
+    `);
+    setTimeout(() => { window.location.href = "/ui"; }, 600);
+  } catch (e) {
+    dbg(`ERROR: ${e.message}`);
+  }
+}
+
+$("verifyCodeBtn").onclick = verifyCode;
+
+// Only allow 6 digits in the code input
+$("loginCode").oninput = (e) => {
+  e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+};
+
+// Allow pressing Enter in the code field to submit
+$("loginCode").onkeydown = (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    verifyCode();
+  }
+};
+
+// Allow pressing Enter in the email field to request code
+$("loginEmail").onkeydown = (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    $("requestCode").click();
   }
 };
 

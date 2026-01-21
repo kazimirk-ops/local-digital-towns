@@ -39,10 +39,7 @@ async function getTrustBadgeForUser(userId){
 const crypto = require("crypto");
 const app = express();
 const data = require("./data");
-const { TRUST } = require("./town_config");
 const { TOWN_DIRECTORY } = require("./town_directory");
-const { StubPaymentProvider } = require("./payment_provider");
-const paymentProvider = new StubPaymentProvider();
 const { uploadImage } = require("./lib/r2");
 const permissions = require("./lib/permissions");
 const stripe = process.env.STRIPE_SECRET_KEY ? require("stripe")(process.env.STRIPE_SECRET_KEY) : null;
@@ -54,9 +51,17 @@ const adminSweepRules = [];
 let nextSweepRuleId = 1;
 let nextSweepstakeId = 1;
 const chatImageUploadRate = new Map();
-const loginLinkRateLimit = new Map();
 
 app.use(express.static(path.join(__dirname, "public")));
+
+// X-Request-Id middleware
+app.use((req, res, next) => {
+  const requestId = crypto.randomUUID();
+  req.requestId = requestId;
+  res.setHeader("X-Request-Id", requestId);
+  next();
+});
+
 const jsonParser = express.json({ limit: "5mb" });
 const urlencodedParser = express.urlencoded({ extended: false });
 app.use(async (req,res,next)=>{
@@ -390,11 +395,6 @@ function redactEmail(email){
   const dots = local.length > 3 ? "..." : "";
   return `${prefix}${dots}@${domain}`;
 }
-function hashAuthCode(email, code){
-  const secret = (process.env.AUTH_CODE_SECRET || "").toString();
-  const payload = `${email}|${code}|${secret}`;
-  return crypto.createHash("sha256").update(payload).digest("hex");
-}
 async function getUserId(req){
   const sid=parseCookies(req).sid;
   if(!sid) return null;
@@ -577,49 +577,35 @@ async function getSweepstakeActivePayload(req){
   };
 }
 
-async function sendLoginEmail(toEmail, magicUrl){
-  const token = (process.env.POSTMARK_SERVER_TOKEN || "").trim();
-  const from = (process.env.EMAIL_FROM || "").trim();
-  if(!token || !from){
-    console.warn("Login email not configured");
-    return { ok:false, skipped:true, statusCode: null };
-  }
-  const payload = {
-    From: from,
-    To: toEmail,
-    Subject: "Your Sebastian Digital Town login link",
-    TextBody: `Here is your login link:\n${magicUrl}\n\nThis link expires soon.`
-  };
-  try{
-    const resp = await fetch("https://api.postmarkapp.com/email", {
-      method: "POST",
-      headers: {
-        "X-Postmark-Server-Token": token,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-    if(!resp.ok){
-      const errText = await resp.text().catch(()=> "");
-      return { ok:false, error: errText || `Postmark error ${resp.status}`, statusCode: resp.status };
-    }
-    return { ok:true, statusCode: resp.status };
-  }catch(err){
-    return { ok:false, error: err.message || String(err), statusCode: null };
-  }
-}
-async function sendCodeEmail(toEmail, code){
+async function sendAuthCodeEmail(toEmail, code){
   const token = (process.env.POSTMARK_SERVER_TOKEN || "").trim();
   const from = (process.env.EMAIL_FROM || "").trim();
   if(!token || !from){
     console.warn("Auth code email not configured");
     return { ok:false, skipped:true, statusCode: null };
   }
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h2 style="color: #333;">Your Login Code</h2>
+  <p>Use this code to log in to Sebastian Digital Town:</p>
+  <div style="background-color: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
+    <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #333;">${code}</span>
+  </div>
+  <p style="color: #666;">This code expires in 10 minutes.</p>
+  <p style="color: #999; font-size: 12px;">If you didn't request this code, you can safely ignore this email.</p>
+</body>
+</html>`;
   const payload = {
     From: from,
     To: toEmail,
     Subject: "Your Sebastian Digital Town login code",
-    TextBody: `Your login code is: ${code}\n\nThis code expires in 10 minutes.`
+    TextBody: `Your login code is: ${code}\n\nThis code expires in 10 minutes.`,
+    HtmlBody: htmlBody
   };
   try{
     const resp = await fetch("https://api.postmarkapp.com/email", {
@@ -636,7 +622,7 @@ async function sendCodeEmail(toEmail, code){
     }
     return { ok:true, statusCode: resp.status };
   }catch(err){
-    return { ok:false, error: err?.message || String(err) };
+    return { ok:false, error: err?.message || String(err), statusCode: null };
   }
 }
 
@@ -787,73 +773,48 @@ async function createCallsRoom(){
 app.post("/api/auth/request-code", async (req, res) =>{
   try{
     const email = (req.body?.email || "").toString().trim().toLowerCase();
-    const testCode = (process.env.TEST_AUTH_CODE || "").toString().trim();
-    const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").toString().split(",")[0].trim();
-    const rateKey = `${ip}|${email}`;
-    const now = Date.now();
-    const last = loginLinkRateLimit.get(rateKey) || 0;
-    if(!testCode){
-      if(now - last < 30000) return res.json({ ok:true });
-      loginLinkRateLimit.set(rateKey, now);
+    if(!email) return res.status(400).json({ error: "Email required" });
+
+    const result = await data.createAuthCode(email);
+    if(result.error){
+      // Return ok to avoid email enumeration, but log rate limit errors
+      if(result.error.includes("wait")) console.log("AUTH_RATE_LIMITED", { email });
+      return res.json({ ok: true, message: "If this email is valid, a code has been sent" });
     }
 
-    if(!email) return res.json({ ok:true });
-    const code = testCode || String(Math.floor(100000 + Math.random() * 900000));
-    const codeHash = hashAuthCode(email, code);
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-    if(testCode){
-      await data.deleteAuthCodesForEmail(email);
-    }
     try{
-      await data.createAuthCode(email, codeHash, expiresAt, 5);
+      await sendAuthCodeEmail(email, result.code);
     }catch(err){
-      console.error("AUTH_CODE_INSERT_FAIL", { code: err.code, message: err.message });
-      return res.json({ ok:true });
+      console.error("AUTH_EMAIL_SEND_ERROR", { error: err?.message });
     }
 
-    if(testCode) return res.json({ ok:true });
-    try{
-      await sendCodeEmail(email, code);
-    }catch(_err){
-      // Always return 200 to avoid enumeration.
+    const response = { ok: true, message: "Code sent to your email" };
+    // In dev mode, optionally return the code for testing
+    if(process.env.SHOW_AUTH_CODE === "true"){
+      response.code = result.code;
     }
-    res.json({ ok:true });
+    res.json(response);
   }catch(err){
-    console.error("AUTH_REQUEST_CODE_FATAL", { message: err.message, code: err.code });
-    const host = (req.headers.host || "").toString();
-    if(host.includes("onrender.com")){
-      return res.status(200).json({ ok:true, debugError: err.message });
-    }
-    return res.json({ ok:true });
+    console.error("AUTH_REQUEST_CODE_FATAL", { message: err.message });
+    res.json({ ok: true, message: "If this email is valid, a code has been sent" });
   }
 });
 app.post("/api/auth/verify-code", async (req, res) =>{
   const email = (req.body?.email || "").toString().trim().toLowerCase();
   const code = (req.body?.code || "").toString().trim();
-  if(!email || !code) return res.status(400).json({ error: "invalid code" });
+  if(!email || !code) return res.status(400).json({ error: "Email and code required" });
 
-  const record = await data.getLatestAuthCode(email);
-  if(!record) return res.status(400).json({ error: "invalid code" });
-  if(new Date(record.expires_at).getTime() < Date.now()){
-    await data.deleteAuthCode(record.id);
-    return res.status(400).json({ error: "code expired" });
-  }
-  if(Number(record.attempts || 0) >= Number(record.max_attempts || 0)){
-    return res.status(400).json({ error: "too many attempts" });
-  }
-  const codeHash = hashAuthCode(email, code);
-  if(codeHash !== record.code_hash){
-    await data.incrementAuthCodeAttempts(record.id);
-    return res.status(400).json({ error: "invalid code" });
+  const result = await data.verifyAuthCode(email, code);
+  if(result.error){
+    return res.status(400).json({ error: result.error });
   }
 
-  await data.deleteAuthCode(record.id);
-  const existingUser = await data.getUserByEmail(email);
-  const user = await data.upsertUserByEmail(email);
-  if(!user) return res.status(400).json({ error: "invalid email" });
-  if(!existingUser){
-    const referralCode = (req.body?.referralCode || req.headers["x-referral-code"] || "").toString().trim();
-    if(referralCode){
+  // Handle referral for new users
+  const user = await data.getUserById(result.userId);
+  const referralCode = (req.body?.referralCode || req.headers["x-referral-code"] || "").toString().trim();
+  if(referralCode && user){
+    const existingReferrer = user.referredByUserId ?? user.referredbyuserid;
+    if(!existingReferrer){
       let referrer = null;
       if(/^\d+$/.test(referralCode)){
         referrer = await data.getUserById(Number(referralCode));
@@ -876,15 +837,16 @@ app.post("/api/auth/verify-code", async (req, res) =>{
       }
     }
   }
-  const s = await data.createSession(user.id);
+
+  const s = await data.createSession(result.userId);
   setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30,secure:isHttpsRequest(req)});
-  res.json({ ok:true });
+  res.json({ ok: true, userId: result.userId });
 });
 app.post("/auth/request-link", async (_req, res) =>{
   res.status(410).json({ error: "deprecated" });
 });
 app.get("/auth/magic", async (_req, res) =>{
-  res.status(410).json({ error: "deprecated" });
+  res.status(410).json({ error: "Magic links are no longer supported" });
 });
 app.get("/auth/logout", async (req, res) =>{
   const sid=parseCookies(req).sid;

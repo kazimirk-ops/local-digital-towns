@@ -269,6 +269,12 @@ post_json_expect_status "$BASE_URL/api/admin/trust/tiers" "{\"userId\":$user_id,
 
 post_json_fetch "$BASE_URL/api/admin/sweep/rules" "{\"matchEventType\":\"channel_post\",\"enabled\":true,\"amount\":2}" '^201$' "$ADMIN_COOKIE" "$ADMIN_COOKIE" >/dev/null
 post_json_fetch "$BASE_URL/api/admin/sweep/rules" "{\"matchEventType\":\"purchase\",\"enabled\":true,\"buyerAmount\":3}" '^201$' "$ADMIN_COOKIE" "$ADMIN_COOKIE" >/dev/null
+rules_json=$(fetch_json_with_cookie "$BASE_URL/api/admin/sweep/rules" "$ADMIN_COOKIE")
+rules_count=$(node -e 'const s=process.argv[1]; try{const j=JSON.parse(s); process.stdout.write(String(Array.isArray(j)?j.length:0));}catch(e){process.stdout.write("0");}' "$rules_json")
+if (( rules_count < 1 )); then
+  echo "FAIL: sweep rules not created" >&2
+  exit 1
+fi
 
 post_json_expect_status "$BASE_URL/api/mod/channels/1/mute" "{\"userId\":$user_id,\"reason\":\"smoke\"}" '^200$' "$MOD_COOKIE" "$MOD_COOKIE"
 post_json_expect_status "$BASE_URL/channels/1/messages" "{\"text\":\"smoke muted\"}" '^403$' "$USER_COOKIE" "$USER_COOKIE"

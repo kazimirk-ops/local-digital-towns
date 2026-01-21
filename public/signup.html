@@ -231,20 +231,28 @@
           </div>
           <div class="tier-grid">
             <div class="tier-card">
-              <div class="tier-name">Tier 0: Not logged in</div>
-              <div class="muted">Map only</div>
+              <div class="tier-name">Tier 0: Visitor</div>
+              <div class="muted">Map-only</div>
             </div>
             <div class="tier-card">
-              <div class="tier-name">Tier 1: Location Verified</div>
-              <div class="muted">Marketplace buying, auctions bidding, events view, channels comments, sweepstakes entry</div>
+              <div class="tier-name">Tier 1: Verified Visitor</div>
+              <div class="muted">Buy marketplace, view events, view channels, giveaway entry</div>
             </div>
             <div class="tier-card">
-              <div class="tier-name">Tier 2: Sebastian Resident</div>
-              <div class="muted">Everything except scheduling live shows</div>
+              <div class="tier-name">Tier 2: Verified Resident</div>
+              <div class="muted">Sell/list, post in channels, upload, reviews</div>
             </div>
             <div class="tier-card">
-              <div class="tier-name">Tier 3: Local Business</div>
-              <div class="muted">Full access including scheduling live shows</div>
+              <div class="tier-name">Tier 3: Moderator</div>
+              <div class="muted">Mute/unmute, moderate channels, approve event requests</div>
+            </div>
+            <div class="tier-card">
+              <div class="tier-name">Tier 4: Local Business</div>
+              <div class="muted">Inventory tools, donate giveaway</div>
+            </div>
+            <div class="tier-card">
+              <div class="tier-name">Tier 5: Admin</div>
+              <div class="muted">Full access</div>
             </div>
           </div>
         </div>
@@ -253,19 +261,25 @@
           <div class="card-header">
             <div class="card-icon">✉️</div>
             <div>
-              <h3 class="card-title">Login / Signup (Magic Link)</h3>
-              <p class="card-subtitle">New accounts default to Tier 0. Log in to apply for higher tiers.</p>
+              <h3 class="card-title">Login / Signup</h3>
+              <p class="card-subtitle">Enter your email to receive a 6-digit login code</p>
             </div>
           </div>
           <div class="field">
             <label class="label" for="loginEmail">Email</label>
-            <input id="loginEmail" placeholder="Email for login link" />
+            <input id="loginEmail" type="email" placeholder="you@example.com" />
           </div>
           <div class="actions-row">
-            <button id="requestLink" class="btn-primary">Send Login Link</button>
+            <button id="requestCode" class="btn-primary">Send Login Code</button>
           </div>
-          <div class="muted" style="margin-top:8px;">
-            <a href="/waitlist">Not ready to log in? Join the waitlist.</a>
+          <div id="codeVerifySection" style="display:none;">
+            <div class="field">
+              <label class="label" for="loginCode">6-digit Code</label>
+              <input id="loginCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" />
+            </div>
+            <div class="actions-row">
+              <button id="verifyCodeBtn" class="btn-primary">Verify Code</button>
+            </div>
           </div>
           <div id="loginResult"></div>
           <div class="mono" id="debug"></div>
@@ -282,9 +296,9 @@
           <div class="field">
             <label class="label" for="requestedTier">Requested Tier</label>
             <select id="requestedTier">
-              <option value="1">Tier 1 — Location Verified</option>
-              <option value="2">Tier 2 — Sebastian Resident</option>
-              <option value="3">Tier 3 — Local Business</option>
+              <option value="1">Tier 1 — Verified Visitor</option>
+              <option value="2">Tier 2 — Verified Resident</option>
+              <option value="3">Tier 3 — Moderator</option>
             </select>
           </div>
           <div class="two-col">
@@ -345,6 +359,6 @@
     </div>
 
     <script src="/theme.js?v=1"></script>
-    <script src="/signup.js?v=magic1"></script>
+    <script src="/signup.js?v=code1"></script>
   </body>
 </html>
