@@ -172,7 +172,8 @@ async function loadOwnedStores() {
       all.push(...places);
     } catch {}
   }));
-  const owned = all.filter(p => Number(p.ownerUserId) === Number(currentUserId));
+  // PostgreSQL returns lowercase column names, handle both cases
+  const owned = all.filter(p => Number(p.ownerUserId || p.owneruserid) === Number(currentUserId));
   const list = document.getElementById("ownedStores");
   const select = document.getElementById("listingStore");
   const storefrontSelect = document.getElementById("storefrontStore");

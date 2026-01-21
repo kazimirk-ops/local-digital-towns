@@ -2427,11 +2427,14 @@ app.post("/api/admin/applications/business/:id/status", async (req, res) =>{
           console.log("BUSINESS_APP_NO_PENDING_PLACE", { userId: user.id });
         }
       } else {
+        const placeName = updated.businessName || updated.businessname || "Business";
+        const placeCategory = updated.category || "Business";
+        console.log("CREATING_PLACE", { placeName, placeCategory, userId: user.id });
         const newPlace = await data.addPlace({
           townId: 1,
           districtId: 1,
-          name: updated.businessName || updated.businessname,
-          category: updated.category || "Business",
+          name: placeName,
+          category: placeCategory,
           description: updated.notes || "",
           sellerType: "business",
           addressPrivate: updated.address || "",
@@ -2439,7 +2442,11 @@ app.post("/api/admin/applications/business/:id/status", async (req, res) =>{
           ownerUserId: user.id,
           status: "approved"
         });
-        console.log("CREATED_APPROVED_PLACE", { placeId: newPlace?.id, userId: user.id, newPlace });
+        if(newPlace?.error){
+          console.log("PLACE_CREATION_ERROR", { error: newPlace.error, userId: user.id });
+        } else {
+          console.log("CREATED_APPROVED_PLACE", { placeId: newPlace?.id, userId: user.id });
+        }
       }
     } else {
       console.log("BUSINESS_APP_NO_USER_FOUND", { email: updated.email });
@@ -2878,7 +2885,8 @@ app.post("/api/admin/sweep/sweepstake", async (req, res) =>{
 // Districts
 app.get("/districts/:id/places", async (req, res) =>{
   const did=Number(req.params.id);
-  const places = (await data.getPlaces()).filter(p=>Number(p.districtId)===did);
+  // PostgreSQL returns lowercase column names
+  const places = (await data.getPlaces()).filter(p=>Number(p.districtId || p.districtid)===did);
   res.json(places);
 });
 
