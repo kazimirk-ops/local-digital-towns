@@ -1933,13 +1933,8 @@ app.post("/orders", async (req, res) =>{
   const placeList = await data.getPlaces();
   const place = placeList.find(p=>Number(p.id)===Number(listing.placeId));
   if(!place) return res.status(404).json({error:"Place not found"});
+  // Payment provider not configured - create order directly
   try{
-    const intent = paymentProvider.createPaymentIntent({
-      amountCents,
-      currency: "usd",
-      metadata: { listingId, buyerUserId: u, placeId: place.id }
-    });
-    const pi = await Promise.resolve(intent);
     const order = await data.addOrder({
       listingId,
       buyerUserId: u,
@@ -1947,10 +1942,10 @@ app.post("/orders", async (req, res) =>{
       quantity,
       amountCents,
       status: "pending",
-      paymentProvider: pi.provider,
-      paymentIntentId: pi.paymentIntentId
+      paymentProvider: "none",
+      paymentIntentId: null
     });
-    res.status(201).json({order, payment: pi});
+    res.status(201).json({order});
   }catch(e){
     res.status(500).json({error:e.message});
   }
@@ -2007,7 +2002,7 @@ app.post("/orders/:id/complete", async (req, res) =>{
     return res.status(403).json({error:"Forbidden"});
   }
   try{
-    await paymentProvider.capturePaymentIntent(order.paymentIntentId);
+    // Payment capture skipped - no payment provider configured
     const updated = await data.completeOrder(order.id);
     res.json(updated);
   }catch(e){
