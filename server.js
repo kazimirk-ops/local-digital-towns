@@ -2281,8 +2281,49 @@ app.get("/api/admin/localbiz", async (req, res) =>{
 });
 app.post("/api/admin/localbiz/:id/approve", async (req, res) =>{
   const admin=await requireAdmin(req,res); if(!admin) return;
+
+  // Get the application first to access its data
+  const bizApp = await data.getLocalBizApplicationById(req.params.id);
+  if(!bizApp) return res.status(404).json({error:"Not found"});
+
+  // Update the application status
   const updated=await data.updateLocalBizDecision(req.params.id, "approved", admin.id, "");
   if(!updated) return res.status(404).json({error:"Not found"});
+
+  // If the applicant has a userId, create/approve their store and set tier
+  const userId = bizApp.userId ?? bizApp.userid;
+  if(userId){
+    // Check if they already have a place
+    const existingPlaces = await data.listPlacesByOwner(userId);
+    if(existingPlaces.length > 0){
+      // Approve their first pending place
+      const pending = existingPlaces.find(p => (p.status || "").toLowerCase() === "pending");
+      if(pending){
+        await data.updatePlaceStatus(pending.id, "approved");
+        console.log("APPROVED_EXISTING_PLACE", { placeId: pending.id, userId });
+      }
+    } else {
+      // Create an approved place for them using application data
+      const newPlace = await data.addPlace({
+        townId: 1,
+        districtId: 1,
+        name: bizApp.businessName || bizApp.businessname,
+        category: bizApp.category,
+        description: bizApp.description,
+        sellerType: "business",
+        addressPrivate: `${bizApp.address}, ${bizApp.city}, ${bizApp.state} ${bizApp.zip}`,
+        website: bizApp.website || "",
+        ownerUserId: userId,
+        status: "approved"
+      });
+      console.log("CREATED_APPROVED_PLACE", { placeId: newPlace?.id, userId });
+    }
+
+    // Set user's trust tier to LOCAL_BUSINESS (4)
+    await data.setUserTrustTier(1, userId, 4);
+    console.log("SET_USER_TIER_LOCAL_BUSINESS", { userId, tier: 4 });
+  }
+
   res.json(updated);
 });
 app.post("/api/admin/localbiz/:id/deny", async (req, res) =>{

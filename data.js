@@ -285,6 +285,11 @@ async function updatePlaceStatus(placeId, status){
   return getPlaceById(placeId);
 }
 
+async function listPlacesByOwner(userId){
+  if(!userId) return [];
+  return stmt("SELECT * FROM places WHERE ownerUserId=$1 ORDER BY createdAt DESC").all(Number(userId));
+}
+
 async function addPlace(payload){
   const name = (payload?.name || "").toString().trim();
   const category = (payload?.category || "").toString().trim();
@@ -293,6 +298,7 @@ async function addPlace(payload){
   const addressPrivate = (payload?.addressPrivate || "").toString().trim();
   const website = (payload?.website || "").toString().trim();
   const yearsInTown = (payload?.yearsInTown || "").toString().trim();
+  const status = (payload?.status || "pending").toString().trim();
   if(!name || !category) return { error: "name and category required" };
   const info = await stmt(`
     INSERT INTO places
@@ -304,7 +310,7 @@ async function addPlace(payload){
     Number(payload.districtId || 1),
     name,
     category,
-    "pending",
+    status,
     description,
     sellerType,
     addressPrivate,
@@ -2721,6 +2727,10 @@ async function listLocalBizApplicationsByStatus(status){
     .all(s);
 }
 
+async function getLocalBizApplicationById(id){
+  return (await stmt("SELECT * FROM local_business_applications WHERE id=$1").get(Number(id))) || null;
+}
+
 async function updateLocalBizDecision(id, status, reviewerUserId, decisionReason){
   const reviewedAt = nowISO();
   await stmt(`
@@ -2934,6 +2944,7 @@ module.exports = {
   getPlaceOwnerPublic,
   updatePlaceSettings,
   listPlacesByStatus,
+  listPlacesByOwner,
   updatePlaceStatus,
   addPlace,
   updatePlaceProfile,
@@ -3106,6 +3117,7 @@ module.exports = {
   updateResidentApplicationStatus,
   getApprovedApplicationTier,
   addLocalBizApplication,
+  getLocalBizApplicationById,
   listLocalBizApplicationsByUser,
   listLocalBizApplicationsByStatus,
   updateLocalBizDecision,
