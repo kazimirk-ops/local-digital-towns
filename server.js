@@ -638,6 +638,66 @@ async function sendAuthCodeEmail(toEmail, code){
   }
 }
 
+async function sendApprovalEmail(toEmail, applicationType, tierName){
+  const apiKey = (process.env.RESEND_API_KEY || "").trim();
+  const from = (process.env.EMAIL_FROM || "").trim() || "onboarding@resend.dev";
+  const loginUrl = (process.env.PUBLIC_BASE_URL || "").trim() + "/signup";
+
+  console.log("APPROVAL_EMAIL_ATTEMPT", { to: toEmail, type: applicationType });
+
+  if(!apiKey){
+    console.warn("Approval email not configured (missing RESEND_API_KEY)");
+    return { ok: false, skipped: true };
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h2 style="color: #333;">Your Application Has Been Approved!</h2>
+  <p>Great news! Your <strong>${applicationType}</strong> application for Sebastian Digital Town has been approved.</p>
+  <p>You have been granted <strong>${tierName}</strong> access.</p>
+  <div style="background-color: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
+    <a href="${loginUrl}" style="background: linear-gradient(90deg, #22d3ee, #3b82f6); color: #0b1120; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">Log In Now</a>
+  </div>
+  <p style="color: #666;">Use the email address you applied with to receive your login code.</p>
+</body>
+</html>`;
+
+  const payload = {
+    from,
+    to: [toEmail],
+    subject: "Your Sebastian Digital Town Application is Approved!",
+    text: `Your ${applicationType} application has been approved! You now have ${tierName} access. Log in at: ${loginUrl}`,
+    html
+  };
+
+  try{
+    const resp = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if(!resp.ok){
+      const errBody = await resp.text().catch(() => "");
+      console.error("APPROVAL_EMAIL_ERROR", { statusCode: resp.status, error: errBody });
+      return { ok: false, error: errBody };
+    }
+
+    const result = await resp.json().catch(() => ({}));
+    console.log("APPROVAL_EMAIL_SUCCESS", { to: toEmail, id: result.id });
+    return { ok: true, id: result.id };
+  }catch(err){
+    console.error("APPROVAL_EMAIL_ERROR", { error: err?.message || String(err) });
+    return { ok: false, error: err?.message || String(err) };
+  }
+}
+
 async function getUserTier(req){
   const userId = await getUserId(req);
   const user = userId ? await data.getUserById(userId) : null;
@@ -2269,6 +2329,12 @@ app.post("/api/admin/waitlist/:id/status", async (req, res) =>{
   }
   const updated = await data.updateWaitlistStatus(req.params.id, status);
   if(!updated) return res.status(404).json({error:"Not found"});
+  // Send approval notification
+  if(status === "approved" && updated.email){
+    sendApprovalEmail(updated.email, "Waitlist", "Tier 1: Verified Visitor").catch(err => {
+      console.error("Failed to send waitlist approval email:", err);
+    });
+  }
   res.json(updated);
 });
 
@@ -2285,6 +2351,16 @@ app.post("/api/admin/applications/business/:id/status", async (req, res) =>{
   }
   const updated = await data.updateBusinessApplicationStatus(req.params.id, status);
   if(!updated) return res.status(404).json({error:"Not found"});
+  // Set trust tier and send approval notification
+  if(status === "approved" && updated.email){
+    const user = await data.getUserByEmail(updated.email);
+    if(user){
+      await data.setUserTrustTier(1, user.id, trust.LEVELS.LOCAL_BUSINESS);
+    }
+    sendApprovalEmail(updated.email, "Business", "Tier 4: Local Business").catch(err => {
+      console.error("Failed to send business approval email:", err);
+    });
+  }
   res.json(updated);
 });
 
@@ -2301,12 +2377,17 @@ app.post("/api/admin/applications/resident/:id/status", async (req, res) =>{
   }
   const updated = await data.updateResidentApplicationStatus(req.params.id, status);
   if(!updated) return res.status(404).json({error:"Not found"});
-  if(status === "approved"){
-    const app = await data.getResidentApplicationById(req.params.id);
-    if(app?.email){
-      const user = await data.getUserByEmail(app.email);
-      if(user) await data.setUserResidentVerified(user.id, true);
+  if(status === "approved" && updated.email){
+    // Set trust tier for resident
+    const user = await data.getUserByEmail(updated.email);
+    if(user){
+      await data.setUserResidentVerified(user.id, true);
+      await data.setUserTrustTier(1, user.id, trust.LEVELS.VERIFIED_RESIDENT);
     }
+    // Send approval notification
+    sendApprovalEmail(updated.email, "Resident", "Tier 2: Verified Resident").catch(err => {
+      console.error("Failed to send resident approval email:", err);
+    });
   }
   res.json(updated);
 });

@@ -217,52 +217,43 @@
 
       <section class="hero">
         <h2 class="hero-title">Join Sebastian</h2>
-        <div class="hero-subtitle">New accounts start at Tier 0 (Map-only). Verify to unlock more access.</div>
+        <div class="hero-subtitle">Apply for access, get approved by admin, then log in with your email code.</div>
       </section>
 
       <div class="wrap">
+        <!-- Step 1: Apply for Access -->
         <div class="card full">
           <div class="card-header">
-            <div class="card-icon">🛡️</div>
+            <div class="card-icon">📝</div>
             <div>
-              <h3 class="card-title">Trust Tiers & Permissions</h3>
-              <p class="card-subtitle">Know what each tier unlocks.</p>
+              <h3 class="card-title">Step 1: Apply for Access</h3>
+              <p class="card-subtitle">New here? Submit an application to get started.</p>
             </div>
           </div>
           <div class="tier-grid">
-            <div class="tier-card">
-              <div class="tier-name">Tier 0: Visitor</div>
-              <div class="muted">Map-only</div>
-            </div>
-            <div class="tier-card">
-              <div class="tier-name">Tier 1: Verified Visitor</div>
-              <div class="muted">Buy marketplace, view events, view channels, giveaway entry</div>
-            </div>
-            <div class="tier-card">
-              <div class="tier-name">Tier 2: Verified Resident</div>
-              <div class="muted">Sell/list, post in channels, upload, reviews</div>
-            </div>
-            <div class="tier-card">
-              <div class="tier-name">Tier 3: Moderator</div>
-              <div class="muted">Mute/unmute, moderate channels, approve event requests</div>
-            </div>
-            <div class="tier-card">
-              <div class="tier-name">Tier 4: Local Business</div>
-              <div class="muted">Inventory tools, donate giveaway</div>
-            </div>
-            <div class="tier-card">
-              <div class="tier-name">Tier 5: Admin</div>
-              <div class="muted">Full access</div>
-            </div>
+            <a href="/apply/resident" class="tier-card" style="text-decoration:none; cursor:pointer;">
+              <div class="tier-name">Resident Application</div>
+              <div class="muted">For Sebastian residents. Unlocks Tier 2: sell/list, post in channels, reviews.</div>
+            </a>
+            <a href="/apply/business" class="tier-card" style="text-decoration:none; cursor:pointer;">
+              <div class="tier-name">Business Application</div>
+              <div class="muted">For local businesses. Unlocks Tier 4: inventory tools, host auctions, create events.</div>
+            </a>
+            <a href="/waitlist" class="tier-card" style="text-decoration:none; cursor:pointer;">
+              <div class="tier-name">Join Waitlist</div>
+              <div class="muted">Not a resident? Join the waitlist for Tier 1: view marketplace, events, channels.</div>
+            </a>
           </div>
+          <div class="muted" style="margin-top:12px;">After submitting, an admin will review your application and notify you when approved.</div>
         </div>
 
+        <!-- Step 2: Login (after approval) -->
         <div class="card">
           <div class="card-header">
             <div class="card-icon">✉️</div>
             <div>
-              <h3 class="card-title">Login / Signup</h3>
-              <p class="card-subtitle">Enter your email to receive a 6-digit login code</p>
+              <h3 class="card-title">Step 2: Login (After Approval)</h3>
+              <p class="card-subtitle">Already approved? Enter your email to receive a 6-digit login code.</p>
             </div>
           </div>
           <div class="field">
