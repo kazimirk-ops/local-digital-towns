@@ -578,13 +578,17 @@ async function getSweepstakeActivePayload(req){
 }
 
 async function sendAuthCodeEmail(toEmail, code){
-  const token = (process.env.POSTMARK_SERVER_TOKEN || "").trim();
-  const from = (process.env.EMAIL_FROM || "").trim();
-  if(!token || !from){
-    console.warn("Auth code email not configured");
-    return { ok:false, skipped:true, statusCode: null };
+  const apiKey = (process.env.RESEND_API_KEY || "").trim();
+  const from = (process.env.EMAIL_FROM || "").trim() || "onboarding@resend.dev";
+
+  console.log("AUTH_CODE_EMAIL_ATTEMPT", { to: toEmail, from });
+
+  if(!apiKey){
+    console.warn("Auth code email not configured (missing RESEND_API_KEY)");
+    return { ok: false, skipped: true, statusCode: null };
   }
-  const htmlBody = `
+
+  const html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -600,29 +604,37 @@ async function sendAuthCodeEmail(toEmail, code){
   <p style="color: #999; font-size: 12px;">If you didn't request this code, you can safely ignore this email.</p>
 </body>
 </html>`;
+
   const payload = {
-    From: from,
-    To: toEmail,
-    Subject: "Your Sebastian Digital Town login code",
-    TextBody: `Your login code is: ${code}\n\nThis code expires in 10 minutes.`,
-    HtmlBody: htmlBody
+    from,
+    to: [toEmail],
+    subject: "Your Sebastian Digital Town login code",
+    text: `Your login code is: ${code}\n\nThis code expires in 10 minutes.`,
+    html
   };
+
   try{
-    const resp = await fetch("https://api.postmarkapp.com/email", {
+    const resp = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        "X-Postmark-Server-Token": token,
+        "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify(payload)
     });
+
     if(!resp.ok){
-      const errBody = await resp.text().catch(()=>"");
-      return { ok:false, statusCode: resp.status, error: errBody };
+      const errBody = await resp.text().catch(() => "");
+      console.error("AUTH_CODE_EMAIL_ERROR", { statusCode: resp.status, error: errBody });
+      return { ok: false, statusCode: resp.status, error: errBody };
     }
-    return { ok:true, statusCode: resp.status };
+
+    const result = await resp.json().catch(() => ({}));
+    console.log("AUTH_CODE_EMAIL_SUCCESS", { statusCode: resp.status, id: result.id });
+    return { ok: true, statusCode: resp.status, id: result.id };
   }catch(err){
-    return { ok:false, error: err?.message || String(err), statusCode: null };
+    console.error("AUTH_CODE_EMAIL_ERROR", { error: err?.message || String(err) });
+    return { ok: false, error: err?.message || String(err), statusCode: null };
   }
 }
 
