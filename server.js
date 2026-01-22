@@ -25,6 +25,7 @@ const { sendAdminEmail, sendEmail } = require("./lib/notify");
 const db = require("./lib/db");
 const TRUST_TIER_LABELS = trust.TRUST_TIER_LABELS;
 async function getTrustBadgeForUser(userId){
+  if (!userId || isNaN(Number(userId))) return null;
   const user = await data.getUserById(userId);
   if(!user) return null;
   const ctx = await data.getTownContext(1, userId);

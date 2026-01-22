@@ -904,6 +904,7 @@ async function getUserBySession(sid){
 }
 
 async function getUserById(id){
+  if (!id || isNaN(Number(id))) return null;
   return normalizeUserRow((await stmt("SELECT * FROM users WHERE id=$1").get(Number(id))) || null);
 }
 async function getUserByEmail(email){
