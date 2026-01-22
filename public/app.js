@@ -131,6 +131,10 @@ async function loadScheduledShows(){
 function renderScheduledShows(){
   const list = $("scheduledShowList");
   if(!list) return;
+  // Live Shows feature coming soon
+  list.innerHTML = `<div class="muted" style="text-align:center;padding:20px;"><strong>Coming Soon</strong><br>Live streaming shows are currently in development.</div>`;
+  return;
+  // Original code below - uncomment when live shows are ready
   if(!scheduledState.list.length){
     list.innerHTML = `<div class="muted">No scheduled shows.</div>`;
     return;
@@ -757,12 +761,20 @@ function renderListingCard(l){
   const price = Number.isFinite(Number(l.price)) ? `$${Number(l.price).toFixed(2)}` : "—";
   const desc = (l.description || "").toString().trim();
   const shortDesc = desc.length > 80 ? `${desc.slice(0,77)}...` : desc;
+  const photos = l.photoUrls || l.photourls || [];
+  const firstPhoto = photos[0] || "";
+  const imgHtml = firstPhoto ? `<img src="${firstPhoto}" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.12);margin-right:12px;" />` : "";
   div.innerHTML=`
-    <div><strong>${l.title || "Listing"}</strong></div>
-    <div class="muted">${shortDesc || "No description"}</div>
-    <div class="muted">${l.placeName || "Store"} • ${price}</div>
-    <div class="row" style="margin-top:8px;">
-      <a class="btn" href="/store/${l.placeId}">Open Store</a>
+    <div style="display:flex;">
+      ${imgHtml}
+      <div style="flex:1;">
+        <div><strong>${l.title || "Listing"}</strong></div>
+        <div class="muted">${shortDesc || "No description"}</div>
+        <div class="muted">${l.placeName || "Store"} • ${price}</div>
+        <div class="row" style="margin-top:8px;">
+          <a class="btn" href="/store/${l.placeId}">Open Store</a>
+        </div>
+      </div>
     </div>
   `;
   return div;

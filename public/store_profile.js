@@ -134,7 +134,7 @@ function applyStorePermissions(){
   }
   const type = document.getElementById("listingType")?.value;
   if(type === "auction" && !canAuction){
-    setMsg("listingMsg", "Tier 4+ required to host auctions.");
+    setMsg("listingMsg", "Tier 2+ required to host auctions.");
   }
 }
 

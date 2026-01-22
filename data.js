@@ -1574,6 +1574,25 @@ async function logEvent(evt){
   `).run(createdAt, evt.eventType, evt.townId ?? 1, evt.districtId ?? null, evt.placeId ?? null, evt.listingId ?? null, evt.conversationId ?? null, evt.userId ?? null, evt.clientSessionId, metaJson);
   return info.rows?.[0]?.id;
 }
+async function getEventCountsSince(sinceIso, townId = 1){
+  const rows = await stmt(`
+    SELECT eventType, COUNT(*) AS c
+    FROM events
+    WHERE townId=$1 AND createdAt>=$2
+    GROUP BY eventType
+    ORDER BY c DESC
+  `).all(Number(townId), sinceIso);
+  // PostgreSQL returns lowercase column names, normalize for frontend
+  return rows.map(r => ({ eventType: r.eventtype || r.eventType, c: r.c }));
+}
+async function getSessionCountSince(sinceIso, townId = 1){
+  const row = await stmt(`
+    SELECT COUNT(DISTINCT clientSessionId) AS c
+    FROM events
+    WHERE townId=$1 AND createdAt>=$2
+  `).get(Number(townId), sinceIso);
+  return row?.c || 0;
+}
 async function getSweepBalance(userId){
   const row= await stmt("SELECT COALESCE(SUM(amount),0) AS bal FROM sweep_ledger WHERE userId=$1").get(Number(userId));
   return row?.bal || 0;
@@ -2867,6 +2886,60 @@ async function unfollowStore(userId, placeId){
   return { ok:true };
 }
 
+// ---------- Channel requests ----------
+async function addChannelRequest(userId, payload){
+  const name = (payload?.name || "").toString().trim();
+  const description = (payload?.description || "").toString().trim();
+  const reason = (payload?.reason || "").toString().trim();
+  if(!name || !description) return { error: "name and description required" };
+  const info = await stmt(`
+    INSERT INTO channel_requests (townId, userId, name, description, reason, status, createdAt)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING id
+  `).run(1, Number(userId), name, description, reason, "pending", nowISO());
+  return stmt("SELECT * FROM channel_requests WHERE id=$1").get(info.rows?.[0]?.id);
+}
+
+async function listChannelRequestsByStatus(status){
+  const s = (status || "pending").toString().trim().toLowerCase();
+  return stmt("SELECT * FROM channel_requests WHERE townId=1 AND status=$1 ORDER BY createdAt DESC").all(s);
+}
+
+async function listChannelRequestsByUser(userId){
+  return stmt("SELECT * FROM channel_requests WHERE userId=$1 ORDER BY createdAt DESC").all(Number(userId));
+}
+
+async function updateChannelRequestStatus(id, status, reviewerUserId){
+  await stmt(`
+    UPDATE channel_requests SET status=$1, reviewedByUserId=$2, reviewedAt=$3 WHERE id=$4
+  `).run(String(status), reviewerUserId ? Number(reviewerUserId) : null, nowISO(), Number(id));
+  return stmt("SELECT * FROM channel_requests WHERE id=$1").get(Number(id));
+}
+
+async function setChannelMemberRole(channelId, userId, role){
+  const validRoles = ["member", "moderator", "admin"];
+  if(!validRoles.includes(role)) return { error: "Invalid role" };
+  // Check if membership exists
+  const existing = await stmt("SELECT * FROM channel_memberships WHERE channelId=$1 AND userId=$2").get(Number(channelId), Number(userId));
+  if(existing){
+    await stmt("UPDATE channel_memberships SET role=$1 WHERE id=$2").run(role, existing.id);
+  } else {
+    await stmt(`
+      INSERT INTO channel_memberships (channelId, userId, role, createdAt)
+      VALUES ($1, $2, $3, $4)
+    `).run(Number(channelId), Number(userId), role, nowISO());
+  }
+  return stmt("SELECT * FROM channel_memberships WHERE channelId=$1 AND userId=$2").get(Number(channelId), Number(userId));
+}
+
+async function getChannelMembership(channelId, userId){
+  return stmt("SELECT * FROM channel_memberships WHERE channelId=$1 AND userId=$2").get(Number(channelId), Number(userId));
+}
+
+async function listChannelModerators(channelId){
+  return stmt("SELECT * FROM channel_memberships WHERE channelId=$1 AND (role='moderator' OR role='admin') ORDER BY createdAt").all(Number(channelId));
+}
+
 // ---------- Listing creation (new) ----------
 async function addListing(payload){
   const listingType = sanitizeListingType(payload.listingType);
@@ -3049,6 +3122,8 @@ module.exports = {
 
   // events + sweep
   logEvent,
+  getEventCountsSince,
+  getSessionCountSince,
   getSweepBalance,
   addSweepLedgerEntry,
   listSweepRules,
@@ -3121,6 +3196,13 @@ module.exports = {
   listLocalBizApplicationsByUser,
   listLocalBizApplicationsByStatus,
   updateLocalBizDecision,
+  addChannelRequest,
+  listChannelRequestsByStatus,
+  listChannelRequestsByUser,
+  updateChannelRequestStatus,
+  setChannelMemberRole,
+  getChannelMembership,
+  listChannelModerators,
   addOrder,
   getOrderById,
   completeOrder,

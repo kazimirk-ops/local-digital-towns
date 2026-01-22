@@ -472,7 +472,7 @@ async function resolveSweepDonorUserId(prize){
   if(prize.donorUserId) return Number(prize.donorUserId);
   if(prize.donorPlaceId){
     const place = await data.getPlaceById(prize.donorPlaceId);
-    if(place?.ownerUserId) return Number(place.ownerUserId);
+    if(place?.ownerUserId ?? place?.owneruserid) return Number(place.ownerUserId ?? place.owneruserid);
   }
   return null;
 }
@@ -1415,7 +1415,7 @@ app.post("/api/live/rooms/create", async (req,res)=>{
   if(hostType === "place"){
     const place = await data.getPlaceById(hostPlaceId);
     if(!place) return res.status(404).json({error:"Place not found"});
-    if(Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Only owner can host for place"});
+    if(Number(place.ownerUserId ?? place.owneruserid)!==Number(u)) return res.status(403).json({error:"Only owner can host for place"});
   }
   if(hostType === "event"){
     const ev = await data.getEventById(hostEventId);
@@ -1479,7 +1479,7 @@ app.post("/api/live/rooms/:id/pin", async (req, res) =>{
   if(room.hostPlaceId && Number(listing.placeId)!==Number(room.hostPlaceId)){
     return res.status(403).json({error:"Listing must belong to host store"});
   }
-  if(place && Number(place.ownerUserId)!==Number(room.hostUserId)){
+  if(place && Number(place.ownerUserId ?? place.owneruserid)!==Number(room.hostUserId ?? room.hostuserid)){
     return res.status(403).json({error:"Only host listings can be pinned"});
   }
   const updated = await data.updateLiveRoom(room.id, { pinnedListingId: listing.id });
@@ -1584,7 +1584,7 @@ app.post("/api/live/scheduled", async (req, res) =>{
   if(hostType === "place"){
     const place = await data.getPlaceById(hostPlaceId);
     if(!place) return res.status(404).json({error:"Place not found"});
-    if(Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Only owner can host for place"});
+    if(Number(place.ownerUserId ?? place.owneruserid)!==Number(u)) return res.status(403).json({error:"Only owner can host for place"});
   }
   if(hostType === "event"){
     const ev = await data.getEventById(hostEventId);
@@ -1652,10 +1652,10 @@ app.get("/api/events", async (req, res) =>{
   res.json(rows);
 });
 
-// Local businesses (applications)
+// Local businesses (applications) - any logged in user can apply for business status
 app.post("/api/localbiz/apply", async (req, res) =>{
-  const access = await requirePerm(req,res,"VIEW_LOCALBIZ"); if(!access) return;
-  const created=await data.addLocalBizApplication(req.body || {}, access.userId);
+  const u=await requireLogin(req,res); if(!u) return;
+  const created=await data.addLocalBizApplication(req.body || {}, u);
   if(created?.error) return res.status(400).json(created);
   res.status(201).json(created);
 });
@@ -1710,7 +1710,7 @@ app.get("/api/prize_awards/my", async (req, res) =>{
   const placeId = req.query.placeId ? Number(req.query.placeId) : null;
   if(placeId){
     const place = await data.getPlaceById(placeId);
-    if(!place || Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Only owner"});
+    if(!place || Number(place.ownerUserId ?? place.owneruserid)!==Number(u)) return res.status(403).json({error:"Only owner"});
   }
   res.json(await data.listPrizeAwardsForUser(u, placeId));
 });
@@ -2009,7 +2009,7 @@ app.post("/orders", async (req, res) =>{
     const order = await data.addOrder({
       listingId,
       buyerUserId: u,
-      sellerUserId: place.ownerUserId ?? null,
+      sellerUserId: place.ownerUserId ?? place.owneruserid ?? null,
       quantity,
       amountCents,
       status: "pending",
@@ -2119,7 +2119,9 @@ app.post("/orders/:id/dispute", async (req, res) =>{
 app.get("/api/admin/pulse", async (req, res) =>{
   const hours = Number(req.query.hours || 24);
   const since = new Date(Date.now() - (Number.isFinite(hours) ? hours : 24) * 60 * 60 * 1000).toISOString();
-  res.json({ since, sessions: 0, counts: [] });
+  const counts = await data.getEventCountsSince(since, 1);
+  const sessions = await data.getSessionCountSince(since, 1);
+  res.json({ since, sessions, counts });
 });
 app.get("/api/admin/analytics/summary", async (req, res) =>{
   const u=await requireLogin(req,res); if(!u) return;
@@ -2190,7 +2192,7 @@ app.get("/api/seller/sales/summary", async (req, res) =>{
   if(!placeId) return res.status(400).json({error:"placeId required"});
   const place = await data.getPlaceById(placeId);
   if(!place) return res.status(404).json({error:"Place not found"});
-  if(Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Owner only"});
+  if(Number(place.ownerUserId ?? place.owneruserid)!==Number(u)) return res.status(403).json({error:"Owner only"});
   const range = (req.query.range || "7d").toString();
   const { fromIso, toIso, label } = parseRange(range, req.query.from, req.query.to);
   const summary = await data.getSellerSalesSummary(placeId, fromIso, toIso);
@@ -2212,7 +2214,7 @@ app.get("/api/seller/sales/export.csv", async (req, res) =>{
   if(!placeId) return res.status(400).json({error:"placeId required"});
   const place = await data.getPlaceById(placeId);
   if(!place) return res.status(404).json({error:"Place not found"});
-  if(Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Owner only"});
+  if(Number(place.ownerUserId ?? place.owneruserid)!==Number(u)) return res.status(403).json({error:"Owner only"});
   const { fromIso, toIso } = parseRange("custom", req.query.from, req.query.to);
   const rows = await data.getSellerSalesExport(placeId, fromIso, toIso);
   const header = "orderId,createdAt,status,totalCents,subtotalCents,serviceGratuityCents,listingId,titleSnapshot,quantity,priceCentsSnapshot";
@@ -2923,7 +2925,8 @@ app.get("/market/listings", async (req, res) =>{
       startBidCents: startBidCents || 0,
       placeName: p.name || "Store",
       placeCategory: p.category || "",
-      districtId: p.districtId ?? p.districtid
+      districtId: p.districtId ?? p.districtid,
+      photoUrls: l.photoUrls || l.photourls || []
     };
     if(listingType === "auction"){
       const summary = await data.getAuctionSummary(l.id);
@@ -2966,7 +2969,8 @@ app.get("/api/market/listings", async (req, res) =>{
       startBidCents: startBidCents || 0,
       placeName: p.name || "Store",
       placeCategory: p.category || "",
-      districtId: p.districtId ?? p.districtid
+      districtId: p.districtId ?? p.districtid,
+      photoUrls: l.photoUrls || l.photourls || []
     };
     if(listingType === "auction"){
       const summary = await data.getAuctionSummary(l.id);
@@ -3002,7 +3006,8 @@ app.get("/market/auctions", async (req, res) =>{
       startBidCents: l.startBidCents || 0,
       placeName: p.name || "Store",
       placeCategory: p.category || "",
-      districtId: p.districtId
+      districtId: p.districtId,
+      photoUrls: l.photoUrls || l.photourls || []
     };
     const summary = await data.getAuctionSummary(l.id);
     joined.highestBidCents = summary.highestBidCents || 0;
@@ -3177,6 +3182,73 @@ app.post("/api/mod/channels/:id/unmute", async (req, res) =>{
   res.json({ ok:true });
 });
 
+// Channel requests - users can request new channels
+app.post("/api/channels/request", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  const created=await data.addChannelRequest(u, req.body || {});
+  if(created?.error) return res.status(400).json(created);
+  res.status(201).json(created);
+});
+app.get("/api/channels/requests/my", async (req, res) =>{
+  const u=await requireLogin(req,res); if(!u) return;
+  res.json(await data.listChannelRequestsByUser(u));
+});
+app.get("/api/admin/channel-requests", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const status=(req.query.status || "pending").toString().trim().toLowerCase();
+  res.json(await data.listChannelRequestsByStatus(status));
+});
+app.post("/api/admin/channel-requests/:id/approve", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const updated=await data.updateChannelRequestStatus(req.params.id, "approved", admin.id);
+  if(!updated) return res.status(404).json({error:"Not found"});
+  // Optionally create the channel automatically
+  if(updated.name){
+    const channel = await data.createChannel(updated.name, updated.description || "", 1);
+    if(channel?.id){
+      // Make the requester a moderator of their channel
+      await data.setChannelMemberRole(channel.id, updated.userId ?? updated.userid, "moderator");
+    }
+    res.json({ ok:true, request: updated, channel });
+  } else {
+    res.json({ ok:true, request: updated });
+  }
+});
+app.post("/api/admin/channel-requests/:id/deny", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const updated=await data.updateChannelRequestStatus(req.params.id, "denied", admin.id);
+  if(!updated) return res.status(404).json({error:"Not found"});
+  res.json(updated);
+});
+
+// Channel moderator management
+app.get("/api/admin/channels/:id/moderators", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const channel=await data.getChannelById(req.params.id);
+  if(!channel) return res.status(404).json({error:"Channel not found"});
+  res.json(await data.listChannelModerators(channel.id));
+});
+app.post("/api/admin/channels/:id/moderators", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const channel=await data.getChannelById(req.params.id);
+  if(!channel) return res.status(404).json({error:"Channel not found"});
+  const userId = Number(req.body?.userId);
+  const role = (req.body?.role || "moderator").toString().trim();
+  if(!userId) return res.status(400).json({error:"userId required"});
+  const result = await data.setChannelMemberRole(channel.id, userId, role);
+  if(result?.error) return res.status(400).json(result);
+  res.json(result);
+});
+app.delete("/api/admin/channels/:id/moderators/:userId", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const channel=await data.getChannelById(req.params.id);
+  if(!channel) return res.status(404).json({error:"Channel not found"});
+  const userId = Number(req.params.userId);
+  // Set role back to member (removes mod status)
+  const result = await data.setChannelMemberRole(channel.id, userId, "member");
+  res.json({ ok:true, result });
+});
+
 // Place meta
 app.get("/places/:id", async (req, res) =>{
   const p=await data.getPlaceById(req.params.id);
@@ -3215,7 +3287,8 @@ app.patch("/places/:id/profile", async (req, res) =>{
   const u=await requireLogin(req,res); if(!u) return;
   const place = await data.getPlaceById(req.params.id);
   if(!place) return res.status(404).json({error:"not found"});
-  if(Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Only owner can edit"});
+  const ownerId = place.ownerUserId ?? place.owneruserid;
+  if(Number(ownerId)!==Number(u)) return res.status(403).json({error:"Only owner can edit"});
   if((place.status || "").toLowerCase() !== "approved") return res.status(403).json({error:"Store not approved"});
   const updated = await data.updatePlaceProfile(place.id, req.body || {});
   res.json(updated);
@@ -3291,7 +3364,7 @@ app.post("/places/:id/listings", async (req, res) =>{
     const placeList = await data.getPlaces();
     const place = placeList.find(p=>Number(p.id)===pid);
     if(!place) return res.status(404).json({error:"Place not found"});
-    if(Number(place.ownerUserId)!==Number(u)) return res.status(403).json({error:"Only store owner can post offers/requests"});
+    if(Number(place.ownerUserId ?? place.owneruserid)!==Number(u)) return res.status(403).json({error:"Only store owner can post offers/requests"});
     const tier = trust.resolveTier(user, ctx);
     if(tier < 2) return res.status(403).json({error:"Sebastian Resident required for offers/requests"});
   }
@@ -3390,7 +3463,7 @@ app.post("/api/auctions/:listingId/close", async (req, res) =>{
   const place = await data.getPlaceById(listing.placeId);
   if(!place) return res.status(404).json({error:"Place not found"});
   const user = await data.getUserById(u);
-  if(!isAdminUser(user) && Number(place.ownerUserId)!==Number(u)){
+  if(!isAdminUser(user) && Number(place.ownerUserId ?? place.owneruserid)!==Number(u)){
     return res.status(403).json({error:"Only owner or admin can close"});
   }
   const highest = await data.getHighestBidForListing(listing.id);
@@ -3411,7 +3484,7 @@ app.post("/api/auctions/:listingId/close", async (req, res) =>{
     townId: listing.townId || 1,
     listingId: listing.id,
     buyerUserId: highest.userId,
-    sellerUserId: place.ownerUserId ?? null,
+    sellerUserId: place.ownerUserId ?? place.owneruserid ?? null,
     sellerPlaceId: place.id,
     quantity: 1,
     amountCents: totalCents,
@@ -3467,7 +3540,7 @@ app.post("/api/auctions/:listingId/expire_winner", async (req, res) =>{
     townId: listing.townId || 1,
     listingId: listing.id,
     buyerUserId: nextBid.userId,
-    sellerUserId: place.ownerUserId ?? null,
+    sellerUserId: place.ownerUserId ?? place.owneruserid ?? null,
     sellerPlaceId: place.id,
     quantity: 1,
     amountCents: totalCents,
