@@ -624,4 +624,90 @@ document.getElementById("listingPhotoUploadBtn").onclick = () => document.getEle
 document.getElementById("listingPhotoInput").onchange = uploadListingPhoto;
 syncListingPhotoField();
 
+// Subscription status for store owners
+async function loadSubscriptionStatus() {
+  const card = document.getElementById("subscriptionCard");
+  const badge = document.getElementById("subscriptionBadge");
+  const message = document.getElementById("subscriptionMessage");
+  const icon = document.getElementById("subscriptionIcon");
+  const btn = document.getElementById("subscriptionBtn");
+
+  if (!card || !approvedStores.length) {
+    if (card) card.style.display = "none";
+    return;
+  }
+
+  // Show card for store owners
+  card.style.display = "block";
+
+  // Use first approved store for subscription check
+  const placeId = approvedStores[0].id;
+  btn.href = `/business-subscription?placeId=${placeId}`;
+
+  try {
+    const result = await api(`/api/business/subscription/${placeId}`);
+    const sub = result.subscription;
+    const isActive = result.isActive;
+
+    // Remove all status classes
+    badge.classList.remove("active", "trial", "expired", "none");
+
+    if (!sub) {
+      // No subscription
+      badge.classList.add("none");
+      badge.textContent = "No Subscription";
+      icon.textContent = "📋";
+      message.textContent = "Get your store listed on Digital Sebastian";
+      btn.textContent = "Start Free Trial";
+      btn.classList.add("secondary");
+      return;
+    }
+
+    btn.classList.remove("secondary");
+    const plan = sub.plan || "free_trial";
+
+    if (isActive && plan === "free_trial") {
+      // Trial active
+      const trialEnd = new Date(sub.trialEndsAt);
+      const now = new Date();
+      const daysLeft = Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)));
+      badge.classList.add("trial");
+      badge.textContent = "Free Trial";
+      icon.textContent = "🎯";
+      message.textContent = `${daysLeft} days remaining in your trial`;
+      btn.textContent = "Manage Subscription";
+    } else if (isActive) {
+      // Paid/active subscription
+      badge.classList.add("active");
+      badge.textContent = "Active";
+      icon.textContent = "✅";
+      message.textContent = "Your subscription is active";
+      btn.textContent = "Manage Subscription";
+    } else {
+      // Expired
+      badge.classList.add("expired");
+      badge.textContent = "Expired";
+      icon.textContent = "⚠️";
+      message.textContent = "Your subscription has expired - features are limited";
+      btn.textContent = "Reactivate Subscription";
+    }
+  } catch (e) {
+    // No subscription found
+    badge.classList.remove("active", "trial", "expired", "none");
+    badge.classList.add("none");
+    badge.textContent = "No Subscription";
+    icon.textContent = "📋";
+    message.textContent = "Get your store listed on Digital Sebastian";
+    btn.textContent = "Start Free Trial";
+    btn.classList.add("secondary");
+  }
+}
+
+// Wrap loadOwnedStores to also load subscription status
+const originalLoadOwnedStores = loadOwnedStores;
+loadOwnedStores = async function() {
+  await originalLoadOwnedStores();
+  await loadSubscriptionStatus();
+};
+
 loadTownContext().then(() => loadMe().then(loadOwnedStores)).catch(() => {});

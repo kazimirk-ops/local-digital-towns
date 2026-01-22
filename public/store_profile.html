@@ -40,6 +40,27 @@
         <p class="store-note" id="storeLoginNote"></p>
       </div>
 
+      <!-- Subscription Card (shown only for store owners) -->
+      <div id="subscriptionCard" class="subscription-card" style="display:none;">
+        <div class="subscription-card-inner">
+          <div class="subscription-info">
+            <div class="subscription-icon" id="subscriptionIcon">📋</div>
+            <div class="subscription-details">
+              <div class="subscription-title-row">
+                <span class="subscription-label">Subscription</span>
+                <span id="subscriptionBadge" class="subscription-badge none">—</span>
+              </div>
+              <p id="subscriptionMessage" class="subscription-message">Loading subscription status...</p>
+            </div>
+          </div>
+          <div class="subscription-actions">
+            <a id="subscriptionBtn" href="/business-subscription" class="btn-subscription">
+              Manage Subscription
+            </a>
+          </div>
+        </div>
+      </div>
+
       <div class="tabs">
         <div class="tabs-list">
           <button class="tab-btn tab-active" data-tab="stores">My Stores</button>
