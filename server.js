@@ -3196,6 +3196,18 @@ app.post("/channels/:id/messages", async (req, res) =>{
   }
   res.status(201).json({ok:true, id: created.id, threadId});
 });
+app.delete("/channels/:channelId/messages/:messageId", async (req, res) =>{
+  const u = await requireLogin(req, res); if(!u) return;
+  const message = await data.getChannelMessageById(req.params.messageId);
+  if(!message) return res.status(404).json({error:"Message not found"});
+  const msgUserId = message.userId || message.userid;
+  const isOwner = Number(msgUserId) === Number(u);
+  const user = await data.getUserById(u);
+  const isAdmin = isAdminUser(user);
+  if(!isOwner && !isAdmin) return res.status(403).json({error:"Not authorized to delete this message"});
+  await data.deleteChannelMessage(req.params.messageId);
+  res.json({ok:true});
+});
 app.post("/api/mod/channels/:id/mute", async (req, res) =>{
   const access = await requirePerm(req,res,"MODERATE_CHANNELS"); if(!access) return;
   const channel=await data.getChannelById(req.params.id);

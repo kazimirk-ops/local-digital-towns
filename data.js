@@ -410,6 +410,10 @@ async function addChannelMessage(channelId, userId, text, imageUrl, replyToId, t
     .run(Number(channelId), Number(userId), String(text), String(imageUrl || ""), nowISO(), replyToId ?? null, Number(threadId));
   return { id: info.rows?.[0]?.id };
 }
+async function deleteChannelMessage(messageId){
+  await stmt("DELETE FROM channel_messages WHERE id=$1").run(Number(messageId));
+  return { ok: true };
+}
 async function isUserMutedInChannel(channelId, userId){
   return !!(await stmt("SELECT 1 FROM channel_mutes WHERE channel_id=$1 AND user_id=$2")
     .get(Number(channelId), Number(userId)));
@@ -3404,6 +3408,7 @@ module.exports = {
   getChannelMessageById,
   createChannelThread,
   addChannelMessage,
+  deleteChannelMessage,
   isUserMutedInChannel,
   upsertChannelMute,
   deleteChannelMute,

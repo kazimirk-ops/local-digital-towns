@@ -277,6 +277,8 @@ function renderChannelMessages(){
     const parent=m.replyToId ? byId.get(m.replyToId) : null;
     const prefix=parent ? `↳ ${parent.text.slice(0,60)}` : "";
     const imageHtml = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" rel="noopener"><img src="${m.imageUrl}" alt="" style="max-width:260px;border-radius:10px;border:1px solid rgba(255,255,255,.12);margin-top:6px;" /></a>` : "";
+    const canDelete = access.isAdmin || Number(m.userId) === Number(currentUser.id);
+    const deleteBtn = canDelete ? `<button data-delete="${m.id}" style="color:#f87171;">Delete</button>` : "";
     div.innerHTML=`
       <div class="muted">${prefix}</div>
       <div>${m.text}</div>
@@ -284,6 +286,7 @@ function renderChannelMessages(){
       <div class="muted">${m.user?.displayName || `User ${m.userId}`}${m.user?.trustTierLabel ? ` · ${m.user.trustTierLabel}` : ""} · ${m.createdAt}</div>
       <div class="row" style="margin-top:6px;">
         <button data-reply="${m.id}">Reply</button>
+        ${deleteBtn}
       </div>
     `;
     div.querySelector("button[data-reply]").onclick=()=>{
@@ -291,6 +294,8 @@ function renderChannelMessages(){
       $("replyToText").textContent=`Replying to: ${m.text.slice(0,80)}`;
       $("replyToBar").style.display="block";
     };
+    const delBtn = div.querySelector("button[data-delete]");
+    if(delBtn) delBtn.onclick = () => deleteChannelMessage(m.id);
     el.appendChild(div);
   });
 }
@@ -312,6 +317,16 @@ async function sendChannelMessage(){
   channels.replyToId=null;
   $("replyToBar").style.display="none";
   await loadChannelMessages(channels.selectedId);
+}
+async function deleteChannelMessage(messageId){
+  if(!channels.selectedId) return;
+  if(!confirm("Are you sure you want to delete this message?")) return;
+  try {
+    await api(`/channels/${channels.selectedId}/messages/${messageId}`, { method: "DELETE" });
+    await loadChannelMessages(channels.selectedId);
+  } catch(e) {
+    alert("Failed to delete message: " + e.message);
+  }
 }
 function bindChannels(){
   $("channelSendBtn").onclick=()=>sendChannelMessage().catch(e=>alert(e.message));
