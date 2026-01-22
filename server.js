@@ -3272,6 +3272,14 @@ app.delete("/api/admin/channels/:id/moderators/:userId", async (req, res) =>{
   res.json({ ok:true, result });
 });
 
+// Get places owned by current user
+app.get("/api/places/mine", async (req, res) =>{
+  const u = await requireLogin(req, res); if(!u) return;
+  const allPlaces = await data.getPlaces();
+  const owned = allPlaces.filter(p => Number(p.ownerUserId || p.owneruserid) === Number(u));
+  res.json(owned);
+});
+
 // Place meta
 app.get("/places/:id", async (req, res) =>{
   const p=await data.getPlaceById(req.params.id);

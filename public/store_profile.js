@@ -164,16 +164,12 @@ async function createStore() {
 
 async function loadOwnedStores() {
   if (!currentUserId) return;
-  const districts = [1,2,3,4,5];
-  const all = [];
-  await Promise.all(districts.map(async (d) => {
-    try {
-      const places = await api(`/districts/${d}/places`);
-      all.push(...places);
-    } catch {}
-  }));
-  // PostgreSQL returns lowercase column names, handle both cases
-  const owned = all.filter(p => Number(p.ownerUserId || p.owneruserid) === Number(currentUserId));
+  let owned = [];
+  try {
+    owned = await api('/api/places/mine');
+  } catch (e) {
+    console.error('Failed to load owned stores:', e);
+  }
   const list = document.getElementById("ownedStores");
   const select = document.getElementById("listingStore");
   const storefrontSelect = document.getElementById("storefrontStore");

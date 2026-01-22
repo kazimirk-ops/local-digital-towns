@@ -69,9 +69,8 @@ async function loadMyStores() {
       return;
     }
 
-    const places = await api('/places');
+    const places = await api('/api/places/mine');
     myStores = places.filter(p =>
-      Number(p.ownerUserId || p.owneruserid) === Number(me.user.id) &&
       (p.status === 'approved' || p.status === 'pending')
     );
 
