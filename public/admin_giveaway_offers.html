@@ -1,0 +1,151 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Giveaway Offers - Admin Review</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <style>
+      body { font-family: var(--font-sans, ui-sans-serif, system-ui); margin:0; background:var(--bg); color:var(--text); }
+      .topbar { background: var(--panel); border-bottom: 1px solid var(--border); padding: 12px 16px; }
+      .topbar-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+      .nav-btn { display: inline-block; padding: 6px 12px; border-radius: 8px; background: var(--panel2); color: var(--text); text-decoration: none; font-size: 13px; border: 1px solid var(--border); }
+      .nav-btn:hover { background: var(--accent); color: white; }
+      .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+      .hero { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+      .hero-title { font-size: 28px; font-weight: 700; margin: 0; }
+      .hero-subtitle { color: var(--muted); margin-top: 4px; }
+      .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px; }
+      .card-title { font-size: 18px; font-weight: 600; margin: 0 0 16px 0; }
+      .muted { color: var(--muted); font-size: 13px; }
+      .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel2); font-size: 12px; }
+      .pill-pending { background: #f59e0b20; color: #f59e0b; border-color: #f59e0b; }
+      .pill-approved { background: #22c55e20; color: #22c55e; border-color: #22c55e; }
+      .pill-rejected { background: #ef444420; color: #ef4444; border-color: #ef4444; }
+
+      .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+      .tab-btn { padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+      .tab-btn:hover { background: var(--panel); border-color: var(--accent); }
+      .tab-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+      .offers-grid { display: grid; gap: 16px; }
+      .offer-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: grid; grid-template-columns: 100px 1fr auto; gap: 16px; align-items: start; }
+      @media (max-width: 700px) {
+        .offer-card { grid-template-columns: 1fr; }
+      }
+      .offer-thumb { width: 100px; height: 100px; border-radius: 10px; object-fit: cover; background: var(--panel2); border: 1px solid var(--border); }
+      .offer-info { flex: 1; }
+      .offer-title { font-size: 16px; font-weight: 600; margin: 0 0 6px 0; }
+      .offer-desc { color: var(--muted); font-size: 13px; margin: 0 0 8px 0; line-height: 1.5; }
+      .offer-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+      .offer-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+      .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.2s; }
+      .btn:hover { opacity: 0.85; }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .btn-approve { background: #22c55e; color: white; }
+      .btn-reject { background: #ef4444; color: white; }
+      .btn-secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+      .btn-primary { background: var(--accent); color: white; }
+
+      .loading { text-align: center; padding: 40px; color: var(--muted); }
+      .empty { text-align: center; padding: 40px; color: var(--muted); }
+
+      .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center; padding: 20px; }
+      .modal-overlay.active { display: flex; }
+      .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 24px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
+      .modal-title { font-size: 20px; font-weight: 600; margin: 0 0 16px 0; }
+      .modal-body { margin-bottom: 20px; }
+      .form-group { margin-bottom: 16px; }
+      .form-label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--muted); }
+      .form-input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; }
+      textarea.form-input { min-height: 100px; resize: vertical; }
+      .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+      .store-link { color: var(--accent); text-decoration: none; }
+      .store-link:hover { text-decoration: underline; }
+
+      .stats-row { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+      .stat-box { background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; text-align: center; min-width: 100px; }
+      .stat-value { font-size: 24px; font-weight: 700; color: var(--accent); }
+      .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    </style>
+  </head>
+  <body data-town="sebastian">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="nav-btn" href="/admin">← Admin Dashboard</a>
+        <div class="controls">
+          <a class="nav-btn" href="/ui">Back to Town</a>
+          <a class="nav-btn" href="/admin/pulse">Daily Pulse</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <div class="hero">
+        <div>
+          <h2 class="hero-title">Giveaway Offers - Admin Review</h2>
+          <div class="hero-subtitle">Review and manage business giveaway prize submissions</div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row" id="statsRow">
+        <div class="stat-box">
+          <div class="stat-value" id="statPending">-</div>
+          <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statApproved">-</div>
+          <div class="stat-label">Approved</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statRejected">-</div>
+          <div class="stat-label">Rejected</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="statTotal">-</div>
+          <div class="stat-label">Total</div>
+        </div>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" data-status="all">All</button>
+        <button class="tab-btn" data-status="pending">Pending</button>
+        <button class="tab-btn" data-status="approved">Approved</button>
+        <button class="tab-btn" data-status="rejected">Rejected</button>
+      </div>
+
+      <!-- Offers List -->
+      <div id="offersLoading" class="loading">Loading offers...</div>
+      <div id="offersEmpty" class="empty" style="display:none;">No offers found</div>
+      <div id="offersGrid" class="offers-grid" style="display:none;"></div>
+    </main>
+
+    <!-- Review Modal -->
+    <div class="modal-overlay" id="reviewModal">
+      <div class="modal">
+        <h3 class="modal-title" id="modalTitle">Review Offer</h3>
+        <div class="modal-body">
+          <div id="modalOfferInfo"></div>
+          <div class="form-group">
+            <label class="form-label">Admin Notes (optional)</label>
+            <textarea class="form-input" id="modalNotes" placeholder="Add notes about this decision..."></textarea>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-reject" id="modalRejectBtn" onclick="submitReview('rejected')">Reject</button>
+          <button class="btn btn-approve" id="modalApproveBtn" onclick="submitReview('approved')">Approve</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/theme.js?v=1"></script>
+    <script src="/admin_giveaway_offers.js?v=1"></script>
+  </body>
+</html>

@@ -450,6 +450,18 @@ async function main(){
           btn.style.display="inline-block";
           btn.onclick=()=>createTestAuction();
         }
+        // Show owner controls
+        const ownerControls = $("ownerControls");
+        if(ownerControls){
+          ownerControls.style.display = "block";
+          // Update links with placeId
+          const subLink = $("subscriptionLink");
+          if(subLink) subLink.href = `/business-subscription?placeId=${place.id}`;
+          const giveawayLink = $("giveawayOfferLink");
+          if(giveawayLink) giveawayLink.href = `/giveaway-offer?placeId=${place.id}`;
+          // Load subscription status
+          loadSubscriptionStatus(place.id);
+        }
       }
     LIST=await api(`/places/${id}/listings`);
     setTab("item");
@@ -457,5 +469,32 @@ async function main(){
     debug("Ready.");
   }catch(e){debug(e.message)}
 }
+
+async function loadSubscriptionStatus(placeId){
+  const statusEl = $("subscriptionStatus");
+  if(!statusEl) return;
+  try {
+    const result = await api(`/api/business/subscription/${placeId}`);
+    if(!result.subscription){
+      statusEl.innerHTML = '<span style="color:#eab308;">No subscription</span> - <a href="/business-subscription?placeId='+placeId+'">Start free trial</a>';
+      return;
+    }
+    const sub = result.subscription;
+    const isActive = result.isActive;
+    if(isActive && sub.plan === 'free_trial'){
+      const trialEnd = new Date(sub.trialEndsAt);
+      const now = new Date();
+      const daysLeft = Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)));
+      statusEl.innerHTML = '<span style="color:#3b82f6;">Free Trial</span> - ' + daysLeft + ' days remaining';
+    } else if(isActive){
+      statusEl.innerHTML = '<span style="color:#22c55e;">Active Subscription</span>';
+    } else {
+      statusEl.innerHTML = '<span style="color:#ef4444;">Subscription Expired</span> - <a href="/business-subscription?placeId='+placeId+'">Renew</a>';
+    }
+  } catch(e) {
+    statusEl.innerHTML = '<span style="color:#eab308;">No subscription</span> - <a href="/business-subscription?placeId='+placeId+'">Start free trial</a>';
+  }
+}
+
 main();
 setInterval(()=>Object.keys(AUCTIONS).forEach(id=>renderAuctionText(id)), 1000);

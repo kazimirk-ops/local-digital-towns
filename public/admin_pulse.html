@@ -1,0 +1,148 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Daily Pulse Export – Sebastian</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <style>
+      body { font-family: var(--font-sans, ui-sans-serif, system-ui); margin:0; background:var(--bg); color:var(--text); }
+      .topbar { background: var(--panel); border-bottom: 1px solid var(--border); padding: 12px 16px; }
+      .topbar-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+      .nav-btn { display: inline-block; padding: 6px 12px; border-radius: 8px; background: var(--panel2); color: var(--text); text-decoration: none; font-size: 13px; border: 1px solid var(--border); }
+      .nav-btn:hover { background: var(--accent); color: white; }
+      .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      .wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px; }
+      .hero { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+      .hero-title { font-size: 28px; font-weight: 700; margin: 0; }
+      .hero-subtitle { color: var(--muted); margin-top: 4px; }
+      .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 20px; }
+      .card-title { font-size: 18px; font-weight: 600; margin: 0 0 16px 0; }
+      .muted { color: var(--muted); font-size: 13px; }
+      .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel2); font-size: 12px; }
+      .pill-success { background: #22c55e; color: white; border-color: #22c55e; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+      .stat-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
+      .stat-value { font-size: 32px; font-weight: 700; color: var(--accent); }
+      .stat-label { color: var(--muted); font-size: 13px; margin-top: 4px; }
+      .preview-box { background: var(--bg); border: 2px dashed var(--border); border-radius: 12px; padding: 20px; margin: 16px 0; white-space: pre-wrap; font-family: inherit; line-height: 1.6; font-size: 14px; }
+      .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 10px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
+      .btn:hover { opacity: 0.9; }
+      .btn:active { transform: scale(0.98); }
+      .btn-primary { background: var(--accent); color: white; }
+      .btn-facebook { background: #1877f2; color: white; }
+      .btn-secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+      .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+      .history-list { list-style: none; padding: 0; margin: 0; }
+      .history-item { padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+      .history-item:last-child { border-bottom: none; }
+      .history-date { font-weight: 500; }
+      .history-user { color: var(--muted); font-size: 13px; }
+      .loading { text-align: center; padding: 40px; color: var(--muted); }
+      .success-msg { background: #22c55e20; color: #22c55e; padding: 12px 16px; border-radius: 8px; margin-top: 12px; display: none; }
+      .winner-highlight { background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 8px; padding: 12px; margin: 12px 0; }
+    </style>
+  </head>
+  <body data-town="sebastian">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="nav-btn" href="/admin">← Admin Dashboard</a>
+        <div class="controls">
+          <a class="nav-btn" href="/ui">Back to Town</a>
+          <a class="nav-btn" href="/admin/analytics">Analytics</a>
+          <a class="nav-btn" href="/admin/sweep">Sweepstakes</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <div class="hero">
+        <div>
+          <h2 class="hero-title">Daily Pulse Export</h2>
+          <div class="hero-subtitle">Generate and share daily updates to Facebook Groups</div>
+        </div>
+        <div class="controls">
+          <span class="pill" id="lastExportPill">Last export: Never</span>
+        </div>
+      </div>
+
+      <!-- Stats Overview -->
+      <div class="grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-value" id="statListings">-</div>
+          <div class="stat-label">New Listings (24h)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statOrders">-</div>
+          <div class="stat-label">Orders (24h)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statEvents">-</div>
+          <div class="stat-label">Events This Week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statReviews">-</div>
+          <div class="stat-label">New Reviews (24h)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statWinners">-</div>
+          <div class="stat-label">Giveaway Winners (7d)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statStores">-</div>
+          <div class="stat-label">Active Stores</div>
+        </div>
+      </div>
+
+      <!-- Recent Winner -->
+      <div id="winnerSection" class="card" style="display:none;">
+        <h3 class="card-title">Recent Giveaway Winner</h3>
+        <div class="winner-highlight">
+          <strong id="winnerName">-</strong> won <strong id="winnerPrize">-</strong>
+        </div>
+      </div>
+
+      <!-- Facebook Post Preview -->
+      <div class="card">
+        <h3 class="card-title">Facebook Post Preview</h3>
+        <div class="preview-box" id="postPreview">Loading...</div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="copyBtn" onclick="copyToClipboard()">
+            📋 Copy to Clipboard
+          </button>
+          <button class="btn btn-facebook" id="facebookBtn" onclick="openFacebook()">
+            f Open Facebook
+          </button>
+          <button class="btn btn-secondary" id="refreshBtn" onclick="loadPulse()">
+            ↻ Refresh
+          </button>
+        </div>
+        <div class="success-msg" id="copySuccess">Copied to clipboard!</div>
+      </div>
+
+      <!-- Log Export -->
+      <div class="card">
+        <h3 class="card-title">Track Export</h3>
+        <p class="muted">Click below after posting to Facebook to log this export for tracking.</p>
+        <div class="btn-group">
+          <button class="btn btn-secondary" id="logExportBtn" onclick="logExport()">
+            ✓ Mark as Exported
+          </button>
+        </div>
+        <div class="success-msg" id="exportSuccess">Export logged successfully!</div>
+      </div>
+
+      <!-- Export History -->
+      <div class="card">
+        <h3 class="card-title">Export History</h3>
+        <div id="historyLoading" class="loading">Loading history...</div>
+        <ul class="history-list" id="historyList" style="display:none;"></ul>
+        <div id="historyEmpty" class="muted" style="display:none; padding: 20px; text-align: center;">No exports yet</div>
+      </div>
+    </main>
+
+    <script src="/theme.js?v=1"></script>
+    <script src="/admin_pulse.js?v=1"></script>
+  </body>
+</html>

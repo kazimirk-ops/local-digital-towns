@@ -67,6 +67,10 @@ async function submitClaim(e){
     });
     result.textContent = "Confirmed! Thank you.";
     await loadClaim();
+    // Prompt to share the win
+    if(window.ShareModal){
+      setTimeout(() => ShareModal.promptGiveawayWinShare(drawId), 1000);
+    }
   }catch(e){
     result.textContent = `Error: ${e.message}`;
     btn.disabled = false;

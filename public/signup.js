@@ -123,6 +123,13 @@ $("submitTrust").onclick = async () => {
     // Encourage login using same email
     $("loginEmail").value = payload.email || "";
     await loadTrustStatus();
+
+    // Prompt to share verification if approved
+    if(data.status === "approved" && window.ShareModal){
+      const tierNames = { 1: "Verified Visitor", 2: "Verified Resident", 3: "Moderator" };
+      const tierName = tierNames[payload.requestedTier] || "Sebastian local";
+      setTimeout(() => ShareModal.promptVerificationShare(tierName), 1000);
+    }
   } catch (e) {
     dbg(`ERROR: ${e.message}`);
   }

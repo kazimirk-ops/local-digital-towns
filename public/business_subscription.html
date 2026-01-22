@@ -1,0 +1,380 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Business Subscription - Digital Sebastian</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
+  <link rel="stylesheet" href="/ui-kit.css?v=1">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-sans, ui-sans-serif, system-ui);
+      background: #0a0f1a;
+      color: #e2e8f0;
+    }
+    a { color: #7dd3fc; text-decoration: none; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(13, 20, 36, 0.92);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+    }
+    .topbar-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      color: #94a3b8;
+      transition: all 0.2s ease;
+      font-size: 13px;
+      cursor: pointer;
+      background: none;
+    }
+    .nav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 24px 18px 64px; }
+    .hero {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .hero-title {
+      font-size: 32px;
+      font-weight: 800;
+      color: #fff;
+      margin: 0 0 8px 0;
+    }
+    .hero-subtitle {
+      color: #94a3b8;
+      font-size: 16px;
+    }
+    .card {
+      background: #0d1424;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 24px 50px rgba(3, 7, 15, 0.35);
+    }
+    .card-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 16px 0;
+    }
+    .muted { color: #94a3b8; font-size: 13px; }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      font-size: 13px;
+      color: #cbd5f5;
+    }
+    .pill-success { background: #22c55e20; color: #22c55e; border-color: #22c55e40; }
+    .pill-warning { background: #eab30820; color: #eab308; border-color: #eab30840; }
+    .pill-danger { background: #ef444420; color: #ef4444; border-color: #ef444440; }
+    .status-card {
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border: 2px solid;
+      text-align: center;
+      padding: 32px;
+    }
+    .status-card.active { border-color: #22c55e; }
+    .status-card.trial { border-color: #3b82f6; }
+    .status-card.expired { border-color: #ef4444; }
+    .status-card.none { border-color: #64748b; }
+    .status-badge {
+      display: inline-block;
+      padding: 8px 20px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .status-badge.active { background: #22c55e; color: #fff; }
+    .status-badge.trial { background: #3b82f6; color: #fff; }
+    .status-badge.expired { background: #ef4444; color: #fff; }
+    .status-badge.none { background: #64748b; color: #fff; }
+    .status-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 8px 0;
+    }
+    .status-detail {
+      color: #94a3b8;
+      font-size: 15px;
+    }
+    .benefits-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .benefit-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .benefit-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+    .benefit-text {
+      font-size: 14px;
+      color: #e2e8f0;
+    }
+    .benefit-text strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary {
+      background: linear-gradient(135deg, #22d3ee, #3b82f6);
+      color: #0b1120;
+    }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3); }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .btn-secondary:hover:not(:disabled) { background: rgba(255, 255, 255, 0.15); }
+    .btn-success {
+      background: #22c55e;
+      color: #fff;
+    }
+    .btn-success:hover:not(:disabled) { background: #16a34a; }
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 24px;
+    }
+    .giveaway-cta {
+      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      color: #78350f;
+    }
+    .giveaway-cta h3 {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+    }
+    .giveaway-cta p {
+      margin: 0 0 16px 0;
+      font-size: 14px;
+    }
+    .giveaway-cta .btn {
+      background: #d97706;
+      color: #fff;
+    }
+    .giveaway-cta .btn:hover { background: #b45309; }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #94a3b8;
+    }
+    .error-msg {
+      background: #ef444420;
+      color: #ef4444;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .success-msg {
+      background: #22c55e20;
+      color: #22c55e;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .store-select {
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: #151d2e;
+      color: #fff;
+      font-size: 14px;
+      min-width: 200px;
+    }
+    .no-stores {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .no-stores h3 {
+      color: #fff;
+      margin: 0 0 8px 0;
+    }
+  </style>
+</head>
+<body data-town="sebastian">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="nav-btn" href="/ui">← Back to Town</a>
+      <div class="row">
+        <select id="storeSelect" class="store-select" onchange="handleStoreChange()">
+          <option value="">Select your store...</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="hero">
+      <h1 class="hero-title">Business Subscription</h1>
+      <p class="hero-subtitle">Manage your store's subscription and unlock all features</p>
+    </div>
+
+    <div id="loadingState" class="loading">Loading your stores...</div>
+    <div id="noStoresState" class="no-stores card" style="display:none;">
+      <h3>No Stores Found</h3>
+      <p class="muted">You don't own any stores yet. Apply for a business account to get started.</p>
+      <div class="btn-group">
+        <a href="/apply/business" class="btn btn-primary">Apply for Business</a>
+      </div>
+    </div>
+
+    <div id="mainContent" style="display:none;">
+      <div id="errorMsg" class="error-msg" style="display:none;"></div>
+      <div id="successMsg" class="success-msg" style="display:none;"></div>
+
+      <!-- Subscription Status Card -->
+      <div id="statusCard" class="card status-card none">
+        <span id="statusBadge" class="status-badge none">No Subscription</span>
+        <h2 id="statusTitle" class="status-title">Start Your Free Trial</h2>
+        <p id="statusDetail" class="status-detail">Get 30 days free to try all features</p>
+      </div>
+
+      <!-- Benefits -->
+      <div class="card">
+        <h3 class="card-title">Subscription Benefits</h3>
+        <p class="muted">Everything included with your subscription:</p>
+        <div class="benefits-grid">
+          <div class="benefit-item">
+            <span class="benefit-icon">🏪</span>
+            <div class="benefit-text">
+              <strong>Store Listing</strong>
+              Your business listed on Digital Sebastian for local discovery
+            </div>
+          </div>
+          <div class="benefit-item">
+            <span class="benefit-icon">🛒</span>
+            <div class="benefit-text">
+              <strong>Marketplace Selling</strong>
+              List products and services, accept orders and payments
+            </div>
+          </div>
+          <div class="benefit-item">
+            <span class="benefit-icon">📅</span>
+            <div class="benefit-text">
+              <strong>Event Posting</strong>
+              Promote your events to the local community calendar
+            </div>
+          </div>
+          <div class="benefit-item">
+            <span class="benefit-icon">🎁</span>
+            <div class="benefit-text">
+              <strong>Giveaway Participation</strong>
+              Donate prizes and earn marketing exposure
+            </div>
+          </div>
+          <div class="benefit-item">
+            <span class="benefit-icon">⭐</span>
+            <div class="benefit-text">
+              <strong>Featured Placement</strong>
+              Options for premium visibility in the marketplace
+            </div>
+          </div>
+          <div class="benefit-item">
+            <span class="benefit-icon">💬</span>
+            <div class="benefit-text">
+              <strong>Customer Messaging</strong>
+              Direct communication with interested buyers
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div id="actionButtons" class="card" style="text-align: center;">
+        <div id="noSubActions">
+          <h3 class="card-title">Get Started Today</h3>
+          <p class="muted">Start your 30-day free trial - no credit card required</p>
+          <div class="btn-group">
+            <button id="startTrialBtn" class="btn btn-primary" onclick="startFreeTrial()">
+              Start Free Trial
+            </button>
+          </div>
+        </div>
+        <div id="activeSubActions" style="display:none;">
+          <h3 class="card-title">Manage Subscription</h3>
+          <div class="btn-group">
+            <button id="upgradeBtn" class="btn btn-primary" onclick="handleUpgrade()">
+              Upgrade to Paid Plan
+            </button>
+            <a href="/store/settings" class="btn btn-secondary">Store Settings</a>
+          </div>
+        </div>
+        <div id="expiredSubActions" style="display:none;">
+          <h3 class="card-title">Reactivate Your Subscription</h3>
+          <p class="muted">Your subscription has expired. Reactivate to continue using all features.</p>
+          <div class="btn-group">
+            <button id="reactivateBtn" class="btn btn-primary" onclick="handleUpgrade()">
+              Reactivate Subscription
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Giveaway CTA -->
+      <div class="giveaway-cta">
+        <h3>🎁 Earn a FREE Month!</h3>
+        <p>Donate a prize for the Town Giveaway and get one month of subscription FREE when approved.</p>
+        <a id="giveawayOfferLink" href="/giveaway-offer" class="btn">Submit Giveaway Offer</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="/theme.js?v=1"></script>
+  <script src="/business_subscription.js?v=1"></script>
+</body>
+</html>

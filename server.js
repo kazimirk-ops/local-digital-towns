@@ -343,6 +343,8 @@ app.get("/admin/media", async (req, res) =>{
   res.sendFile(path.join(__dirname,"public","admin_media.html"));
 });
 app.get("/store/:id", async (req, res) =>res.sendFile(path.join(__dirname,"public","store.html")));
+app.get("/business-subscription", async (req, res) =>res.sendFile(path.join(__dirname,"public","business_subscription.html")));
+app.get("/giveaway-offer", async (req, res) =>res.sendFile(path.join(__dirname,"public","giveaway_offer_form.html")));
 app.get("/admin/sweep", async (req, res) =>{
   const admin=await requireAdminPage(req,res); if(!admin) return;
   res.sendFile(path.join(__dirname,"public","admin_sweep.html"));
@@ -358,6 +360,14 @@ app.get("/admin/applications", async (req, res) =>{
 app.get("/admin/waitlist", async (req, res) =>{
   const admin=await requireAdminPage(req,res); if(!admin) return;
   res.sendFile(path.join(__dirname,"public","admin_applications.html"));
+});
+app.get("/admin/pulse", async (req, res) =>{
+  const admin=await requireAdminPage(req,res); if(!admin) return;
+  res.sendFile(path.join(__dirname,"public","admin_pulse.html"));
+});
+app.get("/admin/giveaway-offers", async (req, res) =>{
+  const admin=await requireAdminPage(req,res); if(!admin) return;
+  res.sendFile(path.join(__dirname,"public","admin_giveaway_offers.html"));
 });
 
 // Neighbor towns (directory only; no identity sharing)
@@ -3700,6 +3710,18 @@ app.get("/api/admin/giveaway/offers", async (req, res) => {
   res.json(enriched);
 });
 
+app.get("/api/giveaway/offers/place/:placeId", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const placeId = Number(req.params.placeId || 0);
+  if(!placeId) return res.status(400).json({ error: "placeId required" });
+  const place = await data.getPlaceById(placeId);
+  if(!place) return res.status(404).json({ error: "Place not found" });
+  const ownerId = place.ownerUserId ?? place.owneruserid;
+  if(Number(ownerId) !== Number(u)) return res.status(403).json({ error: "Only owner can view offers" });
+  const offers = await data.getGiveawayOffersByPlace(placeId);
+  res.json(offers);
+});
+
 app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
   const admin = await requireAdmin(req, res); if(!admin) return;
   const offerId = Number(req.params.id || 0);
@@ -3734,6 +3756,143 @@ Thank you for being part of our community!`;
     sendEmail(owner.email, `Giveaway Offer ${status === "approved" ? "Approved" : "Update"}`, emailText);
   }
   res.json({ ok: true, offer, subscription });
+});
+
+// ---------- Social Sharing ----------
+function getPublicBaseUrl() {
+  return (process.env.PUBLIC_BASE_URL || process.env.SITE_URL || process.env.APP_URL || "").toString().trim().replace(/\/$/, "") || "https://sebastian.local";
+}
+
+app.get("/api/share/purchase/:orderId", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const orderId = Number(req.params.orderId || 0);
+  if(!orderId) return res.status(400).json({ error: "orderId required" });
+  const order = await data.getOrderById(orderId);
+  if(!order) return res.status(404).json({ error: "Order not found" });
+  if(Number(order.buyerUserId) !== Number(u)) return res.status(403).json({ error: "Only buyer can share" });
+  const listing = order.listingId ? await data.getListingById(order.listingId) : null;
+  const place = order.sellerPlaceId ? await data.getPlaceById(order.sellerPlaceId) : null;
+  const itemName = listing?.title || order.titleSnapshot || "something special";
+  const storeName = place?.name || "a local business";
+  const baseUrl = getPublicBaseUrl();
+  const text = `Just bought ${itemName} from ${storeName} on Digital Sebastian! Support local businesses in Sebastian, FL.`;
+  const url = place ? `${baseUrl}/places/${place.id}` : baseUrl;
+  const imageUrl = listing?.photoUrls?.[0] || place?.avatarUrl || `${baseUrl}/images/share-default.png`;
+  res.json({ text, url, imageUrl, orderId, itemName, storeName });
+});
+
+app.get("/api/share/giveaway-win/:awardId", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const awardId = Number(req.params.awardId || 0);
+  if(!awardId) return res.status(400).json({ error: "awardId required" });
+  const award = await data.getPrizeAwardById(awardId);
+  if(!award) return res.status(404).json({ error: "Award not found" });
+  if(Number(award.userId) !== Number(u)) return res.status(403).json({ error: "Only winner can share" });
+  const prizeName = award.prizeTitle || award.prizeName || "an amazing prize";
+  const baseUrl = getPublicBaseUrl();
+  const text = `I won ${prizeName} in the Sebastian Giveaway! Join Digital Sebastian and enter to win amazing local prizes.`;
+  const url = `${baseUrl}/giveaway`;
+  const imageUrl = award.prizeImageUrl || `${baseUrl}/images/giveaway-share.png`;
+  res.json({ text, url, imageUrl, awardId, prizeName });
+});
+
+app.get("/api/share/sweep-win/:drawId", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const drawId = Number(req.params.drawId || 0);
+  if(!drawId) return res.status(400).json({ error: "drawId required" });
+  const draw = await data.getSweepDrawById(drawId);
+  if(!draw) return res.status(404).json({ error: "Draw not found" });
+  if(Number(draw.winnerUserId) !== Number(u)) return res.status(403).json({ error: "Only winner can share" });
+  const sweep = draw.sweepId ? await data.getSweepstakeById(draw.sweepId) : null;
+  const snapshot = draw.snapshotJson ? (typeof draw.snapshotJson === "string" ? JSON.parse(draw.snapshotJson) : draw.snapshotJson) : {};
+  const prizeName = snapshot.prize?.title || sweep?.prize || sweep?.title || "an amazing prize";
+  const baseUrl = getPublicBaseUrl();
+  const text = `I won ${prizeName} in the Sebastian Sweepstakes! Join Digital Sebastian and enter to win amazing local prizes.`;
+  const url = `${baseUrl}/giveaway`;
+  const imageUrl = snapshot.prize?.imageUrl || draw.claimedPhotoUrl || `${baseUrl}/images/giveaway-share.png`;
+  res.json({ text, url, imageUrl, drawId, prizeName });
+});
+
+app.get("/api/share/review/:reviewId", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const reviewId = Number(req.params.reviewId || 0);
+  if(!reviewId) return res.status(400).json({ error: "reviewId required" });
+  const review = await db.one("SELECT * FROM reviews WHERE id=$1", [reviewId]);
+  if(!review) return res.status(404).json({ error: "Review not found" });
+  if(Number(review.reviewerUserId || review.revieweruserid) !== Number(u)){
+    return res.status(403).json({ error: "Only reviewer can share" });
+  }
+  const order = review.orderId ? await data.getOrderById(review.orderId || review.orderid) : null;
+  const place = order?.sellerPlaceId ? await data.getPlaceById(order.sellerPlaceId) : null;
+  const storeName = place?.name || "a local business";
+  const rating = Number(review.rating || 0);
+  const stars = rating >= 4 ? "loved" : "found";
+  const baseUrl = getPublicBaseUrl();
+  const text = `I ${stars} ${storeName} on Digital Sebastian! ${rating >= 4 ? "Highly recommend checking them out." : "Support local businesses in Sebastian, FL."}`;
+  const url = place ? `${baseUrl}/places/${place.id}` : baseUrl;
+  const imageUrl = place?.avatarUrl || `${baseUrl}/images/share-default.png`;
+  res.json({ text, url, imageUrl, reviewId, storeName, rating });
+});
+
+app.post("/api/share/log", async (req, res) => {
+  const u = await getUserId(req);
+  const shareType = (req.body?.shareType || "").toString().trim();
+  const itemType = (req.body?.itemType || "").toString().trim();
+  const itemId = Number(req.body?.itemId || 0);
+  const platform = (req.body?.platform || "facebook").toString().trim();
+  if(!shareType || !itemType || !itemId){
+    return res.status(400).json({ error: "shareType, itemType, and itemId required" });
+  }
+  const share = await data.logSocialShare(u, shareType, itemType, itemId, platform);
+  res.json({ ok: true, share });
+});
+
+// ---------- Daily Pulse Export ----------
+app.get("/api/pulse/daily", async (req, res) => {
+  const townId = Number(req.query.townId || 1);
+  const pulse = await data.getDailyPulseSummary(townId);
+  res.json(pulse);
+});
+
+app.get("/api/pulse/export/facebook", async (req, res) => {
+  const townId = Number(req.query.townId || 1);
+  const result = await data.formatPulseForFacebook(townId);
+  res.json(result);
+});
+
+app.get("/api/pulse/export/image", async (req, res) => {
+  const baseUrl = getPublicBaseUrl();
+  res.json({
+    imageUrl: `${baseUrl}/images/pulse-card.png`,
+    templateUrl: `${baseUrl}/pulse-card`,
+    note: "Dynamic image generation can be added via Cloudflare Workers or similar service"
+  });
+});
+
+app.post("/api/admin/pulse/export", async (req, res) => {
+  const admin = await requireAdmin(req, res); if(!admin) return;
+  const townId = Number(req.body?.townId || 1);
+  const exportType = (req.body?.exportType || "facebook").toString().trim();
+  const result = await data.formatPulseForFacebook(townId);
+  const logged = await data.logPulseExport(townId, exportType, admin.id, result.pulse, result.text);
+  res.json({ ok: true, export: logged, text: result.text, pulse: result.pulse });
+});
+
+app.get("/api/admin/pulse/history", async (req, res) => {
+  const admin = await requireAdmin(req, res); if(!admin) return;
+  const townId = Number(req.query.townId || 1);
+  const limit = Number(req.query.limit || 30);
+  const exports = await data.listPulseExports(townId, limit);
+  const lastExport = exports[0] || null;
+  res.json({ exports, lastExport });
+});
+
+app.get("/api/admin/pulse/last", async (req, res) => {
+  const admin = await requireAdmin(req, res); if(!admin) return;
+  const townId = Number(req.query.townId || 1);
+  const exportType = (req.query.exportType || "facebook").toString();
+  const lastExport = await data.getLastPulseExport(townId, exportType);
+  res.json({ lastExport });
 });
 
 const PORT = Number(process.env.PORT || 3000);

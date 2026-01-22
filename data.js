@@ -2524,6 +2524,204 @@ async function generateDailyPulse(townId = 1, dayKey){
   return pulse;
 }
 
+// ---------- Daily Pulse Summary for Facebook Export ----------
+async function getDailyPulseSummary(townId = 1) {
+  const now = new Date();
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const nowIso = now.toISOString();
+
+  // New listings in last 24 hours
+  const newListingsRow = await stmt(`
+    SELECT COUNT(*) AS c FROM listings
+    WHERE townId=$1 AND createdAt >= $2
+  `).get(Number(townId), oneDayAgo);
+  const newListingsCount = Number(newListingsRow?.c || 0);
+
+  // New orders in last 24 hours
+  const newOrdersRow = await stmt(`
+    SELECT COUNT(*) AS c FROM orders
+    WHERE createdAt >= $1 AND status IN ('paid', 'completed')
+  `).get(oneDayAgo);
+  const newOrdersCount = Number(newOrdersRow?.c || 0);
+
+  // Giveaway winners in last 7 days
+  const giveawayWinnersRow = await stmt(`
+    SELECT COUNT(*) AS c FROM sweep_draws
+    WHERE createdAt >= $1 AND winnerUserId IS NOT NULL
+  `).get(sevenDaysAgo);
+  const giveawayWinnersCount = Number(giveawayWinnersRow?.c || 0);
+
+  // Upcoming events in next 7 days
+  const upcomingEventsRow = await stmt(`
+    SELECT COUNT(*) AS c FROM events_v1
+    WHERE townId=$1 AND status='approved' AND startAt >= $2 AND startAt <= $3
+  `).get(Number(townId), nowIso, sevenDaysFromNow);
+  const upcomingEventsCount = Number(upcomingEventsRow?.c || 0);
+
+  // New reviews in last 24 hours
+  const newReviewsRow = await stmt(`
+    SELECT COUNT(*) AS c FROM reviews
+    WHERE createdAt >= $1
+  `).get(oneDayAgo);
+  const newReviewsCount = Number(newReviewsRow?.c || 0);
+
+  // Top 3 listings (most recent with good data)
+  const topListings = await stmt(`
+    SELECT l.id, l.title, l.price, p.name AS placeName
+    FROM listings l
+    LEFT JOIN places p ON p.id = l.placeId
+    WHERE l.townId=$1 AND l.status='active'
+    ORDER BY l.createdAt DESC
+    LIMIT 3
+  `).all(Number(townId));
+
+  // Most recent giveaway winner (if they agreed to share / claimed)
+  const recentWinnerRow = await stmt(`
+    SELECT sd.id, sd.winnerUserId, sd.claimedAt, sd.snapshotJson,
+           u.displayName, u.email
+    FROM sweep_draws sd
+    LEFT JOIN users u ON u.id = sd.winnerUserId
+    WHERE sd.winnerUserId IS NOT NULL AND sd.claimedAt IS NOT NULL
+    ORDER BY sd.createdAt DESC
+    LIMIT 1
+  `).get();
+
+  let recentWinner = null;
+  if (recentWinnerRow) {
+    let snapshot = {};
+    try {
+      snapshot = typeof recentWinnerRow.snapshotJson === 'string'
+        ? JSON.parse(recentWinnerRow.snapshotJson || '{}')
+        : (recentWinnerRow.snapshotJson || {});
+    } catch { snapshot = {}; }
+    const winnerName = recentWinnerRow.displayName ||
+      (recentWinnerRow.email ? recentWinnerRow.email.split('@')[0] : 'A lucky winner');
+    const prizeName = snapshot.prize?.title || snapshot.prizeTitle || 'an amazing prize';
+    recentWinner = {
+      name: winnerName,
+      prize: prizeName,
+      claimedAt: recentWinnerRow.claimedAt
+    };
+  }
+
+  // New users in last 24 hours
+  const newUsersRow = await stmt(`
+    SELECT COUNT(*) AS c FROM users
+    WHERE createdAt >= $1
+  `).get(oneDayAgo);
+  const newUsersCount = Number(newUsersRow?.c || 0);
+
+  // Active stores count
+  const activeStoresRow = await stmt(`
+    SELECT COUNT(*) AS c FROM places
+    WHERE townId=$1 AND status='approved'
+  `).get(Number(townId));
+  const activeStoresCount = Number(activeStoresRow?.c || 0);
+
+  return {
+    generatedAt: nowIso,
+    townId,
+    newListingsCount,
+    newOrdersCount,
+    giveawayWinnersCount,
+    upcomingEventsCount,
+    newReviewsCount,
+    newUsersCount,
+    activeStoresCount,
+    topListings,
+    recentWinner
+  };
+}
+
+async function formatPulseForFacebook(townId = 1) {
+  const pulse = await getDailyPulseSummary(townId);
+  const baseUrl = (process.env.PUBLIC_BASE_URL || process.env.SITE_URL || '').replace(/\/$/, '') || 'https://sebastian.local';
+
+  const lines = [];
+  lines.push("🌴 Today in Sebastian:");
+  lines.push("");
+
+  if (pulse.newListingsCount > 0) {
+    lines.push(`• ${pulse.newListingsCount} new marketplace listing${pulse.newListingsCount !== 1 ? 's' : ''}`);
+  }
+
+  if (pulse.upcomingEventsCount > 0) {
+    lines.push(`• ${pulse.upcomingEventsCount} local event${pulse.upcomingEventsCount !== 1 ? 's' : ''} this week`);
+  }
+
+  if (pulse.newOrdersCount > 0) {
+    lines.push(`• ${pulse.newOrdersCount} purchase${pulse.newOrdersCount !== 1 ? 's' : ''} supporting local businesses`);
+  }
+
+  if (pulse.newReviewsCount > 0) {
+    lines.push(`• ${pulse.newReviewsCount} new review${pulse.newReviewsCount !== 1 ? 's' : ''}`);
+  }
+
+  if (pulse.recentWinner) {
+    lines.push("");
+    lines.push(`🏆 Congrats to ${pulse.recentWinner.name} for winning ${pulse.recentWinner.prize}!`);
+  }
+
+  if (pulse.topListings && pulse.topListings.length > 0) {
+    lines.push("");
+    lines.push("📦 New on the marketplace:");
+    pulse.topListings.slice(0, 3).forEach(listing => {
+      const price = listing.price ? ` - $${Number(listing.price).toFixed(2)}` : '';
+      const store = listing.placeName ? ` from ${listing.placeName}` : '';
+      lines.push(`  → ${listing.title}${price}${store}`);
+    });
+  }
+
+  lines.push("");
+  lines.push(`See what's happening → ${baseUrl}`);
+  lines.push("");
+  lines.push("#SebastianFL #SupportLocal #ShopLocal #DigitalSebastian");
+
+  return {
+    text: lines.join("\n"),
+    pulse,
+    baseUrl
+  };
+}
+
+async function logPulseExport(townId, exportType, userId, pulseData, postText) {
+  const info = await stmt(`
+    INSERT INTO pulse_exports (townId, exportType, exportedAt, exportedByUserId, pulseData, postText)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id
+  `).run(
+    Number(townId),
+    String(exportType),
+    nowISO(),
+    userId == null ? null : Number(userId),
+    JSON.stringify(pulseData || {}),
+    String(postText || '')
+  );
+  return stmt("SELECT * FROM pulse_exports WHERE id=$1").get(info.rows?.[0]?.id);
+}
+
+async function getLastPulseExport(townId = 1, exportType = 'facebook') {
+  return (await stmt(`
+    SELECT * FROM pulse_exports
+    WHERE townId=$1 AND exportType=$2
+    ORDER BY exportedAt DESC
+    LIMIT 1
+  `).get(Number(townId), String(exportType))) || null;
+}
+
+async function listPulseExports(townId = 1, limit = 30) {
+  return stmt(`
+    SELECT pe.*, u.displayName AS exportedByName, u.email AS exportedByEmail
+    FROM pulse_exports pe
+    LEFT JOIN users u ON u.id = pe.exportedByUserId
+    WHERE pe.townId=$1
+    ORDER BY pe.exportedAt DESC
+    LIMIT $2
+  `).all(Number(townId), Number(limit));
+}
+
 async function addWaitlistSignup(payload){
   const createdAt = nowISO();
   const email = normalizeEmail(payload?.email);
@@ -3088,6 +3286,10 @@ async function getGiveawayOffersByStatus(status) {
   return stmt("SELECT * FROM giveaway_offers WHERE status=$1 ORDER BY createdAt DESC").all(s);
 }
 
+async function getGiveawayOffersByPlace(placeId) {
+  return stmt("SELECT * FROM giveaway_offers WHERE placeId=$1 ORDER BY createdAt DESC").all(Number(placeId));
+}
+
 async function updateGiveawayOfferStatus(offerId, status, adminUserId, notes) {
   const reviewedAt = nowISO();
   await stmt(`
@@ -3115,6 +3317,32 @@ async function awardFreeMonth(placeId) {
   await stmt("UPDATE business_subscriptions SET currentPeriodEnd=$1, updatedAt=$2, status=$3 WHERE id=$4")
     .run(newEnd, updatedAt, 'active', Number(sub.id));
   return stmt("SELECT * FROM business_subscriptions WHERE id=$1").get(Number(sub.id));
+}
+
+// ---------- Social Shares ----------
+async function logSocialShare(userId, shareType, itemType, itemId, platform = 'facebook') {
+  const now = nowISO();
+  const info = await stmt(`
+    INSERT INTO social_shares (userId, shareType, itemType, itemId, platform, createdAt)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id
+  `).run(
+    userId == null ? null : Number(userId),
+    String(shareType),
+    String(itemType),
+    Number(itemId),
+    String(platform),
+    now
+  );
+  return stmt("SELECT * FROM social_shares WHERE id=$1").get(info.rows?.[0]?.id);
+}
+
+async function getShareCountByItem(itemType, itemId) {
+  const row = await stmt(`
+    SELECT COUNT(*) AS count FROM social_shares
+    WHERE itemType=$1 AND itemId=$2
+  `).get(String(itemType), Number(itemId));
+  return Number(row?.count || 0);
 }
 
 module.exports = {
@@ -3274,6 +3502,11 @@ module.exports = {
   listDailyPulses,
   cleanupDailyPulses,
   generateDailyPulse,
+  getDailyPulseSummary,
+  formatPulseForFacebook,
+  logPulseExport,
+  getLastPulseExport,
+  listPulseExports,
   getSellerSalesSummary,
   getSellerSalesExport,
   countUsers,
@@ -3336,6 +3569,11 @@ module.exports = {
   isSubscriptionActive,
   createGiveawayOffer,
   getGiveawayOffersByStatus,
+  getGiveawayOffersByPlace,
   updateGiveawayOfferStatus,
   awardFreeMonth,
+
+  // social shares
+  logSocialShare,
+  getShareCountByItem,
 };

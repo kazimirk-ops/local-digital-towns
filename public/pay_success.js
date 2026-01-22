@@ -27,6 +27,10 @@ async function main(){
     $("paySuccessSubtotal").textContent = `Subtotal: ${fmtCents(order.subtotalCents)}`;
     $("paySuccessGratuity").textContent = `Gratuity: ${fmtCents(order.serviceGratuityCents)}`;
     $("paySuccessTotal").textContent = `Total: ${fmtCents(order.totalCents)}`;
+    // Prompt to share purchase after a short delay
+    if(order.status === "paid" && window.ShareModal){
+      setTimeout(() => ShareModal.promptPurchaseShare(order.id), 1500);
+    }
   }catch(e){
     statusEl.textContent = `ERROR: ${e.message}`;
   }
