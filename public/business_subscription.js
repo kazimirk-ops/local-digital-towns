@@ -22,6 +22,11 @@ function formatDate(iso) {
   });
 }
 
+function formatCurrency(cents) {
+  if (!cents && cents !== 0) return '$0.00';
+  return '$' + (cents / 100).toFixed(2);
+}
+
 function getDaysRemaining(iso) {
   if (!iso) return 0;
   const end = new Date(iso);
@@ -30,18 +35,30 @@ function getDaysRemaining(iso) {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
+function getPlanName(plan) {
+  const plans = {
+    'free_trial': 'Free Trial',
+    'monthly': 'Monthly Plan',
+    'annual': 'Annual Plan',
+    'free_month': 'Free Month (Giveaway)'
+  };
+  return plans[plan] || plan || 'Unknown';
+}
+
 function showError(msg) {
   const el = $('errorMsg');
   el.textContent = msg;
   el.style.display = 'block';
-  setTimeout(() => { el.style.display = 'none'; }, 5000);
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => { el.style.display = 'none'; }, 6000);
 }
 
 function showSuccess(msg) {
   const el = $('successMsg');
   el.textContent = msg;
   el.style.display = 'block';
-  setTimeout(() => { el.style.display = 'none'; }, 5000);
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => { el.style.display = 'none'; }, 6000);
 }
 
 async function loadMyStores() {
@@ -52,7 +69,6 @@ async function loadMyStores() {
       return;
     }
 
-    // Get places owned by this user
     const places = await api('/places');
     myStores = places.filter(p =>
       Number(p.ownerUserId || p.owneruserid) === Number(me.user.id) &&
@@ -66,7 +82,6 @@ async function loadMyStores() {
       return;
     }
 
-    // Populate store selector
     const select = $('storeSelect');
     myStores.forEach(store => {
       const opt = document.createElement('option');
@@ -75,7 +90,6 @@ async function loadMyStores() {
       select.appendChild(opt);
     });
 
-    // Check URL for placeId or use first store
     const urlParams = new URLSearchParams(window.location.search);
     const urlPlaceId = urlParams.get('placeId');
 
@@ -87,6 +101,7 @@ async function loadMyStores() {
       currentPlaceId = myStores[0].id;
     }
 
+    updateStoreLinks();
     $('mainContent').style.display = 'block';
     await fetchSubscriptionStatus();
   } catch (e) {
@@ -100,12 +115,22 @@ async function handleStoreChange() {
   if (!select.value) return;
   currentPlaceId = Number(select.value);
 
-  // Update URL
   const url = new URL(window.location);
   url.searchParams.set('placeId', currentPlaceId);
   window.history.replaceState({}, '', url);
 
+  updateStoreLinks();
   await fetchSubscriptionStatus();
+}
+
+function updateStoreLinks() {
+  if (currentPlaceId) {
+    $('giveawayOfferLink').href = `/giveaway-offer?placeId=${currentPlaceId}`;
+    $('viewStoreLink').href = `/store?id=${currentPlaceId}`;
+    $('viewStoreLink').style.display = 'inline-flex';
+    const settingsLink = $('storeSettingsLink');
+    if (settingsLink) settingsLink.href = `/store/settings?placeId=${currentPlaceId}`;
+  }
 }
 
 async function fetchSubscriptionStatus() {
@@ -114,77 +139,124 @@ async function fetchSubscriptionStatus() {
   try {
     const result = await api(`/api/business/subscription/${currentPlaceId}`);
     currentSubscription = result.subscription;
-    displaySubscriptionCard(result.subscription, result.isActive);
-    updateGiveawayLink();
+    renderStatusCard(result.subscription, result.isActive);
+    renderBenefits(result.isActive);
+    renderActionButtons(result.subscription, result.isActive);
+    await loadPaymentHistory();
   } catch (e) {
-    // No subscription exists
     currentSubscription = null;
-    displaySubscriptionCard(null, false);
-    updateGiveawayLink();
+    renderStatusCard(null, false);
+    renderBenefits(false);
+    renderActionButtons(null, false);
+    $('paymentHistoryCard').style.display = 'none';
   }
 }
 
-function displaySubscriptionCard(sub, isActive) {
+function renderStatusCard(sub, isActive) {
   const statusCard = $('statusCard');
   const statusBadge = $('statusBadge');
+  const planBadge = $('planBadge');
+  const statusIcon = $('statusIcon');
   const statusTitle = $('statusTitle');
-  const statusDetail = $('statusDetail');
+  const statusSubtitle = $('statusSubtitle');
+  const statusDetails = $('statusDetails');
 
-  // Remove all status classes
   statusCard.classList.remove('active', 'trial', 'expired', 'none');
   statusBadge.classList.remove('active', 'trial', 'expired', 'none');
 
-  // Hide all action sections
-  $('noSubActions').style.display = 'none';
-  $('activeSubActions').style.display = 'none';
-  $('expiredSubActions').style.display = 'none';
-
   if (!sub) {
-    // No subscription
     statusCard.classList.add('none');
     statusBadge.classList.add('none');
     statusBadge.textContent = 'No Subscription';
+    planBadge.textContent = '';
+    statusIcon.textContent = '📋';
     statusTitle.textContent = 'Start Your Free Trial';
-    statusDetail.textContent = 'Get 30 days free to try all features';
+    statusSubtitle.textContent = 'Get 30 days free to try all features';
+    statusDetails.style.display = 'none';
+    return;
+  }
+
+  const plan = sub.plan || 'free_trial';
+  const status = (sub.status || 'active').toLowerCase();
+  const isTrial = plan === 'free_trial';
+  const endDate = sub.trialEndsAt || sub.currentPeriodEnd;
+  const daysLeft = getDaysRemaining(endDate);
+
+  planBadge.textContent = getPlanName(plan);
+  statusDetails.style.display = 'block';
+
+  $('detailPlan').textContent = getPlanName(plan);
+  $('detailStartDate').textContent = formatDate(sub.createdAt || sub.currentPeriodStart);
+
+  if (isActive && isTrial) {
+    statusCard.classList.add('trial');
+    statusBadge.classList.add('trial');
+    statusBadge.textContent = 'Free Trial';
+    statusIcon.textContent = '🎯';
+    statusTitle.textContent = `${daysLeft} Days Remaining`;
+    statusSubtitle.textContent = 'Your free trial is active';
+    $('detailStatus').textContent = 'Active (Trial)';
+    $('endDateLabel').textContent = 'Trial Ends';
+    $('detailEndDate').textContent = formatDate(sub.trialEndsAt);
+    $('detailDaysRemaining').textContent = daysLeft;
+    $('daysRemainingRow').style.display = 'flex';
+  } else if (isActive) {
+    statusCard.classList.add('active');
+    statusBadge.classList.add('active');
+    statusBadge.textContent = 'Active';
+    statusIcon.textContent = '✅';
+    statusTitle.textContent = 'Subscription Active';
+    statusSubtitle.textContent = 'All features unlocked';
+    $('detailStatus').textContent = sub.canceledAt ? 'Canceled (Active until period end)' : 'Active';
+    $('endDateLabel').textContent = sub.canceledAt ? 'Access Until' : 'Renews';
+    $('detailEndDate').textContent = formatDate(sub.currentPeriodEnd);
+    $('detailDaysRemaining').textContent = daysLeft;
+    $('daysRemainingRow').style.display = 'flex';
+  } else {
+    statusCard.classList.add('expired');
+    statusBadge.classList.add('expired');
+    statusBadge.textContent = 'Expired';
+    statusIcon.textContent = '⚠️';
+    statusTitle.textContent = 'Subscription Expired';
+    statusSubtitle.textContent = 'Reactivate to continue using all features';
+    $('detailStatus').textContent = 'Expired';
+    $('endDateLabel').textContent = 'Ended';
+    $('detailEndDate').textContent = formatDate(endDate);
+    $('daysRemainingRow').style.display = 'none';
+  }
+}
+
+function renderBenefits(isActive) {
+  const benefits = document.querySelectorAll('.benefit-item');
+  benefits.forEach(benefit => {
+    if (isActive) {
+      benefit.classList.remove('locked');
+    } else {
+      benefit.classList.add('locked');
+    }
+  });
+}
+
+function renderActionButtons(sub, isActive) {
+  $('noSubActions').style.display = 'none';
+  $('trialActiveActions').style.display = 'none';
+  $('paidActiveActions').style.display = 'none';
+  $('expiredActions').style.display = 'none';
+
+  if (!sub) {
     $('noSubActions').style.display = 'block';
     return;
   }
 
   const plan = sub.plan || 'free_trial';
-  const status = sub.status || 'active';
+  const isTrial = plan === 'free_trial';
 
-  if (isActive && plan === 'free_trial') {
-    // Active trial
-    const daysLeft = getDaysRemaining(sub.trialEndsAt);
-    statusCard.classList.add('trial');
-    statusBadge.classList.add('trial');
-    statusBadge.textContent = 'Free Trial';
-    statusTitle.textContent = `${daysLeft} Days Remaining`;
-    statusDetail.textContent = `Trial ends ${formatDate(sub.trialEndsAt)}`;
-    $('activeSubActions').style.display = 'block';
+  if (isActive && isTrial) {
+    $('trialActiveActions').style.display = 'block';
   } else if (isActive) {
-    // Active paid subscription
-    statusCard.classList.add('active');
-    statusBadge.classList.add('active');
-    statusBadge.textContent = 'Active';
-    statusTitle.textContent = 'Subscription Active';
-    statusDetail.textContent = `Renews ${formatDate(sub.currentPeriodEnd)}`;
-    $('activeSubActions').style.display = 'block';
+    $('paidActiveActions').style.display = 'block';
   } else {
-    // Expired
-    statusCard.classList.add('expired');
-    statusBadge.classList.add('expired');
-    statusBadge.textContent = 'Expired';
-    statusTitle.textContent = 'Subscription Expired';
-    statusDetail.textContent = `Ended ${formatDate(sub.currentPeriodEnd || sub.trialEndsAt)}`;
-    $('expiredSubActions').style.display = 'block';
-  }
-}
-
-function updateGiveawayLink() {
-  const link = $('giveawayOfferLink');
-  if (currentPlaceId) {
-    link.href = `/giveaway-offer?placeId=${currentPlaceId}`;
+    $('expiredActions').style.display = 'block';
   }
 }
 
@@ -195,8 +267,9 @@ async function startFreeTrial() {
   }
 
   const btn = $('startTrialBtn');
+  const originalText = btn.innerHTML;
   btn.disabled = true;
-  btn.textContent = 'Starting...';
+  btn.innerHTML = '<span class="btn-icon">⏳</span> Starting...';
 
   try {
     const result = await api('/api/business/subscribe', {
@@ -207,58 +280,213 @@ async function startFreeTrial() {
 
     showSuccess('Free trial started! Enjoy 30 days of full access.');
     currentSubscription = result.subscription;
-    displaySubscriptionCard(result.subscription, true);
+    renderStatusCard(result.subscription, true);
+    renderBenefits(true);
+    renderActionButtons(result.subscription, true);
   } catch (e) {
     showError(e.message);
     btn.disabled = false;
-    btn.textContent = 'Start Free Trial';
+    btn.innerHTML = originalText;
   }
 }
 
-async function handleUpgrade() {
+async function upgradeToPaid() {
   if (!currentPlaceId) {
     showError('Please select a store first');
     return;
   }
 
-  // For now, show a message about Stripe integration
-  // In production, this would redirect to Stripe checkout
-  const upgradeBtn = $('upgradeBtn') || $('reactivateBtn');
-  if (upgradeBtn) {
-    upgradeBtn.disabled = true;
-    upgradeBtn.textContent = 'Redirecting...';
+  const btn = $('upgradeBtn') || $('reactivateBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-icon">⏳</span> Redirecting to checkout...';
   }
 
   try {
-    // Check if Stripe is configured
-    const response = await fetch('/api/business/checkout', {
+    const response = await api('/api/business/subscribe/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ placeId: currentPlaceId })
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
+    if (response.url) {
+      window.location.href = response.url;
+      return;
     }
 
-    // Fallback if checkout not implemented
-    showError('Paid subscriptions coming soon! For now, enjoy your free trial or submit a giveaway offer for a free month.');
-    if (upgradeBtn) {
-      upgradeBtn.disabled = false;
-      upgradeBtn.textContent = upgradeBtn.id === 'reactivateBtn' ? 'Reactivate Subscription' : 'Upgrade to Paid Plan';
+    showError('Unable to create checkout session. Please try again.');
+    resetUpgradeButton(btn);
+  } catch (e) {
+    if (e.message.includes('not configured') || e.message.includes('coming soon')) {
+      showError('Paid subscriptions are coming soon! For now, enjoy your free trial or submit a giveaway offer for a free month.');
+    } else {
+      showError(e.message);
+    }
+    resetUpgradeButton(btn);
+  }
+}
+
+function resetUpgradeButton(btn) {
+  if (!btn) return;
+  btn.disabled = false;
+  if (btn.id === 'reactivateBtn') {
+    btn.innerHTML = '<span class="btn-icon">🔄</span> Reactivate — $29/month';
+  } else {
+    btn.innerHTML = '<span class="btn-icon">⬆️</span> Upgrade to Paid — $29/month';
+  }
+}
+
+async function manageSubscription() {
+  if (!currentPlaceId) {
+    showError('Please select a store first');
+    return;
+  }
+
+  const btn = $('manageBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-icon">⏳</span> Loading...';
+  }
+
+  try {
+    const response = await api('/api/business/subscribe/portal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ placeId: currentPlaceId })
+    });
+
+    if (response.url) {
+      window.location.href = response.url;
+      return;
+    }
+
+    showError('Unable to open subscription portal.');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="btn-icon">⚙️</span> Manage Subscription';
     }
   } catch (e) {
-    showError('Paid subscriptions coming soon! Submit a giveaway offer to earn a free month.');
-    if (upgradeBtn) {
-      upgradeBtn.disabled = false;
-      upgradeBtn.textContent = upgradeBtn.id === 'reactivateBtn' ? 'Reactivate Subscription' : 'Upgrade to Paid Plan';
+    showError(e.message || 'Subscription portal not available.');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="btn-icon">⚙️</span> Manage Subscription';
     }
   }
+}
+
+function confirmCancel() {
+  $('cancelModal').style.display = 'flex';
+}
+
+function closeCancelModal() {
+  $('cancelModal').style.display = 'none';
+}
+
+async function cancelSubscription() {
+  if (!currentPlaceId) {
+    showError('Please select a store first');
+    closeCancelModal();
+    return;
+  }
+
+  const btn = $('confirmCancelBtn');
+  btn.disabled = true;
+  btn.textContent = 'Canceling...';
+
+  try {
+    await api('/api/business/subscribe/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ placeId: currentPlaceId })
+    });
+
+    closeCancelModal();
+    showSuccess('Subscription canceled. You will have access until the end of your billing period.');
+    await fetchSubscriptionStatus();
+  } catch (e) {
+    showError(e.message);
+    btn.disabled = false;
+    btn.textContent = 'Yes, Cancel';
+  }
+}
+
+async function loadPaymentHistory() {
+  if (!currentPlaceId) return;
+
+  const card = $('paymentHistoryCard');
+  const loading = $('paymentHistoryLoading');
+  const empty = $('paymentHistoryEmpty');
+  const table = $('paymentHistoryTable');
+  const tbody = $('paymentHistoryBody');
+
+  card.style.display = 'block';
+  loading.style.display = 'block';
+  empty.style.display = 'none';
+  table.style.display = 'none';
+
+  try {
+    const history = await api(`/api/business/subscribe/history/${currentPlaceId}`);
+
+    loading.style.display = 'none';
+
+    if (!history || !history.payments || history.payments.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+
+    table.style.display = 'table';
+    tbody.innerHTML = history.payments.map(payment => `
+      <tr>
+        <td>${formatDate(payment.createdAt || payment.date)}</td>
+        <td>${escapeHtml(payment.description || 'Subscription payment')}</td>
+        <td>${formatCurrency(payment.amount)}</td>
+        <td><span class="payment-status ${payment.status}">${payment.status}</span></td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    loading.style.display = 'none';
+    empty.style.display = 'block';
+    empty.textContent = 'No payment history yet.';
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text || '';
+  return div.innerHTML;
+}
+
+// Close modal on overlay click
+$('cancelModal')?.addEventListener('click', (e) => {
+  if (e.target === $('cancelModal')) closeCancelModal();
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('cancelModal').style.display !== 'none') {
+    closeCancelModal();
+  }
+});
+
+// Check for success/cancel from Stripe redirect
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('success') === 'true') {
+  setTimeout(() => {
+    showSuccess('Payment successful! Your subscription is now active.');
+  }, 500);
+  // Clean up URL
+  const url = new URL(window.location);
+  url.searchParams.delete('success');
+  url.searchParams.delete('session_id');
+  window.history.replaceState({}, '', url);
+}
+if (urlParams.get('canceled') === 'true') {
+  setTimeout(() => {
+    showError('Checkout was canceled. Your subscription was not changed.');
+  }, 500);
+  const url = new URL(window.location);
+  url.searchParams.delete('canceled');
+  window.history.replaceState({}, '', url);
 }
 
 // Initialize

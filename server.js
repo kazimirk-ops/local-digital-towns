@@ -3661,6 +3661,288 @@ app.get("/api/business/subscription/:placeId", async (req, res) => {
   res.json({ subscription, isActive });
 });
 
+// Stripe Checkout for paid subscription
+app.post("/api/business/subscribe/checkout", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const placeId = Number(req.body?.placeId || 0);
+  if(!placeId) return res.status(400).json({ error: "placeId required" });
+
+  const place = await data.getPlaceById(placeId);
+  if(!place) return res.status(404).json({ error: "Place not found" });
+
+  const ownerId = place.ownerUserId ?? place.owneruserid;
+  if(Number(ownerId) !== Number(u)) return res.status(403).json({ error: "Only owner can subscribe" });
+
+  const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
+  if(!stripeKey) {
+    return res.status(400).json({ error: "Paid subscriptions coming soon. Stripe not configured." });
+  }
+
+  try {
+    const stripe = require('stripe')(stripeKey);
+    const user = await data.getUserById(u);
+    const priceId = process.env.STRIPE_PRICE_ID || "";
+
+    if(!priceId) {
+      return res.status(400).json({ error: "Stripe price not configured" });
+    }
+
+    const successUrl = `${req.protocol}://${req.get('host')}/business-subscription?placeId=${placeId}&success=true&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${req.protocol}://${req.get('host')}/business-subscription?placeId=${placeId}&canceled=true`;
+
+    const sessionParams = {
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{
+        price: priceId,
+        quantity: 1,
+      }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        placeId: placeId.toString(),
+        userId: u.toString()
+      }
+    };
+
+    if(user?.email) {
+      sessionParams.customer_email = user.email;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
+    res.json({ url: session.url });
+  } catch(e) {
+    console.error("Stripe checkout error:", e);
+    res.status(500).json({ error: e.message || "Failed to create checkout session" });
+  }
+});
+
+// Stripe Customer Portal for managing subscription
+app.post("/api/business/subscribe/portal", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const placeId = Number(req.body?.placeId || 0);
+  if(!placeId) return res.status(400).json({ error: "placeId required" });
+
+  const place = await data.getPlaceById(placeId);
+  if(!place) return res.status(404).json({ error: "Place not found" });
+
+  const ownerId = place.ownerUserId ?? place.owneruserid;
+  if(Number(ownerId) !== Number(u)) return res.status(403).json({ error: "Only owner can manage subscription" });
+
+  const subscription = await data.getBusinessSubscription(placeId);
+  if(!subscription || !subscription.stripeCustomerId) {
+    return res.status(400).json({ error: "No Stripe subscription found" });
+  }
+
+  const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
+  if(!stripeKey) {
+    return res.status(400).json({ error: "Stripe not configured" });
+  }
+
+  try {
+    const stripe = require('stripe')(stripeKey);
+    const returnUrl = `${req.protocol}://${req.get('host')}/business-subscription?placeId=${placeId}`;
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: subscription.stripeCustomerId,
+      return_url: returnUrl,
+    });
+
+    res.json({ url: session.url });
+  } catch(e) {
+    console.error("Stripe portal error:", e);
+    res.status(500).json({ error: e.message || "Failed to create portal session" });
+  }
+});
+
+// Cancel subscription
+app.post("/api/business/subscribe/cancel", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const placeId = Number(req.body?.placeId || 0);
+  if(!placeId) return res.status(400).json({ error: "placeId required" });
+
+  const place = await data.getPlaceById(placeId);
+  if(!place) return res.status(404).json({ error: "Place not found" });
+
+  const ownerId = place.ownerUserId ?? place.owneruserid;
+  if(Number(ownerId) !== Number(u)) return res.status(403).json({ error: "Only owner can cancel subscription" });
+
+  const subscription = await data.getBusinessSubscription(placeId);
+  if(!subscription) {
+    return res.status(400).json({ error: "No subscription found" });
+  }
+
+  // If has Stripe subscription, cancel at period end
+  if(subscription.stripeSubscriptionId) {
+    const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
+    if(stripeKey) {
+      try {
+        const stripe = require('stripe')(stripeKey);
+        await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+          cancel_at_period_end: true
+        });
+      } catch(e) {
+        console.error("Stripe cancel error:", e);
+      }
+    }
+  }
+
+  // Update local subscription status
+  await data.updateSubscriptionStatus(subscription.id, 'canceled');
+  res.json({ ok: true, message: "Subscription will be canceled at end of billing period" });
+});
+
+// Payment history
+app.get("/api/business/subscribe/history/:placeId", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const placeId = Number(req.params.placeId || 0);
+  if(!placeId) return res.status(400).json({ error: "placeId required" });
+
+  const place = await data.getPlaceById(placeId);
+  if(!place) return res.status(404).json({ error: "Place not found" });
+
+  const ownerId = place.ownerUserId ?? place.owneruserid;
+  if(Number(ownerId) !== Number(u)) return res.status(403).json({ error: "Only owner can view history" });
+
+  const subscription = await data.getBusinessSubscription(placeId);
+
+  // If has Stripe, fetch from Stripe
+  if(subscription?.stripeCustomerId) {
+    const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
+    if(stripeKey) {
+      try {
+        const stripe = require('stripe')(stripeKey);
+        const invoices = await stripe.invoices.list({
+          customer: subscription.stripeCustomerId,
+          limit: 20
+        });
+
+        const payments = invoices.data.map(inv => ({
+          id: inv.id,
+          date: new Date(inv.created * 1000).toISOString(),
+          createdAt: new Date(inv.created * 1000).toISOString(),
+          description: inv.lines?.data?.[0]?.description || 'Subscription payment',
+          amount: inv.amount_paid,
+          status: inv.status === 'paid' ? 'paid' : (inv.status === 'open' ? 'pending' : inv.status)
+        }));
+
+        return res.json({ payments });
+      } catch(e) {
+        console.error("Stripe history error:", e);
+      }
+    }
+  }
+
+  // Return empty if no Stripe history
+  res.json({ payments: [] });
+});
+
+// Stripe Webhook handler
+app.post("/api/stripe/webhook", async (req, res) => {
+  const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
+  const webhookSecret = (process.env.STRIPE_WEBHOOK_SECRET || "").trim();
+
+  if(!stripeKey) {
+    return res.status(400).send("Stripe not configured");
+  }
+
+  const stripe = require('stripe')(stripeKey);
+  const sig = req.headers['stripe-signature'];
+
+  let event;
+  try {
+    if(webhookSecret) {
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } else {
+      event = req.body;
+    }
+  } catch(e) {
+    console.error("Webhook signature verification failed:", e.message);
+    return res.status(400).send(`Webhook Error: ${e.message}`);
+  }
+
+  try {
+    switch(event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        const placeId = Number(session.metadata?.placeId || 0);
+        const userId = Number(session.metadata?.userId || 0);
+
+        if(placeId && userId) {
+          let subscription = await data.getBusinessSubscription(placeId);
+          if(!subscription) {
+            subscription = await data.createBusinessSubscription(placeId, userId, 'monthly');
+          }
+
+          // Update with Stripe IDs
+          const updateSql = `
+            UPDATE business_subscriptions
+            SET stripeCustomerId = $1, stripeSubscriptionId = $2, plan = 'monthly', status = 'active',
+                currentPeriodStart = NOW(), currentPeriodEnd = NOW() + INTERVAL '1 month', updatedAt = NOW()
+            WHERE placeId = $3
+          `;
+          await data.query(updateSql, [session.customer, session.subscription, placeId]);
+        }
+        break;
+      }
+
+      case 'customer.subscription.updated': {
+        const sub = event.data.object;
+        const customerId = sub.customer;
+
+        // Find subscription by Stripe customer ID
+        const findSql = `SELECT * FROM business_subscriptions WHERE stripeCustomerId = $1`;
+        const result = await data.query(findSql, [customerId]);
+        if(result.rows.length > 0) {
+          const localSub = result.rows[0];
+          const status = sub.status === 'active' ? 'active' : (sub.status === 'canceled' ? 'canceled' : sub.status);
+          const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+
+          await data.query(
+            `UPDATE business_subscriptions SET status = $1, currentPeriodEnd = $2, canceledAt = $3, updatedAt = NOW() WHERE id = $4`,
+            [status, periodEnd, sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null, localSub.id]
+          );
+        }
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const sub = event.data.object;
+        const customerId = sub.customer;
+
+        const findSql = `SELECT * FROM business_subscriptions WHERE stripeCustomerId = $1`;
+        const result = await data.query(findSql, [customerId]);
+        if(result.rows.length > 0) {
+          const localSub = result.rows[0];
+          await data.query(
+            `UPDATE business_subscriptions SET status = 'expired', canceledAt = NOW(), updatedAt = NOW() WHERE id = $1`,
+            [localSub.id]
+          );
+        }
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object;
+        console.log(`Payment succeeded for invoice ${invoice.id}`);
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object;
+        console.log(`Payment failed for invoice ${invoice.id}`);
+        // Could send notification to store owner here
+        break;
+      }
+    }
+
+    res.json({ received: true });
+  } catch(e) {
+    console.error("Webhook processing error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ---------- Giveaway Offers ----------
 app.post("/api/giveaway/offer", async (req, res) => {
   const u = await requireLogin(req, res); if(!u) return;
