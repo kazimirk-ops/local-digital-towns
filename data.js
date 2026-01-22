@@ -3010,6 +3010,113 @@ async function addListing(payload){
   };
 }
 
+// ---------- Business Subscriptions ----------
+async function createBusinessSubscription(placeId, userId, plan = 'free_trial') {
+  const now = nowISO();
+  const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const info = await stmt(`
+    INSERT INTO business_subscriptions
+      (placeId, userId, plan, status, trialEndsAt, currentPeriodStart, currentPeriodEnd, createdAt, updatedAt)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING id
+  `).run(
+    Number(placeId),
+    Number(userId),
+    String(plan),
+    'active',
+    trialEndsAt,
+    now,
+    trialEndsAt,
+    now,
+    now
+  );
+  return stmt("SELECT * FROM business_subscriptions WHERE id=$1").get(info.rows?.[0]?.id);
+}
+
+async function getBusinessSubscription(placeId) {
+  return (await stmt("SELECT * FROM business_subscriptions WHERE placeId=$1 ORDER BY id DESC LIMIT 1")
+    .get(Number(placeId))) || null;
+}
+
+async function updateSubscriptionStatus(subscriptionId, status) {
+  const now = nowISO();
+  await stmt("UPDATE business_subscriptions SET status=$1, updatedAt=$2 WHERE id=$3")
+    .run(String(status), now, Number(subscriptionId));
+  return stmt("SELECT * FROM business_subscriptions WHERE id=$1").get(Number(subscriptionId));
+}
+
+async function isSubscriptionActive(placeId) {
+  const sub = await getBusinessSubscription(placeId);
+  if (!sub) return false;
+  if (sub.status !== 'active') return false;
+  const now = new Date();
+  if (sub.trialEndsAt && new Date(sub.trialEndsAt) > now) return true;
+  if (sub.currentPeriodEnd && new Date(sub.currentPeriodEnd) > now) return true;
+  return false;
+}
+
+// ---------- Giveaway Offers ----------
+async function createGiveawayOffer(placeId, userId, payload) {
+  const now = nowISO();
+  const title = (payload?.title || "").toString().trim();
+  const description = (payload?.description || "").toString().trim();
+  const estimatedValue = Number(payload?.estimatedValue || 0);
+  const imageUrl = (payload?.imageUrl || "").toString().trim();
+  const rewardType = (payload?.rewardType || "free_month").toString().trim();
+  if (!title || !description) return { error: "title and description required" };
+  const info = await stmt(`
+    INSERT INTO giveaway_offers
+      (placeId, userId, title, description, estimatedValue, imageUrl, status, rewardType, createdAt)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING id
+  `).run(
+    Number(placeId),
+    Number(userId),
+    title,
+    description,
+    estimatedValue,
+    imageUrl,
+    'pending',
+    rewardType,
+    now
+  );
+  return stmt("SELECT * FROM giveaway_offers WHERE id=$1").get(info.rows?.[0]?.id);
+}
+
+async function getGiveawayOffersByStatus(status) {
+  const s = (status || "pending").toString().trim().toLowerCase();
+  return stmt("SELECT * FROM giveaway_offers WHERE status=$1 ORDER BY createdAt DESC").all(s);
+}
+
+async function updateGiveawayOfferStatus(offerId, status, adminUserId, notes) {
+  const reviewedAt = nowISO();
+  await stmt(`
+    UPDATE giveaway_offers
+    SET status=$1, reviewedAt=$2, reviewedByUserId=$3, adminNotes=$4
+    WHERE id=$5
+  `).run(
+    String(status),
+    reviewedAt,
+    adminUserId == null ? null : Number(adminUserId),
+    String(notes || ""),
+    Number(offerId)
+  );
+  return stmt("SELECT * FROM giveaway_offers WHERE id=$1").get(Number(offerId));
+}
+
+async function awardFreeMonth(placeId) {
+  const sub = await getBusinessSubscription(placeId);
+  if (!sub) return { error: "no subscription found" };
+  const now = new Date();
+  const currentEnd = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd) : now;
+  const baseDate = currentEnd > now ? currentEnd : now;
+  const newEnd = new Date(baseDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const updatedAt = nowISO();
+  await stmt("UPDATE business_subscriptions SET currentPeriodEnd=$1, updatedAt=$2, status=$3 WHERE id=$4")
+    .run(newEnd, updatedAt, 'active', Number(sub.id));
+  return stmt("SELECT * FROM business_subscriptions WHERE id=$1").get(Number(sub.id));
+}
+
 module.exports = {
   initDb,
   getPlaces,
@@ -3221,4 +3328,14 @@ module.exports = {
 
   // listings
   addListing,
+
+  // business subscriptions
+  createBusinessSubscription,
+  getBusinessSubscription,
+  updateSubscriptionStatus,
+  isSubscriptionActive,
+  createGiveawayOffer,
+  getGiveawayOffersByStatus,
+  updateGiveawayOfferStatus,
+  awardFreeMonth,
 };

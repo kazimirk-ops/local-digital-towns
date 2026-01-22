@@ -21,7 +21,7 @@ const express = require("express");
 const path = require("path");
 const multer = require("multer");
 const trust = require("./lib/trust");
-const { sendAdminEmail } = require("./lib/notify");
+const { sendAdminEmail, sendEmail } = require("./lib/notify");
 const db = require("./lib/db");
 const TRUST_TIER_LABELS = trust.TRUST_TIER_LABELS;
 async function getTrustBadgeForUser(userId){
@@ -435,6 +435,19 @@ async function requireAdminOrDev(req,res){
     return await data.getUserById(u);
   }
   return await requireAdmin(req,res);
+}
+
+async function requireActiveSubscription(req, res, placeId){
+  if(!placeId){
+    res.status(400).json({ error: "placeId required" });
+    return false;
+  }
+  const isActive = await data.isSubscriptionActive(placeId);
+  if(!isActive){
+    res.status(403).json({ error: "Active subscription required" });
+    return false;
+  }
+  return true;
 }
 
 function getAdminReviewLink(){
@@ -3605,6 +3618,122 @@ app.post("/api/admin/places/status", async (req, res) =>{
   const place = await data.updatePlaceStatus(placeId, status);
   if(!place) return res.status(404).json({ error: "Place not found" });
   res.json({ ok:true, place });
+});
+
+// ---------- Business Subscriptions ----------
+app.post("/api/business/subscribe", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const placeId = Number(req.body?.placeId || 0);
+  if(!placeId) return res.status(400).json({ error: "placeId required" });
+  const place = await data.getPlaceById(placeId);
+  if(!place) return res.status(404).json({ error: "Place not found" });
+  const ownerId = place.ownerUserId ?? place.owneruserid;
+  if(Number(ownerId) !== Number(u)) return res.status(403).json({ error: "Only owner can subscribe" });
+  const existing = await data.getBusinessSubscription(placeId);
+  if(existing) return res.status(400).json({ error: "Subscription already exists", subscription: existing });
+  const subscription = await data.createBusinessSubscription(placeId, u, req.body?.plan || 'free_trial');
+  res.json({ ok: true, subscription });
+});
+
+app.get("/api/business/subscription/:placeId", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const placeId = Number(req.params.placeId || 0);
+  if(!placeId) return res.status(400).json({ error: "placeId required" });
+  const place = await data.getPlaceById(placeId);
+  if(!place) return res.status(404).json({ error: "Place not found" });
+  const user = await data.getUserById(u);
+  const ownerId = place.ownerUserId ?? place.owneruserid;
+  if(Number(ownerId) !== Number(u) && !isAdminUser(user)){
+    return res.status(403).json({ error: "Only owner or admin can view subscription" });
+  }
+  const subscription = await data.getBusinessSubscription(placeId);
+  const isActive = await data.isSubscriptionActive(placeId);
+  res.json({ subscription, isActive });
+});
+
+// ---------- Giveaway Offers ----------
+app.post("/api/giveaway/offer", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const placeId = Number(req.body?.placeId || 0);
+  if(!placeId) return res.status(400).json({ error: "placeId required" });
+  const place = await data.getPlaceById(placeId);
+  if(!place) return res.status(404).json({ error: "Place not found" });
+  const ownerId = place.ownerUserId ?? place.owneruserid;
+  if(Number(ownerId) !== Number(u)) return res.status(403).json({ error: "Only owner can submit offers" });
+  const hasActiveSub = await requireActiveSubscription(req, res, placeId);
+  if(!hasActiveSub) return;
+  const offer = await data.createGiveawayOffer(placeId, u, {
+    title: req.body?.title,
+    description: req.body?.description,
+    estimatedValue: req.body?.estimatedValue,
+    imageUrl: req.body?.imageUrl,
+    rewardType: req.body?.rewardType
+  });
+  if(offer?.error) return res.status(400).json(offer);
+  const user = await data.getUserById(u);
+  const adminText = `New giveaway offer submitted for review:
+
+Business: ${place.name}
+Title: ${offer.title}
+Description: ${offer.description}
+Estimated Value: $${(offer.estimatedValue || 0) / 100}
+Submitted by: ${user?.displayName || user?.email || 'Unknown'}
+
+Review at: ${getAdminReviewLink()}`;
+  sendAdminEmail("New Giveaway Offer Submission", adminText);
+  res.json({ ok: true, offer });
+});
+
+app.get("/api/admin/giveaway/offers", async (req, res) => {
+  const admin = await requireAdmin(req, res); if(!admin) return;
+  const status = (req.query.status || "pending").toString().trim().toLowerCase();
+  const offers = await data.getGiveawayOffersByStatus(status);
+  const enriched = await Promise.all(offers.map(async (offer) => {
+    const place = await data.getPlaceById(offer.placeId);
+    const user = await data.getUserById(offer.userId);
+    return {
+      ...offer,
+      place: place ? { id: place.id, name: place.name } : null,
+      user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null
+    };
+  }));
+  res.json(enriched);
+});
+
+app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
+  const admin = await requireAdmin(req, res); if(!admin) return;
+  const offerId = Number(req.params.id || 0);
+  if(!offerId) return res.status(400).json({ error: "offerId required" });
+  const status = (req.body?.status || "").toString().trim().toLowerCase();
+  const notes = (req.body?.notes || "").toString().trim();
+  if(status !== "approved" && status !== "rejected"){
+    return res.status(400).json({ error: "status must be 'approved' or 'rejected'" });
+  }
+  const offer = await data.updateGiveawayOfferStatus(offerId, status, admin.id, notes);
+  if(!offer) return res.status(404).json({ error: "Offer not found" });
+  let subscription = null;
+  if(status === "approved"){
+    subscription = await data.awardFreeMonth(offer.placeId);
+  }
+  const place = await data.getPlaceById(offer.placeId);
+  const owner = offer.userId ? await data.getUserById(offer.userId) : null;
+  if(owner?.email){
+    const statusText = status === "approved" ? "approved" : "not approved";
+    const rewardText = status === "approved"
+      ? "As a thank you, your subscription has been extended by one free month!"
+      : "";
+    const emailText = `Hello,
+
+Your giveaway offer "${offer.title}" for ${place?.name || 'your business'} has been ${statusText}.
+
+${notes ? `Admin notes: ${notes}` : ""}
+
+${rewardText}
+
+Thank you for being part of our community!`;
+    sendEmail(owner.email, `Giveaway Offer ${status === "approved" ? "Approved" : "Update"}`, emailText);
+  }
+  res.json({ ok: true, offer, subscription });
 });
 
 const PORT = Number(process.env.PORT || 3000);
