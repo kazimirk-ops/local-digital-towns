@@ -345,7 +345,7 @@ async function getListings(){
   const rows = await stmt("SELECT * FROM listings ORDER BY id").all();
   return rows.map((l)=>({
     ...l,
-    photoUrls: parseJsonArray(l.photoUrlsJson || "[]"),
+    photoUrls: parseJsonArray(l.photoUrlsJson || l.photourlsjson || "[]"),
     listingType: l.listingType || "item",
     exchangeType: l.exchangeType || "money",
     startAt: l.startAt || "",
@@ -1039,7 +1039,7 @@ async function getListingById(id){
   if(!l) return null;
   return {
     ...l,
-    photoUrls: parseJsonArray(l.photoUrlsJson || "[]"),
+    photoUrls: parseJsonArray(l.photoUrlsJson || l.photourlsjson || "[]"),
     listingType: l.listingType || "item",
     exchangeType: l.exchangeType || "money",
     startAt: l.startAt || "",
@@ -2164,7 +2164,7 @@ async function collectUsedMedia(townId = 1){
   const events = await stmt("SELECT imageUrl FROM events_v1 WHERE townId=$1").all(Number(townId));
   events.forEach(e=>add(e.imageUrl));
   const listings = await stmt("SELECT photoUrlsJson FROM listings WHERE townId=$1").all(Number(townId));
-  listings.forEach(l=>parseJsonArray(l.photoUrlsJson || "[]").forEach(add));
+  listings.forEach(l=>parseJsonArray(l.photoUrlsJson || l.photourlsjson || "[]").forEach(add));
   const archives = await stmt("SELECT bodyMarkdown FROM archive_entries WHERE townId=$1").all(Number(townId));
   const urlRe = /https?:\/\/[^\s)]+|\/uploads\/[^\s)]+/g;
   archives.forEach(a=>{
