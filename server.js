@@ -1219,7 +1219,8 @@ app.get("/dm/:id/messages", async (req, res) =>{
   const messages = await data.getDirectMessages(req.params.id);
   const msgs = await Promise.all(messages.map(async (m)=>({
     ...m,
-    sender: await getTrustBadgeForUser(m.senderUserId)
+    senderUserId: m.senderUserId || m.senderuserid,
+    sender: await getTrustBadgeForUser(m.senderUserId || m.senderuserid)
   })));
   res.json(msgs);
 });
@@ -1669,8 +1670,9 @@ app.get("/api/events", async (req, res) =>{
   const to=req.query.to;
   const events = await data.listApprovedEvents({ from, to });
   const rows = await Promise.all(events.map(async (ev)=>{
-    if(!ev.organizerUserId) return ev;
-    const badge = await getTrustBadgeForUser(ev.organizerUserId);
+    const orgUserId = ev.organizerUserId || ev.organizeruserid;
+    if(!orgUserId) return ev;
+    const badge = await getTrustBadgeForUser(orgUserId);
     return { ...ev, organizerTrustTierLabel: badge?.trustTierLabel || null };
   }));
   res.json(rows);
@@ -1702,7 +1704,7 @@ app.post("/api/prizes/submit", async (req, res) =>{
 app.get("/api/prizes/active", async (req, res) =>{
   const offers = await data.listActivePrizeOffers();
   const rows = await Promise.all(offers.map(async (p)=>{
-    const badge = await getTrustBadgeForUser(p.donorUserId);
+    const badge = await getTrustBadgeForUser(p.donorUserId || p.donoruserid);
     return { ...p, donorTrustTierLabel: badge?.trustTierLabel || null };
   }));
   res.json(rows);
@@ -2578,8 +2580,8 @@ app.get("/api/admin/media/orphans", async (req, res) =>{
 app.get("/api/admin/trust/reviews", async (req, res) =>{
   const reviews = await data.listReviews(200);
   const rows = await Promise.all(reviews.map(async (r)=>{
-    const reviewer = await getTrustBadgeForUser(r.reviewerUserId);
-    const reviewee = await getTrustBadgeForUser(r.revieweeUserId);
+    const reviewer = await getTrustBadgeForUser(r.reviewerUserId || r.revieweruserid);
+    const reviewee = await getTrustBadgeForUser(r.revieweeUserId || r.revieweeuserid);
     return {
       ...r,
       reviewerTrustTierLabel: reviewer?.trustTierLabel || null,
@@ -2591,7 +2593,7 @@ app.get("/api/admin/trust/reviews", async (req, res) =>{
 app.get("/api/admin/trust/disputes", async (req, res) =>{
   const disputes = await data.listDisputes(200);
   const rows = await Promise.all(disputes.map(async (d)=>{
-    const reporter = await getTrustBadgeForUser(d.reporterUserId);
+    const reporter = await getTrustBadgeForUser(d.reporterUserId || d.reporteruserid);
     return { ...d, reporterTrustTierLabel: reporter?.trustTierLabel || null };
   }));
   res.json(rows);
@@ -3131,7 +3133,8 @@ app.get("/channels/:id/messages", async (req, res) =>{
   const messages = await data.getChannelMessages(channel.id, 200);
   const msgs = await Promise.all(messages.map(async (m)=>({
     ...m,
-    user: await getTrustBadgeForUser(m.userId)
+    userId: m.userId || m.userid,
+    user: await getTrustBadgeForUser(m.userId || m.userid)
   })));
   res.json(msgs);
 });
