@@ -1220,6 +1220,8 @@ app.get("/dm/:id/messages", async (req, res) =>{
   const msgs = await Promise.all(messages.map(async (m)=>({
     ...m,
     senderUserId: m.senderUserId || m.senderuserid,
+    conversationId: m.conversationId || m.conversationid,
+    createdAt: m.createdAt || m.createdat,
     sender: await getTrustBadgeForUser(m.senderUserId || m.senderuserid)
   })));
   res.json(msgs);
@@ -3134,6 +3136,11 @@ app.get("/channels/:id/messages", async (req, res) =>{
   const msgs = await Promise.all(messages.map(async (m)=>({
     ...m,
     userId: m.userId || m.userid,
+    channelId: m.channelId || m.channelid,
+    createdAt: m.createdAt || m.createdat,
+    replyToId: m.replyToId || m.replytoid,
+    threadId: m.threadId || m.threadid,
+    imageUrl: m.imageUrl || m.imageurl,
     user: await getTrustBadgeForUser(m.userId || m.userid)
   })));
   res.json(msgs);
