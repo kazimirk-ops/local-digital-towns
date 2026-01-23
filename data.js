@@ -916,6 +916,9 @@ async function getUserByEmail(email){
   if(!e) return null;
   return normalizeUserRow((await stmt("SELECT * FROM users WHERE email=$1").get(e)) || null);
 }
+async function getAllUsers(){
+  return stmt("SELECT * FROM users ORDER BY id DESC").all();
+}
 async function setUserReferredByUserId(userId, referrerUserId){
   const u = await getUserById(userId);
   if(!u) return null;
@@ -1297,6 +1300,10 @@ async function getOrdersForSellerPlaces(placeIds){
     WHERE sellerPlaceId IN (${placeholders})
     ORDER BY createdAt DESC
   `).all(...ids);
+}
+
+async function getAllOrders(){
+  return stmt("SELECT * FROM orders ORDER BY createdAt DESC").all();
 }
 
 async function decrementListingQuantity(listingId, quantity){
@@ -3258,6 +3265,10 @@ async function isSubscriptionActive(placeId) {
   return false;
 }
 
+async function getAllSubscriptions() {
+  return stmt("SELECT * FROM business_subscriptions ORDER BY id DESC").all();
+}
+
 // ---------- Giveaway Offers ----------
 async function createGiveawayOffer(placeId, userId, payload) {
   const now = nowISO();
@@ -3387,6 +3398,7 @@ module.exports = {
   createOrderFromCart,
   getOrdersForBuyer,
   getOrdersForSellerPlaces,
+  getAllOrders,
   decrementListingQuantity,
   getDirectConversationById,
   addDirectConversation,
@@ -3455,6 +3467,7 @@ module.exports = {
   getUserBySession,
   getUserById,
   getUserByEmail,
+  getAllUsers,
   setUserReferredByUserId,
   getUserProfilePublic,
   getUserProfilePrivate,
@@ -3573,6 +3586,7 @@ module.exports = {
   getBusinessSubscription,
   updateSubscriptionStatus,
   isSubscriptionActive,
+  getAllSubscriptions,
   createGiveawayOffer,
   getGiveawayOffersByStatus,
   getGiveawayOffersByPlace,

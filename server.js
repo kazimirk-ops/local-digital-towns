@@ -2269,6 +2269,87 @@ app.post("/api/admin/pulse/cleanup", async (req, res) =>{
   const deletedCount = await data.cleanupDailyPulses(1);
   res.json({ ok:true, deletedCount });
 });
+
+// Admin CSV Exports
+app.get("/api/admin/export/users.csv", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const users = await data.getAllUsers();
+  const header = "id,email,displayName,phone,isAdmin,isVerified,trustTier,createdAt,lastLoginAt";
+  const csv = users.map(u=>[
+    u.id,
+    JSON.stringify(u.email || ""),
+    JSON.stringify(u.displayName || u.displayname || ""),
+    JSON.stringify(u.phone || ""),
+    u.isAdmin || u.isadmin || 0,
+    u.isVerified || u.isverified || 0,
+    u.trustTier || u.trusttier || 0,
+    u.createdAt || u.createdat || "",
+    u.lastLoginAt || u.lastloginat || ""
+  ].join(","));
+  res.setHeader("Content-Type","text/csv");
+  res.setHeader("Content-Disposition","attachment; filename=users_export.csv");
+  res.send([header, ...csv].join("\n"));
+});
+
+app.get("/api/admin/export/orders.csv", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const orders = await data.getAllOrders();
+  const header = "id,buyerUserId,sellerPlaceId,status,totalCents,subtotalCents,paymentMethod,createdAt,updatedAt";
+  const csv = orders.map(o=>[
+    o.id,
+    o.buyerUserId || o.buyeruserid || "",
+    o.sellerPlaceId || o.sellerplaceid || "",
+    o.status || "",
+    o.totalCents || o.totalcents || 0,
+    o.subtotalCents || o.subtotalcents || 0,
+    o.paymentMethod || o.paymentmethod || "",
+    o.createdAt || o.createdat || "",
+    o.updatedAt || o.updatedat || ""
+  ].join(","));
+  res.setHeader("Content-Type","text/csv");
+  res.setHeader("Content-Disposition","attachment; filename=orders_export.csv");
+  res.send([header, ...csv].join("\n"));
+});
+
+app.get("/api/admin/export/subscriptions.csv", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const subs = await data.getAllSubscriptions();
+  const header = "id,placeId,plan,status,trialEndsAt,currentPeriodStart,currentPeriodEnd,canceledAt,createdAt";
+  const csv = subs.map(s=>[
+    s.id,
+    s.placeId || s.placeid || "",
+    s.plan || "",
+    s.status || "",
+    s.trialEndsAt || s.trialendsat || "",
+    s.currentPeriodStart || s.currentperiodstart || "",
+    s.currentPeriodEnd || s.currentperiodend || "",
+    s.canceledAt || s.canceledat || "",
+    s.createdAt || s.createdat || ""
+  ].join(","));
+  res.setHeader("Content-Type","text/csv");
+  res.setHeader("Content-Disposition","attachment; filename=subscriptions_export.csv");
+  res.send([header, ...csv].join("\n"));
+});
+
+app.get("/api/admin/export/places.csv", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const places = await data.getPlaces();
+  const header = "id,name,category,ownerUserId,status,sellerType,districtId,createdAt";
+  const csv = places.map(p=>[
+    p.id,
+    JSON.stringify(p.name || ""),
+    JSON.stringify(p.category || ""),
+    p.ownerUserId || p.owneruserid || "",
+    p.status || "",
+    p.sellerType || p.sellertype || "",
+    p.districtId || p.districtid || "",
+    p.createdAt || p.createdat || ""
+  ].join(","));
+  res.setHeader("Content-Type","text/csv");
+  res.setHeader("Content-Disposition","attachment; filename=places_export.csv");
+  res.send([header, ...csv].join("\n"));
+});
+
 app.get("/api/pulse/latest", async (req, res) =>{
   const pulse=await data.getLatestPulse(1);
   if(!pulse) return res.status(404).json({error:"No pulse found"});
