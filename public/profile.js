@@ -66,6 +66,22 @@ async function loadProfile() {
     reviews.style.display = "none";
   }
 
+  // Load ghosting stats
+  const ghostingEl = document.getElementById("profileGhosting");
+  try {
+    const ghostStats = await api(`/api/users/${userId}/ghosting`);
+    if (ghostStats && ghostStats.totalOrders > 0) {
+      ghostingEl.style.display = "block";
+      const pct = ghostStats.ghostingPercent || 0;
+      let color = "#94a3b8"; // gray
+      if (pct >= 20) color = "#f87171"; // red
+      else if (pct >= 10) color = "#fbbf24"; // yellow
+      ghostingEl.innerHTML = `Buyer Reliability: <span style="color:${color}; font-weight:600;">${pct.toFixed(1)}% non-payment rate</span> (${ghostStats.ghostCount} of ${ghostStats.totalOrders} orders)`;
+    }
+  } catch(e) {
+    // Ghosting stats not available, hide
+  }
+
   const me = await api("/me");
   const btn = document.getElementById("messageBtn");
   if (me?.user) {

@@ -38,6 +38,41 @@ async function loadNeighborTowns(){
     render(list2);
   }catch{}
 }
+
+async function loadFeaturedStores(){
+  const panel = $("panelFeatured");
+  const list = $("featuredStoresList");
+  if(!panel || !list) return;
+  try{
+    const stores = await api("/api/featured-stores");
+    if(!stores || !stores.length){
+      panel.style.display = "none";
+      return;
+    }
+    panel.style.display = "block";
+    list.innerHTML = "";
+    stores.forEach(store=>{
+      const div = document.createElement("div");
+      div.className = "item";
+      const avatar = store.avatarUrl ? `<img src="${store.avatarUrl}" alt="" style="width:48px;height:48px;border-radius:10px;object-fit:cover;margin-right:12px;" />` : "";
+      const endsAt = store.endsAt ? new Date(store.endsAt).toLocaleDateString() : "";
+      div.innerHTML = `
+        <div style="display:flex;align-items:center;">
+          ${avatar}
+          <div style="flex:1;">
+            <div><strong>${escapeHtml(store.placeName || "Store")}</strong></div>
+            <div class="muted">${escapeHtml(store.title || "Active Giveaway")}</div>
+            ${endsAt ? `<div class="muted">Giveaway ends: ${endsAt}</div>` : ""}
+          </div>
+          <a class="pill" href="/store/${store.placeId}">Visit Store</a>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+  }catch(e){
+    panel.style.display = "none";
+  }
+}
 function setRouteViewLabel(view){
   const routeEl=$("routeView");
   if(routeEl) routeEl.textContent=`/ui#${view}`;
@@ -1953,6 +1988,7 @@ async function main(){
   await loadPrizeOffers();
   await loadLiveNow();
   await loadPulseLatest();
+  await loadFeaturedStores();
 
   initMap();
   bindDistrictButtons();

@@ -84,9 +84,9 @@ function renderCart(){
     `;
     list.appendChild(row);
   });
-  const gratuity = Math.ceil(subtotal * 0.05);
-  const total = subtotal + gratuity;
-  totals.textContent = `Subtotal: ${fmtCents(subtotal)} • Gratuity: ${fmtCents(gratuity)} • Total: ${fmtCents(total)}`;
+  const deposit = Math.ceil(subtotal * 0.05);
+  const total = subtotal + deposit;
+  totals.innerHTML = `Subtotal: ${fmtCents(subtotal)} • <span title="Non-refundable platform deposit">Deposit (5%): ${fmtCents(deposit)}</span> • Total: ${fmtCents(total)}`;
   list.querySelectorAll("button[data-inc]").forEach((btn)=>{
     btn.onclick = async ()=>{
       try{

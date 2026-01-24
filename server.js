@@ -4153,11 +4153,17 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
   if(!offerId) return res.status(400).json({ error: "offerId required" });
   const status = (req.body?.status || "").toString().trim().toLowerCase();
   const notes = (req.body?.notes || "").toString().trim();
+  const startsAt = req.body?.startsAt || null;
+  const endsAt = req.body?.endsAt || null;
   if(status !== "approved" && status !== "rejected"){
     return res.status(400).json({ error: "status must be 'approved' or 'rejected'" });
   }
-  const offer = await data.updateGiveawayOfferStatus(offerId, status, admin.id, notes);
+  let offer = await data.updateGiveawayOfferStatus(offerId, status, admin.id, notes);
   if(!offer) return res.status(404).json({ error: "Offer not found" });
+  // Update start/end dates if provided (for featured store scheduling)
+  if(status === "approved" && (startsAt || endsAt)){
+    offer = await data.updateGiveawayOfferDates(offerId, startsAt, endsAt);
+  }
   let subscription = null;
   if(status === "approved"){
     subscription = await data.awardFreeMonth(offer.placeId);
@@ -4181,6 +4187,68 @@ Thank you for being part of our community!`;
     sendEmail(owner.email, `Giveaway Offer ${status === "approved" ? "Approved" : "Update"}`, emailText);
   }
   res.json({ ok: true, offer, subscription });
+});
+
+// ---------- Featured Stores ----------
+app.get("/api/featured-stores", async (req, res) => {
+  try {
+    const stores = await data.getFeaturedStores();
+    res.json(stores);
+  } catch(e) {
+    console.error("Featured stores error:", e);
+    res.status(500).json({ error: "Failed to load featured stores" });
+  }
+});
+
+// ---------- Ghost Reports (Buyer Non-Payment) ----------
+app.post("/api/orders/:id/report-ghost", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const orderId = Number(req.params.id || 0);
+  if(!orderId) return res.status(400).json({ error: "orderId required" });
+
+  const order = await data.getOrderById(orderId);
+  if(!order) return res.status(404).json({ error: "Order not found" });
+
+  // Verify caller is the seller
+  const sellerUserId = order.sellerUserId ?? order.selleruserid;
+  if(Number(sellerUserId) !== Number(u)) {
+    return res.status(403).json({ error: "Only the seller can report non-payment" });
+  }
+
+  // Verify order is still pending payment
+  const status = (order.status || "").toLowerCase();
+  if(!["pending_payment", "requires_payment", "pending"].includes(status)) {
+    return res.status(400).json({ error: "Order is not pending payment" });
+  }
+
+  // Check 48 hours have passed since order creation
+  const createdAt = new Date(order.createdAt || order.createdat);
+  const hoursSince = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+  if(hoursSince < 48) {
+    const hoursRemaining = Math.ceil(48 - hoursSince);
+    return res.status(400).json({ error: `Cannot report until 48 hours have passed. ${hoursRemaining} hours remaining.` });
+  }
+
+  const buyerUserId = order.buyerUserId ?? order.buyeruserid;
+  const reason = (req.body?.reason || "").toString().trim();
+
+  const report = await data.createGhostReport(orderId, buyerUserId, sellerUserId, reason);
+  if(!report) {
+    return res.status(400).json({ error: "Order already reported" });
+  }
+
+  // Recalculate buyer's ghosting percentage
+  await data.recalculateGhostingPercent(buyerUserId);
+
+  res.json({ ok: true, report });
+});
+
+app.get("/api/users/:id/ghosting", async (req, res) => {
+  const userId = Number(req.params.id || 0);
+  if(!userId) return res.status(400).json({ error: "userId required" });
+
+  const stats = await data.getGhostingStats(userId);
+  res.json(stats);
 });
 
 // ---------- Social Sharing ----------

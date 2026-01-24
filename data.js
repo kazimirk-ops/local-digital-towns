@@ -3416,6 +3416,99 @@ async function updateSupportRequestStatus(requestId, status, adminNotes = "") {
   return stmt("SELECT * FROM support_requests WHERE id=$1").get(Number(requestId));
 }
 
+// ---------- Featured Stores (Active Giveaways) ----------
+async function updateGiveawayOfferDates(offerId, startsAt, endsAt) {
+  await stmt(`
+    UPDATE giveaway_offers
+    SET startsAt=$1, endsAt=$2
+    WHERE id=$3
+  `).run(
+    startsAt ? new Date(startsAt).toISOString() : null,
+    endsAt ? new Date(endsAt).toISOString() : null,
+    Number(offerId)
+  );
+  return stmt("SELECT * FROM giveaway_offers WHERE id=$1").get(Number(offerId));
+}
+
+async function getFeaturedStores() {
+  // Get businesses with currently active giveaways (status=approved, startsAt <= now <= endsAt)
+  const now = new Date().toISOString();
+  const rows = await stmt(`
+    SELECT g.*, p.id AS placeId, p.name AS placeName, p.category, p.avatarUrl, p.description AS placeDescription
+    FROM giveaway_offers g
+    JOIN places p ON p.id = g.placeId
+    WHERE g.status = 'approved'
+      AND g.startsAt IS NOT NULL
+      AND g.endsAt IS NOT NULL
+      AND g.startsAt <= $1
+      AND g.endsAt >= $1
+    ORDER BY g.startsAt ASC
+  `).all(now);
+  return rows;
+}
+
+// ---------- Ghost Reports (Buyer Non-Payment) ----------
+async function createGhostReport(orderId, buyerUserId, sellerUserId, reason = '') {
+  const now = nowISO();
+  const info = await stmt(`
+    INSERT INTO ghost_reports (orderId, buyerUserId, sellerUserId, reason, reportedAt, status)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    ON CONFLICT (orderId) DO NOTHING
+    RETURNING id
+  `).run(
+    Number(orderId),
+    Number(buyerUserId),
+    Number(sellerUserId),
+    String(reason),
+    now,
+    'active'
+  );
+  if (!info.rows?.[0]?.id) return null; // Already reported
+  return stmt("SELECT * FROM ghost_reports WHERE id=$1").get(info.rows[0].id);
+}
+
+async function getGhostReportByOrder(orderId) {
+  return stmt("SELECT * FROM ghost_reports WHERE orderId=$1").get(Number(orderId));
+}
+
+async function getGhostReportsByBuyer(buyerUserId) {
+  return stmt("SELECT * FROM ghost_reports WHERE buyerUserId=$1 ORDER BY reportedAt DESC").all(Number(buyerUserId));
+}
+
+async function getGhostingStats(userId) {
+  // Get total orders as buyer
+  const totalRow = await stmt(`
+    SELECT COUNT(*) AS count FROM orders WHERE buyerUserId=$1
+  `).get(Number(userId));
+  const totalOrders = Number(totalRow?.count || 0);
+
+  // Get ghost report count
+  const ghostRow = await stmt(`
+    SELECT COUNT(*) AS count FROM ghost_reports WHERE buyerUserId=$1 AND status='active'
+  `).get(Number(userId));
+  const ghostCount = Number(ghostRow?.count || 0);
+
+  // Calculate percentage
+  const ghostingPercent = totalOrders > 0 ? (ghostCount / totalOrders) * 100 : 0;
+
+  return { totalOrders, ghostCount, ghostingPercent: Math.round(ghostingPercent * 10) / 10 };
+}
+
+async function recalculateGhostingPercent(userId) {
+  const stats = await getGhostingStats(userId);
+  await stmt(`
+    UPDATE users
+    SET ghostingPercent=$1, ghostReportCount=$2, totalOrdersAsBuyer=$3
+    WHERE id=$4
+  `).run(
+    stats.ghostingPercent,
+    stats.ghostCount,
+    stats.totalOrders,
+    Number(userId)
+  );
+  return stats;
+}
+
 module.exports = {
   initDb,
   getPlaces,
@@ -3657,4 +3750,15 @@ module.exports = {
   getSupportRequestsByUser,
   getAllSupportRequests,
   updateSupportRequestStatus,
+
+  // featured stores
+  updateGiveawayOfferDates,
+  getFeaturedStores,
+
+  // ghost reports
+  createGhostReport,
+  getGhostReportByOrder,
+  getGhostReportsByBuyer,
+  getGhostingStats,
+  recalculateGhostingPercent,
 };

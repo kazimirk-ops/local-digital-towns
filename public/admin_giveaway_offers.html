@@ -132,6 +132,20 @@
         <h3 class="modal-title" id="modalTitle">Review Offer</h3>
         <div class="modal-body">
           <div id="modalOfferInfo"></div>
+          <div class="form-group" id="modalDatesGroup" style="display:none;">
+            <label class="form-label">Giveaway Active Period (for featured stores)</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px;">
+              <div>
+                <label class="form-label">Start Date</label>
+                <input type="datetime-local" class="form-input" id="modalStartsAt" />
+              </div>
+              <div>
+                <label class="form-label">End Date</label>
+                <input type="datetime-local" class="form-input" id="modalEndsAt" />
+              </div>
+            </div>
+            <div class="muted" style="margin-top:6px;">Store will be featured on the home page during this period.</div>
+          </div>
           <div class="form-group">
             <label class="form-label">Admin Notes (optional)</label>
             <textarea class="form-input" id="modalNotes" placeholder="Add notes about this decision..."></textarea>

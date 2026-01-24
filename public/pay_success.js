@@ -25,7 +25,7 @@ async function main(){
     $("paySuccessOrderId").textContent = `#${order.id}`;
     $("paySuccessListing").textContent = items.map(i=>i.titleSnapshot).filter(Boolean).join(", ") || "";
     $("paySuccessSubtotal").textContent = `Subtotal: ${fmtCents(order.subtotalCents)}`;
-    $("paySuccessGratuity").textContent = `Gratuity: ${fmtCents(order.serviceGratuityCents)}`;
+    $("paySuccessGratuity").textContent = `Deposit (5%): ${fmtCents(order.serviceGratuityCents || order.buyerDepositCents)}`;
     $("paySuccessTotal").textContent = `Total: ${fmtCents(order.totalCents)}`;
     // Prompt to share purchase after a short delay
     if(order.status === "paid" && window.ShareModal){

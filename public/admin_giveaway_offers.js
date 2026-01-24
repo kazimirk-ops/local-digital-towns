@@ -164,6 +164,21 @@ function openReviewModal(offerId, action) {
   `;
 
   $('modalNotes').value = '';
+  $('modalStartsAt').value = '';
+  $('modalEndsAt').value = '';
+
+  // Show dates input only for approval action
+  const datesGroup = $('modalDatesGroup');
+  if (datesGroup) {
+    datesGroup.style.display = (action === 'approve' && isPending) ? 'block' : 'none';
+    // Set default dates: start now, end in 30 days
+    if (action === 'approve' && isPending) {
+      const now = new Date();
+      const end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      $('modalStartsAt').value = now.toISOString().slice(0, 16);
+      $('modalEndsAt').value = end.toISOString().slice(0, 16);
+    }
+  }
 
   // Show/hide buttons based on action
   if (action === 'view' || !isPending) {
@@ -190,16 +205,22 @@ async function submitReview(status) {
   if (!selectedOffer) return;
 
   const notes = $('modalNotes').value.trim();
+  const startsAt = $('modalStartsAt')?.value || null;
+  const endsAt = $('modalEndsAt')?.value || null;
   const btn = status === 'approved' ? $('modalApproveBtn') : $('modalRejectBtn');
 
   btn.disabled = true;
   btn.textContent = 'Processing...';
 
   try {
+    const payload = { status, notes };
+    if (status === 'approved' && startsAt) payload.startsAt = new Date(startsAt).toISOString();
+    if (status === 'approved' && endsAt) payload.endsAt = new Date(endsAt).toISOString();
+
     await api(`/api/admin/giveaway/offer/${selectedOffer.id}/review`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, notes })
+      body: JSON.stringify(payload)
     });
 
     closeModal();

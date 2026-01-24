@@ -93,6 +93,13 @@ async function loadOrders(filter) {
         ? Number(order.totalCents)
         : Number(order.amountCents || 0);
     const buyerLabel = order.buyerDisplayName || (order.buyerUserId ? `User #${order.buyerUserId}` : "—");
+
+    // Check if order is pending payment and older than 48 hours
+    const isPendingPayment = ["pending", "pending_payment", "requires_payment"].includes(String(status).toLowerCase());
+    const createdAt = new Date(order.createdAt || order.createdat);
+    const hoursSince = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+    const canReportGhost = isPendingPayment && hoursSince >= 48;
+
     const row = document.createElement("div");
     row.className = "table-row";
     row.innerHTML = `
@@ -101,9 +108,41 @@ async function loadOrders(filter) {
       <div data-label="Store">${placeMap.get(Number(order.sellerPlaceId || 0)) || "—"}</div>
       <div data-label="Status"><span class="badge ${statusClass(status)}">${status}</span></div>
       <div data-label="Total">${formatCurrencyCents(totalCents)}</div>
-      <div data-label="Date">${formatDate(order.createdAt)}</div>
+      <div data-label="Date">${formatDate(order.createdAt)}${canReportGhost ? `<button class="report-ghost-btn" data-order="${order.id}" style="margin-left:8px; padding:4px 8px; font-size:11px; background:#7f1d1d; border:1px solid #991b1b; border-radius:6px; color:#fca5a5; cursor:pointer;">Report Non-Payment</button>` : ''}</div>
     `;
     body.appendChild(row);
+  });
+
+  // Add event listeners for ghost report buttons
+  body.querySelectorAll('.report-ghost-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const orderId = btn.dataset.order;
+      if (!confirm('Report this buyer for non-payment? This will affect their buyer reliability score.')) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Reporting...';
+
+      try {
+        const res = await fetch(`/api/orders/${orderId}/report-ghost`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: 'Non-payment after 48 hours' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to report');
+
+        btn.textContent = 'Reported';
+        btn.style.background = '#166534';
+        btn.style.borderColor = '#15803d';
+        btn.style.color = '#86efac';
+      } catch (err) {
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Report Non-Payment';
+      }
+    });
   });
 }
 
