@@ -3912,7 +3912,7 @@ app.post("/api/business/subscribe/checkout", async (req, res) => {
   try {
     const stripe = require('stripe')(stripeKey);
     const user = await data.getUserById(u);
-    const priceId = process.env.STRIPE_PRICE_ID || "";
+    const priceId = (process.env.STRIPE_PRICE_ID || "").trim();
 
     if(!priceId) {
       return res.status(400).json({ error: "Stripe price not configured" });
