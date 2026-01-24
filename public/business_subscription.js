@@ -137,8 +137,6 @@ async function fetchSubscriptionStatus() {
 
   try {
     const result = await api(`/api/business/subscription/${currentPlaceId}`);
-    console.log('Subscription API response:', result);
-    console.log('currentPeriodEnd:', result.subscription?.currentPeriodEnd);
     currentSubscription = result.subscription;
     renderStatusCard(result.subscription, result.isActive);
     renderBenefits(result.isActive);
@@ -293,7 +291,6 @@ async function startFreeTrial() {
 
 async function upgradeToPaid(event) {
   const clickedBtn = event?.target?.closest('button');
-  console.log('upgradeToPaid called', { clickedBtn, currentPlaceId });
 
   if (!currentPlaceId) {
     showError('Please select a store first');
@@ -301,7 +298,6 @@ async function upgradeToPaid(event) {
   }
 
   const btn = clickedBtn || $('upgradeBtn') || $('reactivateBtn');
-  console.log('Button found:', btn?.id);
 
   if (btn) {
     btn.disabled = true;
@@ -309,16 +305,13 @@ async function upgradeToPaid(event) {
   }
 
   try {
-    console.log('Calling checkout API for placeId:', currentPlaceId);
     const response = await api('/api/business/subscribe/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ placeId: currentPlaceId })
     });
-    console.log('Checkout response:', response);
 
     if (response.url) {
-      console.log('Redirecting to:', response.url);
       window.location.href = response.url;
       return;
     }
@@ -326,7 +319,6 @@ async function upgradeToPaid(event) {
     showError('Unable to create checkout session. Please try again.');
     resetUpgradeButton(btn);
   } catch (e) {
-    console.error('Checkout error:', e);
     if (e.message.includes('not configured') || e.message.includes('coming soon')) {
       showError('Paid subscriptions are coming soon! For now, enjoy your free trial or submit a giveaway offer for a free month.');
     } else {
