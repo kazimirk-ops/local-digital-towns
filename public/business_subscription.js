@@ -137,6 +137,8 @@ async function fetchSubscriptionStatus() {
 
   try {
     const result = await api(`/api/business/subscription/${currentPlaceId}`);
+    console.log('Subscription API response:', result);
+    console.log('currentPeriodEnd:', result.subscription?.currentPeriodEnd);
     currentSubscription = result.subscription;
     renderStatusCard(result.subscription, result.isActive);
     renderBenefits(result.isActive);
