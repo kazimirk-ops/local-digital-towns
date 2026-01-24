@@ -67,7 +67,7 @@ async function markPaid() {
   }
 }
 
-$("markPaidBtn").onclick = markPaid;
+$("markPaidBtn")?.addEventListener("click", markPaid);
 loadOrder().catch((e) => {
   $("payStatus").textContent = `ERROR: ${e.message}`;
 });

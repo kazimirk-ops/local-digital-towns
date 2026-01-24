@@ -148,7 +148,7 @@ async function loadDmList() {
       const name = c.otherUser ? c.otherUser.displayName : `Conversation ${c.id}`;
       const tier = c.otherUser?.trustTierLabel ? ` • ${c.otherUser.trustTierLabel}` : "";
       div.textContent = `${name}${tier}`;
-      div.onclick = () => openConversation(c.id);
+      div.addEventListener("click", () => openConversation(c.id));
       list.appendChild(div);
     });
     const hash = window.location.hash || "";
@@ -207,8 +207,8 @@ async function sendDm() {
   await openConversation(currentConversationId);
 }
 
-document.getElementById("saveProfileBtn").onclick = saveProfile;
-document.getElementById("dmSendBtn").onclick = sendDm;
+document.getElementById("saveProfileBtn")?.addEventListener("click", saveProfile);
+document.getElementById("dmSendBtn")?.addEventListener("click", sendDm);
 document.getElementById("displayName").addEventListener("input", updateHeroPreview);
 document.getElementById("bio").addEventListener("input", updateHeroPreview);
 document.getElementById("avatarUrl").addEventListener("input", updateAvatarPreview);

@@ -88,34 +88,34 @@ function renderCart(){
   const total = subtotal + deposit;
   totals.innerHTML = `Subtotal: ${fmtCents(subtotal)} • <span title="Non-refundable platform deposit">Deposit (5%): ${fmtCents(deposit)}</span> • Total: ${fmtCents(total)}`;
   list.querySelectorAll("button[data-inc]").forEach((btn)=>{
-    btn.onclick = async ()=>{
+    btn.addEventListener("click", async ()=>{
       try{
         await api("/api/cart/add",{method:"POST",body:JSON.stringify({listingId:Number(btn.dataset.inc), quantity:1})});
         await loadCart();
       }catch(e){
         setCartMsg(`ERROR: ${e.message}`, true);
       }
-    };
+    });
   });
   list.querySelectorAll("button[data-dec]").forEach((btn)=>{
-    btn.onclick = async ()=>{
+    btn.addEventListener("click", async ()=>{
       try{
         await api("/api/cart/add",{method:"POST",body:JSON.stringify({listingId:Number(btn.dataset.dec), quantity:-1})});
         await loadCart();
       }catch(e){
         setCartMsg(`ERROR: ${e.message}`, true);
       }
-    };
+    });
   });
   list.querySelectorAll("button[data-remove]").forEach((btn)=>{
-    btn.onclick = async ()=>{
+    btn.addEventListener("click", async ()=>{
       try{
         await api("/api/cart/remove",{method:"POST",body:JSON.stringify({listingId:Number(btn.dataset.remove)})});
         await loadCart();
       }catch(e){
         setCartMsg(`ERROR: ${e.message}`, true);
       }
-    };
+    });
   });
 }
 async function addToCart(listingId){
@@ -330,25 +330,25 @@ function render(){
       ${type==="auction" ? auctionBlock : (type!=="item" ? `<button data-id="${l.id}">Apply / Message</button>` : `<button data-cart="${l.id}">Add to Cart</button>`)}
     `;
     const b=d.querySelector("button[data-id]");
-    if(b) b.onclick=()=>apply(l.id);
+    if(b) b.addEventListener("click", ()=>apply(l.id));
     const cartBtn=d.querySelector("button[data-cart]");
-    if(cartBtn) cartBtn.onclick=()=>addToCart(l.id);
+    if(cartBtn) cartBtn.addEventListener("click", ()=>addToCart(l.id));
     const bidBtn=d.querySelector("button[data-bid]");
-    if(bidBtn) bidBtn.onclick=()=>placeBid(l.id);
+    if(bidBtn) bidBtn.addEventListener("click", ()=>placeBid(l.id));
     const closeBtnEl = d.querySelector("button[data-close]");
-    if(closeBtnEl) closeBtnEl.onclick=async()=>{
+    if(closeBtnEl) closeBtnEl.addEventListener("click", async()=>{
       if(!confirm("Close this auction and notify the winner?")) return;
       try{
         await api(`/api/auctions/${l.id}/close`,{method:"POST"});
         await loadAuction(l.id);
         renderAuctionText(l.id);
-      }catch(e){ alert(e.message); }
-    };
-    d.onclick=(e)=>{
+      }catch(e){ console.error(e.message); }
+    });
+    d.addEventListener("click", (e)=>{
       const tag = e.target?.tagName?.toLowerCase();
       if(tag === "button" || tag === "input" || tag === "a") return;
       openListingModal(l, photoUrls || []);
-    };
+    });
     g.appendChild(d);
     if(type==="auction"){
       if(!AUCTIONS[l.id]) loadAuction(l.id);
@@ -383,7 +383,7 @@ function openListingModal(l, photos){
     img.style.objectFit = "cover";
     img.style.borderRadius = "8px";
     img.style.border = "1px solid rgba(255,255,255,.12)";
-    img.onclick = () => { if(main) main.src = url; };
+    img.addEventListener("click", () => { if(main) main.src = url; });
     thumbs.appendChild(img);
   });
   modal.style.display = "block";
@@ -398,18 +398,19 @@ async function apply(id){
 
 async function main(){
   const id=pid();
-  $("tabItems").onclick=()=>setTab("item");
-  $("tabOffers").onclick=()=>setTab("offer");
-  $("tabRequests").onclick=()=>setTab("request");
-  $("messageBtn").onclick=startDm;
-  $("followBtn").onclick=toggleFollow;
-  $("cartBtn").onclick=async()=>{ $("cartModal").style.display="block"; await loadCart(); };
-  $("cartClose").onclick=()=>{ $("cartModal").style.display="none"; };
-  $("cartModal").onclick=(e)=>{ if(e.target?.id==="cartModal") $("cartModal").style.display="none"; };
-  $("cartCheckoutBtn").onclick=checkoutCart;
-  $("cartPayBtn").onclick=payCartOrder;
-  $("listingModalClose").onclick=()=>{ $("listingModal").style.display="none"; };
-  $("listingModal").onclick=(e)=>{ if(e.target?.id==="listingModal") $("listingModal").style.display="none"; };
+  // CSP-compliant event listeners
+  $("tabItems")?.addEventListener("click", ()=>setTab("item"));
+  $("tabOffers")?.addEventListener("click", ()=>setTab("offer"));
+  $("tabRequests")?.addEventListener("click", ()=>setTab("request"));
+  $("messageBtn")?.addEventListener("click", startDm);
+  $("followBtn")?.addEventListener("click", toggleFollow);
+  $("cartBtn")?.addEventListener("click", async()=>{ $("cartModal").style.display="block"; await loadCart(); });
+  $("cartClose")?.addEventListener("click", ()=>{ $("cartModal").style.display="none"; });
+  $("cartModal")?.addEventListener("click", (e)=>{ if(e.target?.id==="cartModal") $("cartModal").style.display="none"; });
+  $("cartCheckoutBtn")?.addEventListener("click", checkoutCart);
+  $("cartPayBtn")?.addEventListener("click", payCartOrder);
+  $("listingModalClose")?.addEventListener("click", ()=>{ $("listingModal").style.display="none"; });
+  $("listingModal")?.addEventListener("click", (e)=>{ if(e.target?.id==="listingModal") $("listingModal").style.display="none"; });
 
   try{
     let me=null;
@@ -448,7 +449,7 @@ async function main(){
         const btn=$("testAuctionBtn");
         if(btn){
           btn.style.display="inline-block";
-          btn.onclick=()=>createTestAuction();
+          btn.addEventListener("click", ()=>createTestAuction());
         }
         // Show owner controls
         const ownerControls = $("ownerControls");
