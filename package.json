@@ -1,21 +1,50 @@
 {
   "name": "local-digital-towns",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Digital Towns Platform - Local community marketplace",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "start:auth": "node services/auth/index.js",
+    "start:crm": "node services/crm/index.js",
+    "worker:backup": "node workers/backup/index.js",
+    "worker:email": "node workers/email/index.js",
+    "worker:sync": "node workers/sync/index.js",
+    "worker:analytics": "node workers/analytics/index.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "marketplace",
+    "community",
+    "local-business"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.732.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "ioredis": "^5.3.2",
+    "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.8",
     "pg": "^8.11.5",
-    "stripe": "^17.4.0"
+    "stripe": "^17.4.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   }
 }

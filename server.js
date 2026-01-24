@@ -53,6 +53,94 @@ let nextSweepRuleId = 1;
 let nextSweepstakeId = 1;
 const chatImageUploadRate = new Map();
 
+// ============ SECURITY MIDDLEWARE ============
+
+// Helmet - Security headers
+let helmet;
+try {
+  helmet = require("helmet");
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://js.stripe.com", "https://connect.facebook.net"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "https:", "blob:"],
+        connectSrc: ["'self'", "https://api.stripe.com", "https://graph.facebook.com", "wss:"],
+        frameSrc: ["'self'", "https://js.stripe.com", "https://www.facebook.com"],
+      }
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+  }));
+  console.log("Security: Helmet enabled");
+} catch(e) {
+  console.log("Security: Helmet not installed (npm install helmet)");
+}
+
+// CORS - Cross-Origin Resource Sharing
+let cors;
+try {
+  cors = require("cors");
+  const allowedOrigins = (process.env.CORS_ORIGINS || "").split(",").filter(Boolean);
+  app.use(cors({
+    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"]
+  }));
+  console.log("Security: CORS enabled");
+} catch(e) {
+  console.log("Security: CORS not installed (npm install cors)");
+}
+
+// Rate Limiting
+let rateLimit;
+try {
+  rateLimit = require("express-rate-limit");
+  // General API rate limit
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 500, // limit each IP to 500 requests per windowMs
+    message: { error: "Too many requests, please try again later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => {
+      // Skip rate limiting for health checks
+      return req.path === "/health";
+    }
+  });
+  app.use("/api/", apiLimiter);
+
+  // Stricter limit for auth endpoints
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20, // 20 attempts per 15 minutes
+    message: { error: "Too many authentication attempts, please try again later." },
+    standardHeaders: true,
+    legacyHeaders: false
+  });
+  app.use("/api/auth/", authLimiter);
+  app.use("/signup/", authLimiter);
+
+  console.log("Security: Rate limiting enabled");
+} catch(e) {
+  console.log("Security: Rate limiting not installed (npm install express-rate-limit)");
+}
+
+// Trust proxy for proper IP detection behind Render's load balancer
+app.set("trust proxy", 1);
+
+// Health check endpoint (before static files)
+app.get("/health", (req, res) => {
+  res.json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    town: process.env.TOWN_NAME || "Sebastian"
+  });
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 // X-Request-Id middleware

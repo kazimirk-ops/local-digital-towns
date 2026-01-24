@@ -1,0 +1,246 @@
+# Digital Towns Infrastructure Configuration
+# This file defines all services, databases, and workers for Render deployment
+
+services:
+  # ============ WEB SERVICES (PUBLIC) ============
+
+  # Main Web Application
+  - type: web
+    name: digitaltowns-web
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm run start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: digitaltowns-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: digitaltowns-redis
+          type: redis
+          property: connectionString
+      - key: AUTH_SERVICE_URL
+        value: http://auth-service:3002
+      - key: CRM_SERVICE_URL
+        value: http://crm-service:3001
+      # Stripe
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_ID
+        sync: false
+      # Email
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      # AWS S3 for media
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      # Security
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      # Multi-town config
+      - key: TOWN_ID
+        value: "1"
+      - key: TOWN_NAME
+        value: "Sebastian"
+      - key: PUBLIC_BASE_URL
+        sync: false
+
+  # ============ PRIVATE SERVICES (INTERNAL ONLY) ============
+
+  # Authentication Service
+  - type: pserv
+    name: auth-service
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm run start:auth
+    envVars:
+      - key: PORT
+        value: 3002
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: digitaltowns-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: digitaltowns-redis
+          type: redis
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: "7d"
+      # Facebook OAuth (optional)
+      - key: FACEBOOK_APP_ID
+        sync: false
+      - key: FACEBOOK_APP_SECRET
+        sync: false
+      - key: FACEBOOK_CALLBACK_URL
+        sync: false
+      # Google OAuth (optional)
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+  # CRM Service (HubSpot Integration)
+  - type: pserv
+    name: crm-service
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm run start:crm
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: digitaltowns-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: digitaltowns-redis
+          type: redis
+          property: connectionString
+      - key: HUBSPOT_API_KEY
+        sync: false
+      - key: HUBSPOT_PORTAL_ID
+        sync: false
+
+  # ============ BACKGROUND WORKERS ============
+
+  # Backup Worker - Nightly database backups to Backblaze B2
+  - type: worker
+    name: backup-worker
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm run worker:backup
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: digitaltowns-db
+          property: connectionString
+      - key: B2_KEY_ID
+        sync: false
+      - key: B2_APP_KEY
+        sync: false
+      - key: B2_BUCKET_NAME
+        sync: false
+      - key: BACKUP_ENCRYPTION_KEY
+        sync: false
+      # Backup schedule (cron format)
+      - key: BACKUP_SCHEDULE
+        value: "0 2 * * *"
+
+  # Email Worker - Process email queue
+  - type: worker
+    name: email-worker
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm run worker:email
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: REDIS_URL
+        fromService:
+          name: digitaltowns-redis
+          type: redis
+          property: connectionString
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+
+  # Sync Worker - CRM and third-party integrations
+  - type: worker
+    name: sync-worker
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm run worker:sync
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: digitaltowns-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: digitaltowns-redis
+          type: redis
+          property: connectionString
+      - key: CRM_SERVICE_URL
+        value: http://crm-service:3001
+      - key: HUBSPOT_API_KEY
+        sync: false
+
+  # Analytics Worker - Event processing and aggregation
+  - type: worker
+    name: analytics-worker
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm run worker:analytics
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: digitaltowns-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: digitaltowns-redis
+          type: redis
+          property: connectionString
+
+# ============ DATABASES ============
+databases:
+  - name: digitaltowns-db
+    plan: starter
+    postgresMajorVersion: 16
+    ipAllowList: []  # Empty = only Render private network
+
+  - name: digitaltowns-redis
+    type: redis
+    plan: starter
+    ipAllowList: []  # Empty = only Render private network
