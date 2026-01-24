@@ -1075,25 +1075,46 @@ async function updateListingStatus(listingId, status){
   return getListingById(listingId);
 }
 async function getHighestBidForListing(listingId){
-  return (await stmt("SELECT id, amountCents, userId, createdAt FROM bids WHERE listingId=$1 ORDER BY amountCents DESC, createdAt DESC LIMIT 1")
-    .get(Number(listingId))) || null;
+  const row = await stmt("SELECT id, amountCents, userId, createdAt FROM bids WHERE listingId=$1 ORDER BY amountCents DESC, createdAt DESC LIMIT 1")
+    .get(Number(listingId));
+  if (!row) return null;
+  // Normalize PostgreSQL lowercase columns
+  return {
+    id: row.id,
+    amountCents: row.amountCents || row.amountcents || 0,
+    userId: row.userId || row.userid,
+    createdAt: row.createdAt || row.createdat
+  };
 }
 async function getNextHighestBidForListing(listingId, excludeUserId){
-  return (await stmt(`
+  const row = await stmt(`
     SELECT id, amountCents, userId, createdAt
     FROM bids
     WHERE listingId=$1 AND userId!=$2
     ORDER BY amountCents DESC, createdAt DESC
     LIMIT 1
-  `).get(Number(listingId), Number(excludeUserId))) || null;
+  `).get(Number(listingId), Number(excludeUserId));
+  if (!row) return null;
+  // Normalize PostgreSQL lowercase columns
+  return {
+    id: row.id,
+    amountCents: row.amountCents || row.amountcents || 0,
+    userId: row.userId || row.userid,
+    createdAt: row.createdAt || row.createdat
+  };
 }
 async function getBidCountForListing(listingId){
   const row = await stmt("SELECT COUNT(*) AS c FROM bids WHERE listingId=$1").get(Number(listingId));
   return row?.c || 0;
 }
 async function getLastBidForUser(listingId, userId){
-  return (await stmt("SELECT createdAt FROM bids WHERE listingId=$1 AND userId=$2 ORDER BY createdAt DESC LIMIT 1")
-    .get(Number(listingId), Number(userId))) || null;
+  const row = await stmt("SELECT createdAt FROM bids WHERE listingId=$1 AND userId=$2 ORDER BY createdAt DESC LIMIT 1")
+    .get(Number(listingId), Number(userId));
+  if (!row) return null;
+  // Normalize PostgreSQL lowercase columns
+  return {
+    createdAt: row.createdAt || row.createdat
+  };
 }
 async function addBid(listingId, userId, amountCents){
   const createdAt = nowISO();
