@@ -289,13 +289,13 @@ async function startFreeTrial() {
   }
 }
 
-async function upgradeToPaid() {
+async function upgradeToPaid(clickedBtn) {
   if (!currentPlaceId) {
     showError('Please select a store first');
     return;
   }
 
-  const btn = $('upgradeBtn') || $('reactivateBtn');
+  const btn = clickedBtn || $('upgradeBtn') || $('reactivateBtn');
   if (btn) {
     btn.disabled = true;
     btn.innerHTML = '<span class="btn-icon">⏳</span> Redirecting to checkout...';
