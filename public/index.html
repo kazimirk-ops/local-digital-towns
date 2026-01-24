@@ -666,6 +666,22 @@
               </div>
             </div>
             <div class="panel">
+              <div class="panelHead"><strong>Past Daily Pulses</strong></div>
+              <div class="panelBody">
+                <div class="list" id="pulseHistoryList"></div>
+                <div class="muted" id="pulseHistoryEmpty" style="display:none;">No past pulses available.</div>
+              </div>
+            </div>
+            <div class="panel" id="pulseDetailPanel" style="display:none;">
+              <div class="panelHead">
+                <strong>Pulse Details</strong>
+                <button class="pill" onclick="closePulseDetail()" style="cursor:pointer;">Close</button>
+              </div>
+              <div class="panelBody">
+                <div id="pulseDetailBody"></div>
+              </div>
+            </div>
+            <div class="panel">
               <div class="panelHead"><strong>Archive</strong></div>
               <div class="panelBody">
                 <div id="archivePinned"></div>

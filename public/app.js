@@ -680,6 +680,96 @@ async function loadPulseLatest(){
   }
 }
 
+async function loadPulseHistory(){
+  const listEl = $("pulseHistoryList");
+  const emptyEl = $("pulseHistoryEmpty");
+  if(!listEl || !emptyEl) return;
+  try{
+    const pulses = await api("/api/pulse/archive");
+    if(!pulses || !pulses.length){
+      listEl.innerHTML = "";
+      emptyEl.style.display = "block";
+      return;
+    }
+    emptyEl.style.display = "none";
+    listEl.innerHTML = "";
+    pulses.forEach(pulse=>{
+      const div = document.createElement("div");
+      div.className = "item";
+      div.style.cursor = "pointer";
+      const dayKey = pulse.dayKey || pulse.daykey || "Unknown";
+      const metrics = pulse.metrics || (pulse.metricsJson ? JSON.parse(pulse.metricsJson) : {});
+      const msgCount = metrics.messagesSentCount || metrics.messagessentcount || 0;
+      const listingCount = metrics.listingTotal || metrics.listingtotal || 0;
+      div.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <strong>${escapeHtml(dayKey)}</strong>
+            <div class="muted">${listingCount} listings, ${msgCount} messages</div>
+          </div>
+          <span class="pill">View</span>
+        </div>
+      `;
+      div.onclick = () => showPulseDetail(pulse);
+      listEl.appendChild(div);
+    });
+  }catch(e){
+    listEl.innerHTML = "";
+    emptyEl.style.display = "block";
+  }
+}
+
+function showPulseDetail(pulse){
+  const panel = $("pulseDetailPanel");
+  const body = $("pulseDetailBody");
+  if(!panel || !body) return;
+
+  const dayKey = pulse.dayKey || pulse.daykey || "Unknown";
+  const metrics = pulse.metrics || (pulse.metricsJson ? JSON.parse(pulse.metricsJson) : {});
+  const highlights = pulse.highlights || (pulse.highlightsJson ? JSON.parse(pulse.highlightsJson) : {});
+
+  let html = `<div style="margin-bottom:12px;"><strong>Date:</strong> ${escapeHtml(dayKey)}</div>`;
+
+  // Metrics
+  html += `<div class="item"><strong>Metrics</strong><div class="muted" style="margin-top:6px;">`;
+  if(metrics.listingTotal || metrics.listingtotal) html += `Listings: ${metrics.listingTotal || metrics.listingtotal}<br>`;
+  if(metrics.messagesSentCount || metrics.messagessentcount) html += `Messages: ${metrics.messagesSentCount || metrics.messagessentcount}<br>`;
+  if(metrics.userCount || metrics.usercount) html += `Users: ${metrics.userCount || metrics.usercount}<br>`;
+  if(metrics.orderCount || metrics.ordercount) html += `Orders: ${metrics.orderCount || metrics.ordercount}<br>`;
+  if(metrics.orderTotal || metrics.ordertotal) html += `Order Total: $${((metrics.orderTotal || metrics.ordertotal || 0) / 100).toFixed(2)}<br>`;
+  html += `</div></div>`;
+
+  // Highlights
+  if(highlights.topChannels?.length){
+    html += `<div class="item"><strong>Top Channels</strong><div class="muted" style="margin-top:6px;">`;
+    highlights.topChannels.forEach(c => { html += `${escapeHtml(c.name)} (${c.c} messages)<br>`; });
+    html += `</div></div>`;
+  }
+  if(highlights.topStores?.length){
+    html += `<div class="item"><strong>Top Stores</strong><div class="muted" style="margin-top:6px;">`;
+    highlights.topStores.forEach(s => { html += `${escapeHtml(s.name)} (${s.c} followers)<br>`; });
+    html += `</div></div>`;
+  }
+  if(highlights.topListings?.length){
+    html += `<div class="item"><strong>New Listings</strong><div class="muted" style="margin-top:6px;">`;
+    highlights.topListings.forEach(l => { html += `${escapeHtml(l.title)}<br>`; });
+    html += `</div></div>`;
+  }
+
+  // Markdown body if available
+  if(pulse.markdownBody || pulse.markdownbody){
+    html += `<div class="item" style="margin-top:12px;">${renderMarkdown(pulse.markdownBody || pulse.markdownbody)}</div>`;
+  }
+
+  body.innerHTML = html;
+  panel.style.display = "block";
+}
+
+function closePulseDetail(){
+  const panel = $("pulseDetailPanel");
+  if(panel) panel.style.display = "none";
+}
+
 function renderLocalBizMy(apps){
   const list=$("localBizMyList");
   const loginMsg=$("localBizLoginMsg");
@@ -1988,6 +2078,7 @@ async function main(){
   await loadPrizeOffers();
   await loadLiveNow();
   await loadPulseLatest();
+  await loadPulseHistory();
   await loadFeaturedStores();
 
   initMap();
