@@ -44,11 +44,8 @@ async function loadMyStores() {
     }
 
     // Get places owned by this user
-    const places = await api('/places');
-    myStores = places.filter(p =>
-      Number(p.ownerUserId || p.owneruserid) === Number(me.user.id) &&
-      p.status === 'approved'
-    );
+    const places = await api('/api/places/mine');
+    myStores = places.filter(p => p.status === 'approved');
 
     $('loadingState').style.display = 'none';
 
