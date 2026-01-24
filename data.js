@@ -18,6 +18,11 @@ function stmt(text) {
   };
 }
 
+// Expose raw query for server.js usage
+async function query(sql, params) {
+  return db.query(sql, params);
+}
+
 function parseJsonArray(s){
   if(Array.isArray(s)) return s;
   try { const v = JSON.parse(s || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -3761,4 +3766,7 @@ module.exports = {
   getGhostReportsByBuyer,
   getGhostingStats,
   recalculateGhostingPercent,
+
+  // raw query
+  query,
 };
