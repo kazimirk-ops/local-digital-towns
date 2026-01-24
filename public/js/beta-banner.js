@@ -32,7 +32,7 @@
         <span class="beta-banner-text">
           <span class="beta-banner-icon">🚧</span>
           <strong>BETA</strong> - You're an early adopter! Report issues to
-          <a href="mailto:support@digitaltowns.com">support@digitaltowns.com</a>
+          <a href="mailto:support@sebastian-florida.com">support@sebastian-florida.com</a>
         </span>
         <button class="beta-banner-close" aria-label="Dismiss">&times;</button>
       </div>
