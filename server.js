@@ -266,11 +266,18 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
   try{
     event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET || "");
   }catch(err){
+    console.error("Stripe webhook signature error:", err.message);
     return res.status(400).json({error:"Invalid signature"});
   }
+  console.log("Stripe webhook received:", event.type);
+
   if(event.type === "checkout.session.completed"){
     const session = event.data?.object;
     const orderId = Number(session?.metadata?.orderId || 0);
+    const placeId = Number(session?.metadata?.placeId || 0);
+    const userId = Number(session?.metadata?.userId || 0);
+
+    // Handle marketplace order payment
     if(orderId){
       const order = await data.getOrderById(orderId);
       if(order && order.status !== "paid"){
@@ -280,7 +287,25 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
         await finalizeOrderPayment(order);
       }
     }
+
+    // Handle business subscription payment
+    if(placeId && session.subscription){
+      console.log("Processing business subscription for placeId:", placeId);
+      try {
+        const updateSql = `
+          UPDATE business_subscriptions
+          SET stripeCustomerId = $1, stripeSubscriptionId = $2, plan = 'monthly', status = 'active',
+              currentPeriodStart = NOW(), currentPeriodEnd = NOW() + INTERVAL '1 month', updatedAt = NOW()
+          WHERE placeId = $3
+        `;
+        await data.query(updateSql, [session.customer, session.subscription, placeId]);
+        console.log("Business subscription activated for placeId:", placeId);
+      } catch(err) {
+        console.error("Error updating business subscription:", err);
+      }
+    }
   }
+
   if(event.type === "payment_intent.succeeded"){
     const intent = event.data?.object;
     const orderId = Number(intent?.metadata?.orderId || 0);
@@ -294,6 +319,49 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
       }
     }
   }
+
+  // Handle subscription updates from Stripe
+  if(event.type === "customer.subscription.updated"){
+    const sub = event.data.object;
+    const customerId = sub.customer;
+    const status = sub.status === 'active' ? 'active' : (sub.status === 'canceled' ? 'canceled' : sub.status);
+    const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+
+    try {
+      const result = await data.query(`SELECT * FROM business_subscriptions WHERE stripeCustomerId = $1`, [customerId]);
+      if(result.rows.length > 0) {
+        const localSub = result.rows[0];
+        await data.query(
+          `UPDATE business_subscriptions SET status = $1, currentPeriodEnd = $2, canceledAt = $3, updatedAt = NOW() WHERE id = $4`,
+          [status, periodEnd, sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null, localSub.id]
+        );
+        console.log("Subscription updated for customer:", customerId);
+      }
+    } catch(err) {
+      console.error("Error updating subscription:", err);
+    }
+  }
+
+  // Handle subscription cancellation/deletion
+  if(event.type === "customer.subscription.deleted"){
+    const sub = event.data.object;
+    const customerId = sub.customer;
+
+    try {
+      const result = await data.query(`SELECT * FROM business_subscriptions WHERE stripeCustomerId = $1`, [customerId]);
+      if(result.rows.length > 0) {
+        const localSub = result.rows[0];
+        await data.query(
+          `UPDATE business_subscriptions SET status = 'expired', canceledAt = NOW(), updatedAt = NOW() WHERE id = $1`,
+          [localSub.id]
+        );
+        console.log("Subscription expired for customer:", customerId);
+      }
+    } catch(err) {
+      console.error("Error expiring subscription:", err);
+    }
+  }
+
   res.json({ received:true });
 });
 app.get("/debug/routes", async (req, res) =>{
@@ -4066,112 +4134,6 @@ app.get("/api/business/subscribe/history/:placeId", async (req, res) => {
 
   // Return empty if no Stripe history
   res.json({ payments: [] });
-});
-
-// Stripe Webhook handler
-app.post("/api/stripe/webhook", async (req, res) => {
-  const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
-  const webhookSecret = (process.env.STRIPE_WEBHOOK_SECRET || "").trim();
-
-  if(!stripeKey) {
-    return res.status(400).send("Stripe not configured");
-  }
-
-  const stripe = require('stripe')(stripeKey);
-  const sig = req.headers['stripe-signature'];
-
-  let event;
-  try {
-    if(webhookSecret) {
-      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    } else {
-      event = req.body;
-    }
-  } catch(e) {
-    console.error("Webhook signature verification failed:", e.message);
-    return res.status(400).send(`Webhook Error: ${e.message}`);
-  }
-
-  try {
-    switch(event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object;
-        const placeId = Number(session.metadata?.placeId || 0);
-        const userId = Number(session.metadata?.userId || 0);
-
-        if(placeId && userId) {
-          let subscription = await data.getBusinessSubscription(placeId);
-          if(!subscription) {
-            subscription = await data.createBusinessSubscription(placeId, userId, 'monthly');
-          }
-
-          // Update with Stripe IDs
-          const updateSql = `
-            UPDATE business_subscriptions
-            SET stripeCustomerId = $1, stripeSubscriptionId = $2, plan = 'monthly', status = 'active',
-                currentPeriodStart = NOW(), currentPeriodEnd = NOW() + INTERVAL '1 month', updatedAt = NOW()
-            WHERE placeId = $3
-          `;
-          await data.query(updateSql, [session.customer, session.subscription, placeId]);
-        }
-        break;
-      }
-
-      case 'customer.subscription.updated': {
-        const sub = event.data.object;
-        const customerId = sub.customer;
-
-        // Find subscription by Stripe customer ID
-        const findSql = `SELECT * FROM business_subscriptions WHERE stripeCustomerId = $1`;
-        const result = await data.query(findSql, [customerId]);
-        if(result.rows.length > 0) {
-          const localSub = result.rows[0];
-          const status = sub.status === 'active' ? 'active' : (sub.status === 'canceled' ? 'canceled' : sub.status);
-          const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
-
-          await data.query(
-            `UPDATE business_subscriptions SET status = $1, currentPeriodEnd = $2, canceledAt = $3, updatedAt = NOW() WHERE id = $4`,
-            [status, periodEnd, sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null, localSub.id]
-          );
-        }
-        break;
-      }
-
-      case 'customer.subscription.deleted': {
-        const sub = event.data.object;
-        const customerId = sub.customer;
-
-        const findSql = `SELECT * FROM business_subscriptions WHERE stripeCustomerId = $1`;
-        const result = await data.query(findSql, [customerId]);
-        if(result.rows.length > 0) {
-          const localSub = result.rows[0];
-          await data.query(
-            `UPDATE business_subscriptions SET status = 'expired', canceledAt = NOW(), updatedAt = NOW() WHERE id = $1`,
-            [localSub.id]
-          );
-        }
-        break;
-      }
-
-      case 'invoice.payment_succeeded': {
-        const invoice = event.data.object;
-        console.log(`Payment succeeded for invoice ${invoice.id}`);
-        break;
-      }
-
-      case 'invoice.payment_failed': {
-        const invoice = event.data.object;
-        console.log(`Payment failed for invoice ${invoice.id}`);
-        // Could send notification to store owner here
-        break;
-      }
-    }
-
-    res.json({ received: true });
-  } catch(e) {
-    console.error("Webhook processing error:", e);
-    res.status(500).json({ error: e.message });
-  }
 });
 
 // ---------- Giveaway Offers ----------
