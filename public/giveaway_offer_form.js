@@ -273,5 +273,14 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Setup event listeners (CSP-compliant)
+function setupEventListeners() {
+  $('storeSelect')?.addEventListener('change', handleStoreChange);
+  $('offerForm')?.addEventListener('submit', handleSubmit);
+  $('imageUpload')?.addEventListener('click', () => $('imageFile')?.click());
+  $('imageFile')?.addEventListener('change', handleImageSelect);
+}
+
 // Initialize
+setupEventListeners();
 loadMyStores();

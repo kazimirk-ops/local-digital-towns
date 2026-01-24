@@ -279,7 +279,7 @@
   <header class="topbar">
     <div class="topbar-inner">
       <a class="nav-btn" href="/business-subscription">← Back to Subscription</a>
-      <select id="storeSelect" class="store-select" onchange="handleStoreChange()">
+      <select id="storeSelect" class="store-select">
         <option value="">Select your store...</option>
       </select>
     </div>
@@ -307,7 +307,7 @@
       <div class="card" id="formCard">
         <h3 class="card-title">Prize Details</h3>
 
-        <form id="offerForm" onsubmit="handleSubmit(event)">
+        <form id="offerForm">
           <div class="form-group">
             <label class="form-label">Prize Title <span class="required">*</span></label>
             <input type="text" id="title" class="form-input" placeholder="e.g., $50 Gift Card, Free Haircut, Lunch for Two" required>
@@ -330,8 +330,8 @@
 
           <div class="form-group">
             <label class="form-label">Prize Image (optional)</label>
-            <div class="image-upload" id="imageUpload" onclick="document.getElementById('imageFile').click()">
-              <input type="file" id="imageFile" accept="image/*" onchange="handleImageSelect(event)">
+            <div class="image-upload" id="imageUpload">
+              <input type="file" id="imageFile" accept="image/*">
               <div id="imagePreviewWrap">
                 <div class="image-upload-icon">📷</div>
                 <div>Click to upload an image of the prize</div>
@@ -359,6 +359,6 @@
   </main>
 
   <script src="/theme.js?v=1"></script>
-  <script src="/giveaway_offer_form.js?v=1"></script>
+  <script src="/giveaway_offer_form.js?v=2"></script>
 </body>
 </html>
