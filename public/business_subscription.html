@@ -13,7 +13,7 @@
     <div class="topbar-inner">
       <a class="nav-btn" href="/ui">← Back to Town</a>
       <div class="row">
-        <select id="storeSelect" class="store-select" onchange="handleStoreChange()">
+        <select id="storeSelect" class="store-select">
           <option value="">Select your store...</option>
         </select>
         <a id="viewStoreLink" href="#" class="nav-btn" style="display:none;">View Store</a>
@@ -83,7 +83,7 @@
           <h3 class="card-title">Get Started Today</h3>
           <p class="muted">First month FREE, then $49.99/month — credit card required, cancel anytime</p>
           <div class="btn-group">
-            <button id="startTrialBtn" class="btn btn-primary btn-lg" onclick="startFreeTrial()">
+            <button id="startTrialBtn" class="btn btn-primary btn-lg">
               <span class="btn-icon">🚀</span> Start 30-Day Free Trial
             </button>
           </div>
@@ -98,7 +98,7 @@
             <span class="price-period">/month</span>
           </div>
           <div class="btn-group">
-            <button id="upgradeBtn" class="btn btn-primary btn-lg" onclick="upgradeToPaid(this)">
+            <button id="upgradeBtn" class="btn btn-primary btn-lg">
               <span class="btn-icon">⬆️</span> Upgrade to Paid — $49.99/month
             </button>
           </div>
@@ -110,7 +110,7 @@
           <h3 class="card-title">Manage Subscription</h3>
           <p class="muted">Your subscription is active and will renew automatically.</p>
           <div class="btn-group">
-            <button id="manageBtn" class="btn btn-secondary" onclick="manageSubscription()">
+            <button id="manageBtn" class="btn btn-secondary">
               <span class="btn-icon">⚙️</span> Manage Subscription
             </button>
             <a href="#" id="storeSettingsLink" class="btn btn-secondary">
@@ -118,7 +118,7 @@
             </a>
           </div>
           <div class="cancel-link-wrap">
-            <a href="#" onclick="confirmCancel(); return false;" class="cancel-link">Cancel subscription</a>
+            <a href="#" id="cancelLink" class="cancel-link">Cancel subscription</a>
           </div>
         </div>
 
@@ -131,7 +131,7 @@
             <span>Your store features are currently limited</span>
           </div>
           <div class="btn-group">
-            <button id="reactivateBtn" class="btn btn-primary btn-lg" onclick="upgradeToPaid(this)">
+            <button id="reactivateBtn" class="btn btn-primary btn-lg">
               <span class="btn-icon">🔄</span> Reactivate — $49.99/month
             </button>
           </div>
@@ -256,13 +256,13 @@
         Are you sure you want to cancel your subscription? You'll continue to have access until the end of your current billing period.
       </p>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closeCancelModal()">Keep Subscription</button>
-        <button id="confirmCancelBtn" class="btn btn-danger" onclick="cancelSubscription()">Yes, Cancel</button>
+        <button id="keepSubBtn" class="btn btn-secondary">Keep Subscription</button>
+        <button id="confirmCancelBtn" class="btn btn-danger">Yes, Cancel</button>
       </div>
     </div>
   </div>
 
   <script src="/theme.js?v=1"></script>
-  <script src="/business_subscription.js?v=2"></script>
+  <script src="/business_subscription.js?v=3"></script>
 </body>
 </html>

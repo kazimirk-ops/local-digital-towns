@@ -289,7 +289,8 @@ async function startFreeTrial() {
   }
 }
 
-async function upgradeToPaid(clickedBtn) {
+async function upgradeToPaid(event) {
+  const clickedBtn = event?.target?.closest('button');
   console.log('upgradeToPaid called', { clickedBtn, currentPlaceId });
 
   if (!currentPlaceId) {
@@ -496,5 +497,18 @@ if (urlParams.get('canceled') === 'true') {
   window.history.replaceState({}, '', url);
 }
 
+// Setup event listeners (CSP-compliant)
+function setupEventListeners() {
+  $('storeSelect')?.addEventListener('change', handleStoreChange);
+  $('startTrialBtn')?.addEventListener('click', startFreeTrial);
+  $('upgradeBtn')?.addEventListener('click', upgradeToPaid);
+  $('reactivateBtn')?.addEventListener('click', upgradeToPaid);
+  $('manageBtn')?.addEventListener('click', manageSubscription);
+  $('cancelLink')?.addEventListener('click', (e) => { e.preventDefault(); confirmCancel(); });
+  $('keepSubBtn')?.addEventListener('click', closeCancelModal);
+  $('confirmCancelBtn')?.addEventListener('click', cancelSubscription);
+}
+
 // Initialize
+setupEventListeners();
 loadMyStores();
