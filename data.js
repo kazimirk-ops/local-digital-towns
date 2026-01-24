@@ -3248,9 +3248,26 @@ async function createBusinessSubscription(placeId, userId, plan = 'free_trial') 
   return stmt("SELECT * FROM business_subscriptions WHERE id=$1").get(info.rows?.[0]?.id);
 }
 
+function normalizeSubscriptionRow(row) {
+  if (!row) return row;
+  // Normalize lowercase PostgreSQL columns to camelCase
+  if (row.placeid != null && row.placeId == null) row.placeId = row.placeid;
+  if (row.userid != null && row.userId == null) row.userId = row.userid;
+  if (row.trialendsat != null && row.trialEndsAt == null) row.trialEndsAt = row.trialendsat;
+  if (row.currentperiodstart != null && row.currentPeriodStart == null) row.currentPeriodStart = row.currentperiodstart;
+  if (row.currentperiodend != null && row.currentPeriodEnd == null) row.currentPeriodEnd = row.currentperiodend;
+  if (row.canceledat != null && row.canceledAt == null) row.canceledAt = row.canceledat;
+  if (row.stripecustomerid != null && row.stripeCustomerId == null) row.stripeCustomerId = row.stripecustomerid;
+  if (row.stripesubscriptionid != null && row.stripeSubscriptionId == null) row.stripeSubscriptionId = row.stripesubscriptionid;
+  if (row.createdat != null && row.createdAt == null) row.createdAt = row.createdat;
+  if (row.updatedat != null && row.updatedAt == null) row.updatedAt = row.updatedat;
+  return row;
+}
+
 async function getBusinessSubscription(placeId) {
-  return (await stmt("SELECT * FROM business_subscriptions WHERE placeId=$1 ORDER BY id DESC LIMIT 1")
-    .get(Number(placeId))) || null;
+  const row = await stmt("SELECT * FROM business_subscriptions WHERE placeId=$1 ORDER BY id DESC LIMIT 1")
+    .get(Number(placeId));
+  return normalizeSubscriptionRow(row) || null;
 }
 
 async function updateSubscriptionStatus(subscriptionId, status) {
@@ -3265,11 +3282,8 @@ async function isSubscriptionActive(placeId) {
   if (!sub) return false;
   if (sub.status !== 'active') return false;
   const now = new Date();
-  // Handle both camelCase and lowercase column names from PostgreSQL
-  const trialEndsAt = sub.trialEndsAt || sub.trialendsat;
-  const currentPeriodEnd = sub.currentPeriodEnd || sub.currentperiodend;
-  if (trialEndsAt && new Date(trialEndsAt) > now) return true;
-  if (currentPeriodEnd && new Date(currentPeriodEnd) > now) return true;
+  if (sub.trialEndsAt && new Date(sub.trialEndsAt) > now) return true;
+  if (sub.currentPeriodEnd && new Date(sub.currentPeriodEnd) > now) return true;
   return false;
 }
 
