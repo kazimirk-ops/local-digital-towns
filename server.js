@@ -3978,7 +3978,23 @@ app.get("/api/business/subscription/:placeId", async (req, res) => {
   if(Number(ownerId) !== Number(u) && !isAdminUser(user)){
     return res.status(403).json({ error: "Only owner or admin can view subscription" });
   }
-  const subscription = await data.getBusinessSubscription(placeId);
+  let subscription = await data.getBusinessSubscription(placeId);
+  // Normalize PostgreSQL lowercase column names to camelCase
+  if(subscription) {
+    subscription = {
+      ...subscription,
+      placeId: subscription.placeId ?? subscription.placeid,
+      userId: subscription.userId ?? subscription.userid,
+      trialEndsAt: subscription.trialEndsAt ?? subscription.trialendsat,
+      currentPeriodStart: subscription.currentPeriodStart ?? subscription.currentperiodstart,
+      currentPeriodEnd: subscription.currentPeriodEnd ?? subscription.currentperiodend,
+      canceledAt: subscription.canceledAt ?? subscription.canceledat,
+      stripeCustomerId: subscription.stripeCustomerId ?? subscription.stripecustomerid,
+      stripeSubscriptionId: subscription.stripeSubscriptionId ?? subscription.stripesubscriptionid,
+      createdAt: subscription.createdAt ?? subscription.createdat,
+      updatedAt: subscription.updatedAt ?? subscription.updatedat,
+    };
+  }
   const isActive = await data.isSubscriptionActive(placeId);
   res.json({ subscription, isActive });
 });
