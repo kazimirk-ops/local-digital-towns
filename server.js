@@ -257,14 +257,16 @@ app.get("/api/health/session", async (req, res) =>{
   res.json({ ok:true, hasSid:true, sessionFound: !!row, keys: Object.keys(row || {}) });
 });
 app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) =>{
-  if(!stripe || !process.env.STRIPE_WEBHOOK_SECRET){
+  const webhookSecret = (process.env.STRIPE_WEBHOOK_SECRET || "").trim();
+  if(!stripe || !webhookSecret){
+    console.error("Stripe webhook not configured - stripe:", !!stripe, "secret:", !!webhookSecret);
     return res.status(400).json({error:"Stripe not configured"});
   }
   const sig = req.headers["stripe-signature"];
   if(!sig) return res.status(400).json({error:"Missing signature"});
   let event;
   try{
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET || "");
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
   }catch(err){
     console.error("Stripe webhook signature error:", err.message);
     return res.status(400).json({error:"Invalid signature"});
@@ -276,6 +278,9 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
     const orderId = Number(session?.metadata?.orderId || 0);
     const placeId = Number(session?.metadata?.placeId || 0);
     const userId = Number(session?.metadata?.userId || 0);
+
+    console.log("checkout.session.completed - orderId:", orderId, "placeId:", placeId, "userId:", userId);
+    console.log("session.customer:", session.customer, "session.subscription:", session.subscription);
 
     // Handle marketplace order payment
     if(orderId){
@@ -292,13 +297,31 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
     if(placeId && session.subscription){
       console.log("Processing business subscription for placeId:", placeId);
       try {
-        const updateSql = `
-          UPDATE business_subscriptions
-          SET stripeCustomerId = $1, stripeSubscriptionId = $2, plan = 'monthly', status = 'active',
-              currentPeriodStart = NOW(), currentPeriodEnd = NOW() + INTERVAL '1 month', updatedAt = NOW()
-          WHERE placeId = $3
-        `;
-        await data.query(updateSql, [session.customer, session.subscription, placeId]);
+        // First check if subscription exists
+        const existing = await data.getBusinessSubscription(placeId);
+        console.log("Existing subscription:", existing ? `id=${existing.id}, status=${existing.status}` : "none");
+
+        if(existing) {
+          // Update existing subscription
+          const updateSql = `
+            UPDATE business_subscriptions
+            SET stripeCustomerId = $1, stripeSubscriptionId = $2, plan = 'monthly', status = 'active',
+                currentPeriodStart = NOW(), currentPeriodEnd = NOW() + INTERVAL '1 month', updatedAt = NOW()
+            WHERE id = $3
+          `;
+          const result = await data.query(updateSql, [session.customer, session.subscription, existing.id]);
+          console.log("Updated subscription id:", existing.id, "rows affected:", result.rowCount);
+        } else {
+          // Create new subscription
+          console.log("Creating new subscription for placeId:", placeId, "userId:", userId);
+          const insertSql = `
+            INSERT INTO business_subscriptions
+            (placeId, userId, plan, status, stripeCustomerId, stripeSubscriptionId, currentPeriodStart, currentPeriodEnd, createdAt, updatedAt)
+            VALUES ($1, $2, 'monthly', 'active', $3, $4, NOW(), NOW() + INTERVAL '1 month', NOW(), NOW())
+          `;
+          await data.query(insertSql, [placeId, userId, session.customer, session.subscription]);
+          console.log("Created new subscription for placeId:", placeId);
+        }
         console.log("Business subscription activated for placeId:", placeId);
       } catch(err) {
         console.error("Error updating business subscription:", err);
@@ -4134,6 +4157,33 @@ app.get("/api/business/subscribe/history/:placeId", async (req, res) => {
 
   // Return empty if no Stripe history
   res.json({ payments: [] });
+});
+
+// Admin: manually activate subscription (for testing/support)
+app.post("/api/admin/subscription/activate", async (req, res) => {
+  const admin = await requireAdminOrDev(req, res); if(!admin) return;
+  const placeId = Number(req.body?.placeId || 0);
+  if(!placeId) return res.status(400).json({ error: "placeId required" });
+
+  try {
+    const existing = await data.getBusinessSubscription(placeId);
+    if(existing) {
+      const updateSql = `
+        UPDATE business_subscriptions
+        SET plan = 'monthly', status = 'active',
+            currentPeriodStart = NOW(), currentPeriodEnd = NOW() + INTERVAL '1 month', updatedAt = NOW()
+        WHERE id = $1
+      `;
+      await data.query(updateSql, [existing.id]);
+      console.log("Admin activated subscription for placeId:", placeId);
+      res.json({ ok: true, message: "Subscription activated", subscriptionId: existing.id });
+    } else {
+      res.status(404).json({ error: "No subscription found for this place" });
+    }
+  } catch(err) {
+    console.error("Error activating subscription:", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ---------- Giveaway Offers ----------
