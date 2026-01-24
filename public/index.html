@@ -41,6 +41,7 @@
             <button class="navItem" data-view="channels"><span class="navIcon">📺</span><span>Channels</span></button>
             <button class="navItem" data-view="events"><span class="navIcon">🗓️</span><span>Events</span></button>
             <button class="navItem" data-view="archive"><span class="navIcon">🗃️</span><span>Archive</span></button>
+            <button class="navItem" data-view="support"><span class="navIcon">🐛</span><span>Support / Report Bug</span></button>
           </nav>
         </div>
 
@@ -667,6 +668,63 @@
               <div class="panelHead"><strong>Admin</strong></div>
               <div class="panelBody">
                 <div class="muted">Admin view placeholder.</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="view" data-view="support">
+            <div class="panel">
+              <div class="panelHead">
+                <div>
+                  <strong>Support / Report a Bug</strong>
+                  <div class="muted">Help us improve Sebastian Digital Town</div>
+                </div>
+              </div>
+              <div class="panelBody">
+                <div class="item">
+                  <div class="muted">
+                    Found something not working? Have a suggestion? Let us know! Your feedback helps us make the platform better for everyone.
+                  </div>
+                </div>
+
+                <form class="item eventsForm" id="supportForm" style="margin-top:10px;">
+                  <label>Type of Request</label>
+                  <select id="supportType">
+                    <option value="bug">🐛 Bug Report - Something isn't working</option>
+                    <option value="feature">💡 Feature Request - Suggestion for improvement</option>
+                    <option value="question">❓ Question - Need help with something</option>
+                    <option value="other">📝 Other</option>
+                  </select>
+
+                  <label>Your Name (optional)</label>
+                  <input id="supportName" placeholder="Your name" />
+
+                  <label>Your Email (optional, for follow-up)</label>
+                  <input id="supportEmail" type="email" placeholder="you@example.com" />
+
+                  <label>Subject (required)</label>
+                  <input id="supportSubject" placeholder="Brief description of the issue" />
+
+                  <label>Details (required)</label>
+                  <textarea id="supportDetails" placeholder="Please describe what happened, what you expected, and any steps to reproduce the issue..."></textarea>
+
+                  <label>Page/Feature where this occurred (optional)</label>
+                  <input id="supportPage" placeholder="e.g., Channels, Marketplace, Login page" />
+
+                  <label>Browser/Device (optional)</label>
+                  <input id="supportDevice" placeholder="e.g., Chrome on iPhone, Safari on Mac" />
+
+                  <div class="row" style="justify-content:space-between; margin-top:12px;">
+                    <button id="supportSubmitBtn" type="submit">Submit Report</button>
+                    <div class="muted" id="supportSubmitMsg"></div>
+                  </div>
+                </form>
+
+                <div class="item" style="margin-top:16px;">
+                  <div class="contextTitle">Your Previous Reports</div>
+                  <div class="muted" id="supportLoginMsg">Log in to see your submitted reports.</div>
+                  <div class="list" id="supportMyList" style="display:none;"></div>
+                </div>
               </div>
             </div>
           </section>

@@ -149,6 +149,60 @@ async function updateLocalBizStatus(id, action, reason=""){
   }
 }
 
+function supportRow(req){
+  const tr = document.createElement("tr");
+  const date = req.createdAt || req.createdat;
+  const formattedDate = date ? new Date(date).toLocaleDateString() : "-";
+  tr.innerHTML = `
+    <td><span class="pill">${esc(req.type)}</span></td>
+    <td>${esc(req.subject)}</td>
+    <td>${esc(req.name || "-")}<div class="muted">${esc(req.email || "-")}</div></td>
+    <td><span class="pill">${esc(req.status)}</span></td>
+    <td>${formattedDate}</td>
+    <td>
+      <button data-action="view">View</button>
+      <button data-action="resolve">Resolve</button>
+      <button data-action="close">Close</button>
+    </td>
+  `;
+  tr.querySelector('[data-action="view"]').onclick = () => {
+    alert(`Subject: ${req.subject}\n\nDetails:\n${req.details}\n\nPage: ${req.page || "-"}\nDevice: ${req.device || "-"}\nUser Agent: ${req.userAgent || "-"}`);
+  };
+  tr.querySelector('[data-action="resolve"]').onclick = () => updateSupportStatus(req.id, "resolved");
+  tr.querySelector('[data-action="close"]').onclick = () => updateSupportStatus(req.id, "closed");
+  return tr;
+}
+
+async function loadSupportRequests(){
+  try{
+    const requests = await api("/api/admin/support");
+    const body = document.getElementById("supportRows");
+    body.innerHTML = "";
+    if(!requests.length){
+      body.innerHTML = `<tr><td colspan="6">(no support requests)</td></tr>`;
+      return;
+    }
+    requests.forEach((req) => body.appendChild(supportRow(req)));
+  }catch(e){
+    document.getElementById("supportMsg").textContent = `ERROR: ${e.message}`;
+  }
+}
+
+async function updateSupportStatus(id, status){
+  const msg = document.getElementById("supportMsg");
+  try{
+    await api(`/api/admin/support/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    });
+    msg.textContent = `Updated request #${id} → ${status}`;
+    await loadSupportRequests();
+  }catch(e){
+    msg.textContent = `ERROR: ${e.message}`;
+  }
+}
+
 async function loadPrizeOffers(){
   try{
     const rows = await api("/api/admin/prizes?status=pending");
@@ -266,6 +320,13 @@ async function main() {
   await loadEventSubmissions();
   await loadLocalBizApplications();
   await loadPrizeOffers();
+  await loadSupportRequests();
+
+  // Hook up refresh button for support requests
+  const refreshSupportBtn = document.getElementById("refreshSupportBtn");
+  if(refreshSupportBtn){
+    refreshSupportBtn.onclick = loadSupportRequests;
+  }
 }
 
 main().catch((e) => {

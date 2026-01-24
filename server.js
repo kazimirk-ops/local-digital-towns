@@ -2350,6 +2350,37 @@ app.get("/api/admin/export/places.csv", async (req, res) =>{
   res.send([header, ...csv].join("\n"));
 });
 
+// Support Requests
+app.post("/api/support/request", async (req, res) =>{
+  const u = await getUserId(req);
+  const payload = req.body || {};
+  const created = await data.createSupportRequest(u, payload);
+  if(created?.error) return res.status(400).json(created);
+  res.status(201).json(created);
+});
+
+app.get("/api/support/my", async (req, res) =>{
+  const u = await requireLogin(req, res); if(!u) return;
+  const requests = await data.getSupportRequestsByUser(u);
+  res.json(requests);
+});
+
+app.get("/api/admin/support", async (req, res) =>{
+  const admin = await requireAdmin(req, res); if(!admin) return;
+  const requests = await data.getAllSupportRequests();
+  res.json(requests);
+});
+
+app.patch("/api/admin/support/:id", async (req, res) =>{
+  const admin = await requireAdmin(req, res); if(!admin) return;
+  const status = (req.body?.status || "").toString().trim();
+  const adminNotes = (req.body?.adminNotes || "").toString().trim();
+  if(!status) return res.status(400).json({error:"status required"});
+  const updated = await data.updateSupportRequestStatus(req.params.id, status, adminNotes);
+  if(!updated) return res.status(404).json({error:"Request not found"});
+  res.json(updated);
+});
+
 app.get("/api/pulse/latest", async (req, res) =>{
   const pulse=await data.getLatestPulse(1);
   if(!pulse) return res.status(404).json({error:"No pulse found"});

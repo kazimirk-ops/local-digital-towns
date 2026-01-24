@@ -135,6 +135,7 @@
           <a href="/admin/giveaway-offers" class="nav-btn">Giveaway Offers</a>
           <a href="/admin/trust" class="nav-btn">Trust Moderation</a>
           <a href="/admin/media" class="nav-btn">Media</a>
+          <a href="#support" class="nav-btn" onclick="document.getElementById('supportCard').scrollIntoView({behavior:'smooth'})">Support Requests</a>
         </div>
       </div>
     </header>
@@ -159,6 +160,32 @@
             <a href="/api/admin/export/subscriptions.csv" class="btn-primary" style="text-decoration:none;">⬇ Subscriptions</a>
             <a href="/api/admin/export/places.csv" class="btn-primary" style="text-decoration:none;">⬇ Stores/Places</a>
           </div>
+        </div>
+
+        <div class="card" id="supportCard">
+          <div class="card-header">
+            <div>
+              <strong class="card-title">🐛 Support Requests</strong>
+              <div class="muted">Bug reports and feature requests from users</div>
+            </div>
+            <button class="btn-outline" id="refreshSupportBtn" type="button">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Subject</th>
+                  <th>User</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="supportRows"></tbody>
+            </table>
+          </div>
+          <div class="muted" id="supportMsg" style="margin-top:8px;"></div>
         </div>
 
         <div class="card">

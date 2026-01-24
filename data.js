@@ -3361,6 +3361,61 @@ async function getShareCountByItem(itemType, itemId) {
   return Number(row?.count || 0);
 }
 
+// ---------- Support Requests ----------
+async function createSupportRequest(userId, payload) {
+  const now = nowISO();
+  const type = (payload?.type || "bug").toString().trim();
+  const name = (payload?.name || "").toString().trim();
+  const email = (payload?.email || "").toString().trim();
+  const subject = (payload?.subject || "").toString().trim();
+  const details = (payload?.details || "").toString().trim();
+  const page = (payload?.page || "").toString().trim();
+  const device = (payload?.device || "").toString().trim();
+  const userAgent = (payload?.userAgent || "").toString().trim();
+  if (!subject || !details) return { error: "subject and details required" };
+  const info = await stmt(`
+    INSERT INTO support_requests
+      (userId, type, name, email, subject, details, page, device, userAgent, status, createdAt)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    RETURNING id
+  `).run(
+    userId == null ? null : Number(userId),
+    type,
+    name,
+    email,
+    subject,
+    details,
+    page,
+    device,
+    userAgent,
+    'pending',
+    now
+  );
+  return stmt("SELECT * FROM support_requests WHERE id=$1").get(info.rows?.[0]?.id);
+}
+
+async function getSupportRequestsByUser(userId) {
+  return stmt(`
+    SELECT * FROM support_requests
+    WHERE userId=$1
+    ORDER BY createdAt DESC
+  `).all(Number(userId));
+}
+
+async function getAllSupportRequests() {
+  return stmt("SELECT * FROM support_requests ORDER BY createdAt DESC").all();
+}
+
+async function updateSupportRequestStatus(requestId, status, adminNotes = "") {
+  const now = nowISO();
+  await stmt(`
+    UPDATE support_requests
+    SET status=$1, adminNotes=$2, updatedAt=$3
+    WHERE id=$4
+  `).run(String(status), String(adminNotes), now, Number(requestId));
+  return stmt("SELECT * FROM support_requests WHERE id=$1").get(Number(requestId));
+}
+
 module.exports = {
   initDb,
   getPlaces,
@@ -3596,4 +3651,10 @@ module.exports = {
   // social shares
   logSocialShare,
   getShareCountByItem,
+
+  // support requests
+  createSupportRequest,
+  getSupportRequestsByUser,
+  getAllSupportRequests,
+  updateSupportRequestStatus,
 };

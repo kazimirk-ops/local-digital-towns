@@ -724,6 +724,78 @@ async function initLocalBiz(){
   }
 }
 
+// Support / Bug Report
+function bindSupport(){
+  const form = $("supportForm");
+  if(!form) return;
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const msg = $("supportSubmitMsg");
+    const subject = $("supportSubject").value.trim();
+    const details = $("supportDetails").value.trim();
+    if(!subject || !details){
+      msg.textContent = "Subject and details are required.";
+      return;
+    }
+    msg.textContent = "Submitting...";
+    const payload = {
+      type: $("supportType").value,
+      name: $("supportName").value.trim(),
+      email: $("supportEmail").value.trim(),
+      subject,
+      details,
+      page: $("supportPage").value.trim(),
+      device: $("supportDevice").value.trim(),
+      userAgent: navigator.userAgent
+    };
+    try {
+      await api("/api/support/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      msg.textContent = "Thank you! Your report has been submitted.";
+      form.reset();
+      if(access.loggedIn) loadMySupportRequests();
+    } catch(err) {
+      msg.textContent = `Error: ${err.message}`;
+    }
+  };
+}
+
+async function loadMySupportRequests(){
+  const list = $("supportMyList");
+  const loginMsg = $("supportLoginMsg");
+  if(!access.loggedIn){
+    if(loginMsg) loginMsg.style.display = "";
+    if(list) list.style.display = "none";
+    return;
+  }
+  if(loginMsg) loginMsg.style.display = "none";
+  if(list) list.style.display = "";
+  try {
+    const requests = await api("/api/support/my");
+    list.innerHTML = "";
+    if(!requests.length){
+      list.innerHTML = `<div class="muted">No reports submitted yet.</div>`;
+      return;
+    }
+    requests.forEach(r => {
+      const div = document.createElement("div");
+      div.className = "item";
+      const statusClass = r.status === "resolved" ? "color:#34d399;" : r.status === "in_progress" ? "color:#fbbf24;" : "";
+      div.innerHTML = `
+        <div><strong>${r.subject || "No subject"}</strong></div>
+        <div class="muted">${r.type || "bug"} • <span style="${statusClass}">${r.status || "pending"}</span> • ${r.createdAt || ""}</div>
+        <div class="muted" style="margin-top:4px;">${(r.details || "").slice(0, 100)}${r.details?.length > 100 ? "..." : ""}</div>
+      `;
+      list.appendChild(div);
+    });
+  } catch(err) {
+    list.innerHTML = `<div class="muted">Could not load reports.</div>`;
+  }
+}
+
 function getDistrictOptions(){
   return [
     { id:1, name:"Market Square" },
@@ -1872,6 +1944,7 @@ async function main(){
 
   if(window.loadTownTheme) await window.loadTownTheme();
   bindChannels();
+  bindSupport();
   bindRouter();
   await loadStatus();
   await loadMe();
