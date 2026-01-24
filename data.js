@@ -3265,8 +3265,11 @@ async function isSubscriptionActive(placeId) {
   if (!sub) return false;
   if (sub.status !== 'active') return false;
   const now = new Date();
-  if (sub.trialEndsAt && new Date(sub.trialEndsAt) > now) return true;
-  if (sub.currentPeriodEnd && new Date(sub.currentPeriodEnd) > now) return true;
+  // Handle both camelCase and lowercase column names from PostgreSQL
+  const trialEndsAt = sub.trialEndsAt || sub.trialendsat;
+  const currentPeriodEnd = sub.currentPeriodEnd || sub.currentperiodend;
+  if (trialEndsAt && new Date(trialEndsAt) > now) return true;
+  if (currentPeriodEnd && new Date(currentPeriodEnd) > now) return true;
   return false;
 }
 
