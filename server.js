@@ -349,16 +349,30 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
     const customerId = sub.customer;
     const status = sub.status === 'active' ? 'active' : (sub.status === 'canceled' ? 'canceled' : sub.status);
     const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+    const periodStart = sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null;
+
+    console.log("customer.subscription.updated - customer:", customerId, "status:", status, "periodEnd:", periodEnd);
 
     try {
       const result = await data.query(`SELECT * FROM business_subscriptions WHERE stripeCustomerId = $1`, [customerId]);
       if(result.rows.length > 0) {
         const localSub = result.rows[0];
-        await data.query(
-          `UPDATE business_subscriptions SET status = $1, currentPeriodEnd = $2, canceledAt = $3, updatedAt = NOW() WHERE id = $4`,
-          [status, periodEnd, sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null, localSub.id]
-        );
+        // Only update periodEnd if we have a valid value from Stripe
+        if(periodEnd) {
+          await data.query(
+            `UPDATE business_subscriptions SET status = $1, currentPeriodStart = COALESCE($2, currentPeriodStart), currentPeriodEnd = $3, canceledAt = $4, updatedAt = NOW() WHERE id = $5`,
+            [status, periodStart, periodEnd, sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null, localSub.id]
+          );
+        } else {
+          // Just update status, don't overwrite period dates with null
+          await data.query(
+            `UPDATE business_subscriptions SET status = $1, canceledAt = $2, updatedAt = NOW() WHERE id = $3`,
+            [status, sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null, localSub.id]
+          );
+        }
         console.log("Subscription updated for customer:", customerId);
+      } else {
+        console.log("No local subscription found for customer:", customerId);
       }
     } catch(err) {
       console.error("Error updating subscription:", err);
