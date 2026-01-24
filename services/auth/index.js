@@ -23,8 +23,18 @@ const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 3002;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
+// CRITICAL: JWT_SECRET must be set in production
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('FATAL: JWT_SECRET environment variable is required in production');
+  process.exit(1);
+}
+if (!JWT_SECRET) {
+  console.warn('WARNING: JWT_SECRET not set - using insecure default for development only');
+}
+const EFFECTIVE_JWT_SECRET = JWT_SECRET || 'dev-secret-DO-NOT-USE-IN-PRODUCTION';
 
 // Database connection
 const pool = new Pool({
@@ -48,12 +58,12 @@ app.get('/health', (req, res) => {
 // ============ JWT UTILITIES ============
 
 function generateToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign(payload, EFFECTIVE_JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
 function verifyToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, EFFECTIVE_JWT_SECRET);
   } catch (err) {
     return null;
   }

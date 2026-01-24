@@ -4,6 +4,11 @@ const msg = document.getElementById("waitlistMsg");
 if(form){
   form.addEventListener("submit", async (e)=>{
     e.preventDefault();
+    const termsCheckbox = document.getElementById("waitlistTermsAccepted");
+    if(!termsCheckbox || !termsCheckbox.checked){
+      msg.textContent = "You must agree to the Terms of Service and Privacy Policy.";
+      return;
+    }
     msg.textContent = "Submitting...";
     const interests = Array.from(document.querySelectorAll("input[name='interest']:checked"))
       .map((el)=>el.value);
@@ -12,7 +17,8 @@ if(form){
       name: document.getElementById("waitlistName").value.trim(),
       phone: document.getElementById("waitlistPhone").value.trim(),
       interests,
-      notes: document.getElementById("waitlistNotes").value.trim()
+      notes: document.getElementById("waitlistNotes").value.trim(),
+      termsAcceptedAt: new Date().toISOString()
     };
     try{
       const res = await fetch("/api/public/waitlist", {

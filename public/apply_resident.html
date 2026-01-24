@@ -47,6 +47,13 @@
         <label>Notes to Admin (optional)</label>
         <textarea id="residentNotes" rows="4"></textarea>
 
+        <div class="terms-checkbox">
+          <label class="checkbox-label">
+            <input type="checkbox" id="residentTermsAccepted" required />
+            <span>I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a></span>
+          </label>
+        </div>
+
         <div class="row">
           <button type="submit">Submit Application</button>
           <span class="muted" id="residentMsg"></span>
@@ -55,5 +62,6 @@
     </main>
 
     <script src="/apply_resident.js?v=1"></script>
+    <script src="/js/beta-banner.js?v=1"></script>
   </body>
 </html>

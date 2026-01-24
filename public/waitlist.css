@@ -62,3 +62,30 @@ button {
   color: #6b6460;
   font-size: 0.95rem;
 }
+.terms-checkbox {
+  margin-top: 18px;
+  padding: 14px;
+  background: #faf8f5;
+  border: 1px solid #e3dfda;
+  border-radius: 10px;
+}
+.terms-checkbox .checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+.terms-checkbox input[type="checkbox"] {
+  width: auto;
+  margin-top: 3px;
+  cursor: pointer;
+}
+.terms-checkbox a {
+  color: #1f6f52;
+  text-decoration: underline;
+}
+.terms-checkbox a:hover {
+  color: #175840;
+}

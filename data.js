@@ -521,6 +521,14 @@ async function setUserTrustTier(townId, userId, trustTier){
   return stmt("SELECT * FROM town_memberships WHERE townId=$1 AND userId=$2").get(tid, uid);
 }
 
+async function setUserTermsAcceptedAt(userId, termsAcceptedAt){
+  const uid = Number(userId);
+  if(!uid) return { error: "Invalid userId" };
+  const ts = termsAcceptedAt ? new Date(termsAcceptedAt).toISOString() : nowISO();
+  await stmt("UPDATE users SET termsAcceptedAt=$1 WHERE id=$2").run(ts, uid);
+  return { ok: true, termsAcceptedAt: ts };
+}
+
 async function updateUserPresence(userId, payload){
   const uid = Number(userId);
   if(!uid) return { error:"Invalid userId" };
@@ -2767,6 +2775,7 @@ async function addWaitlistSignup(payload){
   const name = (payload?.name || "").toString().trim();
   const phone = (payload?.phone || "").toString().trim();
   const notes = (payload?.notes || "").toString().trim();
+  const termsAcceptedAt = (payload?.termsAcceptedAt || "").toString().trim() || null;
   let interests = "";
   if(Array.isArray(payload?.interests)){
     interests = payload.interests.map(i=>String(i || "").trim()).filter(Boolean).join(",");
@@ -2775,10 +2784,10 @@ async function addWaitlistSignup(payload){
   }
   const info = await stmt(`
     INSERT INTO waitlist_signups
-      (createdAt, name, email, phone, interests, notes, status)
-    VALUES ($1,$2,$3,$4,$5,$6,$7)
+      (createdAt, name, email, phone, interests, notes, status, termsAcceptedAt)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
     RETURNING id
-  `).run(createdAt, name, email, phone, interests, notes, "pending");
+  `).run(createdAt, name, email, phone, interests, notes, "pending", termsAcceptedAt);
   return stmt("SELECT * FROM waitlist_signups WHERE id=$1").get(info.rows?.[0]?.id);
 }
 
@@ -2807,13 +2816,14 @@ async function addBusinessApplication(payload){
   const type = (payload?.type || "").toString().trim();
   const category = (payload?.category || "").toString().trim();
   const inSebastian = (payload?.inSebastian || "").toString().trim();
+  const termsAcceptedAt = (payload?.termsAcceptedAt || "").toString().trim() || null;
   if(!contactName || !email || !businessName || !type || !category || !inSebastian){
     return { error: "contactName, email, businessName, type, category, inSebastian required" };
   }
   const info = await stmt(`
     INSERT INTO business_applications
-      (createdAt, contactName, email, phone, businessName, type, category, website, inSebastian, address, notes, status)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      (createdAt, contactName, email, phone, businessName, type, category, website, inSebastian, address, notes, status, termsAcceptedAt)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
     RETURNING id
   `).run(
     createdAt,
@@ -2827,7 +2837,8 @@ async function addBusinessApplication(payload){
     inSebastian,
     (payload?.address || "").toString().trim(),
     (payload?.notes || "").toString().trim(),
-    "pending"
+    "pending",
+    termsAcceptedAt
   );
   return stmt("SELECT * FROM business_applications WHERE id=$1").get(info.rows?.[0]?.id);
 }
@@ -2857,13 +2868,14 @@ async function addResidentApplication(payload){
   const city = (payload?.city || "").toString().trim();
   const state = (payload?.state || "").toString().trim();
   const zip = (payload?.zip || "").toString().trim();
+  const termsAcceptedAt = (payload?.termsAcceptedAt || "").toString().trim() || null;
   if(!name || !email || !addressLine1 || !city || !state || !zip){
     return { error: "name, email, addressLine1, city, state, zip required" };
   }
   const info = await stmt(`
     INSERT INTO resident_applications
-      (createdAt, name, email, phone, addressLine1, city, state, zip, yearsInSebastian, notes, status)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      (createdAt, name, email, phone, addressLine1, city, state, zip, yearsInSebastian, notes, status, termsAcceptedAt)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
     RETURNING id
   `).run(
     createdAt,
@@ -2876,7 +2888,8 @@ async function addResidentApplication(payload){
     zip,
     (payload?.yearsInSebastian || "").toString().trim(),
     (payload?.notes || "").toString().trim(),
-    "pending"
+    "pending",
+    termsAcceptedAt
   );
   return stmt("SELECT * FROM resident_applications WHERE id=$1").get(info.rows?.[0]?.id);
 }
@@ -3632,6 +3645,7 @@ module.exports = {
   getPrizeAwardById,
   listPrizeAwardsForUser,
   setUserTrustTier,
+  setUserTermsAcceptedAt,
   getTownContext,
   updateUserPresence,
   setUserLocationVerifiedSebastian,

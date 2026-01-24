@@ -47,7 +47,7 @@ const defaultTownConfig = {
   payments: {
     currency: "usd",
     stripeEnabled: true,
-    subscriptionPriceCents: 4999, // $49.99
+    subscriptionPriceCents: 999, // $9.99 (beta pricing)
     trialDays: 30,
     buyerDepositPercent: 5
   },

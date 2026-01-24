@@ -431,6 +431,8 @@ app.get("/signup", async (req, res) =>res.sendFile(path.join(__dirname,"public",
 app.get("/waitlist", async (req, res) =>res.sendFile(path.join(__dirname,"public","waitlist.html")));
 app.get("/apply/business", async (req, res) =>res.sendFile(path.join(__dirname,"public","apply_business.html")));
 app.get("/apply/resident", async (req, res) =>res.sendFile(path.join(__dirname,"public","apply_resident.html")));
+app.get("/privacy", async (req, res) =>res.sendFile(path.join(__dirname,"public","privacy.html")));
+app.get("/terms", async (req, res) =>res.sendFile(path.join(__dirname,"public","terms.html")));
 app.get("/u/:id", async (req, res) =>res.sendFile(path.join(__dirname,"public","profile.html")));
 app.get("/me/store", async (req, res) =>res.sendFile(path.join(__dirname,"public","store_profile.html")));
 app.get("/me/profile", async (req, res) =>res.sendFile(path.join(__dirname,"public","my_profile.html")));
@@ -2718,6 +2720,10 @@ app.post("/api/admin/waitlist/:id/status", async (req, res) =>{
     const user = await data.getUserByEmail(updated.email);
     if(user){
       await data.setUserTrustTier(1, user.id, approvedTier);
+      // Copy terms acceptance from application to user
+      if(updated.termsAcceptedAt || updated.termsacceptedat){
+        await data.setUserTermsAcceptedAt(user.id, updated.termsAcceptedAt || updated.termsacceptedat);
+      }
     }
     const tierName = trust.TRUST_TIER_LABELS[approvedTier] || `Tier ${approvedTier}`;
     sendApprovalEmail(updated.email, "Waitlist", tierName).catch(err => {
@@ -2749,6 +2755,10 @@ app.post("/api/admin/applications/business/:id/status", async (req, res) =>{
     if(user){
       if(approvedTier){
         await data.setUserTrustTier(1, user.id, approvedTier);
+      }
+      // Copy terms acceptance from application to user
+      if(updated.termsAcceptedAt || updated.termsacceptedat){
+        await data.setUserTermsAcceptedAt(user.id, updated.termsAcceptedAt || updated.termsacceptedat);
       }
       // Create/approve store for user
       const existingPlaces = await data.listPlacesByOwner(user.id);
@@ -2818,6 +2828,10 @@ app.post("/api/admin/applications/resident/:id/status", async (req, res) =>{
         await data.setUserResidentVerified(user.id, true);
       }
       await data.setUserTrustTier(1, user.id, approvedTier);
+      // Copy terms acceptance from application to user
+      if(updated.termsAcceptedAt || updated.termsacceptedat){
+        await data.setUserTermsAcceptedAt(user.id, updated.termsAcceptedAt || updated.termsacceptedat);
+      }
     }
     // Send approval notification
     const tierName = trust.TRUST_TIER_LABELS[approvedTier] || `Tier ${approvedTier}`;
@@ -4516,6 +4530,33 @@ app.get("/api/admin/pulse/last", async (req, res) => {
   const exportType = (req.query.exportType || "facebook").toString();
   const lastExport = await data.getLastPulseExport(townId, exportType);
   res.json({ lastExport });
+});
+
+// ============ GLOBAL ERROR HANDLER ============
+// Must be defined after all routes to catch unhandled errors
+app.use((err, req, res, next) => {
+  // Log error for debugging (server-side only)
+  console.error("UNHANDLED_ERROR:", {
+    message: err.message,
+    stack: process.env.NODE_ENV === 'production' ? undefined : err.stack,
+    path: req.path,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+
+  // Never expose stack traces or internal details to client in production
+  const isProduction = process.env.NODE_ENV === 'production';
+  const statusCode = err.statusCode || err.status || 500;
+
+  res.status(statusCode).json({
+    error: isProduction ? 'An unexpected error occurred' : err.message,
+    ...(isProduction ? {} : { stack: err.stack })
+  });
+});
+
+// Handle 404 for undefined routes
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
 });
 
 const PORT = Number(process.env.PORT || 3000);

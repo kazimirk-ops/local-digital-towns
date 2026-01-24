@@ -77,11 +77,16 @@
       </div>
 
       <!-- Action Buttons -->
+      <div class="beta-notice" style="max-width:720px; margin:0 auto 16px;">
+        <span class="beta-notice-icon">🎉</span>
+        <span><strong>Founding Member:</strong> You're joining as a founding member during our beta period. Thank you for helping build the future of local commerce!</span>
+      </div>
+
       <div id="actionButtons" class="card action-card">
         <!-- No Subscription -->
         <div id="noSubActions" class="action-section">
           <h3 class="card-title">Get Started Today</h3>
-          <p class="muted">First month FREE, then $49.99/month — credit card required, cancel anytime</p>
+          <p class="muted">First month FREE, then $9.99/month (beta pricing) — credit card required, cancel anytime</p>
           <div class="btn-group">
             <button id="startTrialBtn" class="btn btn-primary btn-lg">
               <span class="btn-icon">🚀</span> Start 30-Day Free Trial
@@ -94,12 +99,13 @@
           <h3 class="card-title">Upgrade Your Plan</h3>
           <p class="muted">Love the features? Upgrade to continue after your trial ends.</p>
           <div class="price-tag">
-            <span class="price-amount">$49.99</span>
+            <span class="price-amount">$9.99</span>
             <span class="price-period">/month</span>
+            <span class="muted" style="display:block; font-size:12px; margin-top:4px;">Beta pricing - lock in this rate!</span>
           </div>
           <div class="btn-group">
             <button id="upgradeBtn" class="btn btn-primary btn-lg">
-              <span class="btn-icon">⬆️</span> Upgrade to Paid — $49.99/month
+              <span class="btn-icon">⬆️</span> Upgrade to Paid — $9.99/month
             </button>
           </div>
           <p class="muted" style="margin-top:12px;">Cancel anytime. No long-term commitment.</p>
@@ -132,7 +138,7 @@
           </div>
           <div class="btn-group">
             <button id="reactivateBtn" class="btn btn-primary btn-lg">
-              <span class="btn-icon">🔄</span> Reactivate — $49.99/month
+              <span class="btn-icon">🔄</span> Reactivate — $9.99/month
             </button>
           </div>
         </div>
@@ -221,7 +227,12 @@
     </div>
   </div>
 
+  <footer style="text-align:center; padding:20px; font-size:12px; color:#6b7280; margin-top:40px;">
+    Digital Towns Beta v0.1 - Built with &#10084; for local communities
+  </footer>
+
   <script src="/theme.js?v=1"></script>
   <script src="/business_subscription.js?v=5"></script>
+  <script src="/js/beta-banner.js?v=1"></script>
 </body>
 </html>

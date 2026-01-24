@@ -331,9 +331,9 @@ function resetUpgradeButton(btn) {
   if (!btn) return;
   btn.disabled = false;
   if (btn.id === 'reactivateBtn') {
-    btn.innerHTML = '<span class="btn-icon">🔄</span> Reactivate — $49.99/month';
+    btn.innerHTML = '<span class="btn-icon">🔄</span> Reactivate — $9.99/month';
   } else {
-    btn.innerHTML = '<span class="btn-icon">⬆️</span> Upgrade to Paid — $49.99/month';
+    btn.innerHTML = '<span class="btn-icon">⬆️</span> Upgrade to Paid — $9.99/month';
   }
 }
 

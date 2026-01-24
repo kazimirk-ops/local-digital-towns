@@ -4,6 +4,11 @@ const msg = document.getElementById("businessMsg");
 if(form){
   form.addEventListener("submit", async (e)=>{
     e.preventDefault();
+    const termsCheckbox = document.getElementById("businessTermsAccepted");
+    if(!termsCheckbox || !termsCheckbox.checked){
+      msg.textContent = "You must agree to the Terms of Service and Privacy Policy.";
+      return;
+    }
     msg.textContent = "Submitting...";
     const payload = {
       contactName: document.getElementById("businessContactName").value.trim(),
@@ -15,7 +20,8 @@ if(form){
       website: document.getElementById("businessWebsite").value.trim(),
       inSebastian: document.getElementById("businessInSebastian").value.trim(),
       address: document.getElementById("businessAddress").value.trim(),
-      notes: document.getElementById("businessNotes").value.trim()
+      notes: document.getElementById("businessNotes").value.trim(),
+      termsAcceptedAt: new Date().toISOString()
     };
     try{
       const res = await fetch("/api/public/apply/business", {
