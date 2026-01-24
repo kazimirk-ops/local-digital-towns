@@ -71,26 +71,40 @@ function bindUpload(){
   const clear = $("chatImageClear");
   const preview = $("chatImagePreview");
   const thumb = $("chatImageThumb");
-  btn.onclick = () => input.click();
-  input.onchange = async () => {
+  btn.addEventListener("click", () => input.click());
+  input.addEventListener("change", async () => {
     const file = input.files?.[0];
     if(!file) return;
-    if(!["image/png","image/jpeg","image/webp"].includes(file.type)) return alert("PNG/JPG/WebP only.");
-    if(file.size > 5 * 1024 * 1024) return alert("Max 5MB.");
+    if(!["image/png","image/jpeg","image/webp"].includes(file.type)) {
+      console.warn("Invalid file type - PNG/JPG/WebP only");
+      return;
+    }
+    if(file.size > 5 * 1024 * 1024) {
+      console.warn("Image too large - max 5MB");
+      return;
+    }
     const form = new FormData();
     form.append("file", file);
     form.append("kind", "chat_image");
-    const res = await api("/api/uploads", { method:"POST", body: form });
-    pendingImageUrl = res.url;
-    thumb.src = res.url;
-    preview.style.display = "block";
+    try {
+      const res = await api("/api/uploads", { method:"POST", body: form });
+      if (res.url) {
+        pendingImageUrl = res.url;
+        thumb.src = res.url;
+        preview.style.display = "block";
+      } else {
+        console.error("Upload failed - no URL returned");
+      }
+    } catch (e) {
+      console.error("Upload failed:", e.message);
+    }
     input.value = "";
-  };
-  clear.onclick = () => {
+  });
+  clear.addEventListener("click", () => {
     pendingImageUrl = "";
     preview.style.display = "none";
     thumb.src = "";
-  };
+  });
 }
 
 (async()=>{

@@ -437,17 +437,18 @@ async function sendDm() {
 
 document.getElementById("saveProfileBtn").onclick = saveProfile;
 document.getElementById("createListingBtn").onclick = createListing;
-document.getElementById("auctionPublishBtn").onclick = createAuctionListing;
-document.getElementById("createStoreBtn").onclick = createStore;
-document.getElementById("saveStorefrontBtn").onclick = saveStorefront;
-document.getElementById("dmSendBtn").onclick = sendDm;
-document.getElementById("storefrontStore").onchange = (e) => loadStorefront(e.target.value);
-document.getElementById("uploadBannerBtn").onclick = () => uploadStoreImage("storefrontBannerFile", "storefrontBannerUrl", "storefrontMsg");
-document.getElementById("uploadAvatarBtn").onclick = () => uploadStoreImage("storefrontAvatarFile", "storefrontAvatarUrl", "storefrontMsg");
-document.getElementById("listingType").onchange = setListingTypeUI;
-document.getElementById("auctionPhotosInput").onchange = handleAuctionPhotoInput;
-document.getElementById("auctionStartLocal").onchange = updateAuctionEndDisplay;
-document.getElementById("auctionDuration").onchange = updateAuctionEndDisplay;
+// CSP-compliant event listener setup
+document.getElementById("auctionPublishBtn")?.addEventListener("click", createAuctionListing);
+document.getElementById("createStoreBtn")?.addEventListener("click", createStore);
+document.getElementById("saveStorefrontBtn")?.addEventListener("click", saveStorefront);
+document.getElementById("dmSendBtn")?.addEventListener("click", sendDm);
+document.getElementById("storefrontStore")?.addEventListener("change", (e) => loadStorefront(e.target.value));
+document.getElementById("uploadBannerBtn")?.addEventListener("click", () => uploadStoreImage("storefrontBannerFile", "storefrontBannerUrl", "storefrontMsg"));
+document.getElementById("uploadAvatarBtn")?.addEventListener("click", () => uploadStoreImage("storefrontAvatarFile", "storefrontAvatarUrl", "storefrontMsg"));
+document.getElementById("listingType")?.addEventListener("change", setListingTypeUI);
+document.getElementById("auctionPhotosInput")?.addEventListener("change", handleAuctionPhotoInput);
+document.getElementById("auctionStartLocal")?.addEventListener("change", updateAuctionEndDisplay);
+document.getElementById("auctionDuration")?.addEventListener("change", updateAuctionEndDisplay);
 
 loadProfile().then(loadOwnedStores).then(loadDmList).then(() => {
   setListingTypeUI();

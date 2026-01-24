@@ -262,9 +262,9 @@ window.ShareModal = (function() {
     modal.className = 'share-modal-overlay';
     modal.innerHTML = `
       <div class="share-modal">
-        <button class="share-modal-close" onclick="ShareModal.close()" aria-label="Close">&times;</button>
+        <button class="share-modal-close" aria-label="Close">&times;</button>
         <h3 class="share-modal-title">${escapeHtml(title)}</h3>
-        ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="" class="share-modal-image" onerror="this.style.display='none'">` : ''}
+        ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="" class="share-modal-image">` : ''}
         <div class="share-modal-preview">${escapeHtml(shareText)}</div>
         <div class="share-modal-buttons">
           <button class="share-modal-btn share-modal-btn-facebook" data-platform="facebook">
@@ -278,7 +278,7 @@ window.ShareModal = (function() {
           </button>
         </div>
         <div class="share-modal-success">Link copied to clipboard!</div>
-        <button class="share-modal-dismiss" onclick="ShareModal.close()">Maybe Later</button>
+        <button class="share-modal-dismiss">Maybe Later</button>
       </div>
     `;
 
@@ -288,6 +288,14 @@ window.ShareModal = (function() {
         handleShare(btn.dataset.platform, options);
       });
     });
+
+    // Add close button handler
+    modal.querySelector('.share-modal-close')?.addEventListener('click', close);
+    modal.querySelector('.share-modal-dismiss')?.addEventListener('click', close);
+
+    // Handle image error
+    const img = modal.querySelector('.share-modal-image');
+    if (img) img.addEventListener('error', () => { img.style.display = 'none'; });
 
     // Close on overlay click
     modal.addEventListener('click', (e) => {

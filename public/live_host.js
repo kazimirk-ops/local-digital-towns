@@ -159,28 +159,43 @@ async function pinListing(){
   await loadMe();
   await loadStores();
   await loadEvents();
-  $("hostType").onchange = applyHostTypeUI;
+  $("hostType")?.addEventListener("change", applyHostTypeUI);
   applyHostTypeUI();
-  $("schedHostType").onchange = applySchedTypeUI;
+  $("schedHostType")?.addEventListener("change", applySchedTypeUI);
   applySchedTypeUI();
-  $("createRoomBtn").onclick = () => createRoom().catch(e=>alert(e.message));
-  $("startRoomBtn").onclick = () => startRoom().catch(e=>alert(e.message));
-  $("endRoomBtn").onclick = () => endRoom().catch(e=>alert(e.message));
-  $("pinStore").onchange = (e)=> loadListingsForPlace(e.target.value).catch(()=>{});
-  $("pinListingBtn").onclick = () => pinListing().catch(e=>alert(e.message));
-  $("schedThumbUploadBtn").onclick = () => $("schedThumbInput").click();
-  $("schedThumbInput").onchange = async ()=>{
+  $("createRoomBtn")?.addEventListener("click", () => createRoom().catch(e=>console.error(e.message)));
+  $("startRoomBtn")?.addEventListener("click", () => startRoom().catch(e=>console.error(e.message)));
+  $("endRoomBtn")?.addEventListener("click", () => endRoom().catch(e=>console.error(e.message)));
+  $("pinStore")?.addEventListener("change", (e)=> loadListingsForPlace(e.target.value).catch(()=>{}));
+  $("pinListingBtn")?.addEventListener("click", () => pinListing().catch(e=>console.error(e.message)));
+  $("schedThumbUploadBtn")?.addEventListener("click", () => $("schedThumbInput")?.click());
+  $("schedThumbInput")?.addEventListener("change", async ()=>{
     const file = $("schedThumbInput").files?.[0];
     if(!file) return;
-    if(!["image/png","image/jpeg","image/webp"].includes(file.type)) return alert("PNG/JPG/WebP only.");
-    if(file.size > 5 * 1024 * 1024) return alert("Max 5MB.");
+    if(!["image/png","image/jpeg","image/webp"].includes(file.type)) {
+      $("schedThumbMsg").textContent = "PNG/JPG/WebP images only.";
+      return;
+    }
+    if(file.size > 5 * 1024 * 1024) {
+      $("schedThumbMsg").textContent = "Image too large (max 5MB).";
+      return;
+    }
     const form = new FormData();
     form.append("file", file);
     form.append("kind", "live_thumbnail");
-    const res = await api("/api/uploads", { method:"POST", body: form });
-    $("schedThumbMsg").textContent = "Thumbnail uploaded.";
-    $("schedThumbMsg").dataset.url = res.url;
-  };
+    try {
+      const res = await api("/api/uploads", { method:"POST", body: form });
+      if (res.url) {
+        $("schedThumbMsg").textContent = "Thumbnail uploaded.";
+        $("schedThumbMsg").dataset.url = res.url;
+      } else {
+        $("schedThumbMsg").textContent = "Upload failed - no URL returned.";
+      }
+    } catch (e) {
+      $("schedThumbMsg").textContent = "Upload failed: " + e.message;
+      console.error("Thumbnail upload error:", e);
+    }
+  });
   $("schedCreateBtn").onclick = async ()=>{
     const hostType = $("schedHostType").value;
     const payload = {

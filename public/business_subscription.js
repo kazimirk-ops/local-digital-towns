@@ -124,7 +124,6 @@ async function handleStoreChange() {
 
 function updateStoreLinks() {
   if (currentPlaceId) {
-    $('giveawayOfferLink').href = `/giveaway-offer?placeId=${currentPlaceId}`;
     $('viewStoreLink').href = `/store?id=${currentPlaceId}`;
     $('viewStoreLink').style.display = 'inline-flex';
     const settingsLink = $('storeSettingsLink');

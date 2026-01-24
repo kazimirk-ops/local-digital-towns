@@ -43,28 +43,37 @@ window.SocialShare = (function() {
     modal.className = 'share-modal-overlay';
     modal.innerHTML = `
       <div class="share-modal">
-        <button class="share-modal-close" onclick="SocialShare.closeModal()">&times;</button>
+        <button class="share-modal-close">&times;</button>
         <h3>Share Your ${type === 'purchase' ? 'Purchase' : type === 'giveaway' ? 'Win' : type === 'review' ? 'Review' : 'Achievement'}!</h3>
         <p class="share-preview-text">${data.text || ''}</p>
-        ${data.imageUrl ? `<img src="${data.imageUrl}" alt="Share preview" class="share-preview-image" onerror="this.style.display='none'">` : ''}
+        ${data.imageUrl ? `<img src="${data.imageUrl}" alt="Share preview" class="share-preview-image">` : ''}
         <div class="share-buttons">
-          <button class="share-btn share-btn-facebook" onclick="SocialShare.doShare('facebook', '${type}', ${JSON.stringify(data).replace(/'/g, "\\'")})">
+          <button class="share-btn share-btn-facebook" data-platform="facebook">
             <span class="share-icon">f</span> Share on Facebook
           </button>
-          <button class="share-btn share-btn-twitter" onclick="SocialShare.doShare('twitter', '${type}', ${JSON.stringify(data).replace(/'/g, "\\'")})">
+          <button class="share-btn share-btn-twitter" data-platform="twitter">
             <span class="share-icon">X</span> Share on X
           </button>
-          <button class="share-btn share-btn-copy" onclick="SocialShare.doShare('copy', '${type}', ${JSON.stringify(data).replace(/'/g, "\\'")})">
+          <button class="share-btn share-btn-copy" data-platform="copy">
             <span class="share-icon">🔗</span> Copy Link
           </button>
         </div>
-        <button class="share-btn-skip" onclick="SocialShare.closeModal()">Maybe Later</button>
+        <button class="share-btn-skip">Maybe Later</button>
       </div>
     `;
 
+    // Add CSP-compliant event listeners
+    modal.querySelector('.share-modal-close')?.addEventListener('click', closeModal);
+    modal.querySelector('.share-btn-skip')?.addEventListener('click', closeModal);
+    modal.querySelectorAll('.share-btn').forEach(btn => {
+      btn.addEventListener('click', () => doShare(btn.dataset.platform, type, data));
+    });
+    const img = modal.querySelector('.share-preview-image');
+    if (img) img.addEventListener('error', () => { img.style.display = 'none'; });
+
     document.body.appendChild(modal);
     modal.addEventListener('click', function(e) {
-      if (e.target === modal) SocialShare.closeModal();
+      if (e.target === modal) closeModal();
     });
   }
 

@@ -446,6 +446,8 @@ async function handleAuctionPhotoInput() {
   const input = document.getElementById("auctionPhotosInput");
   const files = Array.from(input.files || []);
   if (!files.length) return;
+  setMsg("listingMsg", "Uploading photos...");
+  let uploadedCount = 0;
   for (const file of files) {
     if (auctionPhotos.length >= 5) {
       setMsg("listingMsg", "Max 5 photos per listing.");
@@ -469,13 +471,22 @@ async function handleAuctionPhotoInput() {
         method: "POST",
         body: form
       });
-      auctionPhotos.push(res.url);
-      renderAuctionPhotos();
+      if (res.url) {
+        auctionPhotos.push(res.url);
+        uploadedCount++;
+        renderAuctionPhotos();
+      } else {
+        setMsg("listingMsg", "Upload failed - no URL returned");
+      }
     } catch (e) {
-      setMsg("listingMsg", `ERROR: ${e.message}`);
+      setMsg("listingMsg", `Upload failed: ${e.message}`);
+      console.error("Photo upload error:", e);
     }
   }
   input.value = "";
+  if (uploadedCount > 0) {
+    setMsg("listingMsg", `${uploadedCount} photo(s) uploaded successfully.`);
+  }
 }
 function resetAuctionFields() {
   auctionPhotos = [];
@@ -490,6 +501,8 @@ async function createAuctionListing() {
   try {
     const placeId = document.getElementById("listingStore").value;
     if (!placeId) return setMsg("listingMsg", "Select a store first.");
+    const title = document.getElementById("listingTitle").value.trim();
+    if (!title) return setMsg("listingMsg", "Title required.");
     const startLocal = document.getElementById("auctionStartLocal").value;
     const durationVal = Number(document.getElementById("auctionDuration").value || 0);
     if (!startLocal) return setMsg("listingMsg", "Start time required.");
@@ -498,9 +511,13 @@ async function createAuctionListing() {
     const endAt = new Date(startAt.getTime() + durationVal * 60 * 60 * 1000);
     const startBidCents = Math.round(Number(document.getElementById("auctionStartBid").value || 0) * 100);
     const minIncrementCents = Math.round(Number(document.getElementById("auctionMinIncrement").value || 0) * 100);
+    if (auctionPhotos.length === 0) {
+      setMsg("listingMsg", "Warning: No photos uploaded. Continue anyway?");
+      // Allow to proceed, but user has been warned
+    }
     const payload = {
       listingType: "auction",
-      title: document.getElementById("listingTitle").value.trim(),
+      title,
       description: document.getElementById("listingDesc").value.trim(),
       quantity: Number(document.getElementById("listingQty").value || 1),
       price: Number(document.getElementById("listingPrice").value || 0),
@@ -510,6 +527,7 @@ async function createAuctionListing() {
       minIncrementCents,
       photoUrls: auctionPhotos
     };
+    setMsg("listingMsg", "Publishing auction...");
     const created = await api(`/places/${placeId}/listings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -525,6 +543,7 @@ async function createAuctionListing() {
     resetAuctionFields();
   } catch (e) {
     setMsg("listingMsg", `ERROR: ${e.message}`);
+    console.error("Create auction error:", e);
   }
 }
 
@@ -590,34 +609,46 @@ async function sendStoreMessage(){
   await openStoreConversation(storeConversationId);
 }
 
-document.getElementById("createListingBtn").onclick = createListing;
-document.getElementById("auctionPublishBtn").onclick = createAuctionListing;
-document.getElementById("createStoreBtn").onclick = createStore;
-document.getElementById("saveStorefrontBtn").onclick = saveStorefront;
-document.getElementById("listingType").onchange = setListingTypeUI;
-document.getElementById("auctionPhotosInput").onchange = handleAuctionPhotoInput;
-document.getElementById("auctionStartLocal").onchange = updateAuctionEndDisplay;
-document.getElementById("auctionDuration").onchange = updateAuctionEndDisplay;
-document.getElementById("storefrontStore").onchange = (e) => loadStorefront(e.target.value);
-const salesStoreEl = document.getElementById("salesStore");
-if(salesStoreEl) salesStoreEl.onchange = (e) => loadSales(e.target.value);
-const salesTodayBtn = document.getElementById("salesRangeToday");
-if(salesTodayBtn) salesTodayBtn.onclick = async () => { salesRange="today"; await loadSales(document.getElementById("salesStore").value); };
-const sales7dBtn = document.getElementById("salesRange7d");
-if(sales7dBtn) sales7dBtn.onclick = async () => { salesRange="7d"; await loadSales(document.getElementById("salesStore").value); };
-const sales30dBtn = document.getElementById("salesRange30d");
-if(sales30dBtn) sales30dBtn.onclick = async () => { salesRange="30d"; await loadSales(document.getElementById("salesStore").value); };
-const ordersStoreEl = document.getElementById("sellerOrdersStore");
-if(ordersStoreEl) ordersStoreEl.onchange = (e) => loadSellerOrders(e.target.value);
-document.getElementById("storeInboxStore").onchange = async (e) => {
-  await loadStoreInbox(e.target.value);
-  await loadPrizeClaims(e.target.value);
-};
-document.getElementById("storeInboxSendBtn").onclick = sendStoreMessage;
-document.getElementById("uploadBannerBtn").onclick = () => uploadStoreImage("storefrontBannerFile", "storefrontBannerUrl", "storefrontMsg");
-document.getElementById("uploadAvatarBtn").onclick = () => uploadStoreImage("storefrontAvatarFile", "storefrontAvatarUrl", "storefrontMsg");
-document.getElementById("listingPhotoUploadBtn").onclick = () => document.getElementById("listingPhotoInput").click();
-document.getElementById("listingPhotoInput").onchange = uploadListingPhoto;
+// CSP-compliant event listener setup
+function setupEventListeners() {
+  document.getElementById("createListingBtn")?.addEventListener("click", createListing);
+  document.getElementById("auctionPublishBtn")?.addEventListener("click", createAuctionListing);
+  document.getElementById("createStoreBtn")?.addEventListener("click", createStore);
+  document.getElementById("saveStorefrontBtn")?.addEventListener("click", saveStorefront);
+  document.getElementById("listingType")?.addEventListener("change", setListingTypeUI);
+  document.getElementById("auctionPhotosInput")?.addEventListener("change", handleAuctionPhotoInput);
+  document.getElementById("auctionStartLocal")?.addEventListener("change", updateAuctionEndDisplay);
+  document.getElementById("auctionDuration")?.addEventListener("change", updateAuctionEndDisplay);
+  document.getElementById("storefrontStore")?.addEventListener("change", (e) => loadStorefront(e.target.value));
+
+  const salesStoreEl = document.getElementById("salesStore");
+  if(salesStoreEl) salesStoreEl.addEventListener("change", (e) => loadSales(e.target.value));
+
+  const salesTodayBtn = document.getElementById("salesRangeToday");
+  if(salesTodayBtn) salesTodayBtn.addEventListener("click", async () => { salesRange="today"; await loadSales(document.getElementById("salesStore").value); });
+
+  const sales7dBtn = document.getElementById("salesRange7d");
+  if(sales7dBtn) sales7dBtn.addEventListener("click", async () => { salesRange="7d"; await loadSales(document.getElementById("salesStore").value); });
+
+  const sales30dBtn = document.getElementById("salesRange30d");
+  if(sales30dBtn) sales30dBtn.addEventListener("click", async () => { salesRange="30d"; await loadSales(document.getElementById("salesStore").value); });
+
+  const ordersStoreEl = document.getElementById("sellerOrdersStore");
+  if(ordersStoreEl) ordersStoreEl.addEventListener("change", (e) => loadSellerOrders(e.target.value));
+
+  document.getElementById("storeInboxStore")?.addEventListener("change", async (e) => {
+    await loadStoreInbox(e.target.value);
+    await loadPrizeClaims(e.target.value);
+  });
+
+  document.getElementById("storeInboxSendBtn")?.addEventListener("click", sendStoreMessage);
+  document.getElementById("uploadBannerBtn")?.addEventListener("click", () => uploadStoreImage("storefrontBannerFile", "storefrontBannerUrl", "storefrontMsg"));
+  document.getElementById("uploadAvatarBtn")?.addEventListener("click", () => uploadStoreImage("storefrontAvatarFile", "storefrontAvatarUrl", "storefrontMsg"));
+  document.getElementById("listingPhotoUploadBtn")?.addEventListener("click", () => document.getElementById("listingPhotoInput")?.click());
+  document.getElementById("listingPhotoInput")?.addEventListener("change", uploadListingPhoto);
+}
+
+setupEventListeners();
 syncListingPhotoField();
 
 // Subscription status for store owners

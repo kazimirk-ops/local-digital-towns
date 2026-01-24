@@ -375,33 +375,43 @@ function bindChannels(){
   const thumb = $("channelsImageThumb");
   const clearBtn = $("channelsImageClear");
   if(uploadBtn && fileInput){
-    uploadBtn.onclick = () => fileInput.click();
-    fileInput.onchange = async () => {
+    uploadBtn.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", async () => {
       const file = fileInput.files?.[0];
       if(!file) return;
-      if(!["image/png","image/jpeg","image/webp"].includes(file.type)) return alert("PNG/JPG/WebP only.");
-      if(file.size > 5 * 1024 * 1024) return alert("Max 5MB.");
+      if(!["image/png","image/jpeg","image/webp"].includes(file.type)) {
+        console.warn("Invalid file type - PNG/JPG/WebP only");
+        return;
+      }
+      if(file.size > 5 * 1024 * 1024) {
+        console.warn("Image too large - max 5MB");
+        return;
+      }
       const form = new FormData();
       form.append("file", file);
       form.append("kind", "chat_image");
       try{
         const res = await api("/api/uploads", { method:"POST", body: form });
-        channels.pendingImageUrl = res.url;
-        if(thumb) thumb.src = res.url;
-        if(preview) preview.style.display="block";
+        if (res.url) {
+          channels.pendingImageUrl = res.url;
+          if(thumb) thumb.src = res.url;
+          if(preview) preview.style.display="block";
+        } else {
+          console.error("Upload failed - no URL returned");
+        }
       }catch(e){
-        alert(e.message);
+        console.error("Upload failed:", e.message);
       }finally{
         fileInput.value = "";
       }
-    };
+    });
   }
   if(clearBtn){
-    clearBtn.onclick = () => {
+    clearBtn.addEventListener("click", () => {
       channels.pendingImageUrl = "";
       if(preview) preview.style.display="none";
       if(thumb) thumb.src = "";
-    };
+    });
   }
 }
 
@@ -1248,17 +1258,26 @@ async function loadPrizeOffers(){
   });
 }
 async function submitPrizeOffer(){
-  if(state.trustTier < 2) return alert("Sebastian Resident+ required.");
+  if(state.trustTier < 2) {
+    console.warn("Sebastian Resident+ required for prize offers");
+    return;
+  }
   const msg=$("prizeSubmitMsg");
   msg.textContent="Submitting...";
   let imageUrl="";
   const file=$("prizeImageFile")?.files?.[0];
   if(file){
-    const form=new FormData();
-    form.append("file", file);
-    form.append("kind","event_prize");
-    const up=await api("/api/uploads",{ method:"POST", body: form });
-    imageUrl = up.url;
+    try {
+      const form=new FormData();
+      form.append("file", file);
+      form.append("kind","event_prize");
+      const up=await api("/api/uploads",{ method:"POST", body: form });
+      imageUrl = up.url || "";
+    } catch(e) {
+      msg.textContent="Image upload failed: " + e.message;
+      console.error("Prize image upload error:", e);
+      return;
+    }
   }
   const payload={
     title:$("prizeTitle").value.trim(),
@@ -1271,10 +1290,15 @@ async function submitPrizeOffer(){
     imageUrl
   };
   if(!$("prizeConfirm").checked) return msg.textContent="Please confirm fulfillment.";
-  await api("/api/prizes/submit",{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
-  msg.textContent="Submitted for approval.";
-  $("prizeOfferModal").style.display="none";
-  await loadPrizeOffers();
+  try {
+    await api("/api/prizes/submit",{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
+    msg.textContent="Submitted for approval.";
+    $("prizeOfferModal").style.display="none";
+    await loadPrizeOffers();
+  } catch(e) {
+    msg.textContent="Error: " + e.message;
+    console.error("Prize submission error:", e);
+  }
 }
 async function loadSweepstake(){
   const panel = $("panelSweepstake");
@@ -2068,6 +2092,10 @@ async function main(){
   };
 
   if(window.loadTownTheme) await window.loadTownTheme();
+
+  // CSP-compliant button bindings
+  $("closePulseDetailBtn")?.addEventListener("click", closePulseDetail);
+
   bindChannels();
   bindSupport();
   bindRouter();
