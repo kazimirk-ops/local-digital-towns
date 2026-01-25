@@ -356,6 +356,52 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
         console.error("Error updating business subscription:", err);
       }
     }
+
+    // Handle user subscription payment (no placeId, has plan in metadata)
+    const plan = session?.metadata?.plan;
+    if(!placeId && userId && session.subscription && plan){
+      console.log("Processing user subscription for userId:", userId, "plan:", plan);
+      try {
+        // Check if user already has a subscription
+        const existing = await data.query(
+          `SELECT * FROM user_subscriptions WHERE userId = $1 ORDER BY createdAt DESC LIMIT 1`,
+          [userId]
+        );
+
+        if(existing.rows.length > 0) {
+          // Update existing subscription
+          const updateSql = `
+            UPDATE user_subscriptions
+            SET stripeCustomerId = $1, stripeSubscriptionId = $2, plan = $3, status = 'active',
+                currentPeriodStart = NOW(), currentPeriodEnd = NOW() + INTERVAL '1 month', updatedAt = NOW()
+            WHERE id = $4
+          `;
+          await data.query(updateSql, [session.customer, session.subscription, plan, existing.rows[0].id]);
+          console.log("Updated user subscription id:", existing.rows[0].id);
+        } else {
+          // Create new user subscription
+          const insertSql = `
+            INSERT INTO user_subscriptions
+            (userId, plan, status, stripeCustomerId, stripeSubscriptionId, currentPeriodStart, currentPeriodEnd, createdAt, updatedAt)
+            VALUES ($1, $2, 'active', $3, $4, NOW(), NOW() + INTERVAL '1 month', NOW(), NOW())
+          `;
+          await data.query(insertSql, [userId, plan, session.customer, session.subscription]);
+          console.log("Created new user subscription for userId:", userId);
+
+          // Award referral commission if this user was referred
+          const subscribedUser = await data.getUserById(userId);
+          const referrerId = subscribedUser?.referredByUserId ?? subscribedUser?.referredbyuserid;
+          if(referrerId) {
+            const subscriptionAmountCents = plan === 'business' ? 1000 : 500; // $10 or $5
+            await data.addReferralCommission(referrerId, userId, subscriptionAmountCents, 25);
+            console.log("Referral commission added for referrer:", referrerId, "from user:", userId);
+          }
+        }
+        console.log("User subscription activated for userId:", userId, "plan:", plan);
+      } catch(err) {
+        console.error("Error updating user subscription:", err);
+      }
+    }
   }
 
   if(event.type === "payment_intent.succeeded"){
@@ -383,24 +429,43 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
     console.log("customer.subscription.updated - customer:", customerId, "status:", status, "periodEnd:", periodEnd);
 
     try {
-      const result = await data.query(`SELECT * FROM business_subscriptions WHERE stripeCustomerId = $1`, [customerId]);
-      if(result.rows.length > 0) {
-        const localSub = result.rows[0];
-        // Only update periodEnd if we have a valid value from Stripe
+      // Check business subscriptions first
+      const bizResult = await data.query(`SELECT * FROM business_subscriptions WHERE stripeCustomerId = $1`, [customerId]);
+      if(bizResult.rows.length > 0) {
+        const localSub = bizResult.rows[0];
         if(periodEnd) {
           await data.query(
             `UPDATE business_subscriptions SET status = $1, currentPeriodStart = COALESCE($2, currentPeriodStart), currentPeriodEnd = $3, canceledAt = $4, updatedAt = NOW() WHERE id = $5`,
             [status, periodStart, periodEnd, sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null, localSub.id]
           );
         } else {
-          // Just update status, don't overwrite period dates with null
           await data.query(
             `UPDATE business_subscriptions SET status = $1, canceledAt = $2, updatedAt = NOW() WHERE id = $3`,
             [status, sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null, localSub.id]
           );
         }
-        console.log("Subscription updated for customer:", customerId);
-      } else {
+        console.log("Business subscription updated for customer:", customerId);
+      }
+
+      // Check user subscriptions
+      const userResult = await data.query(`SELECT * FROM user_subscriptions WHERE stripeCustomerId = $1`, [customerId]);
+      if(userResult.rows.length > 0) {
+        const localSub = userResult.rows[0];
+        if(periodEnd) {
+          await data.query(
+            `UPDATE user_subscriptions SET status = $1, currentPeriodStart = COALESCE($2, currentPeriodStart), currentPeriodEnd = $3, canceledAt = $4, updatedAt = NOW() WHERE id = $5`,
+            [status, periodStart, periodEnd, sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null, localSub.id]
+          );
+        } else {
+          await data.query(
+            `UPDATE user_subscriptions SET status = $1, canceledAt = $2, updatedAt = NOW() WHERE id = $3`,
+            [status, sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null, localSub.id]
+          );
+        }
+        console.log("User subscription updated for customer:", customerId);
+      }
+
+      if(bizResult.rows.length === 0 && userResult.rows.length === 0) {
         console.log("No local subscription found for customer:", customerId);
       }
     } catch(err) {
@@ -414,14 +479,24 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
     const customerId = sub.customer;
 
     try {
-      const result = await data.query(`SELECT * FROM business_subscriptions WHERE stripeCustomerId = $1`, [customerId]);
-      if(result.rows.length > 0) {
-        const localSub = result.rows[0];
+      // Check business subscriptions
+      const bizResult = await data.query(`SELECT * FROM business_subscriptions WHERE stripeCustomerId = $1`, [customerId]);
+      if(bizResult.rows.length > 0) {
         await data.query(
           `UPDATE business_subscriptions SET status = 'expired', canceledAt = NOW(), updatedAt = NOW() WHERE id = $1`,
-          [localSub.id]
+          [bizResult.rows[0].id]
         );
-        console.log("Subscription expired for customer:", customerId);
+        console.log("Business subscription expired for customer:", customerId);
+      }
+
+      // Check user subscriptions
+      const userResult = await data.query(`SELECT * FROM user_subscriptions WHERE stripeCustomerId = $1`, [customerId]);
+      if(userResult.rows.length > 0) {
+        await data.query(
+          `UPDATE user_subscriptions SET status = 'expired', canceledAt = NOW(), updatedAt = NOW() WHERE id = $1`,
+          [userResult.rows[0].id]
+        );
+        console.log("User subscription expired for customer:", customerId);
       }
     } catch(err) {
       console.error("Error expiring subscription:", err);
@@ -477,6 +552,7 @@ app.get("/me/hub", async (req, res) =>res.redirect("/me/store"));
 app.get("/pay/:id", async (req, res) =>res.sendFile(path.join(__dirname,"public","pay.html")));
 app.get("/pay/success", async (req, res) =>res.sendFile(path.join(__dirname,"public","pay_success.html")));
 app.get("/pay/cancel", async (req, res) =>res.sendFile(path.join(__dirname,"public","pay_cancel.html")));
+app.get("/order-confirmed", async (req, res) =>res.sendFile(path.join(__dirname,"public","order-confirmed.html")));
 app.get("/debug/context", async (req, res) =>{
   const admin=await requireAdminOrDev(req,res); if(!admin) return;
   const u = await getUserId(req);
@@ -569,6 +645,8 @@ app.get("/admin/media", async (req, res) =>{
 });
 app.get("/store/:id", async (req, res) =>res.sendFile(path.join(__dirname,"public","store.html")));
 app.get("/business-subscription", async (req, res) =>res.sendFile(path.join(__dirname,"public","business_subscription.html")));
+app.get("/subscription", async (req, res) =>res.sendFile(path.join(__dirname,"public","subscription.html")));
+app.get("/referrals", async (req, res) =>res.sendFile(path.join(__dirname,"public","referrals.html")));
 app.get("/giveaway-offer", async (req, res) =>res.sendFile(path.join(__dirname,"public","giveaway_offer_form.html")));
 app.get("/admin/sweep", async (req, res) =>{
   const admin=await requireAdminPage(req,res); if(!admin) return;
@@ -1159,9 +1237,12 @@ app.post("/api/auth/verify-code", async (req, res) =>{
     const existingReferrer = user.referredByUserId ?? user.referredbyuserid;
     if(!existingReferrer){
       let referrer = null;
-      if(/^\d+$/.test(referralCode)){
+      // Try to find referrer by referralCode first (new system)
+      referrer = await data.getUserByReferralCode(referralCode);
+      // Fall back to legacy lookup by user ID or email
+      if(!referrer && /^\d+$/.test(referralCode)){
         referrer = await data.getUserById(Number(referralCode));
-      }else if(referralCode.includes("@")){
+      }else if(!referrer && referralCode.includes("@")){
         referrer = await data.getUserByEmail(referralCode);
       }
       if(referrer && Number(referrer.id) !== Number(user.id)){
@@ -1180,6 +1261,9 @@ app.post("/api/auth/verify-code", async (req, res) =>{
       }
     }
   }
+
+  // Ensure user has a referral code
+  await data.ensureUserReferralCode(result.userId);
 
   const s = await data.createSession(result.userId);
   setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30,secure:isHttpsRequest(req)});
@@ -2060,8 +2144,7 @@ app.post("/events/:id/rsvp", async (req, res) =>{
 
 // Orders (payment scaffolding)
 app.get("/api/cart", async (req, res) =>{
-  const access = await requirePerm(req,res,"BUY_MARKET"); if(!access) return;
-  const u=access.userId;
+  const u=await requireLogin(req,res); if(!u) return;
   const items = await data.getCartItemsByUser(u);
   const listings = await data.getListings();
   const places = await data.getPlaces();
@@ -2086,7 +2169,7 @@ app.get("/api/cart", async (req, res) =>{
   res.json({ items: enriched });
 });
 app.post("/api/cart/add", async (req, res) =>{
-  const u=await requireBuyerTier(req,res); if(!u) return;
+  const u=await requireLogin(req,res); if(!u) return;
   const listingId = Number(req.body?.listingId || 0);
   const quantity = Number(req.body?.quantity || 1);
   if(!listingId || !Number.isFinite(quantity) || quantity === 0) return res.status(400).json({error:"listingId and quantity required"});
@@ -2103,22 +2186,21 @@ app.post("/api/cart/add", async (req, res) =>{
   res.json({ ok:true, item: created });
 });
 app.post("/api/cart/remove", async (req, res) =>{
-  const access = await requirePerm(req,res,"BUY_MARKET"); if(!access) return;
-  const u=access.userId;
+  const u=await requireLogin(req,res); if(!u) return;
   const listingId = Number(req.body?.listingId || 0);
   if(!listingId) return res.status(400).json({error:"listingId required"});
   await data.removeCartItem(u, listingId);
   res.json({ ok:true });
 });
 app.post("/api/cart/clear", async (req, res) =>{
-  const access = await requirePerm(req,res,"BUY_MARKET"); if(!access) return;
-  const u=access.userId;
+  const u=await requireLogin(req,res); if(!u) return;
   await data.clearCart(u);
   res.json({ ok:true });
 });
 
+// Simplified checkout - no online payment, buyers/sellers arrange payment offline
 app.post("/api/checkout/create", async (req, res) =>{
-  const u=await requireBuyerTier(req,res); if(!u) return;
+  const u=await requireLogin(req,res); if(!u) return;
   const cart = await data.getCartItemsByUser(u);
   if(!cart.length) return res.status(400).json({error:"Cart is empty"});
   const listings = await data.getListings();
@@ -2139,7 +2221,7 @@ app.post("/api/checkout/create", async (req, res) =>{
     if(placeId == null) placeId = listingPlaceId;
     if(Number(placeId) !== Number(listingPlaceId)) return res.status(400).json({error:"Checkout supports a single store per order"});
     const place = placeMap.get(Number(listingPlaceId));
-    if(place) sellerUserId = place.ownerUserId ?? null;
+    if(place) sellerUserId = place.ownerUserId ?? place.owneruserid ?? null;
     const priceCents = Math.round(Number(listing.price || 0) * 100);
     subtotalCents += priceCents * Number(item.quantity || 0);
     items.push({
@@ -2149,8 +2231,8 @@ app.post("/api/checkout/create", async (req, res) =>{
       quantity: Number(item.quantity || 0)
     });
   }
-  const serviceGratuityCents = Math.ceil(subtotalCents * 0.05);
-  const totalCents = subtotalCents + serviceGratuityCents;
+  // No deposit - just the item total. Payment handled offline between buyer/seller
+  const totalCents = subtotalCents;
   const order = await data.createOrderFromCart({
     townId: 1,
     listingId: items[0].listingId,
@@ -2159,17 +2241,17 @@ app.post("/api/checkout/create", async (req, res) =>{
     sellerPlaceId: placeId,
     quantity: items.reduce((sum, i)=>sum + i.quantity, 0),
     amountCents: totalCents,
-    status: "pending_payment",
-    paymentProvider: "stripe",
+    status: "pending",
+    paymentProvider: "offline",
     paymentIntentId: "",
     subtotalCents,
-    serviceGratuityCents,
+    serviceGratuityCents: 0,
     totalCents,
     fulfillmentType: (req.body?.fulfillmentType || "").toString(),
     fulfillmentNotes: (req.body?.fulfillmentNotes || "").toString()
   }, items);
-  await data.createPaymentForOrder(order.id, totalCents, "stripe");
   await data.clearCart(u);
+  // Award sweep points for purchase
   try{
     await data.tryAwardSweepForEvent({
       townId: 1,
@@ -2190,54 +2272,11 @@ app.post("/api/checkout/create", async (req, res) =>{
   }catch(err){
     console.error("SWEEP_AWARD_PURCHASE_ERROR", err?.message);
   }
-  res.json({ orderId: order.id, paymentStatus: "requires_payment", totals: { subtotalCents, serviceGratuityCents, totalCents } });
+  res.json({ orderId: order.id, status: "pending", totals: { subtotalCents, totalCents } });
 });
+// Purchase payment is handled offline - this endpoint is deprecated
 app.post("/api/checkout/stripe", async (req,res)=>{
-  const u=await requireBuyerTier(req,res); if(!u) return;
-  const s = requireStripeConfig(res); if(!s) return;
-  const orderId = Number(req.body?.orderId || 0);
-  if(!orderId) return res.status(400).json({error:"orderId required"});
-  const order = await data.getOrderById(orderId);
-  if(!order) return res.status(404).json({error:"Order not found"});
-  if(Number(order.buyerUserId)!==Number(u)) return res.status(403).json({error:"Buyer only"});
-  if(!["pending_payment","requires_payment"].includes(String(order.status||""))) return res.status(400).json({error:"Order not payable"});
-  const items = await data.getOrderItems(order.id);
-  if(!items.length) return res.status(400).json({error:"Order has no items"});
-  // Only charge the 5% buyer deposit via Stripe - buyer pays remaining amount directly to seller
-  const depositCents = Number(order.serviceGratuityCents || 0);
-  if(depositCents <= 0) return res.status(400).json({error:"No deposit amount calculated"});
-  const lineItems = [{
-    price_data: {
-      currency: "usd",
-      product_data: {
-        name: "Buyer Deposit (5%)",
-        description: "Non-refundable platform deposit. Pay remaining amount directly to seller at pickup/delivery."
-      },
-      unit_amount: depositCents
-    },
-    quantity: 1
-  }];
-  const { successUrl, cancelUrl } = getStripeUrls(order.id);
-  try{
-    const session = await s.checkout.sessions.create({
-      mode: "payment",
-      line_items: lineItems,
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: {
-        orderId: String(order.id),
-        townId: String(order.townId || 1),
-        buyerUserId: String(order.buyerUserId)
-      },
-      client_reference_id: String(order.id)
-    });
-    await data.updateOrderPayment(order.id, "stripe", session.id || "");
-    const existingPayment = await data.getPaymentForOrder(order.id);
-    if(!existingPayment) await data.createPaymentForOrder(order.id, Number(order.totalCents || 0), "stripe");
-    res.json({ checkoutUrl: session.url });
-  }catch(e){
-    res.status(500).json({error:"Stripe checkout failed"});
-  }
+  res.status(400).json({error:"Online payment not available. Please arrange payment directly with the seller."});
 });
 
 app.get("/api/orders", async (req, res) =>{
@@ -2299,7 +2338,8 @@ app.post("/api/orders/:id/pay", async (req, res) =>{
   if(process.env.NODE_ENV === "production") return res.status(403).json({error:"Dev-only endpoint"});
   const order=await data.getOrderById(req.params.id);
   if(!order) return res.status(404).json({error:"Order not found"});
-  if(Number(order.buyerUserId)!==Number(u)) return res.status(403).json({error:"Buyer only"});
+  const orderBuyerId = order.buyerUserId ?? order.buyeruserid;
+  if(Number(orderBuyerId)!==Number(u)) return res.status(403).json({error:"Not the order buyer"});
   if(order.status === "paid") return res.status(400).json({error:"Already paid"});
   const items = await data.getOrderItems(order.id);
   const listingId = items[0]?.listingId || order.listingId;
@@ -3660,6 +3700,27 @@ app.get("/api/places/mine", async (req, res) =>{
   res.json(owned);
 });
 
+// Get featured businesses (places with active business subscriptions)
+app.get("/api/places/featured", async (req, res) =>{
+  try {
+    // Get all places with active business subscriptions
+    const result = await data.query(`
+      SELECT p.id, p.name, p.category, p.avatarUrl, p.status,
+             bs.plan, bs.status as subStatus, bs.currentPeriodEnd
+      FROM places p
+      INNER JOIN business_subscriptions bs ON bs.placeId = p.id
+      WHERE p.status = 'live'
+        AND bs.status = 'active'
+        AND (bs.currentPeriodEnd IS NULL OR bs.currentPeriodEnd > NOW())
+      ORDER BY p.name ASC
+    `);
+    res.json(result.rows || []);
+  } catch(e) {
+    console.error("Featured places error:", e);
+    res.status(500).json({ error: "Failed to load featured businesses" });
+  }
+});
+
 // Place meta
 app.get("/places/:id", async (req, res) =>{
   const p=await data.getPlaceById(req.params.id);
@@ -4268,7 +4329,155 @@ app.post("/api/admin/subscription/activate", async (req, res) => {
   }
 });
 
+// ---------- User Subscriptions ----------
+// Check user's subscription status
+app.get("/api/user/subscription", async (req, res) => {
+  const u = await getUserId(req);
+  if(!u) return res.json({ subscription: null, isActive: false });
+
+  try {
+    const result = await data.query(
+      `SELECT * FROM user_subscriptions WHERE userId = $1 ORDER BY createdAt DESC LIMIT 1`,
+      [u]
+    );
+    const sub = result.rows?.[0];
+    if(!sub) return res.json({ subscription: null, isActive: false });
+
+    const now = new Date();
+    const periodEnd = sub.currentperiodend || sub.currentPeriodEnd;
+    const status = sub.status || "";
+    const isActive = (status === "active" || status === "trialing") &&
+                     periodEnd && new Date(periodEnd) > now;
+
+    res.json({
+      subscription: {
+        id: sub.id,
+        plan: sub.plan,
+        status: sub.status,
+        currentPeriodStart: sub.currentperiodstart || sub.currentPeriodStart,
+        currentPeriodEnd: periodEnd,
+        createdAt: sub.createdat || sub.createdAt
+      },
+      isActive
+    });
+  } catch(e) {
+    console.error("User subscription check error:", e);
+    res.json({ subscription: null, isActive: false });
+  }
+});
+
+// Create Stripe checkout for user subscription (User $5 or Business $10)
+app.post("/api/subscription/checkout", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const plan = (req.body?.plan || "user").toString().toLowerCase();
+
+  if(!["user", "business"].includes(plan)) {
+    return res.status(400).json({ error: "Invalid plan. Choose 'user' or 'business'." });
+  }
+
+  if(!stripe) {
+    return res.status(400).json({ error: "Stripe not configured" });
+  }
+
+  // Get the correct price ID based on plan
+  const priceId = plan === "business"
+    ? (process.env.STRIPE_BUSINESS_PRICE_ID || process.env.STRIPE_PRICE_ID || "").trim()
+    : (process.env.STRIPE_USER_PRICE_ID || "").trim();
+
+  if(!priceId) {
+    return res.status(400).json({ error: `Stripe price ID not configured for ${plan} plan` });
+  }
+
+  try {
+    const user = await data.getUserById(u);
+    const successUrl = `${req.protocol}://${req.get('host')}/subscription?success=true&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${req.protocol}://${req.get('host')}/subscription?canceled=true`;
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      customer_email: user?.email || undefined,
+      metadata: { userId: String(u), plan }
+    });
+
+    res.json({ checkoutUrl: session.url });
+  } catch(e) {
+    console.error("Subscription checkout error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ---------- Referral System ----------
+// Get user's referral stats and code
+app.get("/api/referral/stats", async (req, res) => {
+  const u = await getUserId(req);
+  if(!u) return res.status(401).json({ error: "Login required" });
+
+  // Ensure user has a referral code
+  await data.ensureUserReferralCode(u);
+  const stats = await data.getReferralStats(u);
+  res.json(stats);
+});
+
+// Get referral transactions history
+app.get("/api/referral/transactions", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const transactions = await data.getReferralTransactions(u);
+  res.json({ transactions });
+});
+
+// Get list of referred users
+app.get("/api/referral/users", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const users = await data.getReferredUsers(u);
+  // Mask email addresses for privacy
+  const maskedUsers = users.map(user => ({
+    ...user,
+    email: user.email ? user.email.replace(/(.{2}).*@/, "$1***@") : null
+  }));
+  res.json({ users: maskedUsers });
+});
+
+// Request cashout (min $25)
+app.post("/api/referral/cashout", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const result = await data.requestReferralCashout(u);
+
+  if(result.error) {
+    return res.status(400).json(result);
+  }
+
+  // Notify admin about cashout request
+  const user = await data.getUserById(u);
+  sendAdminEmail("Referral Cashout Request", `
+User: ${user?.displayName || user?.email || 'Unknown'} (ID: ${u})
+Amount: $${(result.cashoutAmountCents / 100).toFixed(2)}
+
+Please process this payout manually and mark as complete.
+  `);
+
+  res.json(result);
+});
+
+// Validate a referral code (for displaying referrer name during signup)
+app.get("/api/referral/validate/:code", async (req, res) => {
+  const code = (req.params.code || "").toString().trim();
+  if(!code) return res.json({ valid: false });
+
+  const referrer = await data.getUserByReferralCode(code);
+  if(!referrer) return res.json({ valid: false });
+
+  res.json({
+    valid: true,
+    referrerName: referrer.displayName || "A Digital Sebastian member"
+  });
+});
+
 // ---------- Giveaway Offers ----------
+// Anyone with a store can submit a giveaway offer for admin review
 app.post("/api/giveaway/offer", async (req, res) => {
   const u = await requireLogin(req, res); if(!u) return;
   const placeId = Number(req.body?.placeId || 0);
@@ -4276,9 +4485,8 @@ app.post("/api/giveaway/offer", async (req, res) => {
   const place = await data.getPlaceById(placeId);
   if(!place) return res.status(404).json({ error: "Place not found" });
   const ownerId = place.ownerUserId ?? place.owneruserid;
-  if(Number(ownerId) !== Number(u)) return res.status(403).json({ error: "Only owner can submit offers" });
-  const hasActiveSub = await requireActiveSubscription(req, res, placeId);
-  if(!hasActiveSub) return;
+  if(Number(ownerId) !== Number(u)) return res.status(403).json({ error: "Only store owner can submit giveaways" });
+  // No subscription required - anyone with a store can submit giveaways for review
   const offer = await data.createGiveawayOffer(placeId, u, {
     title: req.body?.title,
     description: req.body?.description,

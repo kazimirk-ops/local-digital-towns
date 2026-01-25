@@ -3565,6 +3565,162 @@ async function recalculateGhostingPercent(userId) {
   return stats;
 }
 
+// ---------- Referral System ----------
+function generateReferralCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+async function ensureUserReferralCode(userId) {
+  const user = await getUserById(userId);
+  if (!user) return null;
+  if (user.referralCode || user.referralcode) return user;
+
+  // Generate unique code
+  let attempts = 0;
+  while (attempts < 10) {
+    const code = generateReferralCode();
+    try {
+      await stmt(`UPDATE users SET referralCode = $1 WHERE id = $2 AND referralCode IS NULL`)
+        .run(code, Number(userId));
+      return getUserById(userId);
+    } catch (e) {
+      if (e.code === '23505') { // unique violation
+        attempts++;
+        continue;
+      }
+      throw e;
+    }
+  }
+  return user;
+}
+
+async function getUserByReferralCode(code) {
+  if (!code) return null;
+  const result = await stmt(`SELECT * FROM users WHERE UPPER(referralCode) = UPPER($1)`).all(code.toString().trim());
+  return result[0] || null;
+}
+
+async function getReferralStats(userId) {
+  // Get count of users referred
+  const totalReferred = await stmt(`
+    SELECT COUNT(*) as count FROM users WHERE referredByUserId = $1
+  `).all(Number(userId));
+
+  // Get count of active referred users (those with active subscriptions)
+  const activeReferred = await stmt(`
+    SELECT COUNT(DISTINCT u.id) as count
+    FROM users u
+    JOIN user_subscriptions us ON us.userId = u.id
+    WHERE u.referredByUserId = $1
+      AND us.status = 'active'
+      AND us.currentPeriodEnd > NOW()
+  `).all(Number(userId));
+
+  // Get user's referral balance and total earnings
+  const user = await getUserById(userId);
+
+  return {
+    totalReferred: Number(totalReferred[0]?.count || 0),
+    activeReferred: Number(activeReferred[0]?.count || 0),
+    referralBalanceCents: Number(user?.referralBalanceCents || user?.referralbalancecents || 0),
+    referralEarningsTotal: Number(user?.referralEarningsTotal || user?.referralearningsTotal || 0),
+    referralCode: user?.referralCode || user?.referralcode || null
+  };
+}
+
+async function getReferralTransactions(userId, limit = 50) {
+  const result = await stmt(`
+    SELECT rt.*, u.displayName as referredUserName, u.email as referredUserEmail
+    FROM referral_transactions rt
+    LEFT JOIN users u ON u.id = rt.referredUserId
+    WHERE rt.userId = $1
+    ORDER BY rt.createdAt DESC
+    LIMIT $2
+  `).all(Number(userId), Number(limit));
+  return result;
+}
+
+async function addReferralCommission(referrerUserId, referredUserId, subscriptionAmountCents, commissionPercent = 25) {
+  const commissionCents = Math.floor(subscriptionAmountCents * commissionPercent / 100);
+  if (commissionCents <= 0) return null;
+
+  // Add transaction record
+  await stmt(`
+    INSERT INTO referral_transactions (userId, type, amountCents, referredUserId, description, createdAt)
+    VALUES ($1, 'commission', $2, $3, $4, NOW())
+  `).run(
+    Number(referrerUserId),
+    commissionCents,
+    Number(referredUserId),
+    `${commissionPercent}% commission on referral subscription`
+  );
+
+  // Update referrer's balance and total
+  await stmt(`
+    UPDATE users
+    SET referralBalanceCents = COALESCE(referralBalanceCents, 0) + $1,
+        referralEarningsTotal = COALESCE(referralEarningsTotal, 0) + $1
+    WHERE id = $2
+  `).run(commissionCents, Number(referrerUserId));
+
+  return { commissionCents, referrerUserId, referredUserId };
+}
+
+async function applyReferralCredit(userId, amountCents, subscriptionId = null) {
+  // Deduct from balance
+  await stmt(`
+    UPDATE users
+    SET referralBalanceCents = GREATEST(0, COALESCE(referralBalanceCents, 0) - $1)
+    WHERE id = $2
+  `).run(Number(amountCents), Number(userId));
+
+  // Log the transaction
+  await stmt(`
+    INSERT INTO referral_transactions (userId, type, amountCents, subscriptionId, description, createdAt)
+    VALUES ($1, 'credit_applied', $2, $3, 'Credit applied to subscription', NOW())
+  `).run(Number(userId), -Number(amountCents), subscriptionId);
+
+  return { appliedCents: amountCents };
+}
+
+async function requestReferralCashout(userId) {
+  const user = await getUserById(userId);
+  const balance = Number(user?.referralBalanceCents || user?.referralbalancecents || 0);
+
+  if (balance < 2500) { // $25 minimum
+    return { error: 'Minimum cashout is $25', balance };
+  }
+
+  // Log the cashout request (admin handles actual payout manually)
+  await stmt(`
+    INSERT INTO referral_transactions (userId, type, amountCents, description, createdAt)
+    VALUES ($1, 'cashout', $2, 'Cashout requested - pending admin approval', NOW())
+  `).run(Number(userId), -balance);
+
+  // Zero out the balance
+  await stmt(`UPDATE users SET referralBalanceCents = 0 WHERE id = $1`).run(Number(userId));
+
+  return { success: true, cashoutAmountCents: balance };
+}
+
+async function getReferredUsers(referrerUserId, limit = 100) {
+  const result = await stmt(`
+    SELECT u.id, u.displayName, u.email, u.createdAt,
+           us.status as subscriptionStatus, us.plan as subscriptionPlan
+    FROM users u
+    LEFT JOIN user_subscriptions us ON us.userId = u.id
+    WHERE u.referredByUserId = $1
+    ORDER BY u.createdAt DESC
+    LIMIT $2
+  `).all(Number(referrerUserId), Number(limit));
+  return result;
+}
+
 module.exports = {
   initDb,
   getPlaces,
@@ -3818,6 +3974,17 @@ module.exports = {
   getGhostReportsByBuyer,
   getGhostingStats,
   recalculateGhostingPercent,
+
+  // referral system
+  generateReferralCode,
+  ensureUserReferralCode,
+  getUserByReferralCode,
+  getReferralStats,
+  getReferralTransactions,
+  addReferralCommission,
+  applyReferralCredit,
+  requestReferralCashout,
+  getReferredUsers,
 
   // raw query
   query,

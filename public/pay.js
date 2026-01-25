@@ -42,14 +42,12 @@ async function loadOrder() {
 
   $("orderId").textContent = `#${order.id}`;
   $("orderListing").textContent = listing ? `Listing: ${listing.title || "Auction item"}` : "Listing: —";
-  const subtotalCents = order.subtotalCents || order.amountCents || 0;
-  const depositCents = order.serviceGratuityCents || order.buyerDepositCents || 0;
-  $("orderSubtotal").textContent = `Item Total: ${fmtCents(subtotalCents)} (pay to seller)`;
-  $("orderGratuity").textContent = `Deposit: ${fmtCents(depositCents)} (pay now)`;
-  $("orderTotal").textContent = `Order Total: ${fmtCents(order.totalCents || order.amountCents)}`;
+
+  const totalCents = order.totalCents ?? order.totalcents ?? order.amountCents ?? order.amountcents ?? 0;
+  $("orderTotal").textContent = `Total: ${fmtCents(totalCents)}`;
   $("paymentDue").textContent = listing?.paymentDueAt ? new Date(listing.paymentDueAt).toLocaleString() : "—";
   $("paymentCountdown").textContent = formatCountdown(listing?.paymentDueAt);
-  $("payStatus").textContent = order.status === "paid" ? "Paid." : "Payment required.";
+  $("payStatus").textContent = order.status === "paid" ? "Paid." : "Awaiting payment to seller.";
 
   const isDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
   if (isDev && order.status !== "paid") {

@@ -84,15 +84,10 @@ function renderCart(){
     `;
     list.appendChild(row);
   });
-  const deposit = Math.ceil(subtotal * 0.05);
-  const total = subtotal + deposit;
   totals.innerHTML = `
     <div style="margin-bottom:8px;">
-      <div><strong>Item Total:</strong> ${fmtCents(subtotal)} <span class="muted">(pay to seller at pickup)</span></div>
-      <div><strong>Deposit (5%):</strong> ${fmtCents(deposit)} <span class="muted">(pay now via Stripe, non-refundable)</span></div>
-      <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:6px;padding-top:6px;"><strong>Total:</strong> ${fmtCents(total)}</div>
+      <div style="font-size:18px;font-weight:700;">Total: ${fmtCents(subtotal)}</div>
     </div>
-    <div class="muted" style="font-size:11px;">Only the ${fmtCents(deposit)} deposit is charged to your card. Pay ${fmtCents(subtotal)} directly to seller.</div>
   `;
   list.querySelectorAll("button[data-inc]").forEach((btn)=>{
     btn.addEventListener("click", async ()=>{
@@ -141,22 +136,8 @@ async function checkoutCart(){
   try{
     const res = await api("/api/checkout/create",{method:"POST",body:JSON.stringify({})});
     CART_ORDER_ID = res.orderId;
-    setCartMsg("Checkout created. Continue to payment.");
-    $("cartPayBtn").style.display = "inline-block";
-    await loadCart();
-  }catch(e){
-    setCartMsg(`ERROR: ${e.message}`, true);
-  }
-}
-async function payCartOrder(){
-  if(!CART_ORDER_ID) return;
-  try{
-    const res = await api("/api/checkout/stripe",{method:"POST",body:JSON.stringify({orderId:CART_ORDER_ID})});
-    if(res.checkoutUrl){
-      window.location.href = res.checkoutUrl;
-      return;
-    }
-    setCartMsg("ERROR: Missing checkout URL.", true);
+    // Redirect to order confirmation page
+    window.location.href = `/order-confirmed?orderId=${res.orderId}`;
   }catch(e){
     setCartMsg(`ERROR: ${e.message}`, true);
   }

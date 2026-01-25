@@ -107,6 +107,9 @@ function setView(view){
   if(view==="localbiz"){
     initLocalBiz().catch(()=>{});
   }
+  if(view==="services"){
+    initFeaturedBusinesses().catch(()=>{});
+  }
   if(view==="map" && map){
     setTimeout(()=>map.invalidateSize(), 50);
   }
@@ -856,6 +859,50 @@ async function initLocalBiz(){
     renderLocalBizMy(apps);
   }else{
     renderLocalBizMy([]);
+  }
+}
+
+// Featured Local Businesses (Business tier subscribers only)
+let featuredBusinessesLoaded = false;
+async function initFeaturedBusinesses(){
+  if(featuredBusinessesLoaded) return;
+  featuredBusinessesLoaded = true;
+
+  const container = $("featuredBusinessesList");
+  const loading = $("featuredLoading");
+  if(!container) return;
+
+  try {
+    const businesses = await api("/api/places/featured");
+
+    if(!businesses || businesses.length === 0){
+      container.innerHTML = `<div class="muted">No featured businesses yet. Business subscribers ($10/mo) will appear here.</div>`;
+      return;
+    }
+
+    container.innerHTML = "";
+    for(const biz of businesses){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.style.cursor = "pointer";
+      div.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px;">
+          ${biz.avatarUrl ? `<img src="${biz.avatarUrl}" style="width:48px;height:48px;border-radius:12px;object-fit:cover;">` : `<div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;">🏪</div>`}
+          <div style="flex:1;">
+            <div><strong>${biz.name || "Business"}</strong></div>
+            <div class="muted">${biz.category || ""}</div>
+          </div>
+          <div style="color:#22d3ee;font-size:13px;">View Store →</div>
+        </div>
+      `;
+      div.onclick = () => {
+        window.location.href = `/store/${biz.id}`;
+      };
+      container.appendChild(div);
+    }
+  } catch(e) {
+    console.error("Failed to load featured businesses:", e);
+    container.innerHTML = `<div class="muted">Failed to load featured businesses.</div>`;
   }
 }
 
