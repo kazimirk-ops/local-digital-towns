@@ -336,6 +336,8 @@ app.post("/api/signup/checkout", async (req, res) => {
   console.log("STRIPE_USER_PRICE_ID env:", process.env.STRIPE_USER_PRICE_ID || "(not set)");
   console.log("STRIPE_BUSINESS_PRICE_ID env:", process.env.STRIPE_BUSINESS_PRICE_ID || "(not set)");
   console.log("STRIPE_PRICE_ID env:", process.env.STRIPE_PRICE_ID || "(not set)");
+  const stripeKeyPrefix = (process.env.STRIPE_SECRET_KEY || "").substring(0, 8);
+  console.log("STRIPE_SECRET_KEY mode:", stripeKeyPrefix.includes("test") ? "TEST MODE" : stripeKeyPrefix.includes("live") ? "LIVE MODE" : "UNKNOWN - " + stripeKeyPrefix);
 
   if(!priceId) {
     return res.status(400).json({ error: `Stripe price ID not configured for ${plan} plan` });
