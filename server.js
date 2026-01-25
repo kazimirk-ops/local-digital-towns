@@ -763,6 +763,54 @@ async function requireActiveSubscription(req, res, placeId){
   return true;
 }
 
+// Check if user has any active subscription (user or business tier)
+async function hasActiveUserSubscription(userId) {
+  if (!userId) return false;
+  try {
+    const result = await data.query(
+      `SELECT * FROM user_subscriptions WHERE userId = $1 AND status = 'active' AND currentPeriodEnd > NOW() ORDER BY createdAt DESC LIMIT 1`,
+      [Number(userId)]
+    );
+    return result.rows.length > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Require user to have an active subscription for actions
+async function requireUserSubscription(req, res) {
+  const u = await getUserId(req);
+  if (!u) {
+    res.status(401).json({ error: "Login required", subscriptionRequired: true });
+    return null;
+  }
+
+  // Check if admin (admins bypass subscription check)
+  const user = await data.getUserById(u);
+  if (isAdminUser(user)) return u;
+
+  // Check for active user subscription
+  const hasUserSub = await hasActiveUserSubscription(u);
+  if (hasUserSub) return u;
+
+  // Check if user owns a store with active business subscription
+  const places = await data.query(
+    `SELECT p.id FROM places p
+     INNER JOIN business_subscriptions bs ON bs.placeId = p.id
+     WHERE p.ownerUserId = $1 AND bs.status = 'active' AND (bs.currentPeriodEnd IS NULL OR bs.currentPeriodEnd > NOW())
+     LIMIT 1`,
+    [Number(u)]
+  );
+  if (places.rows.length > 0) return u;
+
+  res.status(403).json({
+    error: "Subscription required",
+    subscriptionRequired: true,
+    message: "Sign up for $5/month to buy, sell, and enter giveaways"
+  });
+  return null;
+}
+
 function getAdminReviewLink(){
   const base = (process.env.PUBLIC_BASE_URL || process.env.SITE_URL || process.env.APP_URL || "").toString().trim();
   if(!base) return "/admin/applications";
@@ -1524,7 +1572,7 @@ app.get("/dm", async (req, res) =>{
   res.json(rows);
 });
 app.post("/dm/start", async (req, res) =>{
-  const u=await requireLogin(req,res); if(!u) return;
+  const u=await requireUserSubscription(req,res); if(!u) return;
   const otherUserId = Number(req.body?.otherUserId);
   if(!otherUserId) return res.status(400).json({error:"otherUserId required"});
   if(Number(otherUserId)===Number(u)) return res.status(400).json({error:"Cannot message self"});
@@ -1547,7 +1595,7 @@ app.get("/dm/:id/messages", async (req, res) =>{
   res.json(msgs);
 });
 app.post("/dm/:id/messages", async (req, res) =>{
-  const u=await requireLogin(req,res); if(!u) return;
+  const u=await requireUserSubscription(req,res); if(!u) return;
   const ctx=await data.getTownContext(1, u);
   const user=await data.getUserById(u);
   const gate = trust.can(user, ctx, "chat_text");
@@ -2200,7 +2248,7 @@ app.post("/api/cart/clear", async (req, res) =>{
 
 // Simplified checkout - no online payment, buyers/sellers arrange payment offline
 app.post("/api/checkout/create", async (req, res) =>{
-  const u=await requireLogin(req,res); if(!u) return;
+  const u=await requireUserSubscription(req,res); if(!u) return;
   const cart = await data.getCartItemsByUser(u);
   if(!cart.length) return res.status(400).json({error:"Cart is empty"});
   const listings = await data.getListings();
@@ -3055,9 +3103,9 @@ app.get("/api/sweep/claim/:drawId", async (req, res) =>{
   });
 });
 app.post("/sweepstake/enter", async (req, res) =>{
-  const access = await requirePerm(req,res,"SWEEP_ENTER"); if(!access) return;
-  const u=access.userId;
-  const isSweepTestMode = process.env.SWEEP_TEST_MODE === "true" && isAdminUser(access.user);
+  const u = await requireUserSubscription(req,res); if(!u) return;
+  const user = await data.getUserById(u);
+  const isSweepTestMode = process.env.SWEEP_TEST_MODE === "true" && isAdminUser(user);
   const sweepId = Number(req.body?.sweepstakeId);
   const entries = Number(req.body?.entries);
   if(!Number.isFinite(entries) || entries <= 0) return res.status(400).json({error:"entries must be > 0"});
@@ -3819,7 +3867,7 @@ app.get("/places/:id/listings", async (req, res) =>{
   }));
 });
 app.post("/places/:id/listings", async (req, res) =>{
-  const u=await requireLogin(req,res); if(!u) return;
+  const u=await requireUserSubscription(req,res); if(!u) return;
   const ctx=await data.getTownContext(1, u);
   const user=await data.getUserById(u);
   const listingGate = trust.can(user, ctx, "listing_create");
@@ -3854,7 +3902,7 @@ app.patch("/listings/:id/sold", async (req, res) =>{
 
 // ✅ Apply / Message → creates conversation
 app.post("/listings/:id/apply", async (req, res) =>{
-  const u=await requireLogin(req,res); if(!u) return;
+  const u=await requireUserSubscription(req,res); if(!u) return;
   const ctx=await data.getTownContext(1, u);
   const user=await data.getUserById(u);
   const gate = trust.can(user, ctx, "chat_text");
@@ -3898,7 +3946,7 @@ app.get("/listings/:id/auction", async (req, res) =>{
   });
 });
 app.post("/listings/:id/bid", async (req, res) =>{
-  const u=await requireLogin(req,res); if(!u) return;
+  const u=await requireUserSubscription(req,res); if(!u) return;
   const ctx=await data.getTownContext(1, u);
   const user=await data.getUserById(u);
   const gate = trust.can(user, ctx, "auction_bid");
@@ -4411,10 +4459,9 @@ app.post("/api/subscription/checkout", async (req, res) => {
 });
 
 // ---------- Referral System ----------
-// Get user's referral stats and code
+// Get user's referral stats and code (requires subscription)
 app.get("/api/referral/stats", async (req, res) => {
-  const u = await getUserId(req);
-  if(!u) return res.status(401).json({ error: "Login required" });
+  const u = await requireUserSubscription(req, res); if(!u) return;
 
   // Ensure user has a referral code
   await data.ensureUserReferralCode(u);
@@ -4477,16 +4524,15 @@ app.get("/api/referral/validate/:code", async (req, res) => {
 });
 
 // ---------- Giveaway Offers ----------
-// Anyone with a store can submit a giveaway offer for admin review
+// Store owners with subscription can submit giveaway offers for admin review
 app.post("/api/giveaway/offer", async (req, res) => {
-  const u = await requireLogin(req, res); if(!u) return;
+  const u = await requireUserSubscription(req, res); if(!u) return;
   const placeId = Number(req.body?.placeId || 0);
   if(!placeId) return res.status(400).json({ error: "placeId required" });
   const place = await data.getPlaceById(placeId);
   if(!place) return res.status(404).json({ error: "Place not found" });
   const ownerId = place.ownerUserId ?? place.owneruserid;
   if(Number(ownerId) !== Number(u)) return res.status(403).json({ error: "Only store owner can submit giveaways" });
-  // No subscription required - anyone with a store can submit giveaways for review
   const offer = await data.createGiveawayOffer(placeId, u, {
     title: req.body?.title,
     description: req.body?.description,

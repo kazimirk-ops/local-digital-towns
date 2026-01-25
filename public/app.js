@@ -1158,12 +1158,27 @@ const clientSessionId = getClientSessionId();
 
 function debug(msg){ $("debug").textContent = msg || ""; }
 
+// Show subscription prompt modal
+function showSubscriptionPrompt(message) {
+  const msg = message || "Sign up for $5/month to buy, sell, and enter giveaways";
+  if(confirm(`${msg}\n\nWould you like to subscribe now?`)){
+    window.location.href = "/subscription";
+  }
+}
+
 async function api(path, opts) {
   const res = await fetch(path, opts);
   const text = await res.text();
   let data;
   try { data = JSON.parse(text); } catch { data = text; }
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
+  if (!res.ok) {
+    // Check if subscription required error
+    if(data && data.subscriptionRequired){
+      showSubscriptionPrompt(data.message);
+      throw new Error("Subscription required");
+    }
+    throw new Error(`${res.status} ${res.statusText}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
+  }
   return data;
 }
 

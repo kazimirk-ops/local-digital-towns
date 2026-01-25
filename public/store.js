@@ -4,11 +4,24 @@ function debug(m){$("debug").textContent=m||"";}
 let PLACE=null;
 let CURRENT_USER_ID=null;
 
+function showSubscriptionPrompt(message) {
+  const msg = message || "Sign up for $5/month to buy, sell, and enter giveaways";
+  if(confirm(`${msg}\n\nWould you like to subscribe now?`)){
+    window.location.href = "/subscription";
+  }
+}
+
 async function api(u,o){
   const r=await fetch(u,{credentials:"include",headers:{"Content-Type":"application/json"},...(o||{})});
   const t=await r.text(); let j;
   try{j=JSON.parse(t)}catch{j=t}
-  if(!r.ok) throw new Error(j.error||t);
+  if(!r.ok) {
+    if(j && j.subscriptionRequired){
+      showSubscriptionPrompt(j.message);
+      throw new Error("Subscription required");
+    }
+    throw new Error(j.error||t);
+  }
   return j;
 }
 function pid(){return Number(location.pathname.split("/")[2]);}
@@ -37,6 +50,10 @@ function setCartMsg(msg, isError){
   }
   if(isError && msg === "tier_required"){
     el.textContent = "Buying requires verified access (Tier 1+).";
+    return;
+  }
+  if(isError && msg === "Subscription required"){
+    el.innerHTML = `<a href="/subscription">Subscribe for $5/mo</a> to buy, sell, and enter giveaways.`;
     return;
   }
   el.textContent = msg;
