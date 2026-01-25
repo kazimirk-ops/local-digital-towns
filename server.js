@@ -568,12 +568,13 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
           const interestsJson = signupInterests ? JSON.stringify(signupInterests.split(",")) : "[]";
           const locationVerified = signupInSebastian === "yes" ? 1 : 0;
           const subscriptionTier = plan === 'business' ? 2 : 1;
-          console.log("WEBHOOK: Creating user with tier:", subscriptionTier, "plan:", plan, "email:", signupEmail);
+          const trustTier = plan === 'business' ? 4 : 2;
+          console.log("WEBHOOK: Creating user with subscriptionTier:", subscriptionTier, "trustTier:", trustTier, "plan:", plan, "email:", signupEmail);
 
           const createResult = await data.query(
-            `INSERT INTO users (email, displayName, phone, interestsJson, locationVerifiedSebastian, subscriptionTier, stripeCustomerId, createdAt)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-            [signupEmail, signupDisplayName || '', signupPhone, interestsJson, locationVerified, subscriptionTier, session.customer, nowISO()]
+            `INSERT INTO users (email, displayName, phone, interestsJson, locationVerifiedSebastian, subscriptionTier, trustTier, stripeCustomerId, createdAt)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+            [signupEmail, signupDisplayName || '', signupPhone, interestsJson, locationVerified, subscriptionTier, trustTier, session.customer, nowISO()]
           );
           const newUserId = createResult.rows?.[0]?.id;
           console.log("Created new user id:", newUserId, "for email:", signupEmail);
