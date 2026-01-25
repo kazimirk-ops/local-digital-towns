@@ -529,7 +529,7 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
           const nowISO = () => new Date().toISOString();
           const createResult = await data.query(
             `INSERT INTO users (email, displayName, createdAt) VALUES ($1, $2, $3) RETURNING id`,
-            [signupEmail, signupDisplayName || null, nowISO()]
+            [signupEmail, signupDisplayName || '', nowISO()]
           );
           const newUserId = createResult.rows?.[0]?.id;
           console.log("Created new user id:", newUserId, "for email:", signupEmail);
@@ -1650,7 +1650,7 @@ app.post("/api/signup/auto-login", async (req, res) => {
         const nowISO = () => new Date().toISOString();
         const createResult = await data.query(
           `INSERT INTO users (email, displayName, createdAt) VALUES ($1, $2, $3) RETURNING id`,
-          [signupEmail, signupDisplayName || null, nowISO()]
+          [signupEmail, signupDisplayName || '', nowISO()]
         );
         userId = createResult.rows?.[0]?.id;
         console.log("Fallback: Created new user id:", userId, "for email:", signupEmail);
