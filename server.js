@@ -569,6 +569,14 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
             await data.query(insertSubSql, [newUserId, plan, subStatus, session.customer, session.subscription, periodEnd, trialEnd]);
             console.log("Created user subscription for new user:", newUserId, "plan:", plan, "status:", subStatus);
 
+            // Set subscriptionTier and stripeCustomerId on user record
+            const subscriptionTier = plan === 'business' ? 2 : 1;
+            await data.query(
+              `UPDATE users SET subscriptionTier = $1, stripeCustomerId = $2 WHERE id = $3`,
+              [subscriptionTier, session.customer, newUserId]
+            );
+            console.log("Set subscriptionTier:", subscriptionTier, "and stripeCustomerId on user:", newUserId);
+
             // Note: Don't award referral commission until trial converts to paid
             // Commission will be awarded when subscription status changes to 'active' (after trial)
             if(signupReferrerId && subStatus === 'active') {
@@ -1688,6 +1696,14 @@ app.post("/api/signup/auto-login", async (req, res) => {
           `;
           await data.query(insertSubSql, [userId, signupPlan, subStatus, session.customer, session.subscription, periodEnd, trialEnd]);
           console.log("Fallback: Created subscription for user:", userId, "plan:", signupPlan, "status:", subStatus);
+
+          // Set subscriptionTier and stripeCustomerId on user record
+          const subscriptionTier = signupPlan === 'business' ? 2 : 1;
+          await data.query(
+            `UPDATE users SET subscriptionTier = $1, stripeCustomerId = $2 WHERE id = $3`,
+            [subscriptionTier, session.customer, userId]
+          );
+          console.log("Fallback: Set subscriptionTier:", subscriptionTier, "on user:", userId);
         }
       } catch(createErr) {
         console.error("Fallback user creation failed:", createErr.message);
