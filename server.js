@@ -567,11 +567,13 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
           const nowISO = () => new Date().toISOString();
           const interestsJson = signupInterests ? JSON.stringify(signupInterests.split(",")) : "[]";
           const locationVerified = signupInSebastian === "yes" ? 1 : 0;
+          const subscriptionTier = plan === 'business' ? 2 : 1;
+          console.log("WEBHOOK: Creating user with tier:", subscriptionTier, "plan:", plan, "email:", signupEmail);
 
           const createResult = await data.query(
-            `INSERT INTO users (email, displayName, phone, interestsJson, locationVerifiedSebastian, createdAt)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-            [signupEmail, signupDisplayName || '', signupPhone, interestsJson, locationVerified, nowISO()]
+            `INSERT INTO users (email, displayName, phone, interestsJson, locationVerifiedSebastian, subscriptionTier, stripeCustomerId, createdAt)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+            [signupEmail, signupDisplayName || '', signupPhone, interestsJson, locationVerified, subscriptionTier, session.customer, nowISO()]
           );
           const newUserId = createResult.rows?.[0]?.id;
           console.log("Created new user id:", newUserId, "for email:", signupEmail);
@@ -610,14 +612,6 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
             `;
             await data.query(insertSubSql, [newUserId, plan, subStatus, session.customer, session.subscription, periodEnd, trialEnd]);
             console.log("Created user subscription for new user:", newUserId, "plan:", plan, "status:", subStatus);
-
-            // Set subscriptionTier and stripeCustomerId on user record
-            const subscriptionTier = plan === 'business' ? 2 : 1;
-            await data.query(
-              `UPDATE users SET subscriptionTier = $1, stripeCustomerId = $2 WHERE id = $3`,
-              [subscriptionTier, session.customer, newUserId]
-            );
-            console.log("Set subscriptionTier:", subscriptionTier, "and stripeCustomerId on user:", newUserId);
 
             // Create a store/place for ALL subscribers (User and Business)
             // Business plan: uses business name, type from form, gets featured
