@@ -330,6 +330,13 @@ app.post("/api/signup/checkout", async (req, res) => {
     ? (process.env.STRIPE_BUSINESS_PRICE_ID || process.env.STRIPE_PRICE_ID || "").trim()
     : (process.env.STRIPE_USER_PRICE_ID || "").trim();
 
+  console.log("=== SIGNUP CHECKOUT DEBUG ===");
+  console.log("Plan requested:", plan);
+  console.log("Price ID being used:", priceId);
+  console.log("STRIPE_USER_PRICE_ID env:", process.env.STRIPE_USER_PRICE_ID || "(not set)");
+  console.log("STRIPE_BUSINESS_PRICE_ID env:", process.env.STRIPE_BUSINESS_PRICE_ID || "(not set)");
+  console.log("STRIPE_PRICE_ID env:", process.env.STRIPE_PRICE_ID || "(not set)");
+
   if(!priceId) {
     return res.status(400).json({ error: `Stripe price ID not configured for ${plan} plan` });
   }
