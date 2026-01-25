@@ -367,7 +367,15 @@ app.post("/api/signup/checkout", async (req, res) => {
 
     res.json({ checkoutUrl: session.url });
   } catch(e) {
-    console.error("Signup checkout error:", e);
+    console.error("=== STRIPE CHECKOUT ERROR ===");
+    console.error("Error message:", e.message);
+    console.error("Error type:", e.type);
+    console.error("Error code:", e.code);
+    console.error("Error param:", e.param);
+    console.error("Full error:", JSON.stringify(e, null, 2));
+    console.error("Price ID that was used:", priceId);
+    console.error("Price ID length:", priceId.length);
+    console.error("Price ID char codes:", [...priceId].map(c => c.charCodeAt(0)).join(','));
     res.status(500).json({ error: e.message });
   }
 });
