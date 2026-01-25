@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin Sweep Toolkit</title>
+  <title>Admin Town Giveaway Toolkit</title>
   <link rel="stylesheet" href="/ui-kit.css?v=1">
   <style>
     body{font-family:var(--font-sans, ui-sans-serif, system-ui);margin:0;background:var(--bg);color:var(--text)}
@@ -19,18 +19,20 @@
     a{color:var(--accent2)}
     .mono{font-family:ui-monospace,Menlo,Consolas;font-size:12px;white-space:pre-wrap}
     .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--border);background:var(--panel2);font-size:12px}
+    .field-group{display:flex;flex-direction:column;gap:4px}
+    .field-label{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.5px}
   </style>
 </head>
 <body data-town="sebastian">
   <div class="wrap">
     <div class="row" style="justify-content:space-between;">
       <div>
-        <h2 style="margin:0;">Admin Sweep Toolkit</h2>
-        <div class="muted">Define what earns Sweep + who earns it (buyer/seller) + anti-gaming controls.</div>
+        <h2 style="margin:0;">Admin Town Giveaway Toolkit</h2>
+        <div class="muted">Define what earns Town Giveaway points + who earns them (buyer/seller) + anti-gaming controls.</div>
       </div>
       <div class="row">
         <a href="/ui" class="pill">Town</a>
-        <a href="/sweepstake" class="pill">Sweepstake</a>
+        <a href="/sweepstake" class="pill">Town Giveaway</a>
       </div>
     </div>
 
@@ -39,36 +41,60 @@
       <div class="muted">Pick a suggested event key or type your own. Use caps/cooldowns to prevent farming.</div>
 
       <div class="row" style="margin-top:10px;">
-        <select id="newEventSelect">
-          <option value="">(choose suggested event)</option>
-          <option value="message_send">message_send</option>
-          <option value="listing_create">listing_create</option>
-          <option value="listing_mark_sold">listing_mark_sold</option>
-          <option value="sweepstake_enter">sweepstake_enter</option>
-          <option value="task_complete">task_complete</option>
-          <option value="purchase_completed">purchase_completed</option>
-          <option value="local_purchase">local_purchase</option>
-          <option value="review_left">review_left</option>
-        </select>
+        <div class="field-group">
+          <span class="field-label">Event Type</span>
+          <select id="newEventSelect">
+            <option value="">(choose suggested event)</option>
+            <option value="message_send">message_send</option>
+            <option value="listing_create">listing_create</option>
+            <option value="listing_mark_sold">listing_mark_sold</option>
+            <option value="sweepstake_enter">sweepstake_enter</option>
+            <option value="task_complete">task_complete</option>
+            <option value="purchase_completed">purchase_completed</option>
+            <option value="local_purchase">local_purchase</option>
+            <option value="review_left">review_left</option>
+          </select>
+        </div>
 
-        <input id="newEventType" placeholder="or type custom event key (matchEventType)" style="flex:1;min-width:240px;" />
+        <div class="field-group" style="flex:1;min-width:240px;">
+          <span class="field-label">Custom Event Key</span>
+          <input id="newEventType" placeholder="or type custom event key" style="width:100%;" />
+        </div>
 
-        <label class="muted">Enabled <input type="checkbox" id="newEnabled" checked /></label>
+        <div class="field-group">
+          <span class="field-label">Active</span>
+          <label class="muted" style="padding:10px 0;"><input type="checkbox" id="newEnabled" checked /> Enabled</label>
+        </div>
       </div>
 
       <div class="row" style="margin-top:10px;">
-        <input id="newBuyer" value="0" placeholder="Buyer Amt" style="width:120px;" />
-        <input id="newSeller" value="0" placeholder="Seller Amt" style="width:120px;" />
-        <input id="newCap" value="30" placeholder="Daily Cap" style="width:140px;" />
-        <input id="newCooldown" value="10" placeholder="Cooldown (sec)" style="width:160px;" />
-        <button id="createRule">Create Rule</button>
+        <div class="field-group">
+          <span class="field-label">Buyer Points</span>
+          <input id="newBuyer" value="0" style="width:100px;" />
+        </div>
+        <div class="field-group">
+          <span class="field-label">Seller Points</span>
+          <input id="newSeller" value="0" style="width:100px;" />
+        </div>
+        <div class="field-group">
+          <span class="field-label">Daily Cap</span>
+          <input id="newCap" value="30" style="width:100px;" />
+        </div>
+        <div class="field-group">
+          <span class="field-label">Cooldown (sec)</span>
+          <input id="newCooldown" value="10" style="width:100px;" />
+        </div>
+        <div class="field-group">
+          <span class="field-label">&nbsp;</span>
+          <button id="createRule">Create Rule</button>
+        </div>
       </div>
 
       <div class="mono" id="createMsg"></div>
     </div>
 
     <div class="card">
-      <h3 style="margin-top:0;">Existing Sweep Rules</h3>
+      <h3 style="margin-top:0;">Existing Reward Rules</h3>
       <div class="muted">Edit live. Changing matchEventType changes what event key this rule listens to.</div>
 
       <div style="margin-top:10px;overflow:auto;">
@@ -77,8 +103,8 @@
             <tr>
               <th>Match Event Type</th>
               <th>Enabled</th>
-              <th>Buyer</th>
-              <th>Seller</th>
+              <th>Buyer Points</th>
+              <th>Seller Points</th>
               <th>Daily Cap</th>
               <th>Cooldown (sec)</th>
               <th>Save</th>
@@ -91,29 +117,53 @@
     </div>
 
     <div class="card">
-      <h3 style="margin-top:0;">Create Sweepstake</h3>
-      <div class="muted">Creates a new sweepstake. Only “active” shows publicly.</div>
+      <h3 style="margin-top:0;">Create Town Giveaway</h3>
+      <div class="muted">Creates a new town giveaway. Only "active" shows publicly.</div>
 
       <div class="row" style="margin-top:10px;">
-        <select id="sStatus">
-          <option value="active">active</option>
-          <option value="scheduled">scheduled</option>
-          <option value="ended">ended</option>
-        </select>
-        <input id="sTitle" placeholder="Title" style="flex:1;min-width:240px;" />
-        <input id="sPrize" placeholder="Prize description" style="flex:1;min-width:240px;" />
+        <div class="field-group">
+          <span class="field-label">Status</span>
+          <select id="sStatus">
+            <option value="active">active</option>
+            <option value="scheduled">scheduled</option>
+            <option value="ended">ended</option>
+          </select>
+        </div>
+        <div class="field-group" style="flex:1;min-width:240px;">
+          <span class="field-label">Title</span>
+          <input id="sTitle" placeholder="Giveaway title" style="width:100%;" />
+        </div>
+        <div class="field-group" style="flex:1;min-width:240px;">
+          <span class="field-label">Prize Description</span>
+          <input id="sPrize" placeholder="What the winner gets" style="width:100%;" />
+        </div>
       </div>
 
       <div class="row" style="margin-top:10px;">
-        <input id="sCost" placeholder="Entry Cost" value="10" />
-        <input id="sMax" placeholder="Max entries/user/day" value="1" />
-        <input id="sStart" placeholder="StartAt ISO" style="flex:1;min-width:260px;" />
-        <input id="sEnd" placeholder="EndAt ISO" style="flex:1;min-width:220px;" />
-        <input id="sDraw" placeholder="DrawAt ISO" style="flex:1;min-width:220px;" />
+        <div class="field-group">
+          <span class="field-label">Entry Cost (points)</span>
+          <input id="sCost" value="10" style="width:100px;" />
+        </div>
+        <div class="field-group">
+          <span class="field-label">Max Entries/Day</span>
+          <input id="sMax" value="1" style="width:100px;" />
+        </div>
+        <div class="field-group" style="flex:1;min-width:200px;">
+          <span class="field-label">Start Date (ISO)</span>
+          <input id="sStart" placeholder="2025-01-25T00:00:00Z" style="width:100%;" />
+        </div>
+        <div class="field-group" style="flex:1;min-width:180px;">
+          <span class="field-label">End Date (ISO)</span>
+          <input id="sEnd" placeholder="2025-02-01T00:00:00Z" style="width:100%;" />
+        </div>
+        <div class="field-group" style="flex:1;min-width:180px;">
+          <span class="field-label">Draw Date (ISO)</span>
+          <input id="sDraw" placeholder="2025-02-01T12:00:00Z" style="width:100%;" />
+        </div>
       </div>
 
       <div class="row" style="margin-top:10px;">
-        <button id="createSweepstake">Create Sweepstake</button>
+        <button id="createSweepstake">Create Town Giveaway</button>
         <span class="mono" id="sweepMsg"></span>
       </div>
     </div>
