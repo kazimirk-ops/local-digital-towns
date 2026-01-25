@@ -4462,7 +4462,8 @@ app.post("/api/business/subscribe/checkout", async (req, res) => {
   try {
     const stripe = require('stripe')(stripeKey);
     const user = await data.getUserById(u);
-    const priceId = (process.env.STRIPE_PRICE_ID || "").trim();
+    // Use new STRIPE_BUSINESS_PRICE_ID, fall back to legacy STRIPE_PRICE_ID
+    const priceId = (process.env.STRIPE_BUSINESS_PRICE_ID || process.env.STRIPE_PRICE_ID || "").trim();
 
     if(!priceId) {
       return res.status(400).json({ error: "Stripe price not configured" });
@@ -4480,6 +4481,9 @@ app.post("/api/business/subscribe/checkout", async (req, res) => {
       }],
       success_url: successUrl,
       cancel_url: cancelUrl,
+      subscription_data: {
+        trial_period_days: 7
+      },
       metadata: {
         placeId: placeId.toString(),
         userId: u.toString()
