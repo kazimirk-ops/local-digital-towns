@@ -323,6 +323,47 @@
       }
     });
 
+    // Set up button click handlers
+    const continueBtn = $("continueBtn");
+    if (continueBtn) {
+      continueBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        goToStep2();
+      });
+    }
+
+    const userCheckoutBtn = $("userCheckoutBtn");
+    if (userCheckoutBtn) {
+      userCheckoutBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        startCheckout();
+      });
+    }
+
+    const bizCheckoutBtn = $("bizCheckoutBtn");
+    if (bizCheckoutBtn) {
+      bizCheckoutBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        startCheckout();
+      });
+    }
+
+    const userBackBtn = $("userBackBtn");
+    if (userBackBtn) {
+      userBackBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        goToStep1();
+      });
+    }
+
+    const bizBackBtn = $("bizBackBtn");
+    if (bizBackBtn) {
+      bizBackBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        goToStep1();
+      });
+    }
+
     // Initialize
     checkSession();
     checkReferralCode();

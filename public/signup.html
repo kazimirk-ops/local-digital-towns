@@ -339,7 +339,7 @@
             <h3 class="section-title">Choose Your Plan</h3>
 
             <div class="plan-grid">
-              <div class="plan-card" data-plan="user" onclick="selectPlan('user')">
+              <div class="plan-card" data-plan="user">
                 <div class="plan-name">User</div>
                 <div class="plan-price">$5<span>/mo</span></div>
                 <ul class="plan-features">
@@ -349,7 +349,7 @@
                   <li>Enter giveaways</li>
                 </ul>
               </div>
-              <div class="plan-card" data-plan="business" onclick="selectPlan('business')">
+              <div class="plan-card" data-plan="business">
                 <div class="plan-name">Business</div>
                 <div class="plan-price">$10<span>/mo</span></div>
                 <ul class="plan-features">
@@ -365,7 +365,7 @@
               <strong>$0 today.</strong> 7-day free trial, cancel anytime.
             </p>
 
-            <button id="continueBtn" class="btn-primary" onclick="goToStep2()" disabled>
+            <button id="continueBtn" class="btn-primary" disabled>
               Select a Plan to Continue
             </button>
 
@@ -429,11 +429,11 @@
               <label for="userTerms">I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a></label>
             </div>
 
-            <button id="userCheckoutBtn" class="btn-primary" onclick="startCheckout()">
+            <button id="userCheckoutBtn" class="btn-primary">
               Start 7-Day Free Trial
             </button>
 
-            <button class="btn-secondary" onclick="goToStep1()">
+            <button id="userBackBtn" class="btn-secondary">
               &larr; Back to Plans
             </button>
           </div>
@@ -502,11 +502,11 @@
               <label for="bizTerms">I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a></label>
             </div>
 
-            <button id="bizCheckoutBtn" class="btn-primary" onclick="startCheckout()">
+            <button id="bizCheckoutBtn" class="btn-primary">
               Start 7-Day Free Trial
             </button>
 
-            <button class="btn-secondary" onclick="goToStep1()">
+            <button id="bizBackBtn" class="btn-secondary">
               &larr; Back to Plans
             </button>
           </div>
@@ -533,7 +533,7 @@
     </style>
 
     <script src="/theme.js?v=1"></script>
-    <script src="/signup.js?v=5"></script>
+    <script src="/signup.js?v=6"></script>
     <script src="/js/beta-banner.js?v=1"></script>
   </body>
 </html>
