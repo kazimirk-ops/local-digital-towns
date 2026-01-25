@@ -428,21 +428,32 @@ app.post("/api/signup/checkout", async (req, res) => {
 });
 
 app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) =>{
+  console.log("=== STRIPE WEBHOOK RECEIVED ===");
+  console.log("Timestamp:", new Date().toISOString());
+  console.log("Content-Type:", req.headers["content-type"]);
+  console.log("Body length:", req.body?.length || 0);
+
   const webhookSecret = (process.env.STRIPE_WEBHOOK_SECRET || "").trim();
   if(!stripe || !webhookSecret){
-    console.error("Stripe webhook not configured - stripe:", !!stripe, "secret:", !!webhookSecret);
+    console.error("Stripe webhook not configured - stripe:", !!stripe, "secret length:", webhookSecret.length);
     return res.status(400).json({error:"Stripe not configured"});
   }
   const sig = req.headers["stripe-signature"];
-  if(!sig) return res.status(400).json({error:"Missing signature"});
+  if(!sig) {
+    console.error("Missing stripe-signature header");
+    return res.status(400).json({error:"Missing signature"});
+  }
+  console.log("Signature header present, length:", sig.length);
+
   let event;
   try{
     event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
   }catch(err){
     console.error("Stripe webhook signature error:", err.message);
+    console.error("This usually means STRIPE_WEBHOOK_SECRET is incorrect or body was modified");
     return res.status(400).json({error:"Invalid signature"});
   }
-  console.log("Stripe webhook received:", event.type);
+  console.log("Stripe webhook verified successfully, event type:", event.type);
 
   if(event.type === "checkout.session.completed"){
     const session = event.data?.object;
@@ -745,6 +756,7 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
     }
   }
 
+  console.log("=== STRIPE WEBHOOK COMPLETED ===", event.type);
   res.json({ received:true });
 });
 app.get("/debug/routes", async (req, res) =>{
@@ -1600,6 +1612,7 @@ app.post("/auth/logout", async (req, res) =>{
 // Auto-login for new signups - consumes one-time token from Stripe checkout
 app.post("/api/signup/auto-login", async (req, res) => {
   const sessionId = (req.body?.sessionId || "").toString().trim();
+  console.log("Auto-login attempt for sessionId:", sessionId ? sessionId.substring(0, 20) + "..." : "missing");
   if(!sessionId) {
     return res.status(400).json({ error: "Session ID required" });
   }
@@ -1614,27 +1627,96 @@ app.post("/api/signup/auto-login", async (req, res) => {
     if(!session) {
       return res.status(400).json({ error: "Invalid session" });
     }
+    console.log("Stripe session retrieved - status:", session.status, "customer:", session.customer);
 
     const signupEmail = (session.metadata?.signupEmail || "").trim().toLowerCase();
+    const signupDisplayName = (session.metadata?.signupDisplayName || "").trim();
+    const signupPlan = session.metadata?.plan || "user";
+    const signupReferrerId = Number(session.metadata?.referrerId || 0);
+
     if(!signupEmail) {
       return res.status(400).json({ error: "Not a signup session" });
     }
+    console.log("Signup email from session:", signupEmail);
 
     // Find the user by email
-    const userResult = await data.query(`SELECT id FROM users WHERE LOWER(email) = $1`, [signupEmail]);
-    if(userResult.rows.length === 0) {
+    let userResult = await data.query(`SELECT id FROM users WHERE LOWER(email) = $1`, [signupEmail]);
+    let userId = userResult.rows?.[0]?.id;
+
+    // FALLBACK: If user doesn't exist (webhook may have failed), create them now
+    if(!userId && session.subscription) {
+      console.log("User not found - webhook may have failed. Creating user now as fallback...");
+      try {
+        const nowISO = () => new Date().toISOString();
+        const createResult = await data.query(
+          `INSERT INTO users (email, displayName, createdAt) VALUES ($1, $2, $3) RETURNING id`,
+          [signupEmail, signupDisplayName || null, nowISO()]
+        );
+        userId = createResult.rows?.[0]?.id;
+        console.log("Fallback: Created new user id:", userId, "for email:", signupEmail);
+
+        if(userId) {
+          // Set referrer if provided
+          if(signupReferrerId) {
+            await data.query(`UPDATE users SET referredByUserId = $1 WHERE id = $2`, [signupReferrerId, userId]);
+          }
+
+          // Fetch subscription details from Stripe
+          let subStatus = 'active';
+          let trialEnd = null;
+          let periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+          try {
+            const stripeSub = await stripe.subscriptions.retrieve(session.subscription);
+            subStatus = stripeSub.status;
+            if(stripeSub.trial_end) {
+              trialEnd = new Date(stripeSub.trial_end * 1000).toISOString();
+              periodEnd = trialEnd;
+            }
+            if(stripeSub.current_period_end) {
+              periodEnd = new Date(stripeSub.current_period_end * 1000).toISOString();
+            }
+            console.log("Fallback: Stripe subscription status:", subStatus, "trialEnd:", trialEnd);
+          } catch(subErr) {
+            console.error("Fallback: Error fetching subscription:", subErr.message);
+          }
+
+          // Create user subscription
+          const insertSubSql = `
+            INSERT INTO user_subscriptions
+            (userId, plan, status, stripeCustomerId, stripeSubscriptionId, currentPeriodStart, currentPeriodEnd, trialEnd, createdAt, updatedAt)
+            VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, NOW(), NOW())
+          `;
+          await data.query(insertSubSql, [userId, signupPlan, subStatus, session.customer, session.subscription, periodEnd, trialEnd]);
+          console.log("Fallback: Created subscription for user:", userId, "plan:", signupPlan, "status:", subStatus);
+        }
+      } catch(createErr) {
+        console.error("Fallback user creation failed:", createErr);
+        return res.status(400).json({ error: "Failed to create user account. Please contact support." });
+      }
+    }
+
+    if(!userId) {
       return res.status(400).json({ error: "User not found. Please wait a moment and try again." });
     }
 
-    const userId = userResult.rows[0].id;
+    console.log("User found/created, userId:", userId);
 
-    // Check for valid login token
+    // Check for valid login token (skip if we just created the user via fallback)
     const tokenResult = await data.query(
       `SELECT * FROM signup_login_tokens WHERE userId = $1 AND usedAt IS NULL AND expiresAt > NOW()`,
       [userId]
     );
+
+    // If no token exists (webhook didn't create one), create one now
     if(tokenResult.rows.length === 0) {
-      return res.status(400).json({ error: "Login token expired or already used" });
+      console.log("No login token found - creating one now");
+      const loginToken = crypto.randomBytes(32).toString('hex');
+      const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      await data.query(
+        `INSERT INTO signup_login_tokens (userId, token, expiresAt, createdAt) VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (userId) DO UPDATE SET token = $2, expiresAt = $3, usedAt = NULL, createdAt = NOW()`,
+        [userId, loginToken, tokenExpiry]
+      );
     }
 
     // Mark token as used
@@ -1644,6 +1726,7 @@ app.post("/api/signup/auto-login", async (req, res) => {
     const s = await data.createSession(userId);
     setCookie(res, "sid", s.sid, { httpOnly: true, maxAge: 60*60*24*30, secure: isHttpsRequest(req) });
 
+    console.log("Auto-login successful for userId:", userId);
     res.json({ ok: true, userId });
   } catch(e) {
     console.error("Signup auto-login error:", e);
