@@ -66,10 +66,7 @@ async function getTrustBadgeForUser(userId){
 const crypto = require("crypto");
 const app = express();
 
-// Sentry request handler must be first middleware
-if (Sentry) {
-  app.use(Sentry.Handlers.requestHandler());
-}
+// Sentry is auto-instrumented in v8+ (no request handler needed)
 
 const data = require("./data");
 const { TOWN_DIRECTORY } = require("./town_directory");
@@ -4565,9 +4562,9 @@ app.get("/api/admin/pulse/last", async (req, res) => {
 });
 
 // ============ SENTRY ERROR HANDLER ============
-// Must be before the global error handler
+// Must be before the global error handler (Sentry v8+ API)
 if (Sentry) {
-  app.use(Sentry.Handlers.errorHandler());
+  Sentry.setupExpressErrorHandler(app);
 }
 
 // ============ GLOBAL ERROR HANDLER ============
