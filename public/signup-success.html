@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Welcome to Digital Sebastian!</title>
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <style>
+      :root {
+        --join-bg: #0a0f1a;
+        --join-panel: #0d1424;
+        --join-border: rgba(255, 255, 255, 0.08);
+        --join-muted: #94a3b8;
+        --join-text: #e2e8f0;
+        --join-accent: #22d3ee;
+      }
+      body {
+        font-family: var(--font-sans, ui-sans-serif, system-ui);
+        background: var(--join-bg);
+        color: var(--join-text);
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .card {
+        background: var(--join-panel);
+        border: 1px solid var(--join-border);
+        border-radius: 18px;
+        padding: 40px;
+        max-width: 440px;
+        text-align: center;
+        box-shadow: 0 20px 40px rgba(3, 7, 15, 0.35);
+      }
+      .icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+        border-radius: 50%;
+        margin: 0 auto 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 40px;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 0 0 12px;
+        color: #fff;
+      }
+      .subtitle {
+        color: var(--join-muted);
+        margin: 0 0 24px;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+      .spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid var(--join-border);
+        border-top-color: var(--join-accent);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 16px;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      .status {
+        color: var(--join-muted);
+        font-size: 14px;
+      }
+      .error-msg {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #f87171;
+        padding: 12px;
+        border-radius: 10px;
+        margin-top: 16px;
+        display: none;
+      }
+      .btn-primary {
+        display: inline-block;
+        border: none;
+        border-radius: 12px;
+        padding: 14px 28px;
+        background: linear-gradient(90deg, var(--join-accent), #3b82f6);
+        color: #0b1120;
+        font-weight: 700;
+        font-size: 16px;
+        cursor: pointer;
+        text-decoration: none;
+        margin-top: 16px;
+      }
+      .btn-primary:hover { opacity: 0.9; }
+    </style>
+  </head>
+  <body data-town="sebastian">
+    <div class="card">
+      <div class="icon">&#10003;</div>
+      <h1>Welcome to Digital Sebastian!</h1>
+      <p class="subtitle">Your account is ready and your <strong style="color:#22d3ee;">7-day free trial</strong> has started.<br>You won't be charged until day 8.</p>
+
+      <div id="loading">
+        <div class="spinner"></div>
+        <p class="status">Setting up your account...</p>
+      </div>
+
+      <div id="success" style="display:none;">
+        <p class="status">Redirecting you to Digital Sebastian...</p>
+      </div>
+
+      <div id="errorMsg" class="error-msg"></div>
+
+      <a id="manualBtn" href="/login" class="btn-primary" style="display:none;">Continue to Login</a>
+    </div>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get("session_id");
+
+      async function autoLogin() {
+        if(!sessionId) {
+          showError("Missing session information. Please log in manually.");
+          return;
+        }
+
+        try {
+          const res = await fetch("/api/signup/auto-login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId })
+          });
+
+          const data = await res.json();
+
+          if(!res.ok) {
+            throw new Error(data.error || "Login failed");
+          }
+
+          // Success - show message and redirect
+          document.getElementById("loading").style.display = "none";
+          document.getElementById("success").style.display = "block";
+
+          setTimeout(() => {
+            window.location.href = "/ui";
+          }, 1500);
+        } catch(e) {
+          showError(e.message);
+        }
+      }
+
+      function showError(msg) {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("errorMsg").textContent = msg;
+        document.getElementById("errorMsg").style.display = "block";
+        document.getElementById("manualBtn").style.display = "inline-block";
+      }
+
+      // Try auto-login after a short delay to ensure webhook processed
+      setTimeout(autoLogin, 2000);
+    </script>
+  </body>
+</html>

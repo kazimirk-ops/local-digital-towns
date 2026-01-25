@@ -285,6 +285,84 @@ app.get("/api/health/session", async (req, res) =>{
   const row = await db.one("SELECT sid, userid, expiresat FROM sessions WHERE sid=$1", [sid]).catch(()=>null);
   res.json({ ok:true, hasSid:true, sessionFound: !!row, keys: Object.keys(row || {}) });
 });
+
+// ---------- Signup Checkout (No Login Required) ----------
+// Creates Stripe checkout for new user signup - account created on payment success
+app.post("/api/signup/checkout", async (req, res) => {
+  const email = (req.body?.email || "").toString().trim().toLowerCase();
+  const displayName = (req.body?.displayName || "").toString().trim();
+  const plan = (req.body?.plan || "user").toString().toLowerCase();
+  const referralCode = (req.body?.referralCode || "").toString().trim();
+
+  if(!email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+  if(!email.includes("@") || !email.includes(".")) {
+    return res.status(400).json({ error: "Invalid email address" });
+  }
+  if(!["user", "business"].includes(plan)) {
+    return res.status(400).json({ error: "Invalid plan. Choose 'user' or 'business'." });
+  }
+  if(!stripe) {
+    return res.status(400).json({ error: "Stripe not configured" });
+  }
+
+  // Check if email already exists
+  const existingUser = await data.query(`SELECT id FROM users WHERE LOWER(email) = $1`, [email]);
+  if(existingUser.rows.length > 0) {
+    return res.status(400).json({
+      error: "An account with this email already exists. Please log in instead.",
+      existingAccount: true
+    });
+  }
+
+  // Validate referral code if provided
+  let referrerId = null;
+  if(referralCode) {
+    const referrer = await data.getUserByReferralCode(referralCode);
+    if(referrer) {
+      referrerId = referrer.id;
+    }
+  }
+
+  // Get the correct price ID based on plan
+  const priceId = plan === "business"
+    ? (process.env.STRIPE_BUSINESS_PRICE_ID || process.env.STRIPE_PRICE_ID || "").trim()
+    : (process.env.STRIPE_USER_PRICE_ID || "").trim();
+
+  if(!priceId) {
+    return res.status(400).json({ error: `Stripe price ID not configured for ${plan} plan` });
+  }
+
+  try {
+    const successUrl = `${req.protocol}://${req.get('host')}/signup-success?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${req.protocol}://${req.get('host')}/signup?canceled=true`;
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      customer_email: email,
+      subscription_data: {
+        trial_period_days: 7
+      },
+      metadata: {
+        signupEmail: email,
+        signupDisplayName: displayName,
+        plan: plan,
+        referrerId: referrerId ? String(referrerId) : ""
+      }
+    });
+
+    res.json({ checkoutUrl: session.url });
+  } catch(e) {
+    console.error("Signup checkout error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) =>{
   const webhookSecret = (process.env.STRIPE_WEBHOOK_SECRET || "").trim();
   if(!stripe || !webhookSecret){
@@ -354,6 +432,91 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
         console.log("Business subscription activated for placeId:", placeId);
       } catch(err) {
         console.error("Error updating business subscription:", err);
+      }
+    }
+
+    // Handle NEW USER SIGNUP via Stripe checkout (signupEmail in metadata, no userId)
+    const signupEmail = (session?.metadata?.signupEmail || "").trim().toLowerCase();
+    const signupDisplayName = (session?.metadata?.signupDisplayName || "").trim();
+    const signupReferrerId = Number(session?.metadata?.referrerId || 0);
+
+    if(signupEmail && !userId && session.subscription){
+      const plan = session?.metadata?.plan || "user";
+      console.log("Processing NEW USER SIGNUP for email:", signupEmail, "plan:", plan);
+
+      try {
+        // Check if user already exists (shouldn't happen, but just in case)
+        const existingCheck = await data.query(`SELECT id FROM users WHERE LOWER(email) = $1`, [signupEmail]);
+        if(existingCheck.rows.length > 0) {
+          console.log("User already exists for email:", signupEmail, "- skipping account creation");
+        } else {
+          // Create new user account
+          const nowISO = () => new Date().toISOString();
+          const createResult = await data.query(
+            `INSERT INTO users (email, displayName, createdAt) VALUES ($1, $2, $3) RETURNING id`,
+            [signupEmail, signupDisplayName || null, nowISO()]
+          );
+          const newUserId = createResult.rows?.[0]?.id;
+          console.log("Created new user id:", newUserId, "for email:", signupEmail);
+
+          if(newUserId) {
+            // Set referrer if provided
+            if(signupReferrerId) {
+              await data.query(`UPDATE users SET referredByUserId = $1 WHERE id = $2`, [signupReferrerId, newUserId]);
+              console.log("Set referrer:", signupReferrerId, "for user:", newUserId);
+            }
+
+            // Fetch subscription details from Stripe to get trial info
+            let subStatus = 'active';
+            let trialEnd = null;
+            let periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // Default 30 days
+            try {
+              const stripeSub = await stripe.subscriptions.retrieve(session.subscription);
+              subStatus = stripeSub.status; // 'trialing', 'active', etc.
+              if(stripeSub.trial_end) {
+                trialEnd = new Date(stripeSub.trial_end * 1000).toISOString();
+                periodEnd = trialEnd; // During trial, period end is trial end
+              }
+              if(stripeSub.current_period_end) {
+                periodEnd = new Date(stripeSub.current_period_end * 1000).toISOString();
+              }
+              console.log("Stripe subscription status:", subStatus, "trialEnd:", trialEnd, "periodEnd:", periodEnd);
+            } catch(subErr) {
+              console.error("Error fetching subscription from Stripe:", subErr.message);
+            }
+
+            // Create user subscription (status will be 'trialing' for free trial)
+            const insertSubSql = `
+              INSERT INTO user_subscriptions
+              (userId, plan, status, stripeCustomerId, stripeSubscriptionId, currentPeriodStart, currentPeriodEnd, trialEnd, createdAt, updatedAt)
+              VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, NOW(), NOW())
+            `;
+            await data.query(insertSubSql, [newUserId, plan, subStatus, session.customer, session.subscription, periodEnd, trialEnd]);
+            console.log("Created user subscription for new user:", newUserId, "plan:", plan, "status:", subStatus);
+
+            // Note: Don't award referral commission until trial converts to paid
+            // Commission will be awarded when subscription status changes to 'active' (after trial)
+            if(signupReferrerId && subStatus === 'active') {
+              const subscriptionAmountCents = plan === 'business' ? 1000 : 500; // $10 or $5
+              await data.addReferralCommission(signupReferrerId, newUserId, subscriptionAmountCents, 25);
+              console.log("Referral commission added for referrer:", signupReferrerId, "from new user:", newUserId);
+            } else if(signupReferrerId) {
+              console.log("Referrer noted, commission will be awarded when trial converts:", signupReferrerId);
+            }
+
+            // Generate a one-time login token for auto-login after signup
+            const loginToken = crypto.randomBytes(32).toString('hex');
+            const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+            await data.query(
+              `INSERT INTO signup_login_tokens (userId, token, expiresAt, createdAt) VALUES ($1, $2, $3, NOW())
+               ON CONFLICT (userId) DO UPDATE SET token = $2, expiresAt = $3, createdAt = NOW()`,
+              [newUserId, loginToken, tokenExpiry]
+            );
+            console.log("Generated login token for new user:", newUserId);
+          }
+        }
+      } catch(err) {
+        console.error("Error creating new user from signup:", err);
       }
     }
 
@@ -451,6 +614,8 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
       const userResult = await data.query(`SELECT * FROM user_subscriptions WHERE stripeCustomerId = $1`, [customerId]);
       if(userResult.rows.length > 0) {
         const localSub = userResult.rows[0];
+        const oldStatus = localSub.status;
+
         if(periodEnd) {
           await data.query(
             `UPDATE user_subscriptions SET status = $1, currentPeriodStart = COALESCE($2, currentPeriodStart), currentPeriodEnd = $3, canceledAt = $4, updatedAt = NOW() WHERE id = $5`,
@@ -462,7 +627,20 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
             [status, sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null, localSub.id]
           );
         }
-        console.log("User subscription updated for customer:", customerId);
+        console.log("User subscription updated for customer:", customerId, "oldStatus:", oldStatus, "newStatus:", status);
+
+        // Award referral commission when trial converts to active (first payment)
+        if(oldStatus === 'trialing' && status === 'active') {
+          const userId = localSub.userid ?? localSub.userId;
+          const plan = localSub.plan;
+          const user = await data.getUserById(userId);
+          const referrerId = user?.referredByUserId ?? user?.referredbyuserid;
+          if(referrerId) {
+            const subscriptionAmountCents = plan === 'business' ? 1000 : 500; // $10 or $5
+            await data.addReferralCommission(referrerId, userId, subscriptionAmountCents, 25);
+            console.log("Referral commission awarded on trial conversion for referrer:", referrerId, "from user:", userId);
+          }
+        }
       }
 
       if(bizResult.rows.length === 0 && userResult.rows.length === 0) {
@@ -532,6 +710,8 @@ app.get("/api/version", async (req, res) =>{
 // Pages
 app.get("/ui", async (req, res) =>res.sendFile(path.join(__dirname,"public","index.html")));
 app.get("/signup", async (req, res) =>res.sendFile(path.join(__dirname,"public","signup.html")));
+app.get("/signup-success", async (req, res) =>res.sendFile(path.join(__dirname,"public","signup-success.html")));
+app.get("/login", async (req, res) =>res.sendFile(path.join(__dirname,"public","login.html")));
 app.get("/waitlist", async (req, res) =>res.sendFile(path.join(__dirname,"public","waitlist.html")));
 app.get("/apply/business", async (req, res) =>res.sendFile(path.join(__dirname,"public","apply_business.html")));
 app.get("/apply/resident", async (req, res) =>res.sendFile(path.join(__dirname,"public","apply_resident.html")));
@@ -767,8 +947,9 @@ async function requireActiveSubscription(req, res, placeId){
 async function hasActiveUserSubscription(userId) {
   if (!userId) return false;
   try {
+    // Include both 'active' and 'trialing' as valid subscription states
     const result = await data.query(
-      `SELECT * FROM user_subscriptions WHERE userId = $1 AND status = 'active' AND currentPeriodEnd > NOW() ORDER BY createdAt DESC LIMIT 1`,
+      `SELECT * FROM user_subscriptions WHERE userId = $1 AND status IN ('active', 'trialing') AND currentPeriodEnd > NOW() ORDER BY createdAt DESC LIMIT 1`,
       [Number(userId)]
     );
     return result.rows.length > 0;
@@ -1233,6 +1414,13 @@ app.post("/api/auth/request-code", async (req, res) =>{
     const email = (req.body?.email || "").toString().trim().toLowerCase();
     if(!email) return res.status(400).json({ error: "Email required" });
 
+    // Check if user exists (signup requires payment first, so only existing users can log in)
+    const existingUser = await data.query(`SELECT id FROM users WHERE LOWER(email) = $1`, [email]);
+    if(existingUser.rows.length === 0) {
+      // Don't reveal that the account doesn't exist
+      return res.json({ ok: true, message: "If this email is valid, a code has been sent" });
+    }
+
     const result = await data.createAuthCode(email);
     if(result.error){
       // Return ok to avoid email enumeration, but log rate limit errors
@@ -1261,6 +1449,15 @@ app.post("/api/auth/verify-code", async (req, res) =>{
   const email = (req.body?.email || "").toString().trim().toLowerCase();
   const code = (req.body?.code || "").toString().trim();
   if(!email || !code) return res.status(400).json({ error: "Email and code required" });
+
+  // Check if user exists (signup now requires payment first)
+  const existingUser = await data.query(`SELECT id FROM users WHERE LOWER(email) = $1`, [email]);
+  if(existingUser.rows.length === 0) {
+    return res.status(400).json({
+      error: "No account found with this email. Please sign up first.",
+      noAccount: true
+    });
+  }
 
   const result = await data.verifyAuthCode(email, code);
   if(result.error){
@@ -1334,6 +1531,60 @@ app.post("/auth/logout", async (req, res) =>{
   if(sid) await data.deleteSession(sid);
   setCookie(res,"sid","",{httpOnly:true,maxAge:0,secure:isHttpsRequest(req)});
   res.json({ok:true});
+});
+
+// Auto-login for new signups - consumes one-time token from Stripe checkout
+app.post("/api/signup/auto-login", async (req, res) => {
+  const sessionId = (req.body?.sessionId || "").toString().trim();
+  if(!sessionId) {
+    return res.status(400).json({ error: "Session ID required" });
+  }
+
+  if(!stripe) {
+    return res.status(400).json({ error: "Stripe not configured" });
+  }
+
+  try {
+    // Retrieve the checkout session from Stripe
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if(!session) {
+      return res.status(400).json({ error: "Invalid session" });
+    }
+
+    const signupEmail = (session.metadata?.signupEmail || "").trim().toLowerCase();
+    if(!signupEmail) {
+      return res.status(400).json({ error: "Not a signup session" });
+    }
+
+    // Find the user by email
+    const userResult = await data.query(`SELECT id FROM users WHERE LOWER(email) = $1`, [signupEmail]);
+    if(userResult.rows.length === 0) {
+      return res.status(400).json({ error: "User not found. Please wait a moment and try again." });
+    }
+
+    const userId = userResult.rows[0].id;
+
+    // Check for valid login token
+    const tokenResult = await data.query(
+      `SELECT * FROM signup_login_tokens WHERE userId = $1 AND usedAt IS NULL AND expiresAt > NOW()`,
+      [userId]
+    );
+    if(tokenResult.rows.length === 0) {
+      return res.status(400).json({ error: "Login token expired or already used" });
+    }
+
+    // Mark token as used
+    await data.query(`UPDATE signup_login_tokens SET usedAt = NOW() WHERE userId = $1`, [userId]);
+
+    // Create session
+    const s = await data.createSession(userId);
+    setCookie(res, "sid", s.sid, { httpOnly: true, maxAge: 60*60*24*30, secure: isHttpsRequest(req) });
+
+    res.json({ ok: true, userId });
+  } catch(e) {
+    console.error("Signup auto-login error:", e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.post("/api/public/waitlist", async (req, res) =>{

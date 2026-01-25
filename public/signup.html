@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Join Sebastian</title>
+    <title>Join Digital Sebastian</title>
     <link rel="stylesheet" href="/ui-kit.css?v=1">
     <style>
       :root {
@@ -54,155 +54,167 @@
         border: 1px solid transparent;
         color: var(--join-muted);
         transition: all 0.2s ease;
+        text-decoration: none;
       }
       .nav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
       .hero {
-        max-width: 900px;
+        max-width: 600px;
         margin: 0 auto;
-        padding: 28px 18px 8px;
+        padding: 40px 18px 20px;
+        text-align: center;
       }
       .hero-title {
-        font-size: 30px;
+        font-size: 36px;
         margin: 0;
         color: #fff;
       }
       .hero-subtitle {
-        margin: 6px 0 0;
+        margin: 12px 0 0;
         color: var(--join-muted);
-        font-size: 14px;
+        font-size: 16px;
+        line-height: 1.5;
       }
       .wrap {
-        max-width: 900px;
+        max-width: 500px;
         margin: 0 auto;
-        padding: 18px;
-        display: grid;
-        gap: 18px;
+        padding: 0 18px 40px;
       }
       .card {
         background: var(--join-panel);
         border: 1px solid var(--join-border);
         border-radius: 18px;
-        padding: 18px;
+        padding: 24px;
         box-shadow: 0 20px 40px rgba(3, 7, 15, 0.35);
-      }
-      .card-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 12px;
-      }
-      .card-icon {
-        height: 36px;
-        width: 36px;
-        border-radius: 12px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(34, 211, 238, 0.12);
-        color: #67e8f9;
-      }
-      .card-title {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 700;
-        color: #fff;
-      }
-      .card-subtitle {
-        margin: 4px 0 0;
-        color: var(--join-muted);
-        font-size: 13px;
       }
       .field {
         display: flex;
         flex-direction: column;
         gap: 8px;
-        margin-top: 10px;
+        margin-bottom: 16px;
       }
       .label {
         color: #cbd5f5;
         font-size: 13px;
         font-weight: 600;
       }
-      input, select {
+      input {
         width: 100%;
-        padding: 10px 12px;
+        padding: 12px 14px;
         border-radius: 12px;
         border: 1px solid rgba(255, 255, 255, 0.1);
         background: var(--join-panel-2);
         color: #fff;
-        font-size: 14px;
+        font-size: 15px;
+        box-sizing: border-box;
       }
-      input:focus, select:focus {
+      input:focus {
         outline: none;
         border-color: rgba(56, 189, 248, 0.5);
         box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
       }
+      .plan-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .plan-card {
+        border: 2px solid var(--join-border);
+        border-radius: 14px;
+        padding: 16px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+      }
+      .plan-card:hover {
+        border-color: rgba(34, 211, 238, 0.3);
+      }
+      .plan-card.selected {
+        border-color: var(--join-accent);
+        background: rgba(34, 211, 238, 0.08);
+      }
+      .plan-name {
+        font-weight: 700;
+        font-size: 18px;
+        color: #fff;
+        margin-bottom: 4px;
+      }
+      .plan-price {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--join-accent);
+      }
+      .plan-price span {
+        font-size: 14px;
+        font-weight: 400;
+        color: var(--join-muted);
+      }
+      .plan-features {
+        font-size: 12px;
+        color: var(--join-muted);
+        margin-top: 8px;
+        line-height: 1.4;
+      }
       .btn-primary {
+        display: block;
+        width: 100%;
         border: none;
         border-radius: 12px;
-        padding: 10px 16px;
+        padding: 14px 20px;
         background: linear-gradient(90deg, var(--join-accent), var(--join-accent-2));
         color: #0b1120;
         font-weight: 700;
+        font-size: 16px;
         cursor: pointer;
+        transition: opacity 0.2s;
       }
-      .btn-outline {
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: transparent;
-        color: #e2e8f0;
-        border-radius: 12px;
-        padding: 10px 14px;
-        cursor: pointer;
+      .btn-primary:hover { opacity: 0.9; }
+      .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
-      .btn-outline:hover { background: rgba(255, 255, 255, 0.06); }
-      .actions-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-top: 12px;
-      }
-      .muted { color: var(--join-muted); font-size: 12px; }
-      .tier-grid {
-        display: grid;
-        gap: 10px;
-        margin-top: 10px;
-      }
-      .tier-card {
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
+      .muted { color: var(--join-muted); font-size: 13px; }
+      .error-msg {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #f87171;
         padding: 12px;
-        background: rgba(255, 255, 255, 0.03);
+        border-radius: 10px;
+        margin-bottom: 16px;
+        display: none;
       }
-      .tier-name {
-        font-weight: 700;
-        color: #fff;
+      .success-msg {
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        color: #22c55e;
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 16px;
+        display: none;
       }
-      .mono {
-        font-family: ui-monospace, Menlo, Consolas, monospace;
+      .referral-box {
+        background: rgba(34, 211, 238, 0.08);
+        border: 1px solid rgba(34, 211, 238, 0.2);
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 16px;
+        font-size: 13px;
+      }
+      .referral-box strong { color: var(--join-accent); }
+      .login-link {
+        text-align: center;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--join-border);
+      }
+      .terms-note {
+        text-align: center;
+        margin-top: 16px;
         font-size: 12px;
-        white-space: pre-wrap;
+        color: var(--join-muted);
       }
-      .ok, .warn {
-        border: 1px solid var(--join-border);
-        background: var(--join-panel-2);
-        padding: 10px;
-        border-radius: 12px;
-        margin-top: 12px;
-      }
-      .two-col {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-      }
-      @media (min-width: 760px) {
-        .wrap { grid-template-columns: 1fr 1fr; }
-        .full { grid-column: 1 / -1; }
-        .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      }
-      @media (max-width: 640px) {
-        .actions-row { flex-direction: column; align-items: stretch; }
-        .btn-primary, .btn-outline { width: 100%; }
+      @media (max-width: 500px) {
+        .plan-grid { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -210,157 +222,76 @@
     <div class="page">
       <header class="topbar">
         <div class="topbar-inner">
-          <a class="nav-btn" href="/ui">← Back to Town</a>
-          <span class="muted">Sebastian Digital Town</span>
+          <a class="nav-btn" href="/ui">&larr; Back to Town</a>
+          <span class="muted">Digital Sebastian</span>
         </div>
       </header>
 
       <section class="hero">
-        <h2 class="hero-title">Join Sebastian</h2>
-        <div class="hero-subtitle">Apply for access, get approved by admin, then log in with your email code.</div>
+        <h1 class="hero-title">Join Digital Sebastian</h1>
+        <p class="hero-subtitle">Buy, sell, and connect with your local Sebastian community.<br><strong style="color:#22d3ee;">7-day free trial, cancel anytime.</strong></p>
       </section>
 
       <div class="wrap">
-        <!-- Step 1: Apply for Access -->
-        <div class="card full">
-          <div class="card-header">
-            <div class="card-icon">📝</div>
-            <div>
-              <h3 class="card-title">Step 1: Apply for Access</h3>
-              <p class="card-subtitle">New here? Submit an application to get started.</p>
-            </div>
-          </div>
-          <div class="tier-grid">
-            <a href="/apply/resident" class="tier-card" style="text-decoration:none; cursor:pointer;">
-              <div class="tier-name">Resident Application</div>
-              <div class="muted">For Sebastian residents. Unlocks Tier 2: sell/list, post in channels, reviews.</div>
-            </a>
-            <a href="/apply/business" class="tier-card" style="text-decoration:none; cursor:pointer;">
-              <div class="tier-name">Business Application</div>
-              <div class="muted">For local businesses. Unlocks Tier 4: inventory tools, host auctions, create events.</div>
-            </a>
-            <a href="/waitlist" class="tier-card" style="text-decoration:none; cursor:pointer;">
-              <div class="tier-name">Join Waitlist</div>
-              <div class="muted">Not a resident? Join the waitlist for Tier 1: view marketplace, events, channels.</div>
-            </a>
-          </div>
-          <div class="muted" style="margin-top:12px;">After submitting, an admin will review your application and notify you when approved.</div>
-        </div>
-
-        <!-- Step 2: Login (after approval) -->
         <div class="card">
-          <div class="card-header">
-            <div class="card-icon">✉️</div>
-            <div>
-              <h3 class="card-title">Step 2: Login (After Approval)</h3>
-              <p class="card-subtitle">Already approved? Enter your email to receive a 6-digit login code.</p>
-            </div>
-          </div>
-          <div class="field">
-            <label class="label" for="loginEmail">Email</label>
-            <input id="loginEmail" type="email" placeholder="you@example.com" />
-          </div>
-          <div class="actions-row">
-            <button id="requestCode" class="btn-primary">Send Login Code</button>
-          </div>
-          <div id="codeVerifySection" style="display:none;">
-            <div class="field">
-              <label class="label" for="loginCode">6-digit Code</label>
-              <input id="loginCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" />
-            </div>
-            <div class="actions-row">
-              <button id="verifyCodeBtn" class="btn-primary">Verify Code</button>
-            </div>
-          </div>
-          <div id="loginResult"></div>
-          <div class="mono" id="debug"></div>
-        </div>
+          <div id="errorMsg" class="error-msg"></div>
+          <div id="successMsg" class="success-msg"></div>
 
-        <div class="card full" id="trustApplyCard" style="display:none;">
-          <div class="card-header">
-            <div class="card-icon">✅</div>
-            <div>
-              <h3 class="card-title">Apply for Verification</h3>
-              <p class="card-subtitle" id="tierBadge">Tier 0: Visitor</p>
-            </div>
+          <div id="referralBox" class="referral-box" style="display:none;">
+            Referred by <strong id="referrerName">a member</strong>
           </div>
-          <div class="field">
-            <label class="label" for="requestedTier">Requested Tier</label>
-            <select id="requestedTier">
-              <option value="1">Tier 1 — Verified Visitor</option>
-              <option value="2">Tier 2 — Verified Resident</option>
-              <option value="3">Tier 3 — Moderator</option>
-            </select>
-          </div>
-          <div class="two-col">
-            <div class="field">
-              <label class="label" for="email">Email</label>
-              <input id="email" placeholder="Email" />
-            </div>
-            <div class="field">
-              <label class="label" for="phone">Phone</label>
-              <input id="phone" placeholder="Phone" />
-            </div>
-          </div>
-          <div class="field">
-            <label class="label" for="address1">Address line 1</label>
-            <input id="address1" placeholder="Address line 1" />
-          </div>
-          <div class="field">
-            <label class="label" for="address2">Address line 2 (optional)</label>
-            <input id="address2" placeholder="Address line 2 (optional)" />
-          </div>
-          <div class="two-col">
-            <div class="field">
-              <label class="label" for="city">City</label>
-              <input id="city" placeholder="City" />
-            </div>
-            <div class="field">
-              <label class="label" for="state">State</label>
-              <input id="state" placeholder="State (e.g. FL)" value="FL" />
-            </div>
-          </div>
-          <div class="field">
-            <label class="label" for="zip">ZIP</label>
-            <input id="zip" placeholder="ZIP" />
-          </div>
-          <div class="field">
-            <label class="label" for="identityMethod">Identity Method</label>
-            <select id="identityMethod">
-              <option value="id">Government ID</option>
-              <option value="payment">Payment Method</option>
-              <option value="manual">Manual Review</option>
-            </select>
-          </div>
-          <div class="actions-row">
-            <button id="verifyPresenceBtn" type="button" class="btn-outline">Verify Location in Sebastian (GPS)</button>
-            <span class="muted" id="presenceStatus">Tier 1 requires location verification.</span>
-          </div>
-          <div class="actions-row">
-            <button id="submitTrust" class="btn-primary">Submit Application</button>
-          </div>
-          <div id="signupResult"></div>
-          <div class="muted" id="trustStatus" style="margin-top:8px;"></div>
 
-          <div class="actions-row" style="margin-top:10px;">
-            <a class="muted" href="/ui">Back to Town</a>
+          <div class="field">
+            <label class="label" for="email">Email</label>
+            <input id="email" type="email" placeholder="you@example.com" required />
+          </div>
+
+          <div class="field">
+            <label class="label" for="displayName">Display Name (optional)</label>
+            <input id="displayName" type="text" placeholder="How you'll appear to others" />
+          </div>
+
+          <div class="field">
+            <label class="label">Choose Your Plan</label>
+          </div>
+
+          <div class="plan-grid">
+            <div class="plan-card selected" data-plan="user" onclick="selectPlan('user')">
+              <div class="plan-name">User</div>
+              <div class="plan-price">$5<span>/mo</span></div>
+              <div class="plan-features">Buy, sell, message,<br>enter giveaways</div>
+            </div>
+            <div class="plan-card" data-plan="business" onclick="selectPlan('business')">
+              <div class="plan-name">Business</div>
+              <div class="plan-price">$10<span>/mo</span></div>
+              <div class="plan-features">Everything in User +<br>Storefront listing</div>
+            </div>
+          </div>
+
+          <button id="subscribeBtn" class="btn-primary" onclick="startCheckout()">
+            Start 7-Day Free Trial
+          </button>
+
+          <div class="terms-note">
+            <strong>$0 today.</strong> You won't be charged until your trial ends.<br>
+            Cancel anytime before then and pay nothing.<br><br>
+            By subscribing, you agree to our <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.
+          </div>
+
+          <div class="login-link">
+            <span class="muted">Already have an account?</span>
+            <a href="/login">Log in</a>
           </div>
         </div>
       </div>
 
       <footer style="max-width:900px; margin:0 auto; padding:18px; text-align:center;">
-        <div style="margin-bottom:8px;">
-          <a class="muted" href="/privacy" style="font-size:12px;">Privacy Policy</a>
-          <span class="muted" style="font-size:12px; margin:0 8px;">•</span>
-          <a class="muted" href="/terms" style="font-size:12px;">Terms of Service</a>
-        </div>
         <div class="muted" style="font-size:11px;">Digital Towns Beta v0.1 - Built with &#10084; for local communities</div>
       </footer>
     </div>
 
     <script src="/theme.js?v=1"></script>
-    <script src="/share_modal.js?v=1"></script>
-    <script src="/signup.js?v=share1"></script>
+    <script src="/signup.js?v=2"></script>
     <script src="/js/beta-banner.js?v=1"></script>
   </body>
 </html>
