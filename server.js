@@ -17,6 +17,32 @@ try {
     }
   }
 }
+
+// ============ SENTRY ERROR MONITORING ============
+let Sentry;
+if (process.env.SENTRY_DSN) {
+  try {
+    Sentry = require("@sentry/node");
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.NODE_ENV || "development",
+      tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+      beforeSend(event) {
+        // Don't send events in development unless explicitly enabled
+        if (process.env.NODE_ENV !== "production" && !process.env.SENTRY_FORCE_ENABLE) {
+          return null;
+        }
+        return event;
+      }
+    });
+    console.log("Monitoring: Sentry enabled");
+  } catch (e) {
+    console.log("Monitoring: Sentry not installed (npm install @sentry/node)");
+  }
+} else {
+  console.log("Monitoring: Sentry disabled (no SENTRY_DSN)");
+}
+
 const express = require("express");
 const path = require("path");
 const multer = require("multer");
@@ -39,6 +65,12 @@ async function getTrustBadgeForUser(userId){
 }
 const crypto = require("crypto");
 const app = express();
+
+// Sentry request handler must be first middleware
+if (Sentry) {
+  app.use(Sentry.Handlers.requestHandler());
+}
+
 const data = require("./data");
 const { TOWN_DIRECTORY } = require("./town_directory");
 const { uploadImage } = require("./lib/r2");
@@ -4531,6 +4563,12 @@ app.get("/api/admin/pulse/last", async (req, res) => {
   const lastExport = await data.getLastPulseExport(townId, exportType);
   res.json({ lastExport });
 });
+
+// ============ SENTRY ERROR HANDLER ============
+// Must be before the global error handler
+if (Sentry) {
+  app.use(Sentry.Handlers.errorHandler());
+}
 
 // ============ GLOBAL ERROR HANDLER ============
 // Must be defined after all routes to catch unhandled errors
