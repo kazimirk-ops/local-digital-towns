@@ -286,6 +286,53 @@ app.get("/api/health/session", async (req, res) =>{
   res.json({ ok:true, hasSid:true, sessionFound: !!row, keys: Object.keys(row || {}) });
 });
 
+// ---------- Stripe Diagnostic Endpoint ----------
+app.get("/api/stripe/test", async (req, res) => {
+  const results = {
+    stripeConfigured: !!stripe,
+    secretKeyPrefix: (process.env.STRIPE_SECRET_KEY || "").substring(0, 12) + "...",
+    userPriceId: process.env.STRIPE_USER_PRICE_ID || "(not set)",
+    businessPriceId: process.env.STRIPE_BUSINESS_PRICE_ID || "(not set)",
+    legacyPriceId: process.env.STRIPE_PRICE_ID || "(not set)",
+  };
+
+  if (stripe && process.env.STRIPE_USER_PRICE_ID) {
+    try {
+      const price = await stripe.prices.retrieve(process.env.STRIPE_USER_PRICE_ID);
+      results.userPriceValid = true;
+      results.userPriceDetails = {
+        id: price.id,
+        active: price.active,
+        currency: price.currency,
+        unit_amount: price.unit_amount,
+        recurring: price.recurring
+      };
+    } catch (e) {
+      results.userPriceValid = false;
+      results.userPriceError = e.message;
+    }
+  }
+
+  if (stripe && process.env.STRIPE_BUSINESS_PRICE_ID) {
+    try {
+      const price = await stripe.prices.retrieve(process.env.STRIPE_BUSINESS_PRICE_ID);
+      results.businessPriceValid = true;
+      results.businessPriceDetails = {
+        id: price.id,
+        active: price.active,
+        currency: price.currency,
+        unit_amount: price.unit_amount,
+        recurring: price.recurring
+      };
+    } catch (e) {
+      results.businessPriceValid = false;
+      results.businessPriceError = e.message;
+    }
+  }
+
+  res.json(results);
+});
+
 // ---------- Signup Checkout (No Login Required) ----------
 // Creates Stripe checkout for new user signup - account created on payment success
 app.post("/api/signup/checkout", async (req, res) => {
