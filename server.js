@@ -981,11 +981,23 @@ function requireStripeConfig(res){
     res.status(500).json({error:"Stripe not configured"});
     return null;
   }
-  if(!process.env.STRIPE_SUCCESS_URL || !process.env.STRIPE_CANCEL_URL){
+  // Allow fallback to PUBLIC_BASE_URL if specific URLs not set
+  const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3000";
+  if(!process.env.STRIPE_SUCCESS_URL && !baseUrl){
     res.status(500).json({error:"Stripe URLs not configured"});
     return null;
   }
   return stripe;
+}
+function getStripeUrls(orderId){
+  const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3000";
+  const successUrl = process.env.STRIPE_SUCCESS_URL
+    ? String(process.env.STRIPE_SUCCESS_URL).replace("{ORDER_ID}", String(orderId))
+    : `${baseUrl}/pay/success?orderId=${orderId}`;
+  const cancelUrl = process.env.STRIPE_CANCEL_URL
+    ? String(process.env.STRIPE_CANCEL_URL).replace("{ORDER_ID}", String(orderId))
+    : `${baseUrl}/store`;
+  return { successUrl, cancelUrl };
 }
 
 function rangeToBounds(range){
@@ -2055,17 +2067,19 @@ app.get("/api/cart", async (req, res) =>{
   const places = await data.getPlaces();
   const placeMap = new Map(places.map(p=>[Number(p.id), p]));
   const enriched = items.map((item)=>{
-    const listing = listings.find(l=>Number(l.id)===Number(item.listingId));
-    const place = listing ? placeMap.get(Number(listing.placeId)) : null;
+    // Handle PostgreSQL lowercase column names
+    const itemListingId = item.listingId ?? item.listingid;
+    const listing = listings.find(l=>Number(l.id)===Number(itemListingId));
+    const place = listing ? placeMap.get(Number(listing.placeId ?? listing.placeid)) : null;
     const priceCents = Math.round(Number(listing?.price || 0) * 100);
     return {
       id: item.id,
-      listingId: item.listingId,
+      listingId: itemListingId,
       quantity: item.quantity,
       title: listing?.title || "",
-      listingType: listing?.listingType || "item",
+      listingType: listing?.listingType ?? listing?.listingtype || "item",
       priceCents,
-      placeId: listing?.placeId || null,
+      placeId: listing?.placeId ?? listing?.placeid || null,
       placeName: place?.name || ""
     };
   });
@@ -2203,8 +2217,7 @@ app.post("/api/checkout/stripe", async (req,res)=>{
     },
     quantity: 1
   }];
-  const successUrl = String(process.env.STRIPE_SUCCESS_URL || "").replace("{ORDER_ID}", String(order.id));
-  const cancelUrl = String(process.env.STRIPE_CANCEL_URL || "").replace("{ORDER_ID}", String(order.id));
+  const { successUrl, cancelUrl } = getStripeUrls(order.id);
   try{
     const session = await s.checkout.sessions.create({
       mode: "payment",
