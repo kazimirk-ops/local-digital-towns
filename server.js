@@ -2077,9 +2077,9 @@ app.get("/api/cart", async (req, res) =>{
       listingId: itemListingId,
       quantity: item.quantity,
       title: listing?.title || "",
-      listingType: listing?.listingType ?? listing?.listingtype || "item",
+      listingType: (listing?.listingType ?? listing?.listingtype) || "item",
       priceCents,
-      placeId: listing?.placeId ?? listing?.placeid || null,
+      placeId: (listing?.placeId ?? listing?.placeid) || null,
       placeName: place?.name || ""
     };
   });
