@@ -75,7 +75,7 @@
         line-height: 1.5;
       }
       .wrap {
-        max-width: 500px;
+        max-width: 560px;
         margin: 0 auto;
         padding: 0 18px 40px;
       }
@@ -86,6 +86,22 @@
         padding: 24px;
         box-shadow: 0 20px 40px rgba(3, 7, 15, 0.35);
       }
+      .step { display: none; }
+      .step.active { display: block; }
+      .step-indicator {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 24px;
+      }
+      .step-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--join-border);
+      }
+      .step-dot.active { background: var(--join-accent); }
+      .step-dot.completed { background: #22c55e; }
       .field {
         display: flex;
         flex-direction: column;
@@ -97,7 +113,8 @@
         font-size: 13px;
         font-weight: 600;
       }
-      input {
+      .label .required { color: #f87171; }
+      input, select, textarea {
         width: 100%;
         padding: 12px 14px;
         border-radius: 12px;
@@ -107,11 +124,13 @@
         font-size: 15px;
         box-sizing: border-box;
       }
-      input:focus {
+      input:focus, select:focus, textarea:focus {
         outline: none;
         border-color: rgba(56, 189, 248, 0.5);
         box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
       }
+      .row { display: flex; gap: 12px; }
+      .row > * { flex: 1; }
       .plan-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -121,13 +140,14 @@
       .plan-card {
         border: 2px solid var(--join-border);
         border-radius: 14px;
-        padding: 16px;
+        padding: 20px 16px;
         cursor: pointer;
         transition: all 0.2s;
         text-align: center;
       }
       .plan-card:hover {
         border-color: rgba(34, 211, 238, 0.3);
+        transform: translateY(-2px);
       }
       .plan-card.selected {
         border-color: var(--join-accent);
@@ -135,12 +155,12 @@
       }
       .plan-name {
         font-weight: 700;
-        font-size: 18px;
+        font-size: 20px;
         color: #fff;
         margin-bottom: 4px;
       }
       .plan-price {
-        font-size: 24px;
+        font-size: 28px;
         font-weight: 800;
         color: var(--join-accent);
       }
@@ -150,10 +170,18 @@
         color: var(--join-muted);
       }
       .plan-features {
-        font-size: 12px;
+        font-size: 13px;
         color: var(--join-muted);
-        margin-top: 8px;
-        line-height: 1.4;
+        margin-top: 12px;
+        line-height: 1.5;
+      }
+      .plan-features li {
+        margin: 4px 0;
+        list-style: none;
+      }
+      .plan-features li::before {
+        content: "✓ ";
+        color: #22c55e;
       }
       .btn-primary {
         display: block;
@@ -173,6 +201,20 @@
         opacity: 0.5;
         cursor: not-allowed;
       }
+      .btn-secondary {
+        display: block;
+        width: 100%;
+        border: 1px solid var(--join-border);
+        border-radius: 12px;
+        padding: 12px 20px;
+        background: transparent;
+        color: var(--join-muted);
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        margin-top: 12px;
+      }
+      .btn-secondary:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
       .muted { color: var(--join-muted); font-size: 13px; }
       .error-msg {
         background: rgba(239, 68, 68, 0.1);
@@ -201,11 +243,30 @@
         font-size: 13px;
       }
       .referral-box strong { color: var(--join-accent); }
-      .login-link {
-        text-align: center;
-        margin-top: 20px;
-        padding-top: 16px;
-        border-top: 1px solid var(--join-border);
+      .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #fff;
+        margin: 0 0 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--join-border);
+      }
+      .checkbox-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin: 16px 0;
+      }
+      .checkbox-row input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        flex-shrink: 0;
+      }
+      .checkbox-row label {
+        color: var(--join-muted);
+        font-size: 13px;
+        line-height: 1.4;
       }
       .terms-note {
         text-align: center;
@@ -213,8 +274,34 @@
         font-size: 12px;
         color: var(--join-muted);
       }
+      .login-link {
+        text-align: center;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--join-border);
+      }
+      .interests-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .interest-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        background: var(--join-panel-2);
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .interest-item:hover { background: rgba(255,255,255,0.05); }
+      .interest-item input { width: 16px; height: 16px; }
+      .interest-item span { font-size: 14px; }
       @media (max-width: 500px) {
         .plan-grid { grid-template-columns: 1fr; }
+        .row { flex-direction: column; gap: 0; }
+        .interests-grid { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -234,6 +321,12 @@
 
       <div class="wrap">
         <div class="card">
+          <div class="step-indicator">
+            <div class="step-dot active" id="dot1"></div>
+            <div class="step-dot" id="dot2"></div>
+            <div class="step-dot" id="dot3"></div>
+          </div>
+
           <div id="errorMsg" class="error-msg"></div>
           <div id="successMsg" class="success-msg"></div>
 
@@ -241,46 +334,189 @@
             Referred by <strong id="referrerName">a member</strong>
           </div>
 
-          <div class="field">
-            <label class="label" for="email">Email</label>
-            <input id="email" type="email" placeholder="you@example.com" required />
-          </div>
+          <!-- STEP 1: Plan Selection -->
+          <div id="step1" class="step active">
+            <h3 class="section-title">Choose Your Plan</h3>
 
-          <div class="field">
-            <label class="label" for="displayName">Display Name (optional)</label>
-            <input id="displayName" type="text" placeholder="How you'll appear to others" />
-          </div>
-
-          <div class="field">
-            <label class="label">Choose Your Plan</label>
-          </div>
-
-          <div class="plan-grid">
-            <div class="plan-card selected" data-plan="user" onclick="selectPlan('user')">
-              <div class="plan-name">User</div>
-              <div class="plan-price">$5<span>/mo</span></div>
-              <div class="plan-features">Buy, sell, message,<br>enter giveaways</div>
+            <div class="plan-grid">
+              <div class="plan-card" data-plan="user" onclick="selectPlan('user')">
+                <div class="plan-name">User</div>
+                <div class="plan-price">$5<span>/mo</span></div>
+                <ul class="plan-features">
+                  <li>Buy from local sellers</li>
+                  <li>Sell your items</li>
+                  <li>Message members</li>
+                  <li>Enter giveaways</li>
+                </ul>
+              </div>
+              <div class="plan-card" data-plan="business" onclick="selectPlan('business')">
+                <div class="plan-name">Business</div>
+                <div class="plan-price">$10<span>/mo</span></div>
+                <ul class="plan-features">
+                  <li>Everything in User</li>
+                  <li>Storefront listing</li>
+                  <li>Business profile</li>
+                  <li>Run giveaways</li>
+                </ul>
+              </div>
             </div>
-            <div class="plan-card" data-plan="business" onclick="selectPlan('business')">
-              <div class="plan-name">Business</div>
-              <div class="plan-price">$10<span>/mo</span></div>
-              <div class="plan-features">Everything in User +<br>Storefront listing</div>
+
+            <p class="muted" style="text-align:center; margin-bottom:16px;">
+              <strong>$0 today.</strong> 7-day free trial, cancel anytime.
+            </p>
+
+            <button id="continueBtn" class="btn-primary" onclick="goToStep2()" disabled>
+              Select a Plan to Continue
+            </button>
+
+            <div class="login-link">
+              <span class="muted">Already have an account?</span>
+              <a href="/login">Log in</a>
             </div>
           </div>
 
-          <button id="subscribeBtn" class="btn-primary" onclick="startCheckout()">
-            Start 7-Day Free Trial
-          </button>
+          <!-- STEP 2A: User Details Form -->
+          <div id="step2user" class="step">
+            <h3 class="section-title">Your Information</h3>
 
-          <div class="terms-note">
-            <strong>$0 today.</strong> You won't be charged until your trial ends.<br>
-            Cancel anytime before then and pay nothing.<br><br>
-            By subscribing, you agree to our <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.
+            <div class="field">
+              <label class="label">Display Name <span class="required">*</span></label>
+              <input id="userName" type="text" placeholder="How you'll appear to others" required />
+            </div>
+
+            <div class="field">
+              <label class="label">Email <span class="required">*</span></label>
+              <input id="userEmail" type="email" placeholder="you@example.com" required />
+            </div>
+
+            <div class="field">
+              <label class="label">Phone (optional)</label>
+              <input id="userPhone" type="tel" placeholder="For order notifications" />
+            </div>
+
+            <div class="field">
+              <label class="label">What are you interested in?</label>
+              <div class="interests-grid">
+                <label class="interest-item">
+                  <input type="checkbox" id="interestBuying" checked />
+                  <span>Buying</span>
+                </label>
+                <label class="interest-item">
+                  <input type="checkbox" id="interestSelling" />
+                  <span>Selling</span>
+                </label>
+                <label class="interest-item">
+                  <input type="checkbox" id="interestGiveaways" />
+                  <span>Giveaways</span>
+                </label>
+                <label class="interest-item">
+                  <input type="checkbox" id="interestCommunity" />
+                  <span>Community</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Located in Sebastian area?</label>
+              <select id="userInSebastian">
+                <option value="yes">Yes, I live in or near Sebastian</option>
+                <option value="no">No, but I'm interested in the community</option>
+              </select>
+            </div>
+
+            <div class="checkbox-row">
+              <input type="checkbox" id="userTerms" required />
+              <label for="userTerms">I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a></label>
+            </div>
+
+            <button id="userCheckoutBtn" class="btn-primary" onclick="startCheckout()">
+              Start 7-Day Free Trial
+            </button>
+
+            <button class="btn-secondary" onclick="goToStep1()">
+              &larr; Back to Plans
+            </button>
           </div>
 
-          <div class="login-link">
-            <span class="muted">Already have an account?</span>
-            <a href="/login">Log in</a>
+          <!-- STEP 2B: Business Details Form -->
+          <div id="step2business" class="step">
+            <h3 class="section-title">Business Information</h3>
+
+            <div class="field">
+              <label class="label">Contact Name <span class="required">*</span></label>
+              <input id="bizContactName" type="text" placeholder="Your name" required />
+            </div>
+
+            <div class="field">
+              <label class="label">Email <span class="required">*</span></label>
+              <input id="bizEmail" type="email" placeholder="business@example.com" required />
+            </div>
+
+            <div class="field">
+              <label class="label">Phone (optional)</label>
+              <input id="bizPhone" type="tel" placeholder="Business phone" />
+            </div>
+
+            <div class="field">
+              <label class="label">Business Name <span class="required">*</span></label>
+              <input id="bizName" type="text" placeholder="Your business or service name" required />
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label class="label">Type <span class="required">*</span></label>
+                <select id="bizType" required>
+                  <option value="">Select one</option>
+                  <option value="business">Local Business</option>
+                  <option value="service">Service Provider</option>
+                  <option value="individual">Individual Seller</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label">Category <span class="required">*</span></label>
+                <input id="bizCategory" type="text" placeholder="e.g., Restaurant, Plumber" required />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Website / Social (optional)</label>
+              <input id="bizWebsite" type="text" placeholder="https:// or @handle" />
+            </div>
+
+            <div class="field">
+              <label class="label">Located in Sebastian? <span class="required">*</span></label>
+              <select id="bizInSebastian" required>
+                <option value="">Select one</option>
+                <option value="yes">Yes</option>
+                <option value="no">No, but we serve the area</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label class="label">Business Address (optional, private)</label>
+              <input id="bizAddress" type="text" placeholder="Street address" />
+            </div>
+
+            <div class="checkbox-row">
+              <input type="checkbox" id="bizTerms" required />
+              <label for="bizTerms">I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a></label>
+            </div>
+
+            <button id="bizCheckoutBtn" class="btn-primary" onclick="startCheckout()">
+              Start 7-Day Free Trial
+            </button>
+
+            <button class="btn-secondary" onclick="goToStep1()">
+              &larr; Back to Plans
+            </button>
+          </div>
+
+          <!-- STEP 3: Processing (shown briefly) -->
+          <div id="step3" class="step">
+            <div style="text-align:center; padding:40px 0;">
+              <div style="width:40px; height:40px; border:3px solid var(--join-border); border-top-color:var(--join-accent); border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 16px;"></div>
+              <p class="muted">Preparing your checkout...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -290,8 +526,14 @@
       </footer>
     </div>
 
+    <style>
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+
     <script src="/theme.js?v=1"></script>
-    <script src="/signup.js?v=3"></script>
+    <script src="/signup.js?v=4"></script>
     <script src="/js/beta-banner.js?v=1"></script>
   </body>
 </html>

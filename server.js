@@ -338,8 +338,20 @@ app.get("/api/stripe/test", async (req, res) => {
 app.post("/api/signup/checkout", async (req, res) => {
   const email = (req.body?.email || "").toString().trim().toLowerCase();
   const displayName = (req.body?.displayName || "").toString().trim();
+  const phone = (req.body?.phone || "").toString().trim();
   const plan = (req.body?.plan || "user").toString().toLowerCase();
   const referralCode = (req.body?.referralCode || "").toString().trim();
+
+  // User-specific fields
+  const interests = Array.isArray(req.body?.interests) ? req.body.interests.join(",") : "";
+  const inSebastian = (req.body?.inSebastian || "yes").toString().trim();
+
+  // Business-specific fields
+  const businessName = (req.body?.businessName || "").toString().trim();
+  const businessType = (req.body?.businessType || "").toString().trim();
+  const businessCategory = (req.body?.businessCategory || "").toString().trim();
+  const businessWebsite = (req.body?.businessWebsite || "").toString().trim();
+  const businessAddress = (req.body?.businessAddress || "").toString().trim();
 
   if(!email) {
     return res.status(400).json({ error: "Email is required" });
@@ -347,8 +359,14 @@ app.post("/api/signup/checkout", async (req, res) => {
   if(!email.includes("@") || !email.includes(".")) {
     return res.status(400).json({ error: "Invalid email address" });
   }
+  if(!displayName) {
+    return res.status(400).json({ error: "Display name is required" });
+  }
   if(!["user", "business"].includes(plan)) {
     return res.status(400).json({ error: "Invalid plan. Choose 'user' or 'business'." });
+  }
+  if(plan === "business" && !businessName) {
+    return res.status(400).json({ error: "Business name is required for business plan" });
   }
   if(!stripe) {
     return res.status(400).json({ error: "Stripe not configured" });
@@ -380,11 +398,6 @@ app.post("/api/signup/checkout", async (req, res) => {
   console.log("=== SIGNUP CHECKOUT DEBUG ===");
   console.log("Plan requested:", plan);
   console.log("Price ID being used:", priceId);
-  console.log("STRIPE_USER_PRICE_ID env:", process.env.STRIPE_USER_PRICE_ID || "(not set)");
-  console.log("STRIPE_BUSINESS_PRICE_ID env:", process.env.STRIPE_BUSINESS_PRICE_ID || "(not set)");
-  console.log("STRIPE_PRICE_ID env:", process.env.STRIPE_PRICE_ID || "(not set)");
-  const stripeKeyPrefix = (process.env.STRIPE_SECRET_KEY || "").substring(0, 8);
-  console.log("STRIPE_SECRET_KEY mode:", stripeKeyPrefix.includes("test") ? "TEST MODE" : stripeKeyPrefix.includes("live") ? "LIVE MODE" : "UNKNOWN - " + stripeKeyPrefix);
 
   if(!priceId) {
     return res.status(400).json({ error: `Stripe price ID not configured for ${plan} plan` });
@@ -393,6 +406,26 @@ app.post("/api/signup/checkout", async (req, res) => {
   try {
     const successUrl = `${req.protocol}://${req.get('host')}/signup-success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${req.protocol}://${req.get('host')}/signup?canceled=true`;
+
+    // Build metadata - Stripe has 500 char limit per value, 50 keys max
+    const metadata = {
+      signupEmail: email,
+      signupDisplayName: displayName,
+      signupPhone: phone,
+      plan: plan,
+      referrerId: referrerId ? String(referrerId) : "",
+      inSebastian: inSebastian,
+      interests: interests
+    };
+
+    // Add business fields if business plan
+    if(plan === "business") {
+      metadata.businessName = businessName;
+      metadata.businessType = businessType;
+      metadata.businessCategory = businessCategory;
+      metadata.businessWebsite = businessWebsite.substring(0, 200); // Truncate long URLs
+      metadata.businessAddress = businessAddress.substring(0, 200);
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -404,12 +437,7 @@ app.post("/api/signup/checkout", async (req, res) => {
       subscription_data: {
         trial_period_days: 7
       },
-      metadata: {
-        signupEmail: email,
-        signupDisplayName: displayName,
-        plan: plan,
-        referrerId: referrerId ? String(referrerId) : ""
-      }
+      metadata: metadata
     });
 
     res.json({ checkoutUrl: session.url });
@@ -513,7 +541,17 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
     // Handle NEW USER SIGNUP via Stripe checkout (signupEmail in metadata, no userId)
     const signupEmail = (session?.metadata?.signupEmail || "").trim().toLowerCase();
     const signupDisplayName = (session?.metadata?.signupDisplayName || "").trim();
+    const signupPhone = (session?.metadata?.signupPhone || "").trim();
     const signupReferrerId = Number(session?.metadata?.referrerId || 0);
+    const signupInSebastian = (session?.metadata?.inSebastian || "yes").trim();
+    const signupInterests = (session?.metadata?.interests || "").trim();
+
+    // Business-specific metadata
+    const bizName = (session?.metadata?.businessName || "").trim();
+    const bizType = (session?.metadata?.businessType || "").trim();
+    const bizCategory = (session?.metadata?.businessCategory || "").trim();
+    const bizWebsite = (session?.metadata?.businessWebsite || "").trim();
+    const bizAddress = (session?.metadata?.businessAddress || "").trim();
 
     if(signupEmail && !userId && session.subscription){
       const plan = session?.metadata?.plan || "user";
@@ -525,11 +563,15 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
         if(existingCheck.rows.length > 0) {
           console.log("User already exists for email:", signupEmail, "- skipping account creation");
         } else {
-          // Create new user account
+          // Create new user account with all collected data
           const nowISO = () => new Date().toISOString();
+          const interestsJson = signupInterests ? JSON.stringify(signupInterests.split(",")) : "[]";
+          const locationVerified = signupInSebastian === "yes" ? 1 : 0;
+
           const createResult = await data.query(
-            `INSERT INTO users (email, displayName, createdAt) VALUES ($1, $2, $3) RETURNING id`,
-            [signupEmail, signupDisplayName || '', nowISO()]
+            `INSERT INTO users (email, displayName, phone, interestsJson, locationVerifiedSebastian, createdAt)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+            [signupEmail, signupDisplayName || '', signupPhone, interestsJson, locationVerified, nowISO()]
           );
           const newUserId = createResult.rows?.[0]?.id;
           console.log("Created new user id:", newUserId, "for email:", signupEmail);
@@ -576,6 +618,32 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
               [subscriptionTier, session.customer, newUserId]
             );
             console.log("Set subscriptionTier:", subscriptionTier, "and stripeCustomerId on user:", newUserId);
+
+            // For business plan, create a place/storefront
+            if(plan === 'business' && bizName) {
+              try {
+                const placeResult = await data.query(
+                  `INSERT INTO places (name, ownerUserId, type, category, website, address, createdAt, updatedAt)
+                   VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id`,
+                  [bizName, newUserId, bizType || 'business', bizCategory || '', bizWebsite || '', bizAddress || '']
+                );
+                const newPlaceId = placeResult.rows?.[0]?.id;
+                console.log("Created business/place id:", newPlaceId, "for user:", newUserId);
+
+                // Create business subscription for the place
+                if(newPlaceId) {
+                  await data.query(
+                    `INSERT INTO business_subscriptions
+                     (placeId, userId, plan, status, stripeCustomerId, stripeSubscriptionId, currentPeriodStart, currentPeriodEnd, createdAt, updatedAt)
+                     VALUES ($1, $2, 'monthly', $3, $4, $5, NOW(), $6, NOW(), NOW())`,
+                    [newPlaceId, newUserId, subStatus, session.customer, session.subscription, periodEnd]
+                  );
+                  console.log("Created business subscription for place:", newPlaceId);
+                }
+              } catch(bizErr) {
+                console.error("Error creating business/place:", bizErr.message);
+              }
+            }
 
             // Note: Don't award referral commission until trial converts to paid
             // Commission will be awarded when subscription status changes to 'active' (after trial)
@@ -1639,13 +1707,23 @@ app.post("/api/signup/auto-login", async (req, res) => {
 
     const signupEmail = (session.metadata?.signupEmail || "").trim().toLowerCase();
     const signupDisplayName = (session.metadata?.signupDisplayName || "").trim();
+    const signupPhone = (session.metadata?.signupPhone || "").trim();
     const signupPlan = session.metadata?.plan || "user";
     const signupReferrerId = Number(session.metadata?.referrerId || 0);
+    const signupInSebastian = (session.metadata?.inSebastian || "yes").trim();
+    const signupInterests = (session.metadata?.interests || "").trim();
+
+    // Business-specific metadata
+    const bizName = (session.metadata?.businessName || "").trim();
+    const bizType = (session.metadata?.businessType || "").trim();
+    const bizCategory = (session.metadata?.businessCategory || "").trim();
+    const bizWebsite = (session.metadata?.businessWebsite || "").trim();
+    const bizAddress = (session.metadata?.businessAddress || "").trim();
 
     if(!signupEmail) {
       return res.status(400).json({ error: "Not a signup session" });
     }
-    console.log("Signup email from session:", signupEmail);
+    console.log("Signup email from session:", signupEmail, "plan:", signupPlan);
 
     // Find the user by email
     let userResult = await data.query(`SELECT id FROM users WHERE LOWER(email) = $1`, [signupEmail]);
@@ -1656,9 +1734,13 @@ app.post("/api/signup/auto-login", async (req, res) => {
       console.log("User not found - webhook may have failed. Creating user now as fallback...");
       try {
         const nowISO = () => new Date().toISOString();
+        const interestsJson = signupInterests ? JSON.stringify(signupInterests.split(",")) : "[]";
+        const locationVerified = signupInSebastian === "yes" ? 1 : 0;
+
         const createResult = await data.query(
-          `INSERT INTO users (email, displayName, createdAt) VALUES ($1, $2, $3) RETURNING id`,
-          [signupEmail, signupDisplayName || '', nowISO()]
+          `INSERT INTO users (email, displayName, phone, interestsJson, locationVerifiedSebastian, createdAt)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+          [signupEmail, signupDisplayName || '', signupPhone, interestsJson, locationVerified, nowISO()]
         );
         userId = createResult.rows?.[0]?.id;
         console.log("Fallback: Created new user id:", userId, "for email:", signupEmail);
@@ -1704,6 +1786,31 @@ app.post("/api/signup/auto-login", async (req, res) => {
             [subscriptionTier, session.customer, userId]
           );
           console.log("Fallback: Set subscriptionTier:", subscriptionTier, "on user:", userId);
+
+          // For business plan, create a place/storefront
+          if(signupPlan === 'business' && bizName) {
+            try {
+              const placeResult = await data.query(
+                `INSERT INTO places (name, ownerUserId, type, category, website, address, createdAt, updatedAt)
+                 VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id`,
+                [bizName, userId, bizType || 'business', bizCategory || '', bizWebsite || '', bizAddress || '']
+              );
+              const newPlaceId = placeResult.rows?.[0]?.id;
+              console.log("Fallback: Created business/place id:", newPlaceId, "for user:", userId);
+
+              if(newPlaceId) {
+                await data.query(
+                  `INSERT INTO business_subscriptions
+                   (placeId, userId, plan, status, stripeCustomerId, stripeSubscriptionId, currentPeriodStart, currentPeriodEnd, createdAt, updatedAt)
+                   VALUES ($1, $2, 'monthly', $3, $4, $5, NOW(), $6, NOW(), NOW())`,
+                  [newPlaceId, userId, subStatus, session.customer, session.subscription, periodEnd]
+                );
+                console.log("Fallback: Created business subscription for place:", newPlaceId);
+              }
+            } catch(bizErr) {
+              console.error("Fallback: Error creating business/place:", bizErr.message);
+            }
+          }
         }
       } catch(createErr) {
         console.error("Fallback user creation failed:", createErr.message);
