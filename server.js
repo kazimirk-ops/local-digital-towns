@@ -1690,8 +1690,9 @@ app.post("/api/signup/auto-login", async (req, res) => {
           console.log("Fallback: Created subscription for user:", userId, "plan:", signupPlan, "status:", subStatus);
         }
       } catch(createErr) {
-        console.error("Fallback user creation failed:", createErr);
-        return res.status(400).json({ error: "Failed to create user account. Please contact support." });
+        console.error("Fallback user creation failed:", createErr.message);
+        console.error("Full error:", createErr);
+        return res.status(400).json({ error: "Failed to create user account: " + createErr.message });
       }
     }
 
