@@ -24,9 +24,16 @@ async function main(){
     statusEl.textContent = order.status === "paid" ? "Payment confirmed." : `Status: ${order.status}`;
     $("paySuccessOrderId").textContent = `#${order.id}`;
     $("paySuccessListing").textContent = items.map(i=>i.titleSnapshot).filter(Boolean).join(", ") || "";
-    $("paySuccessSubtotal").textContent = `Subtotal: ${fmtCents(order.subtotalCents)}`;
-    $("paySuccessGratuity").textContent = `Deposit (5%): ${fmtCents(order.serviceGratuityCents || order.buyerDepositCents)}`;
-    $("paySuccessTotal").textContent = `Total: ${fmtCents(order.totalCents)}`;
+    const subtotalCents = order.subtotalCents || 0;
+    const depositCents = order.serviceGratuityCents || order.buyerDepositCents || 0;
+    $("paySuccessSubtotal").textContent = `Item Total: ${fmtCents(subtotalCents)}`;
+    $("paySuccessGratuity").textContent = `Deposit Paid: ${fmtCents(depositCents)}`;
+    $("paySuccessTotal").textContent = `Order Total: ${fmtCents(order.totalCents)}`;
+    // Show remaining amount to pay seller
+    const remainingEl = $("remainingAmountText");
+    if(remainingEl){
+      remainingEl.innerHTML = `<strong>${fmtCents(subtotalCents)}</strong> - Pay this amount to the seller when you pick up your order.`;
+    }
     // Prompt to share purchase after a short delay
     if(order.status === "paid" && window.ShareModal){
       setTimeout(() => ShareModal.promptPurchaseShare(order.id), 1500);

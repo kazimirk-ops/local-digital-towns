@@ -42,9 +42,11 @@ async function loadOrder() {
 
   $("orderId").textContent = `#${order.id}`;
   $("orderListing").textContent = listing ? `Listing: ${listing.title || "Auction item"}` : "Listing: —";
-  $("orderSubtotal").textContent = `Subtotal: ${fmtCents(order.subtotalCents || order.amountCents)}`;
-  $("orderGratuity").textContent = `Deposit (5%): ${fmtCents(order.serviceGratuityCents || order.buyerDepositCents || 0)}`;
-  $("orderTotal").textContent = `Total: ${fmtCents(order.totalCents || order.amountCents)}`;
+  const subtotalCents = order.subtotalCents || order.amountCents || 0;
+  const depositCents = order.serviceGratuityCents || order.buyerDepositCents || 0;
+  $("orderSubtotal").textContent = `Item Total: ${fmtCents(subtotalCents)} (pay to seller)`;
+  $("orderGratuity").textContent = `Deposit: ${fmtCents(depositCents)} (pay now)`;
+  $("orderTotal").textContent = `Order Total: ${fmtCents(order.totalCents || order.amountCents)}`;
   $("paymentDue").textContent = listing?.paymentDueAt ? new Date(listing.paymentDueAt).toLocaleString() : "—";
   $("paymentCountdown").textContent = formatCountdown(listing?.paymentDueAt);
   $("payStatus").textContent = order.status === "paid" ? "Paid." : "Payment required.";

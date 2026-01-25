@@ -2189,24 +2189,20 @@ app.post("/api/checkout/stripe", async (req,res)=>{
   if(!["pending_payment","requires_payment"].includes(String(order.status||""))) return res.status(400).json({error:"Order not payable"});
   const items = await data.getOrderItems(order.id);
   if(!items.length) return res.status(400).json({error:"Order has no items"});
-  const lineItems = items.map((item)=>({
+  // Only charge the 5% buyer deposit via Stripe - buyer pays remaining amount directly to seller
+  const depositCents = Number(order.serviceGratuityCents || 0);
+  if(depositCents <= 0) return res.status(400).json({error:"No deposit amount calculated"});
+  const lineItems = [{
     price_data: {
       currency: "usd",
-      product_data: { name: item.titleSnapshot || `Item ${item.listingId}` },
-        unit_amount: Math.max(0, parseInt(String(item.priceCentsSnapshot ?? "0"), 10) || 0)
-    },
-    quantity: Number(item.quantity || 1)
-  }));
-  if(Number(order.serviceGratuityCents || 0) > 0){
-    lineItems.push({
-      price_data: {
-        currency: "usd",
-        product_data: { name: "Service Gratuity" },
-        unit_amount: Math.max(0, parseInt(String(order.serviceGratuityCents ?? "0"), 10) || 0)
+      product_data: {
+        name: "Buyer Deposit (5%)",
+        description: "Non-refundable platform deposit. Pay remaining amount directly to seller at pickup/delivery."
       },
-      quantity: 1
-    });
-  }
+      unit_amount: depositCents
+    },
+    quantity: 1
+  }];
   const successUrl = String(process.env.STRIPE_SUCCESS_URL || "").replace("{ORDER_ID}", String(order.id));
   const cancelUrl = String(process.env.STRIPE_CANCEL_URL || "").replace("{ORDER_ID}", String(order.id));
   try{

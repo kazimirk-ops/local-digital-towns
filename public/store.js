@@ -86,7 +86,14 @@ function renderCart(){
   });
   const deposit = Math.ceil(subtotal * 0.05);
   const total = subtotal + deposit;
-  totals.innerHTML = `Subtotal: ${fmtCents(subtotal)} • <span title="Non-refundable platform deposit">Deposit (5%): ${fmtCents(deposit)}</span> • Total: ${fmtCents(total)}`;
+  totals.innerHTML = `
+    <div style="margin-bottom:8px;">
+      <div><strong>Item Total:</strong> ${fmtCents(subtotal)} <span class="muted">(pay to seller at pickup)</span></div>
+      <div><strong>Deposit (5%):</strong> ${fmtCents(deposit)} <span class="muted">(pay now via Stripe, non-refundable)</span></div>
+      <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:6px;padding-top:6px;"><strong>Total:</strong> ${fmtCents(total)}</div>
+    </div>
+    <div class="muted" style="font-size:11px;">Only the ${fmtCents(deposit)} deposit is charged to your card. Pay ${fmtCents(subtotal)} directly to seller.</div>
+  `;
   list.querySelectorAll("button[data-inc]").forEach((btn)=>{
     btn.addEventListener("click", async ()=>{
       try{
