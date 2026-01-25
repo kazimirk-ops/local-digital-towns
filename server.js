@@ -619,30 +619,34 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
             );
             console.log("Set subscriptionTier:", subscriptionTier, "and stripeCustomerId on user:", newUserId);
 
-            // For business plan, create a place/storefront
-            if(plan === 'business' && bizName) {
-              try {
-                const placeResult = await data.query(
-                  `INSERT INTO places (name, ownerUserId, type, category, website, address, createdAt, updatedAt)
-                   VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id`,
-                  [bizName, newUserId, bizType || 'business', bizCategory || '', bizWebsite || '', bizAddress || '']
-                );
-                const newPlaceId = placeResult.rows?.[0]?.id;
-                console.log("Created business/place id:", newPlaceId, "for user:", newUserId);
+            // Create a store/place for ALL subscribers (User and Business)
+            // Business plan: uses business name, type from form, gets featured
+            // User plan: uses display name, type 'individual', not featured
+            try {
+              const storeName = plan === 'business' ? bizName : signupDisplayName;
+              const storeType = plan === 'business' ? (bizType || 'business') : 'individual';
+              const isFeatured = plan === 'business' ? 1 : 0;
 
-                // Create business subscription for the place
-                if(newPlaceId) {
-                  await data.query(
-                    `INSERT INTO business_subscriptions
-                     (placeId, userId, plan, status, stripeCustomerId, stripeSubscriptionId, currentPeriodStart, currentPeriodEnd, createdAt, updatedAt)
-                     VALUES ($1, $2, 'monthly', $3, $4, $5, NOW(), $6, NOW(), NOW())`,
-                    [newPlaceId, newUserId, subStatus, session.customer, session.subscription, periodEnd]
-                  );
-                  console.log("Created business subscription for place:", newPlaceId);
-                }
-              } catch(bizErr) {
-                console.error("Error creating business/place:", bizErr.message);
+              const placeResult = await data.query(
+                `INSERT INTO places (name, ownerUserId, sellerType, category, website, addressPublic, isFeatured, townId, districtId, status)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, 1, 1, 'approved') RETURNING id`,
+                [storeName || 'My Store', newUserId, storeType, bizCategory || '', bizWebsite || '', bizAddress || '', isFeatured]
+              );
+              const newPlaceId = placeResult.rows?.[0]?.id;
+              console.log("Created store/place id:", newPlaceId, "for user:", newUserId, "plan:", plan);
+
+              // Create subscription record for the place (links store to subscription)
+              if(newPlaceId) {
+                await data.query(
+                  `INSERT INTO business_subscriptions
+                   (placeId, userId, plan, status, stripeCustomerId, stripeSubscriptionId, currentPeriodStart, currentPeriodEnd, createdAt, updatedAt)
+                   VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, NOW(), NOW())`,
+                  [newPlaceId, newUserId, plan === 'business' ? 'monthly' : 'user', subStatus, session.customer, session.subscription, periodEnd]
+                );
+                console.log("Created place subscription for place:", newPlaceId);
               }
+            } catch(storeErr) {
+              console.error("Error creating store/place:", storeErr.message);
             }
 
             // Note: Don't award referral commission until trial converts to paid
@@ -1787,29 +1791,31 @@ app.post("/api/signup/auto-login", async (req, res) => {
           );
           console.log("Fallback: Set subscriptionTier:", subscriptionTier, "on user:", userId);
 
-          // For business plan, create a place/storefront
-          if(signupPlan === 'business' && bizName) {
-            try {
-              const placeResult = await data.query(
-                `INSERT INTO places (name, ownerUserId, type, category, website, address, createdAt, updatedAt)
-                 VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING id`,
-                [bizName, userId, bizType || 'business', bizCategory || '', bizWebsite || '', bizAddress || '']
-              );
-              const newPlaceId = placeResult.rows?.[0]?.id;
-              console.log("Fallback: Created business/place id:", newPlaceId, "for user:", userId);
+          // Create a store/place for ALL subscribers (User and Business)
+          try {
+            const storeName = signupPlan === 'business' ? bizName : signupDisplayName;
+            const storeType = signupPlan === 'business' ? (bizType || 'business') : 'individual';
+            const isFeatured = signupPlan === 'business' ? 1 : 0;
 
-              if(newPlaceId) {
-                await data.query(
-                  `INSERT INTO business_subscriptions
-                   (placeId, userId, plan, status, stripeCustomerId, stripeSubscriptionId, currentPeriodStart, currentPeriodEnd, createdAt, updatedAt)
-                   VALUES ($1, $2, 'monthly', $3, $4, $5, NOW(), $6, NOW(), NOW())`,
-                  [newPlaceId, userId, subStatus, session.customer, session.subscription, periodEnd]
-                );
-                console.log("Fallback: Created business subscription for place:", newPlaceId);
-              }
-            } catch(bizErr) {
-              console.error("Fallback: Error creating business/place:", bizErr.message);
+            const placeResult = await data.query(
+              `INSERT INTO places (name, ownerUserId, sellerType, category, website, addressPublic, isFeatured, townId, districtId, status)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, 1, 1, 'approved') RETURNING id`,
+              [storeName || 'My Store', userId, storeType, bizCategory || '', bizWebsite || '', bizAddress || '', isFeatured]
+            );
+            const newPlaceId = placeResult.rows?.[0]?.id;
+            console.log("Fallback: Created store/place id:", newPlaceId, "for user:", userId, "plan:", signupPlan);
+
+            if(newPlaceId) {
+              await data.query(
+                `INSERT INTO business_subscriptions
+                 (placeId, userId, plan, status, stripeCustomerId, stripeSubscriptionId, currentPeriodStart, currentPeriodEnd, createdAt, updatedAt)
+                 VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, NOW(), NOW())`,
+                [newPlaceId, userId, signupPlan === 'business' ? 'monthly' : 'user', subStatus, session.customer, session.subscription, periodEnd]
+              );
+              console.log("Fallback: Created place subscription for place:", newPlaceId);
             }
+          } catch(storeErr) {
+            console.error("Fallback: Error creating store/place:", storeErr.message);
           }
         }
       } catch(createErr) {
