@@ -288,13 +288,15 @@
   function init() {
     console.log("Signup form initializing...");
 
-    // Set up plan card clicks
-    document.querySelectorAll(".plan-card").forEach(card => {
-      card.addEventListener("click", () => {
-        const plan = card.dataset.plan;
-        if (plan) selectPlan(plan);
+    try {
+      // Set up plan card clicks
+      document.querySelectorAll(".plan-card").forEach(card => {
+        card.addEventListener("click", () => {
+          console.log("Plan card clicked:", card.dataset.plan);
+          const plan = card.dataset.plan;
+          if (plan) selectPlan(plan);
+        });
       });
-    });
 
     // Set up enter key handlers for form fields
     ["userName", "userEmail", "userPhone"].forEach(id => {
@@ -327,6 +329,9 @@
     showStep(1);
 
     console.log("Signup form initialized");
+    } catch(err) {
+      console.error("Signup init error:", err);
+    }
   }
 
   // Make functions available globally for onclick handlers
