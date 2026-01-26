@@ -1104,6 +1104,11 @@ async function updateListingStatus(listingId, status){
   return getListingById(listingId);
 }
 
+async function updateListingQuantity(listingId, quantity) {
+  await stmt("UPDATE listings SET quantity=$1 WHERE id=$2").run(Number(quantity), Number(listingId));
+  return getListingById(listingId);
+}
+
 // Generic listing update
 async function updateListing(listingId, updates) {
   const listing = await getListingById(listingId);
@@ -3779,6 +3784,7 @@ module.exports = {
   getListings,
   getListingById,
   updateListingStatus,
+  updateListingQuantity,
   updateListing,
   deleteListing,
   getHighestBidForListing,
