@@ -197,12 +197,44 @@ async function loadOrders(filter) {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       const orderId = btn.dataset.order;
-      const buyerId = btn.dataset.buyer;
-      // Navigate to review page or open modal
-      window.location.href = `/orders/${orderId}#review`;
+      $('reviewOrderId').value = orderId;
+      $('reviewRating').value = '5';
+      $('reviewText').value = '';
+      $('reviewModal').style.display = 'flex';
     });
   });
 }
+
+// Review modal handlers
+document.addEventListener('DOMContentLoaded', () => {
+  $('cancelReviewBtn')?.addEventListener('click', () => {
+    $('reviewModal').style.display = 'none';
+  });
+  $('submitReviewBtn')?.addEventListener('click', async () => {
+    const orderId = $('reviewOrderId').value;
+    const rating = $('reviewRating').value;
+    const text = $('reviewText').value;
+    $('submitReviewBtn').disabled = true;
+    $('submitReviewBtn').textContent = 'Submitting...';
+    try {
+      const res = await fetch(`/orders/${orderId}/review`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: Number(rating), text })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit');
+      $('reviewModal').style.display = 'none';
+      alert('Review submitted!');
+      document.querySelector(`.leave-review-btn[data-order="${orderId}"]`)?.remove();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+    $('submitReviewBtn').disabled = false;
+    $('submitReviewBtn').textContent = 'Submit Review';
+  });
+});
 
 function setActiveTab(filter) {
   document.querySelectorAll(".tab-btn").forEach((btn) => {
