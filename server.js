@@ -3879,7 +3879,7 @@ app.post("/listings/:id/bid", async (req, res) =>{
   }
   const highest = await data.getHighestBidForListing(listing.id);
   const minBid = highest ? (highest.amountCents + (listing.minIncrementCents||0)) : (listing.startBidCents||0);
-  if(amountCents < minBid) return res.status(400).json({error:`Bid too low. Minimum ${minBid}`});
+  if(amountCents < minBid) return res.status(400).json({error:`Bid too low. Minimum $${(minBid/100).toFixed(2)}`});
   const bid = await data.addBid(listing.id, u, amountCents);
   const summary = await data.getAuctionSummary(listing.id);
   res.json({ok:true, bidId: bid.id, highestBidCents: summary.highestBidCents, bidCount: summary.bidCount});
