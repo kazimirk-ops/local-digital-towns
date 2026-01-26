@@ -139,8 +139,8 @@ function applyStorePermissions(){
 async function createStore() {
   try {
     const payload = {
-      sellerType: document.getElementById("storeType").value,
-      districtId: Number(document.getElementById("storeDistrict").value || 1),
+      sellerType: document.getElementById("storeType")?.value || "individual",
+      districtId: Number(document.getElementById("storeDistrict")?.value || 1),
       name: document.getElementById("storeName").value.trim(),
       category: document.getElementById("storeCategory").value.trim(),
       description: document.getElementById("storeDescription").value.trim(),
