@@ -10,10 +10,31 @@ function nowISO() { return new Date().toISOString(); }
 function normalizeEmail(e) { return (e || "").toString().trim().toLowerCase(); }
 function randToken(bytes = 24) { return crypto.randomBytes(bytes).toString("hex"); }
 
+function toCamelCase(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(toCamelCase);
+  const result = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase())
+      .replace(/userid/gi, 'userId')
+      .replace(/placeid/gi, 'placeId')
+      .replace(/createdat/gi, 'createdAt')
+      .replace(/updatedat/gi, 'updatedAt')
+      .replace(/bannerurl/gi, 'bannerUrl')
+      .replace(/avatarurl/gi, 'avatarUrl')
+      .replace(/owneruserid/gi, 'ownerUserId')
+      .replace(/buyeruserid/gi, 'buyerUserId')
+      .replace(/selleruserid/gi, 'sellerUserId')
+      .replace(/trusttier/gi, 'trustTier');
+    result[camelKey] = value;
+  }
+  return result;
+}
+
 function stmt(text) {
   return {
-    get: (...params) => db.one(text, params),
-    all: (...params) => db.many(text, params),
+    get: async (...params) => toCamelCase(await db.one(text, params)),
+    all: async (...params) => (await db.many(text, params)).map(toCamelCase),
     run: (...params) => db.query(text, params),
   };
 }
