@@ -484,7 +484,7 @@ app.get("/api/version", async (req, res) =>{
 
 // Pages
 app.get("/ui", async (req, res) =>res.sendFile(path.join(__dirname,"public","index.html")));
-app.get("/signup", async (req, res) =>res.sendFile(path.join(__dirname,"public","signup.html")));
+app.get("/signup", (req, res) => res.redirect("/subscribe"));
 app.get("/waitlist", async (req, res) =>res.sendFile(path.join(__dirname,"public","waitlist.html")));
 app.get("/subscribe", (req, res) => res.sendFile(path.join(__dirname, "public", "subscribe.html")));
 app.get("/subscribe/success", (req, res) => res.sendFile(path.join(__dirname, "public", "subscribe", "success.html")));
