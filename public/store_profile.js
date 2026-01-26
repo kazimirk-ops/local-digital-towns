@@ -127,9 +127,7 @@ function applyStorePermissions(){
   if(auctionBtn) auctionBtn.disabled = !canAuction;
   if(inboxBtn) inboxBtn.disabled = !(perms.dm);
   if(inboxInput) inboxInput.disabled = !(perms.dm);
-  if(!listingApprovalOk){
-    setMsg("listingMsg", "Store approval required to create listings.");
-  }else if(!perms.listingCreate){
+  if(!perms.listingCreate){
     setMsg("listingMsg", "Tier 1+ required to create listings.");
   }
   const type = document.getElementById("listingType")?.value;
