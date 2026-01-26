@@ -100,6 +100,9 @@ async function loadOrders(filter) {
     const hoursSince = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
     const canReportGhost = isPendingPayment && hoursSince >= 48;
 
+    // Check if order is paid and can be marked complete
+    const canMarkComplete = String(status).toLowerCase() === "paid";
+
     const row = document.createElement("div");
     row.className = "table-row";
     row.innerHTML = `
@@ -108,7 +111,7 @@ async function loadOrders(filter) {
       <div data-label="Store">${placeMap.get(Number(order.sellerPlaceId || 0)) || "—"}</div>
       <div data-label="Status"><span class="badge ${statusClass(status)}">${status}</span></div>
       <div data-label="Total">${formatCurrencyCents(totalCents)}</div>
-      <div data-label="Date">${formatDate(order.createdAt)}${canReportGhost ? `<button class="report-ghost-btn" data-order="${order.id}" style="margin-left:8px; padding:4px 8px; font-size:11px; background:#7f1d1d; border:1px solid #991b1b; border-radius:6px; color:#fca5a5; cursor:pointer;">Report Non-Payment</button>` : ''}</div>
+      <div data-label="Date">${formatDate(order.createdAt)}${canReportGhost ? `<button class="report-ghost-btn" data-order="${order.id}" style="margin-left:8px; padding:4px 8px; font-size:11px; background:#7f1d1d; border:1px solid #991b1b; border-radius:6px; color:#fca5a5; cursor:pointer;">Report Non-Payment</button>` : ''}${canMarkComplete ? `<button class="mark-complete-btn" data-order="${order.id}" style="margin-left:8px; padding:4px 8px; font-size:11px; background:#166534; border:1px solid #15803d; border-radius:6px; color:#86efac; cursor:pointer;">Mark Complete</button>` : ''}</div>
     `;
     body.appendChild(row);
   });
@@ -141,6 +144,44 @@ async function loadOrders(filter) {
         alert('Error: ' + err.message);
         btn.disabled = false;
         btn.textContent = 'Report Non-Payment';
+      }
+    });
+  });
+
+  // Add event listeners for mark complete buttons
+  body.querySelectorAll('.mark-complete-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const orderId = btn.dataset.order;
+      if (!confirm('Mark this order as completed?')) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Updating...';
+
+      try {
+        const res = await fetch(`/orders/${orderId}/complete`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to mark complete');
+
+        btn.textContent = 'Completed';
+        btn.style.background = '#1e3a5f';
+        btn.style.borderColor = '#2563eb';
+        btn.style.color = '#93c5fd';
+        // Update the status badge in the same row
+        const statusBadge = btn.closest('.table-row').querySelector('.badge');
+        if (statusBadge) {
+          statusBadge.textContent = 'completed';
+          statusBadge.className = 'badge paid';
+        }
+        btn.remove();
+      } catch (err) {
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Mark Complete';
       }
     });
   });
