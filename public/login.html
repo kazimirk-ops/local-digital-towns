@@ -1,0 +1,166 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login - Digital Sebastian</title>
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <style>
+      :root {
+        --join-bg: #0a0f1a;
+        --join-panel: #0d1424;
+        --join-panel-2: #151d2e;
+        --join-border: rgba(255, 255, 255, 0.08);
+        --join-muted: #94a3b8;
+        --join-text: #e2e8f0;
+        --join-accent: #22d3ee;
+        --join-accent-2: #3b82f6;
+      }
+      body {
+        font-family: var(--font-sans, ui-sans-serif, system-ui);
+        background: var(--join-bg);
+        color: var(--join-text);
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      a { color: #7dd3fc; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .container {
+        width: 100%;
+        max-width: 400px;
+        padding: 20px;
+      }
+      .hero {
+        text-align: center;
+        margin-bottom: 24px;
+      }
+      .hero-title { font-size: 28px; margin: 0; color: #fff; }
+      .hero-subtitle { margin: 8px 0 0; color: var(--join-muted); font-size: 15px; }
+      .card {
+        background: var(--join-panel);
+        border: 1px solid var(--join-border);
+        border-radius: 16px;
+        padding: 24px;
+      }
+      .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+      .label { color: #cbd5f5; font-size: 13px; font-weight: 600; }
+      input {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--join-panel-2);
+        color: #fff;
+        font-size: 14px;
+        box-sizing: border-box;
+      }
+      input:focus {
+        outline: none;
+        border-color: rgba(56, 189, 248, 0.5);
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+      }
+      .code-input {
+        font-size: 24px;
+        text-align: center;
+        letter-spacing: 8px;
+        font-family: monospace;
+      }
+      .btn-primary {
+        width: 100%;
+        border: none;
+        border-radius: 12px;
+        padding: 14px 20px;
+        background: linear-gradient(90deg, var(--join-accent), var(--join-accent-2));
+        color: #0b1120;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+      .btn-primary:hover:not(:disabled) { opacity: 0.9; }
+      .error-msg {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 16px;
+        display: none;
+        font-size: 14px;
+      }
+      .success-msg {
+        background: rgba(34, 197, 94, 0.15);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        color: #86efac;
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 16px;
+        display: none;
+        font-size: 14px;
+      }
+      .step { display: none; }
+      .step.active { display: block; }
+      .sent-to {
+        color: var(--join-muted);
+        font-size: 14px;
+        margin-bottom: 16px;
+        text-align: center;
+      }
+      .sent-to strong { color: #fff; }
+      .resend-link {
+        text-align: center;
+        margin-top: 16px;
+        font-size: 13px;
+      }
+      .footer-text {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 14px;
+        color: var(--join-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="hero">
+        <h1 class="hero-title">Welcome Back</h1>
+        <p class="hero-subtitle">Enter your email to receive a login code</p>
+      </div>
+
+      <div class="card">
+        <div class="error-msg" id="errorMsg"></div>
+        <div class="success-msg" id="successMsg"></div>
+
+        <!-- Step 1: Email Entry -->
+        <div class="step active" id="stepEmail">
+          <div class="field">
+            <label class="label">Email</label>
+            <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+          </div>
+          <button class="btn-primary" id="sendCodeBtn">Send Code</button>
+        </div>
+
+        <!-- Step 2: Code Entry -->
+        <div class="step" id="stepCode">
+          <p class="sent-to">We sent a code to <strong id="sentToEmail"></strong></p>
+          <div class="field">
+            <label class="label">6-Digit Code</label>
+            <input type="text" id="code" class="code-input" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric">
+          </div>
+          <button class="btn-primary" id="verifyCodeBtn">Verify Code</button>
+          <div class="resend-link">
+            <a href="#" id="resendLink">Didn't receive it? Send again</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-text">
+        Don't have an account? <a href="/subscribe">Sign up</a>
+      </div>
+    </div>
+    <script src="/login.js?v=1"></script>
+  </body>
+</html>

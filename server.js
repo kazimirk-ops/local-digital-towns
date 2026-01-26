@@ -488,6 +488,7 @@ app.get("/signup", (req, res) => res.redirect("/subscribe"));
 app.get("/waitlist", async (req, res) =>res.sendFile(path.join(__dirname,"public","waitlist.html")));
 app.get("/subscribe", (req, res) => res.sendFile(path.join(__dirname, "public", "subscribe.html")));
 app.get("/subscribe/success", (req, res) => res.sendFile(path.join(__dirname, "public", "subscribe", "success.html")));
+app.get("/login", (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
 app.get("/apply/business", async (req, res) =>res.sendFile(path.join(__dirname,"public","apply_business.html")));
 app.get("/apply/resident", async (req, res) =>res.sendFile(path.join(__dirname,"public","apply_resident.html")));
 app.get("/privacy", async (req, res) =>res.sendFile(path.join(__dirname,"public","privacy.html")));
