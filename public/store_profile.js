@@ -305,6 +305,9 @@ async function deleteListing(id) {
   } catch (e) { alert("Error: " + e.message); }
 }
 
+window.editListing = editListing;
+window.deleteListing = deleteListing;
+
 async function saveStorefront() {
   try {
     const storeId = document.getElementById("storefrontStore").value;
