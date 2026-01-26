@@ -1,390 +1,208 @@
-// Signup page JavaScript - Multi-step flow
-(function() {
-  const $ = (id) => document.getElementById(id);
+const $ = (id) => document.getElementById(id);
+let presenceOk = false;
+let pendingEmail = "";
 
-  let selectedPlan = null;
-  let referralCode = null;
-  let currentStep = 1;
+function showSignup(html) { $("signupResult").innerHTML = html; }
+function showLogin(html) { $("loginResult").innerHTML = html; }
+function dbg(msg) { $("debug").textContent = msg || ""; }
 
-  function showError(msg) {
-    const el = $("errorMsg");
-    if (el) {
-      el.textContent = msg;
-      el.style.display = msg ? "block" : "none";
-    }
-    if (msg) console.error("Signup error:", msg);
+async function postJSON(url, payload) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = { raw: text }; }
+  if (!res.ok) {
+    const msg = data && (data.error || data.message) ? (data.error || data.message) : "Request failed.";
+    throw new Error(msg);
   }
+  return data;
+}
 
-  function showSuccess(msg) {
-    const el = $("successMsg");
-    if (el) {
-      el.textContent = msg;
-      el.style.display = msg ? "block" : "none";
-    }
+async function getSessionUser(){
+  try{
+    const res = await fetch("/me");
+    const data = await res.json();
+    return data.user || null;
+  }catch{
+    return null;
   }
+}
 
-  function updateStepIndicator() {
-    $("dot1").className = currentStep >= 1 ? (currentStep > 1 ? "step-dot completed" : "step-dot active") : "step-dot";
-    $("dot2").className = currentStep >= 2 ? (currentStep > 2 ? "step-dot completed" : "step-dot active") : "step-dot";
-    $("dot3").className = currentStep >= 3 ? "step-dot active" : "step-dot";
-  }
+async function requireLogin(message){
+  const user = await getSessionUser();
+  if(user) return user;
+  showSignup(`<div class="warn"><strong>Login required</strong><div class="muted">${message}</div></div>`);
+  return null;
+}
 
-  function showStep(step) {
-    currentStep = step;
-    $("step1").classList.remove("active");
-    $("step2user").classList.remove("active");
-    $("step2business").classList.remove("active");
-    $("step3").classList.remove("active");
+async function setAuthUI(){
+  const user = await getSessionUser();
+  const card = $("trustApplyCard");
+  if(card) card.style.display = user ? "block" : "none";
+  if(user && $("email")) $("email").value = user.email || "";
+  if(!user) $("trustStatus").textContent = "Log in to apply for higher tiers.";
+}
 
-    if (step === 1) {
-      $("step1").classList.add("active");
-    } else if (step === 2) {
-      if (selectedPlan === "user") {
-        $("step2user").classList.add("active");
-      } else {
-        $("step2business").classList.add("active");
-      }
-    } else if (step === 3) {
-      $("step3").classList.add("active");
-    }
-
-    updateStepIndicator();
-    showError("");
-  }
-
-  function selectPlan(plan) {
-    selectedPlan = plan;
-    document.querySelectorAll(".plan-card").forEach(card => {
-      card.classList.toggle("selected", card.dataset.plan === plan);
-    });
-    const btn = $("continueBtn");
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = plan === "business" ? "Continue with Business Plan" : "Continue with User Plan";
-    }
-  }
-
-  function goToStep1() {
-    showStep(1);
-  }
-
-  function goToStep2() {
-    if (!selectedPlan) {
-      showError("Please select a plan first.");
+async function loadTrustStatus(){
+  try{
+    const ctx = await fetch("/town/context").then(r=>r.json());
+    $("tierBadge").textContent = `Tier ${ctx.trustTier || 0}: ${ctx.tierName || ctx.trustTierLabel || "Visitor"}`;
+    const res = await fetch("/api/trust/my");
+    if(res.status === 401){
+      $("trustStatus").textContent = "Log in to see your application status.";
       return;
     }
-    showStep(2);
+    const my = await res.json();
+    const apps = my.applications || [];
+    if(apps.length){
+      const last = apps[0];
+      $("trustStatus").textContent = `Latest application: Tier ${last.requestedTier} • ${last.status}`;
+    }else{
+      $("trustStatus").textContent = "No applications yet.";
+    }
+  }catch{}
+}
+
+$("verifyPresenceBtn").onclick = async () => {
+  const user = await requireLogin("Log in with the email code below before location verification.");
+  if(!user) return;
+  presenceOk = false;
+  $("presenceStatus").textContent = "Checking location...";
+  if(!navigator.geolocation){
+    $("presenceStatus").textContent = "Geolocation not available.";
+    return;
   }
-
-  async function validateReferralCode(code) {
-    try {
-      const res = await fetch(`/api/referral/validate/${encodeURIComponent(code)}`);
-      const data = await res.json();
-      if (data.valid) {
-        referralCode = code;
-        const box = $("referralBox");
-        const name = $("referrerName");
-        if (box) box.style.display = "block";
-        if (name) name.textContent = data.referrerName || "a member";
-        return true;
-      }
-    } catch (e) {
-      console.error("Referral validation error:", e);
+  navigator.geolocation.getCurrentPosition(async (pos)=>{
+    try{
+      const payload = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude
+      };
+      const res = await postJSON("/api/verify/location", payload);
+      presenceOk = !!res.ok;
+      $("presenceStatus").textContent = res.ok
+        ? "Location verified in Sebastian."
+        : "Not inside Sebastian verification box.";
+    }catch(e){
+      $("presenceStatus").textContent = `Location verify failed: ${e.message}`;
     }
-    return false;
-  }
+  }, (err)=>{
+    $("presenceStatus").textContent = `Location denied: ${err.message}`;
+  }, { enableHighAccuracy: true, timeout: 10000 });
+};
 
-  function validateUserForm() {
-    const name = ($("userName")?.value || "").trim();
-    const email = ($("userEmail")?.value || "").trim().toLowerCase();
-    const terms = $("userTerms")?.checked;
-
-    if (!name) {
-      showError("Please enter your display name.");
-      $("userName")?.focus();
-      return null;
-    }
-    if (!email || !email.includes("@")) {
-      showError("Please enter a valid email address.");
-      $("userEmail")?.focus();
-      return null;
-    }
-    if (!terms) {
-      showError("Please agree to the Terms of Service.");
-      return null;
-    }
-
-    // Collect interests
-    const interests = [];
-    if ($("interestBuying")?.checked) interests.push("buying");
-    if ($("interestSelling")?.checked) interests.push("selling");
-    if ($("interestGiveaways")?.checked) interests.push("giveaways");
-    if ($("interestCommunity")?.checked) interests.push("community");
-
-    return {
-      displayName: name,
-      email: email,
-      phone: ($("userPhone")?.value || "").trim(),
-      interests: interests,
-      inSebastian: $("userInSebastian")?.value || "yes"
+$("submitTrust").onclick = async () => {
+  try {
+    dbg("");
+    const user = await requireLogin("Log in with the email code below before submitting a tier application.");
+    if(!user) return;
+    const payload = {
+      requestedTier: Number($("requestedTier").value || 1),
+      email: $("email").value,
+      phone: $("phone").value,
+      address1: $("address1").value,
+      address2: $("address2").value,
+      city: $("city").value,
+      state: $("state").value,
+      zip: $("zip").value,
+      identityMethod: $("identityMethod").value
     };
+    if(payload.requestedTier === 1 && !presenceOk){
+      return showSignup(`<div class="warn"><strong>Location required</strong><div class="muted">Verify location in Sebastian before submitting Tier 1.</div></div>`);
+    }
+    const data = await postJSON("/api/trust/apply", payload);
+    const statusText = data.status === "approved"
+      ? "Auto‑approved. Your tier is now active."
+      : "Pending admin review.";
+    showSignup(`<div class="ok"><strong>✅ Submitted</strong><div class="muted">Application #${data.id}. ${statusText}</div></div>`);
+
+    // Encourage login using same email
+    $("loginEmail").value = payload.email || "";
+    await loadTrustStatus();
+
+    // Prompt to share verification if approved
+    if(data.status === "approved" && window.ShareModal){
+      const tierNames = { 0: "Visitor", 1: "Individual", 2: "Moderator", 3: "Local Business", 4: "Admin" };
+      const tierName = tierNames[payload.requestedTier] || "Sebastian local";
+      setTimeout(() => ShareModal.promptVerificationShare(tierName), 1000);
+    }
+  } catch (e) {
+    dbg(`ERROR: ${e.message}`);
   }
+};
 
-  function validateBusinessForm() {
-    const contactName = ($("bizContactName")?.value || "").trim();
-    const email = ($("bizEmail")?.value || "").trim().toLowerCase();
-    const bizName = ($("bizName")?.value || "").trim();
-    const bizType = ($("bizType")?.value || "").trim();
-    const bizCategory = ($("bizCategory")?.value || "").trim();
-    const inSebastian = ($("bizInSebastian")?.value || "").trim();
-    const terms = $("bizTerms")?.checked;
+function showCodeVerifySection(show) {
+  $("codeVerifySection").style.display = show ? "block" : "none";
+}
 
-    if (!contactName) {
-      showError("Please enter your contact name.");
-      $("bizContactName")?.focus();
-      return null;
-    }
-    if (!email || !email.includes("@")) {
-      showError("Please enter a valid email address.");
-      $("bizEmail")?.focus();
-      return null;
-    }
-    if (!bizName) {
-      showError("Please enter your business name.");
-      $("bizName")?.focus();
-      return null;
-    }
-    if (!bizType) {
-      showError("Please select a business type.");
-      $("bizType")?.focus();
-      return null;
-    }
-    if (!bizCategory) {
-      showError("Please enter a category.");
-      $("bizCategory")?.focus();
-      return null;
-    }
-    if (!inSebastian) {
-      showError("Please indicate if you're located in Sebastian.");
-      $("bizInSebastian")?.focus();
-      return null;
-    }
-    if (!terms) {
-      showError("Please agree to the Terms of Service.");
-      return null;
-    }
+$("requestCode").onclick = async () => {
+  try {
+    dbg("");
+    const email = $("loginEmail").value.trim();
+    if (!email) return dbg("Enter email for login.");
 
-    return {
-      displayName: contactName,
-      email: email,
-      phone: ($("bizPhone")?.value || "").trim(),
-      businessName: bizName,
-      businessType: bizType,
-      businessCategory: bizCategory,
-      businessWebsite: ($("bizWebsite")?.value || "").trim(),
-      businessAddress: ($("bizAddress")?.value || "").trim(),
-      inSebastian: inSebastian
-    };
+    await postJSON("/api/auth/request-code", { email });
+    pendingEmail = email;
+    showCodeVerifySection(true);
+    $("loginCode").value = "";
+    $("loginCode").focus();
+    showLogin(`
+      <div class="ok">
+        <strong>✅ Code sent</strong>
+        <div class="muted">Check your email for the 6-digit code.</div>
+      </div>
+    `);
+  } catch (e) {
+    dbg(`ERROR: ${e.message}`);
   }
+};
 
-  async function startCheckout() {
-    console.log("startCheckout called, plan:", selectedPlan);
-    showError("");
-    showSuccess("");
+async function verifyCode() {
+  try {
+    dbg("");
+    const email = (pendingEmail || $("loginEmail").value.trim()).trim();
+    const code = $("loginCode").value.trim();
+    if (!email) return dbg("Enter email for login.");
+    if (!code || code.length !== 6) return dbg("Enter the 6-digit code.");
 
-    // Validate form based on plan
-    let formData;
-    if (selectedPlan === "user") {
-      formData = validateUserForm();
-    } else {
-      formData = validateBusinessForm();
-    }
-
-    if (!formData) return;
-
-    // Show processing step
-    showStep(3);
-
-    const checkoutBtn = selectedPlan === "user" ? $("userCheckoutBtn") : $("bizCheckoutBtn");
-    if (checkoutBtn) {
-      checkoutBtn.disabled = true;
-      checkoutBtn.textContent = "Processing...";
-    }
-
-    try {
-      console.log("Calling /api/signup/checkout with:", { ...formData, plan: selectedPlan });
-
-      const res = await fetch("/api/signup/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formData.email,
-          displayName: formData.displayName,
-          phone: formData.phone || "",
-          plan: selectedPlan,
-          referralCode: referralCode || null,
-          // User-specific fields
-          interests: formData.interests || [],
-          inSebastian: formData.inSebastian || "yes",
-          // Business-specific fields
-          businessName: formData.businessName || "",
-          businessType: formData.businessType || "",
-          businessCategory: formData.businessCategory || "",
-          businessWebsite: formData.businessWebsite || "",
-          businessAddress: formData.businessAddress || ""
-        })
-      });
-
-      const data = await res.json();
-      console.log("Checkout response:", data);
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to create checkout");
-      }
-
-      if (data.checkoutUrl) {
-        console.log("Redirecting to:", data.checkoutUrl);
-        window.location.href = data.checkoutUrl;
-      } else {
-        throw new Error("No checkout URL received");
-      }
-    } catch (e) {
-      console.error("Checkout error:", e);
-      showError(e.message);
-      showStep(2); // Go back to form
-      if (checkoutBtn) {
-        checkoutBtn.disabled = false;
-        checkoutBtn.textContent = "Start 7-Day Free Trial";
-      }
-    }
+    await postJSON("/api/auth/verify-code", { email, code });
+    showLogin(`
+      <div class="ok">
+        <strong>✅ Logged in</strong>
+        <div class="muted">Redirecting to town...</div>
+      </div>
+    `);
+    setTimeout(() => { window.location.href = "/ui"; }, 600);
+  } catch (e) {
+    dbg(`ERROR: ${e.message}`);
   }
+}
 
-  function checkReferralCode() {
-    const params = new URLSearchParams(window.location.search);
-    const ref = params.get("ref");
-    if (ref) {
-      validateReferralCode(ref);
-    }
+$("verifyCodeBtn").onclick = verifyCode;
+
+// Only allow 6 digits in the code input
+$("loginCode").oninput = (e) => {
+  e.target.value = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+};
+
+// Allow pressing Enter in the code field to submit
+$("loginCode").onkeydown = (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    verifyCode();
   }
+};
 
-  async function checkSession() {
-    try {
-      const res = await fetch("/me");
-      const data = await res.json();
-      if (data.user) {
-        const subRes = await fetch("/api/user/subscription");
-        const subData = await subRes.json();
-        if (subData.isActive) {
-          window.location.href = "/ui";
-        } else {
-          window.location.href = "/subscription";
-        }
-      }
-    } catch (e) {
-      // Not logged in, that's fine
-    }
+// Allow pressing Enter in the email field to request code
+$("loginEmail").onkeydown = (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    $("requestCode").click();
   }
+};
 
-  function init() {
-    console.log("Signup form initializing...");
-
-    try {
-      // Set up plan card clicks
-      document.querySelectorAll(".plan-card").forEach(card => {
-        card.addEventListener("click", () => {
-          console.log("Plan card clicked:", card.dataset.plan);
-          const plan = card.dataset.plan;
-          if (plan) selectPlan(plan);
-        });
-      });
-
-    // Set up enter key handlers for form fields
-    ["userName", "userEmail", "userPhone"].forEach(id => {
-      const el = $(id);
-      if (el) {
-        el.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            startCheckout();
-          }
-        });
-      }
-    });
-
-    ["bizContactName", "bizEmail", "bizPhone", "bizName", "bizCategory", "bizWebsite", "bizAddress"].forEach(id => {
-      const el = $(id);
-      if (el) {
-        el.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            startCheckout();
-          }
-        });
-      }
-    });
-
-    // Set up button click handlers
-    const continueBtn = $("continueBtn");
-    if (continueBtn) {
-      continueBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        goToStep2();
-      });
-    }
-
-    const userCheckoutBtn = $("userCheckoutBtn");
-    if (userCheckoutBtn) {
-      userCheckoutBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        startCheckout();
-      });
-    }
-
-    const bizCheckoutBtn = $("bizCheckoutBtn");
-    if (bizCheckoutBtn) {
-      bizCheckoutBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        startCheckout();
-      });
-    }
-
-    const userBackBtn = $("userBackBtn");
-    if (userBackBtn) {
-      userBackBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        goToStep1();
-      });
-    }
-
-    const bizBackBtn = $("bizBackBtn");
-    if (bizBackBtn) {
-      bizBackBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        goToStep1();
-      });
-    }
-
-    // Initialize
-    checkSession();
-    checkReferralCode();
-    showStep(1);
-
-    console.log("Signup form initialized");
-    } catch(err) {
-      console.error("Signup init error:", err);
-    }
-  }
-
-  // Make functions available globally for onclick handlers
-  window.selectPlan = selectPlan;
-  window.goToStep1 = goToStep1;
-  window.goToStep2 = goToStep2;
-  window.startCheckout = startCheckout;
-
-  // Initialize when DOM is ready
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
-})();
+setAuthUI().then(loadTrustStatus).catch(()=>{});

@@ -1,9 +1,9 @@
 const TIERS = {
-  1: "Tier 1: Verified Visitor",
-  2: "Tier 2: Verified Resident",
-  3: "Tier 3: Moderator",
-  4: "Tier 4: Local Business",
-  5: "Tier 5: Admin"
+  0: "Tier 0: Visitor",
+  1: "Tier 1: Individual",
+  2: "Tier 2: Moderator",
+  3: "Tier 3: Local Business",
+  4: "Tier 4: Admin"
 };
 
 async function api(url, options = {}){

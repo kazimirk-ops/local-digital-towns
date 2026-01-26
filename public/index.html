@@ -33,14 +33,14 @@
           <div class="section-label">Navigation</div>
           <nav class="nav">
             <button class="navItem active" data-view="map"><span class="navIcon">🗺️</span><span>Map</span></button>
-            <button class="navItem" data-view="services"><span class="navIcon">🏪</span><span>Featured Businesses</span></button>
+            <button class="navItem" data-view="services"><span class="navIcon">🧰</span><span>Featured Local Businesses</span></button>
             <button class="navItem" data-view="scheduled"><span class="navIcon">📡</span><span>Scheduled Live Shows</span></button>
             <button class="navItem" data-view="auctions"><span class="navIcon">⚖️</span><span>Auctions</span></button>
             <button class="navItem" data-view="marketplace"><span class="navIcon">🛍️</span><span>Marketplace</span></button>
-            <button class="navItem" data-view="localbiz"><span class="navIcon">🏪</span><span>Sebastian Store or Service Signup</span></button>
+            <!-- HIDDEN: <button class="navItem" data-view="localbiz"><span class="navIcon">🏪</span><span>Sebastian Store or Service Signup</span></button> -->
             <button class="navItem" data-view="channels"><span class="navIcon">📺</span><span>Channels</span></button>
             <button class="navItem" data-view="events"><span class="navIcon">🗓️</span><span>Events</span></button>
-            <button class="navItem" data-view="archive"><span class="navIcon">🗃️</span><span>Archive</span></button>
+            <!-- HIDDEN: <button class="navItem" data-view="archive"><span class="navIcon">🗃️</span><span>Archive</span></button> -->
             <button class="navItem" data-view="support"><span class="navIcon">🐛</span><span>Support / Report Bug</span></button>
           </nav>
         </div>
@@ -55,7 +55,7 @@
             <span class="pill" id="trustBadge">Tier 0: Visitor</span>
           </div>
           <div class="system-row" id="navLoggedOut">
-            <a class="pill" id="navLoginLink" href="/signup">Join / Login</a>
+            <a class="pill" id="navLoginLink" href="/login">Login</a>
           </div>
           <div class="system-row" style="display:none;" id="navLoggedIn">
             <a class="pill" id="navStoreLink" href="/me/store">Store Profile</a>
@@ -243,7 +243,7 @@
                     <div><strong>Welcome to the Town</strong></div>
                     <div class="muted">Join to unlock listings, messages, and local services.</div>
                     <div class="row" style="margin-top:8px;">
-                      <a class="btn" href="/signup">Join / Login</a>
+                      <a class="btn" href="/login">Login</a>
                     </div>
                   </div>
 
@@ -395,11 +395,11 @@
               <div class="panelHead">
                 <div>
                   <strong>Featured Local Businesses</strong>
-                  <div class="muted">Business subscribers ($10/mo) with active storefronts.</div>
+                  <div class="muted">Find trusted service providers in Sebastian.</div>
                 </div>
               </div>
-              <div class="panelBody" id="featuredBusinessesList">
-                <div class="muted" id="featuredLoading">Loading featured businesses...</div>
+              <div class="panelBody">
+                <div class="muted">Service listings will appear here.</div>
               </div>
             </div>
           </section>

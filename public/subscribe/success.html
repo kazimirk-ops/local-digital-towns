@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Welcome to Digital Sebastian!</title>
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <style>
+      :root {
+        --join-bg: #0a0f1a;
+        --join-panel: #0d1424;
+        --join-border: rgba(255, 255, 255, 0.08);
+        --join-muted: #94a3b8;
+        --join-text: #e2e8f0;
+        --join-accent: #22d3ee;
+      }
+      body {
+        font-family: var(--font-sans, ui-sans-serif, system-ui);
+        background: var(--join-bg);
+        color: var(--join-text);
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .container {
+        text-align: center;
+        padding: 40px 20px;
+        max-width: 400px;
+      }
+      .icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 0 0 12px;
+        color: #fff;
+      }
+      .subtitle {
+        color: var(--join-muted);
+        font-size: 16px;
+        margin-bottom: 24px;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--join-border);
+        border-top-color: var(--join-accent);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 24px;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      .message {
+        background: var(--join-panel);
+        border: 1px solid var(--join-border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+      }
+      .message p {
+        margin: 0;
+        color: var(--join-muted);
+        font-size: 14px;
+      }
+      .btn {
+        display: inline-block;
+        padding: 12px 24px;
+        background: linear-gradient(90deg, var(--join-accent), #3b82f6);
+        color: #0b1120;
+        font-weight: 700;
+        border-radius: 10px;
+        text-decoration: none;
+        font-size: 15px;
+      }
+      .btn:hover {
+        opacity: 0.9;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="icon">🎉</div>
+      <h1>Welcome to Digital Sebastian!</h1>
+      <p class="subtitle" id="subtitle">Your account is being set up...</p>
+
+      <div class="spinner" id="spinner"></div>
+
+      <div class="message hidden" id="successMessage">
+        <p>Your account is ready! You can now log in with your email.</p>
+      </div>
+
+      <a href="/" class="btn hidden" id="loginBtn">Get Started</a>
+    </div>
+    <script src="/subscribe/success.js?v=1"></script>
+  </body>
+</html>

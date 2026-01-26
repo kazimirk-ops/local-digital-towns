@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Log In - Digital Sebastian</title>
+    <title>Login - Digital Sebastian</title>
     <link rel="stylesheet" href="/ui-kit.css?v=1">
     <style>
       :root {
@@ -21,82 +21,32 @@
         background: var(--join-bg);
         color: var(--join-text);
         margin: 0;
-      }
-      a { color: #7dd3fc; text-decoration: none; }
-      .page {
         min-height: 100vh;
         display: flex;
-        flex-direction: column;
-      }
-      .topbar {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background: rgba(13, 20, 36, 0.92);
-        border-bottom: 1px solid var(--join-border);
-        backdrop-filter: blur(12px);
-      }
-      .topbar-inner {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 16px 18px;
-        display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 12px;
+        justify-content: center;
       }
-      .nav-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        border: 1px solid transparent;
-        color: var(--join-muted);
-        transition: all 0.2s ease;
-        text-decoration: none;
+      a { color: #7dd3fc; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .container {
+        width: 100%;
+        max-width: 400px;
+        padding: 20px;
       }
-      .nav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
       .hero {
-        max-width: 600px;
-        margin: 0 auto;
-        padding: 60px 18px 30px;
         text-align: center;
+        margin-bottom: 24px;
       }
-      .hero-title {
-        font-size: 32px;
-        margin: 0;
-        color: #fff;
-      }
-      .hero-subtitle {
-        margin: 12px 0 0;
-        color: var(--join-muted);
-        font-size: 16px;
-        line-height: 1.5;
-      }
-      .wrap {
-        max-width: 420px;
-        margin: 0 auto;
-        padding: 0 18px 40px;
-      }
+      .hero-title { font-size: 28px; margin: 0; color: #fff; }
+      .hero-subtitle { margin: 8px 0 0; color: var(--join-muted); font-size: 15px; }
       .card {
         background: var(--join-panel);
         border: 1px solid var(--join-border);
-        border-radius: 18px;
+        border-radius: 16px;
         padding: 24px;
-        box-shadow: 0 20px 40px rgba(3, 7, 15, 0.35);
       }
-      .field {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin-bottom: 16px;
-      }
-      .label {
-        color: #cbd5f5;
-        font-size: 13px;
-        font-weight: 600;
-      }
+      .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+      .label { color: #cbd5f5; font-size: 13px; font-weight: 600; }
       input {
         width: 100%;
         padding: 12px 14px;
@@ -104,7 +54,7 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
         background: var(--join-panel-2);
         color: #fff;
-        font-size: 15px;
+        font-size: 14px;
         box-sizing: border-box;
       }
       input:focus {
@@ -114,284 +64,103 @@
       }
       .code-input {
         font-size: 24px;
-        letter-spacing: 8px;
         text-align: center;
+        letter-spacing: 8px;
         font-family: monospace;
       }
       .btn-primary {
-        display: block;
         width: 100%;
         border: none;
         border-radius: 12px;
         padding: 14px 20px;
         background: linear-gradient(90deg, var(--join-accent), var(--join-accent-2));
         color: #0b1120;
-        font-weight: 700;
         font-size: 16px;
+        font-weight: 700;
         cursor: pointer;
-        transition: opacity 0.2s;
       }
-      .btn-primary:hover { opacity: 0.9; }
-      .btn-primary:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      .btn-secondary {
-        display: block;
-        width: 100%;
-        border: 1px solid var(--join-border);
-        border-radius: 12px;
-        padding: 12px 20px;
-        background: transparent;
-        color: var(--join-text);
-        font-weight: 600;
-        font-size: 14px;
-        cursor: pointer;
-        margin-top: 12px;
-      }
-      .btn-secondary:hover { background: rgba(255, 255, 255, 0.05); }
-      .muted { color: var(--join-muted); font-size: 13px; }
+      .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+      .btn-primary:hover:not(:disabled) { opacity: 0.9; }
       .error-msg {
-        background: rgba(239, 68, 68, 0.1);
+        background: rgba(239, 68, 68, 0.15);
         border: 1px solid rgba(239, 68, 68, 0.3);
-        color: #f87171;
+        color: #fca5a5;
         padding: 12px;
         border-radius: 10px;
         margin-bottom: 16px;
         display: none;
+        font-size: 14px;
       }
       .success-msg {
-        background: rgba(34, 197, 94, 0.1);
+        background: rgba(34, 197, 94, 0.15);
         border: 1px solid rgba(34, 197, 94, 0.3);
-        color: #22c55e;
+        color: #86efac;
         padding: 12px;
         border-radius: 10px;
         margin-bottom: 16px;
         display: none;
-      }
-      .signup-link {
-        text-align: center;
-        margin-top: 20px;
-        padding-top: 16px;
-        border-top: 1px solid var(--join-border);
+        font-size: 14px;
       }
       .step { display: none; }
       .step.active { display: block; }
+      .sent-to {
+        color: var(--join-muted);
+        font-size: 14px;
+        margin-bottom: 16px;
+        text-align: center;
+      }
+      .sent-to strong { color: #fff; }
+      .resend-link {
+        text-align: center;
+        margin-top: 16px;
+        font-size: 13px;
+      }
+      .footer-text {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 14px;
+        color: var(--join-muted);
+      }
     </style>
   </head>
-  <body data-town="sebastian">
-    <div class="page">
-      <header class="topbar">
-        <div class="topbar-inner">
-          <a class="nav-btn" href="/ui">&larr; Back to Town</a>
-          <span class="muted">Digital Sebastian</span>
-        </div>
-      </header>
-
-      <section class="hero">
+  <body>
+    <div class="container">
+      <div class="hero">
         <h1 class="hero-title">Welcome Back</h1>
-        <p class="hero-subtitle">Log in to your Digital Sebastian account</p>
-      </section>
+        <p class="hero-subtitle">Enter your email to receive a login code</p>
+      </div>
 
-      <div class="wrap">
-        <div class="card">
-          <div id="errorMsg" class="error-msg"></div>
-          <div id="successMsg" class="success-msg"></div>
+      <div class="card">
+        <div class="error-msg" id="errorMsg"></div>
+        <div class="success-msg" id="successMsg"></div>
 
-          <!-- Step 1: Enter Email -->
-          <div id="step1" class="step active">
-            <div class="field">
-              <label class="label" for="email">Email Address</label>
-              <input id="email" type="email" placeholder="you@example.com" required />
-            </div>
-
-            <button id="sendCodeBtn" class="btn-primary" onclick="sendCode()">
-              Send Login Code
-            </button>
-
-            <div class="signup-link">
-              <span class="muted">Don't have an account?</span>
-              <a href="/signup">Sign up</a>
-            </div>
+        <!-- Step 1: Email Entry -->
+        <div class="step active" id="stepEmail">
+          <div class="field">
+            <label class="label">Email</label>
+            <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
           </div>
+          <button class="btn-primary" id="sendCodeBtn">Send Code</button>
+        </div>
 
-          <!-- Step 2: Enter Code -->
-          <div id="step2" class="step">
-            <p class="muted" style="text-align:center; margin:0 0 16px;">
-              We sent a 6-digit code to <strong id="emailDisplay"></strong>
-            </p>
-
-            <div class="field">
-              <label class="label" for="code">Enter Code</label>
-              <input id="code" type="text" class="code-input" placeholder="000000" maxlength="6" autocomplete="one-time-code" />
-            </div>
-
-            <button id="verifyBtn" class="btn-primary" onclick="verifyCode()">
-              Verify & Log In
-            </button>
-
-            <button class="btn-secondary" onclick="goBack()">
-              Use a different email
-            </button>
+        <!-- Step 2: Code Entry -->
+        <div class="step" id="stepCode">
+          <p class="sent-to">We sent a code to <strong id="sentToEmail"></strong></p>
+          <div class="field">
+            <label class="label">6-Digit Code</label>
+            <input type="text" id="code" class="code-input" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric">
+          </div>
+          <button class="btn-primary" id="verifyCodeBtn">Verify Code</button>
+          <div class="resend-link">
+            <a href="#" id="resendLink">Didn't receive it? Send again</a>
           </div>
         </div>
       </div>
 
-      <footer style="max-width:900px; margin:0 auto; padding:18px; text-align:center;">
-        <div class="muted" style="font-size:11px;">Digital Towns Beta v0.1</div>
-      </footer>
+      <div class="footer-text">
+        Don't have an account? <a href="/subscribe">Sign up</a>
+      </div>
     </div>
-
-    <script src="/theme.js?v=1"></script>
-    <script>
-      const $ = (id) => document.getElementById(id);
-      let currentEmail = "";
-
-      function showError(msg) {
-        const el = $("errorMsg");
-        el.textContent = msg;
-        el.style.display = msg ? "block" : "none";
-        $("successMsg").style.display = "none";
-      }
-
-      function showSuccess(msg) {
-        const el = $("successMsg");
-        el.textContent = msg;
-        el.style.display = msg ? "block" : "none";
-        $("errorMsg").style.display = "none";
-      }
-
-      function showStep(step) {
-        document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
-        $(step).classList.add("active");
-        showError("");
-        showSuccess("");
-      }
-
-      async function sendCode() {
-        showError("");
-        const email = ($("email").value || "").trim().toLowerCase();
-
-        if(!email) {
-          showError("Please enter your email address.");
-          $("email").focus();
-          return;
-        }
-
-        if(!email.includes("@") || !email.includes(".")) {
-          showError("Please enter a valid email address.");
-          $("email").focus();
-          return;
-        }
-
-        const btn = $("sendCodeBtn");
-        btn.disabled = true;
-        btn.textContent = "Sending...";
-
-        try {
-          const res = await fetch("/api/auth/request-code", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email })
-          });
-
-          const data = await res.json();
-
-          if(!res.ok) {
-            throw new Error(data.error || "Failed to send code");
-          }
-
-          currentEmail = email;
-          $("emailDisplay").textContent = email;
-          showStep("step2");
-          $("code").focus();
-          showSuccess("Code sent! Check your email.");
-        } catch(e) {
-          showError(e.message);
-        } finally {
-          btn.disabled = false;
-          btn.textContent = "Send Login Code";
-        }
-      }
-
-      async function verifyCode() {
-        showError("");
-        const code = ($("code").value || "").trim();
-
-        if(!code || code.length !== 6) {
-          showError("Please enter the 6-digit code.");
-          $("code").focus();
-          return;
-        }
-
-        const btn = $("verifyBtn");
-        btn.disabled = true;
-        btn.textContent = "Verifying...";
-
-        try {
-          const res = await fetch("/api/auth/verify-code", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: currentEmail, code })
-          });
-
-          const data = await res.json();
-
-          if(!res.ok) {
-            // If no account exists, redirect to signup
-            if(data.noAccount) {
-              if(confirm("No account found with this email. Would you like to sign up?")) {
-                window.location.href = "/signup";
-                return;
-              }
-            }
-            throw new Error(data.error || "Invalid code");
-          }
-
-          showSuccess("Logged in! Redirecting...");
-          setTimeout(() => {
-            window.location.href = "/ui";
-          }, 1000);
-        } catch(e) {
-          showError(e.message);
-          btn.disabled = false;
-          btn.textContent = "Verify & Log In";
-        }
-      }
-
-      function goBack() {
-        $("code").value = "";
-        showStep("step1");
-        $("email").focus();
-      }
-
-      // Allow pressing Enter to proceed
-      $("email").onkeydown = (e) => {
-        if(e.key === "Enter") {
-          e.preventDefault();
-          sendCode();
-        }
-      };
-
-      $("code").onkeydown = (e) => {
-        if(e.key === "Enter") {
-          e.preventDefault();
-          verifyCode();
-        }
-      };
-
-      // Check if already logged in
-      async function checkSession() {
-        try {
-          const res = await fetch("/me");
-          const data = await res.json();
-          if(data.user) {
-            window.location.href = "/ui";
-          }
-        } catch(e) {}
-      }
-
-      checkSession();
-    </script>
+    <script src="/login.js?v=1"></script>
   </body>
 </html>

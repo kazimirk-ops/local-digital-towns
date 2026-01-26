@@ -215,7 +215,7 @@ function renderScheduledShows(){
       e.stopPropagation();
       if(!access.loggedIn){
         alert("Login required to bookmark.");
-        window.location.href = "/signup";
+        window.location.href = "/login";
         return;
       }
       try{
@@ -1858,7 +1858,7 @@ function setControlsEnabled() {
 
   if (!access.loggedIn) {
     $("authTitle").textContent = "Not logged in";
-    $("authTag").innerHTML = `Go to <a href="/signup" style="color:#cfe3ff;">/signup</a> to log in.`;
+    $("authTag").innerHTML = `Go to <a href="/login" style="color:#cfe3ff;">/login</a> to log in.`;
   } else if (access.eligible) {
     $("authTitle").textContent = `Logged in: ${access.email}`;
     $("authTag").innerHTML = `✅ Eligible • ${access.reason || ""}`;
@@ -1894,7 +1894,7 @@ async function loadMe() {
   if(getRouteView()==="localbiz") initLocalBiz().catch(()=>{});
 }
 
-async function logout(){ await api("/auth/logout",{method:"POST"}); window.location.href="/signup"; }
+async function logout(){ await api("/auth/logout",{method:"POST"}); window.location.href="/login"; }
 
 async function loadStatus() {
   const s = await api("/health");
@@ -2134,7 +2134,7 @@ async function main(){
   if($("sweepPrizeSubmitBtn")) $("sweepPrizeSubmitBtn").onclick=()=>{ $("prizeOfferModal").style.display="block"; };
   if($("prizeCancelBtn")) $("prizeCancelBtn").onclick=()=>{ $("prizeOfferModal").style.display="none"; };
   if($("prizeSubmitBtn")) $("prizeSubmitBtn").onclick=()=>submitPrizeOffer().catch(e=>{ $("prizeSubmitMsg").textContent=e.message; });
-  if($("topAuthBtn")) $("topAuthBtn").onclick=()=>access.loggedIn ? logout() : (window.location.href="/signup");
+  if($("topAuthBtn")) $("topAuthBtn").onclick=()=>access.loggedIn ? logout() : (window.location.href="/login");
   initSweepWheel();
 
   $("viewerBuyer").onclick=()=>setViewer("buyer");
