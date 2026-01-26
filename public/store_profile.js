@@ -269,8 +269,8 @@ async function saveStorefront() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    document.getElementById("storefrontBannerUrl").value = updated.bannerUrl || "";
-    document.getElementById("storefrontAvatarUrl").value = updated.avatarUrl || "";
+    document.getElementById("storefrontBannerUrl").value = updated.bannerUrl || updated.bannerurl || "";
+    document.getElementById("storefrontAvatarUrl").value = updated.avatarUrl || updated.avatarurl || "";
     setMsg("storefrontMsg", "Storefront saved.");
   } catch (e) {
     setMsg("storefrontMsg", `ERROR: ${e.message}`);
