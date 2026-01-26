@@ -293,16 +293,40 @@ async function loadMyListings() {
 }
 
 async function editListing(id) {
-  const title = prompt("New title (leave blank to keep current):");
-  const priceStr = prompt("New price in dollars (leave blank to keep current):");
-  const updates = {};
-  if (title) updates.title = title;
-  if (priceStr) updates.priceCents = Math.round(parseFloat(priceStr) * 100);
-  if (Object.keys(updates).length === 0) return;
   try {
-    await api(`/listings/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates) });
+    const listings = await api(`/places/${document.getElementById("storefrontStore")?.value}/listings`);
+    const listing = listings.find(l => l.id == id);
+    if (!listing) return alert("Listing not found");
+
+    const newTitle = prompt("Title:", listing.title || "");
+    if (newTitle === null) return;
+
+    const newDesc = prompt("Description:", listing.description || "");
+    if (newDesc === null) return;
+
+    const newPrice = prompt("Price (dollars):", ((listing.priceCents || 0) / 100).toFixed(2));
+    if (newPrice === null) return;
+
+    const newQty = prompt("Quantity:", listing.quantity || 1);
+    if (newQty === null) return;
+
+    const updates = {
+      title: newTitle,
+      description: newDesc,
+      priceCents: Math.round(parseFloat(newPrice) * 100),
+      quantity: parseInt(newQty)
+    };
+
+    await api(`/listings/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates)
+    });
     loadMyListings();
-  } catch (e) { alert("Error: " + e.message); }
+    alert("Listing updated!");
+  } catch (e) {
+    alert("Error: " + e.message);
+  }
 }
 
 async function deleteListing(id) {
