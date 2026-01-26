@@ -274,11 +274,19 @@ async function loadMyListings() {
           <p class="muted">$${((l.priceCents || l.price*100 || 0) / 100).toFixed(2)} • Qty: ${l.quantity || 0} • ${l.status || 'active'}</p>
         </div>
         <div class="listing-actions">
-          <button class="btn-sm" onclick="editListing(${l.id})">Edit</button>
-          <button class="btn-sm btn-danger" onclick="deleteListing(${l.id})">Delete</button>
+          <button class="btn-sm edit-btn" data-id="${l.id}">Edit</button>
+          <button class="btn-sm btn-danger delete-btn" data-id="${l.id}">Delete</button>
         </div>
       </div>
     `).join('');
+
+    // Add event listeners
+    list.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => editListing(btn.dataset.id));
+    });
+    list.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => deleteListing(btn.dataset.id));
+    });
   } catch (e) {
     list.innerHTML = `<p class="error">Error: ${e.message}</p>`;
   }
