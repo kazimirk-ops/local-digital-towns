@@ -38,7 +38,7 @@
     $("submitBtn").disabled = !valid;
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     showError("");
 
     const email = ($("email")?.value || "").trim().toLowerCase();
@@ -83,9 +83,33 @@
       }
     }
 
-    console.log("Form submitted:", formData);
-    // TODO: Call backend API to create Stripe checkout session
-    alert("Checkout not connected yet. Form data logged to console.");
+    try {
+      $("submitBtn").disabled = true;
+      $("submitBtn").textContent = "Loading...";
+
+      const resp = await fetch("/api/subscribe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+
+      const result = await resp.json();
+
+      if (!resp.ok) {
+        showError(result.error || "Something went wrong");
+        $("submitBtn").disabled = false;
+        $("submitBtn").textContent = "Start 7-Day Free Trial";
+        return;
+      }
+
+      if (result.url) {
+        window.location.href = result.url;
+      }
+    } catch (err) {
+      showError("Network error. Please try again.");
+      $("submitBtn").disabled = false;
+      $("submitBtn").textContent = "Start 7-Day Free Trial";
+    }
   }
 
   function init() {
