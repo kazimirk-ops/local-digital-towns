@@ -3323,6 +3323,7 @@ app.get("/market/listings", async (req, res) =>{
     const p = placeById.get(placeId);
     if(!p) continue;
     if(townId && Number(p.townId ?? p.townid)!==Number(townId)) continue;
+    if((l.status || 'active') !== 'active') continue;
     const listingType = l.listingType ?? l.listingtype ?? "item";
     const auctionStartAt = l.auctionStartAt ?? l.auctionstartat;
     const auctionEndAt = l.auctionEndAt ?? l.auctionendat;
@@ -3367,6 +3368,7 @@ app.get("/api/market/listings", async (req, res) =>{
     const p = placeById.get(placeId);
     if(!p) continue;
     if(townId && Number(p.townId ?? p.townid)!==Number(townId)) continue;
+    if((l.status || 'active') !== 'active') continue;
     const listingType = l.listingType ?? l.listingtype ?? "item";
     const auctionStartAt = l.auctionStartAt ?? l.auctionstartat;
     const auctionEndAt = l.auctionEndAt ?? l.auctionendat;
