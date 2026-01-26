@@ -1103,6 +1103,30 @@ async function updateListingStatus(listingId, status){
   await stmt("UPDATE listings SET status=$1 WHERE id=$2").run(String(status), Number(listingId));
   return getListingById(listingId);
 }
+
+// Generic listing update
+async function updateListing(listingId, updates) {
+  const listing = await getListingById(listingId);
+  if (!listing) return null;
+  const title = updates.title ?? listing.title;
+  const description = updates.description ?? listing.description;
+  const priceCents = updates.priceCents ?? listing.priceCents;
+  const quantity = updates.quantity ?? listing.quantity;
+  const photoUrl = updates.photoUrl ?? listing.photoUrl;
+  await stmt(`
+    UPDATE listings
+    SET title=$1, description=$2, priceCents=$3, quantity=$4, photoUrl=$5, updatedAt=$6
+    WHERE id=$7
+  `).run(title, description, priceCents, quantity, photoUrl, nowISO(), Number(listingId));
+  return getListingById(listingId);
+}
+
+// Delete listing
+async function deleteListing(listingId) {
+  await stmt(`DELETE FROM listings WHERE id=$1`).run(Number(listingId));
+  return { deleted: true };
+}
+
 async function getHighestBidForListing(listingId){
   const row = await stmt("SELECT id, amountCents, userId, createdAt FROM bids WHERE listingId=$1 ORDER BY amountCents DESC, createdAt DESC LIMIT 1")
     .get(Number(listingId));
@@ -3756,6 +3780,8 @@ module.exports = {
   getListings,
   getListingById,
   updateListingStatus,
+  updateListing,
+  deleteListing,
   getHighestBidForListing,
   getNextHighestBidForListing,
   getBidCountForListing,

@@ -2167,7 +2167,7 @@ app.post("/api/checkout/create", async (req, res) =>{
       quantity: Number(item.quantity || 0)
     });
   }
-  const serviceGratuityCents = Math.ceil(subtotalCents * 0.05);
+  const serviceGratuityCents = 0; // Subscription model - no commission
   const totalCents = subtotalCents + serviceGratuityCents;
   const order = await data.createOrderFromCart({
     townId: 1,
@@ -3814,6 +3814,38 @@ app.patch("/listings/:id/sold", async (req, res) =>{
   res.json(updated);
 });
 
+// Edit listing
+app.patch("/listings/:id", async (req, res) => {
+  const u = await requireLogin(req, res); if (!u) return;
+  const listing = await data.getListingById(req.params.id);
+  if (!listing) return res.status(404).json({ error: "Listing not found" });
+  const place = await data.getPlaceById(listing.placeId);
+  if (!place || (place.ownerUserId ?? place.owneruserid) !== u) {
+    return res.status(403).json({ error: "Only owner can edit listing" });
+  }
+  const updates = {};
+  if (req.body.title) updates.title = req.body.title;
+  if (req.body.description !== undefined) updates.description = req.body.description;
+  if (req.body.priceCents !== undefined) updates.priceCents = Number(req.body.priceCents);
+  if (req.body.quantity !== undefined) updates.quantity = Number(req.body.quantity);
+  if (req.body.photoUrl !== undefined) updates.photoUrl = req.body.photoUrl;
+  const updated = await data.updateListing(listing.id, updates);
+  res.json(updated);
+});
+
+// Delete listing
+app.delete("/listings/:id", async (req, res) => {
+  const u = await requireLogin(req, res); if (!u) return;
+  const listing = await data.getListingById(req.params.id);
+  if (!listing) return res.status(404).json({ error: "Listing not found" });
+  const place = await data.getPlaceById(listing.placeId);
+  if (!place || (place.ownerUserId ?? place.owneruserid) !== u) {
+    return res.status(403).json({ error: "Only owner can delete listing" });
+  }
+  await data.deleteListing(listing.id);
+  res.json({ ok: true, deleted: listing.id });
+});
+
 // ✅ Apply / Message → creates conversation
 app.post("/listings/:id/apply", async (req, res) =>{
   const u=await requireLogin(req,res); if(!u) return;
@@ -3912,7 +3944,7 @@ app.post("/api/auctions/:listingId/close", async (req, res) =>{
     return res.json({ok:true, winnerUserId:null, orderId:null, payUrl:null});
   }
   const subtotalCents = Number(highest.amountCents || 0);
-  const serviceGratuityCents = Math.ceil(subtotalCents * 0.05);
+  const serviceGratuityCents = 0; // Subscription model - no commission
   const totalCents = subtotalCents + serviceGratuityCents;
   const order = await data.createOrderWithItems({
     townId: listing.townId || 1,
@@ -3968,7 +4000,7 @@ app.post("/api/auctions/:listingId/expire_winner", async (req, res) =>{
   const place = await data.getPlaceById(listing.placeId);
   if(!place) return res.status(404).json({error:"Place not found"});
   const subtotalCents = Number(nextBid.amountCents || 0);
-  const serviceGratuityCents = Math.ceil(subtotalCents * 0.05);
+  const serviceGratuityCents = 0; // Subscription model - no commission
   const totalCents = subtotalCents + serviceGratuityCents;
   const order = await data.createOrderWithItems({
     townId: listing.townId || 1,
