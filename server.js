@@ -3786,9 +3786,11 @@ app.patch("/conversations/:id/read", async (req, res) =>{
 app.get("/places/:id/listings", async (req, res) =>{
   const pid=Number(req.params.id);
   const listings = await data.getListings();
+  const showAll = req.query.all === 'true';
   res.json(listings.filter(l=>{
     const placeId = Number(l.placeId ?? l.placeid);
-    return placeId === pid;
+    const isActive = (l.status || 'active') === 'active';
+    return placeId === pid && (showAll || isActive);
   }));
 });
 app.post("/places/:id/listings", async (req, res) =>{

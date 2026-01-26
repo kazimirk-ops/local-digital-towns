@@ -261,7 +261,7 @@ async function loadMyListings() {
   }
 
   try {
-    const listings = await api(`/places/${storeId}/listings`);
+    const listings = await api(`/places/${storeId}/listings?all=true`);
     if (!listings || !listings.length) {
       list.innerHTML = '<p class="muted">No listings yet.</p>';
       return;
@@ -294,7 +294,7 @@ async function loadMyListings() {
 
 async function editListing(id) {
   try {
-    const listings = await api(`/places/${document.getElementById("storefrontStore")?.value}/listings`);
+    const listings = await api(`/places/${document.getElementById("storefrontStore")?.value}/listings?all=true`);
     const listing = listings.find(l => l.id == id);
     if (!listing) return alert("Listing not found");
 
