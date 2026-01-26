@@ -126,7 +126,7 @@ $("submitTrust").onclick = async () => {
 
     // Prompt to share verification if approved
     if(data.status === "approved" && window.ShareModal){
-      const tierNames = { 1: "Verified Visitor", 2: "Verified Resident", 3: "Moderator" };
+      const tierNames = { 0: "Visitor", 1: "Individual", 2: "Moderator", 3: "Local Business", 4: "Admin" };
       const tierName = tierNames[payload.requestedTier] || "Sebastian local";
       setTimeout(() => ShareModal.promptVerificationShare(tierName), 1000);
     }
