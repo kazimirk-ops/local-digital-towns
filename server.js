@@ -2157,7 +2157,7 @@ app.post("/api/checkout/create", async (req, res) =>{
     if(placeId == null) placeId = listingPlaceId;
     if(Number(placeId) !== Number(listingPlaceId)) return res.status(400).json({error:"Checkout supports a single store per order"});
     const place = placeMap.get(Number(listingPlaceId));
-    if(place) sellerUserId = place.ownerUserId ?? null;
+    if(place) sellerUserId = place.ownerUserId ?? place.owneruserid ?? null;
     const priceCents = Math.round(Number(listing.price || 0) * 100);
     subtotalCents += priceCents * Number(item.quantity || 0);
     items.push({
