@@ -94,14 +94,24 @@ async function loadOrders(filter) {
         : Number(order.amountCents || 0);
     const buyerLabel = order.buyerDisplayName || (order.buyerUserId ? `User #${order.buyerUserId}` : "—");
 
-    // Check if order is pending payment and older than 48 hours
+    // Check order status for button display
     const isPendingPayment = ["pending", "pending_payment", "requires_payment"].includes(String(status).toLowerCase());
+    const isCompleted = String(status).toLowerCase() === "completed";
     const createdAt = new Date(order.createdAt || order.createdat);
     const hoursSince = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
     const canReportGhost = isPendingPayment && hoursSince >= 48;
 
-    // Check if order is paid and can be marked complete
-    const canMarkComplete = String(status).toLowerCase() === "paid";
+    // Build action buttons
+    let actionBtns = '';
+    if (isPendingPayment) {
+      actionBtns += `<button class="confirm-payment-btn" data-order="${order.id}" style="margin-left:8px; padding:4px 8px; font-size:11px; background:#166534; border:1px solid #15803d; border-radius:6px; color:#86efac; cursor:pointer;">Confirm Payment Received</button>`;
+      if (canReportGhost) {
+        actionBtns += `<button class="report-ghost-btn" data-order="${order.id}" style="margin-left:8px; padding:4px 8px; font-size:11px; background:#7f1d1d; border:1px solid #991b1b; border-radius:6px; color:#fca5a5; cursor:pointer;">Report Ghosted</button>`;
+      }
+    }
+    if (isCompleted) {
+      actionBtns += `<button class="leave-review-btn" data-order="${order.id}" data-buyer="${order.buyerUserId || ''}" style="margin-left:8px; padding:4px 8px; font-size:11px; background:#1e3a5f; border:1px solid #2563eb; border-radius:6px; color:#93c5fd; cursor:pointer;">Leave Review</button>`;
+    }
 
     const row = document.createElement("div");
     row.className = "table-row";
@@ -111,7 +121,7 @@ async function loadOrders(filter) {
       <div data-label="Store">${placeMap.get(Number(order.sellerPlaceId || 0)) || "—"}</div>
       <div data-label="Status"><span class="badge ${statusClass(status)}">${status}</span></div>
       <div data-label="Total">${formatCurrencyCents(totalCents)}</div>
-      <div data-label="Date">${formatDate(order.createdAt)}${canReportGhost ? `<button class="report-ghost-btn" data-order="${order.id}" style="margin-left:8px; padding:4px 8px; font-size:11px; background:#7f1d1d; border:1px solid #991b1b; border-radius:6px; color:#fca5a5; cursor:pointer;">Report Non-Payment</button>` : ''}${canMarkComplete ? `<button class="mark-complete-btn" data-order="${order.id}" style="margin-left:8px; padding:4px 8px; font-size:11px; background:#166534; border:1px solid #15803d; border-radius:6px; color:#86efac; cursor:pointer;">Mark Complete</button>` : ''}</div>
+      <div data-label="Date">${formatDate(order.createdAt)}${actionBtns}</div>
     `;
     body.appendChild(row);
   });
@@ -143,20 +153,20 @@ async function loadOrders(filter) {
       } catch (err) {
         alert('Error: ' + err.message);
         btn.disabled = false;
-        btn.textContent = 'Report Non-Payment';
+        btn.textContent = 'Report Ghosted';
       }
     });
   });
 
-  // Add event listeners for mark complete buttons
-  body.querySelectorAll('.mark-complete-btn').forEach(btn => {
+  // Add event listeners for confirm payment buttons
+  body.querySelectorAll('.confirm-payment-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.preventDefault();
       const orderId = btn.dataset.order;
-      if (!confirm('Mark this order as completed?')) return;
+      if (!confirm('Confirm payment was received for this order?')) return;
 
       btn.disabled = true;
-      btn.textContent = 'Updating...';
+      btn.textContent = 'Confirming...';
 
       try {
         const res = await fetch(`/orders/${orderId}/complete`, {
@@ -165,24 +175,31 @@ async function loadOrders(filter) {
           headers: { 'Content-Type': 'application/json' }
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to mark complete');
+        if (!res.ok) throw new Error(data.error || 'Failed to confirm');
 
-        btn.textContent = 'Completed';
-        btn.style.background = '#1e3a5f';
-        btn.style.borderColor = '#2563eb';
-        btn.style.color = '#93c5fd';
-        // Update the status badge in the same row
         const statusBadge = btn.closest('.table-row').querySelector('.badge');
         if (statusBadge) {
           statusBadge.textContent = 'completed';
           statusBadge.className = 'badge paid';
         }
-        btn.remove();
+        // Remove all action buttons in this row
+        btn.closest('.table-row').querySelectorAll('button').forEach(b => b.remove());
       } catch (err) {
         alert('Error: ' + err.message);
         btn.disabled = false;
-        btn.textContent = 'Mark Complete';
+        btn.textContent = 'Confirm Payment Received';
       }
+    });
+  });
+
+  // Add event listeners for leave review buttons
+  body.querySelectorAll('.leave-review-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const orderId = btn.dataset.order;
+      const buyerId = btn.dataset.buyer;
+      // Navigate to review page or open modal
+      window.location.href = `/orders/${orderId}#review`;
     });
   });
 }
