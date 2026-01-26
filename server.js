@@ -4083,6 +4083,93 @@ app.post("/api/business/subscribe/checkout", async (req, res) => {
   }
 });
 
+// New subscription signup checkout (public - no login required)
+app.post("/api/subscribe/checkout", async (req, res) => {
+  const email = (req.body?.email || "").trim().toLowerCase();
+  const displayName = (req.body?.displayName || "").trim();
+  const phone = (req.body?.phone || "").trim();
+  const plan = (req.body?.plan || "").trim(); // 'individual' or 'business'
+  const referralCode = (req.body?.referralCode || "").trim();
+  const businessName = (req.body?.businessName || "").trim();
+  const businessType = (req.body?.businessType || "").trim();
+  const businessAddress = (req.body?.businessAddress || "").trim();
+  const businessWebsite = (req.body?.businessWebsite || "").trim();
+
+  console.log("SUBSCRIBE_CHECKOUT", { email, plan, referralCode });
+
+  if (!email || !email.includes("@")) {
+    return res.status(400).json({ error: "Valid email required" });
+  }
+  if (!displayName) {
+    return res.status(400).json({ error: "Display name required" });
+  }
+  if (plan !== "individual" && plan !== "business") {
+    return res.status(400).json({ error: "Plan must be 'individual' or 'business'" });
+  }
+
+  // Check if email already exists
+  const existingUser = await data.query(`SELECT id FROM users WHERE LOWER(email) = $1`, [email]);
+  if (existingUser.rows.length > 0) {
+    return res.status(400).json({ error: "An account with this email already exists. Please log in instead." });
+  }
+
+  // Look up referrer if code provided
+  let referredById = null;
+  if (referralCode) {
+    const referrer = await data.query(`SELECT id FROM users WHERE referralCode = $1`, [referralCode]);
+    if (referrer.rows.length > 0) {
+      referredById = referrer.rows[0].id;
+    }
+  }
+
+  const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
+  if (!stripeKey || !stripe) {
+    return res.status(400).json({ error: "Stripe not configured" });
+  }
+
+  const priceId = plan === "business"
+    ? (process.env.STRIPE_BUSINESS_PRICE_ID || "").trim()
+    : (process.env.STRIPE_INDIVIDUAL_PRICE_ID || "").trim();
+
+  if (!priceId) {
+    return res.status(400).json({ error: `Stripe price not configured for ${plan} plan` });
+  }
+
+  try {
+    const baseUrl = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const successUrl = `${baseUrl}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${baseUrl}/subscribe`;
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      customer_email: email,
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: { trial_period_days: 7 },
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        signupEmail: email,
+        signupDisplayName: displayName,
+        signupPhone: phone,
+        plan: plan,
+        referralCode: referralCode || "",
+        referredById: referredById ? String(referredById) : "",
+        businessName: businessName,
+        businessType: businessType,
+        businessAddress: businessAddress,
+        businessWebsite: businessWebsite
+      }
+    });
+
+    console.log("SUBSCRIBE_CHECKOUT_SESSION_CREATED", { sessionId: session.id, email, plan });
+    res.json({ url: session.url });
+  } catch (e) {
+    console.error("Subscribe checkout error:", e);
+    res.status(500).json({ error: e.message || "Failed to create checkout session" });
+  }
+});
+
 // Stripe Customer Portal for managing subscription
 app.post("/api/business/subscribe/portal", async (req, res) => {
   const u = await requireLogin(req, res); if(!u) return;
