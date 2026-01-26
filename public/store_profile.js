@@ -115,7 +115,7 @@ async function loadTownContext(){
 
 function applyStorePermissions(){
   const perms = townCtx.permissions || {};
-  const canList = listingApprovalOk && !!perms.listingCreate;
+  const canList = !!perms.listingCreate;
   const canAuction = canList && !!perms.auctionHost;
   const listingBtn = document.getElementById("createListingBtn");
   const listingSelect = document.getElementById("listingStore");
