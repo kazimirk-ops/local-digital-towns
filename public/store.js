@@ -439,11 +439,11 @@ async function main(){
       if(ownerTrust){
         ownerTrust.textContent = place.owner?.trustTierLabel ? `Owner Trust: ${place.owner.trustTierLabel}` : "";
       }
-      if(place.bannerUrl){
-        $("storeBanner").style.backgroundImage = `url("${place.bannerUrl}")`;
+      if(place.bannerUrl || place.bannerurl){
+        $("storeBanner").style.backgroundImage = `url("${place.bannerUrl || place.bannerurl}")`;
       }
-      if(place.avatarUrl){
-        $("storeAvatar").src = place.avatarUrl;
+      if(place.avatarUrl || place.avatarurl){
+        $("storeAvatar").src = place.avatarUrl || place.avatarurl;
       }
       const reviews = place.reviewSummary || { count:0, average:0, buyerCount:0, sellerCount:0 };
       $("storeRating").textContent = `★ ${reviews.average.toFixed(1)} (${reviews.count} Reviews)`;
