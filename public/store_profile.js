@@ -226,6 +226,7 @@ async function loadOwnedStores() {
   applyStorePermissions();
   if (approvedStores[0]) {
     await loadStorefront(approvedStores[0].id);
+    await loadMyListings();
     if(salesSelect) await loadSales(approvedStores[0].id);
     if(ordersSelect) await loadSellerOrders(approvedStores[0].id);
   }
@@ -247,6 +248,61 @@ async function loadStorefront(placeId) {
   document.getElementById("storefrontPickup").value = place.pickupZone || "";
   document.getElementById("storefrontMeetup").value = place.meetupInstructions || "";
   document.getElementById("storefrontHours").value = place.hours || "";
+}
+
+async function loadMyListings() {
+  const list = document.getElementById("myListingsList");
+  if (!list) return;
+
+  const storeId = document.getElementById("storefrontStore")?.value;
+  if (!storeId) {
+    list.innerHTML = '<p class="muted">Select a store to see listings.</p>';
+    return;
+  }
+
+  try {
+    const listings = await api(`/places/${storeId}/listings`);
+    if (!listings || !listings.length) {
+      list.innerHTML = '<p class="muted">No listings yet.</p>';
+      return;
+    }
+
+    list.innerHTML = listings.map(l => `
+      <div class="listing-item" data-id="${l.id}">
+        <div class="listing-info">
+          <strong>${l.title || 'Untitled'}</strong>
+          <p class="muted">$${((l.priceCents || l.price*100 || 0) / 100).toFixed(2)} • Qty: ${l.quantity || 0} • ${l.status || 'active'}</p>
+        </div>
+        <div class="listing-actions">
+          <button class="btn-sm" onclick="editListing(${l.id})">Edit</button>
+          <button class="btn-sm btn-danger" onclick="deleteListing(${l.id})">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = `<p class="error">Error: ${e.message}</p>`;
+  }
+}
+
+async function editListing(id) {
+  const title = prompt("New title (leave blank to keep current):");
+  const priceStr = prompt("New price in dollars (leave blank to keep current):");
+  const updates = {};
+  if (title) updates.title = title;
+  if (priceStr) updates.priceCents = Math.round(parseFloat(priceStr) * 100);
+  if (Object.keys(updates).length === 0) return;
+  try {
+    await api(`/listings/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates) });
+    loadMyListings();
+  } catch (e) { alert("Error: " + e.message); }
+}
+
+async function deleteListing(id) {
+  if (!confirm("Delete this listing?")) return;
+  try {
+    await api(`/listings/${id}`, { method: "DELETE" });
+    loadMyListings();
+  } catch (e) { alert("Error: " + e.message); }
 }
 
 async function saveStorefront() {
@@ -617,7 +673,7 @@ function setupEventListeners() {
   document.getElementById("auctionPhotosInput")?.addEventListener("change", handleAuctionPhotoInput);
   document.getElementById("auctionStartLocal")?.addEventListener("change", updateAuctionEndDisplay);
   document.getElementById("auctionDuration")?.addEventListener("change", updateAuctionEndDisplay);
-  document.getElementById("storefrontStore")?.addEventListener("change", (e) => loadStorefront(e.target.value));
+  document.getElementById("storefrontStore")?.addEventListener("change", (e) => { loadStorefront(e.target.value); loadMyListings(); });
 
   const salesStoreEl = document.getElementById("salesStore");
   if(salesStoreEl) salesStoreEl.addEventListener("change", (e) => loadSales(e.target.value));
