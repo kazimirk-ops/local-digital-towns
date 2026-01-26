@@ -192,6 +192,10 @@ async function loadOwnedStores() {
     inboxOpt.value = p.id;
     inboxOpt.textContent = p.name;
     inboxSelect.appendChild(inboxOpt);
+    const storefrontOpt = document.createElement("option");
+    storefrontOpt.value = p.id;
+    storefrontOpt.textContent = p.name;
+    storefrontSelect.appendChild(storefrontOpt);
   });
   approvedStores = owned.filter(p => (p.status || "").toLowerCase() === "approved");
   approvedStores.forEach((p) => {
@@ -199,10 +203,6 @@ async function loadOwnedStores() {
     opt.value = p.id;
     opt.textContent = p.name;
     select.appendChild(opt);
-    const opt2 = document.createElement("option");
-    opt2.value = p.id;
-    opt2.textContent = p.name;
-    storefrontSelect.appendChild(opt2);
     if(salesSelect){
       const opt3 = document.createElement("option");
       opt3.value = p.id;
