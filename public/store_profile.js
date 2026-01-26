@@ -217,7 +217,7 @@ async function loadOwnedStores() {
     }
   });
   const storefrontCard = document.getElementById("storefrontCard");
-  if (storefrontCard) storefrontCard.style.display = approvedStores.length ? "block" : "none";
+  if (storefrontCard) storefrontCard.style.display = "block";
   const salesCard = document.getElementById("salesCard");
   if (salesCard) salesCard.style.display = approvedStores.length ? "block" : "none";
   const ordersCard = document.getElementById("sellerOrdersCard");
