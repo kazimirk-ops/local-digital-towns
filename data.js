@@ -25,7 +25,13 @@ function toCamelCase(obj) {
       .replace(/owneruserid/gi, 'ownerUserId')
       .replace(/buyeruserid/gi, 'buyerUserId')
       .replace(/selleruserid/gi, 'sellerUserId')
-      .replace(/trusttier/gi, 'trustTier');
+      .replace(/trusttier/gi, 'trustTier')
+      .replace(/listingid/gi, 'listingId')
+      .replace(/listingtype/gi, 'listingType')
+      .replace(/totalcents/gi, 'totalCents')
+      .replace(/pricecents/gi, 'priceCents')
+      .replace(/subtotalcents/gi, 'subtotalCents')
+      .replace(/placename/gi, 'placeName');
     result[camelKey] = value;
   }
   return result;
