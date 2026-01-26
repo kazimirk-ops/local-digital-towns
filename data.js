@@ -1110,14 +1110,13 @@ async function updateListing(listingId, updates) {
   if (!listing) return null;
   const title = updates.title ?? listing.title;
   const description = updates.description ?? listing.description;
-  const priceCents = updates.priceCents ?? listing.priceCents;
+  const price = updates.priceCents ? (updates.priceCents / 100) : (listing.price ?? listing.priceCents / 100 ?? 0);
   const quantity = updates.quantity ?? listing.quantity;
-  const photoUrl = updates.photoUrl ?? listing.photoUrl;
   await stmt(`
     UPDATE listings
-    SET title=$1, description=$2, priceCents=$3, quantity=$4, photoUrl=$5, updatedAt=$6
-    WHERE id=$7
-  `).run(title, description, priceCents, quantity, photoUrl, nowISO(), Number(listingId));
+    SET title=$1, description=$2, price=$3, quantity=$4
+    WHERE id=$5
+  `).run(title, description, price, quantity, Number(listingId));
   return getListingById(listingId);
 }
 
