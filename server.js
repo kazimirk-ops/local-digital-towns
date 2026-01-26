@@ -4189,7 +4189,7 @@ app.post("/api/subscribe/checkout", async (req, res) => {
 
   const priceId = plan === "business"
     ? (process.env.STRIPE_BUSINESS_PRICE_ID || "").trim()
-    : (process.env.STRIPE_INDIVIDUAL_PRICE_ID || "").trim();
+    : (process.env.STRIPE_USER_PRICE_ID || "").trim();
 
   if (!priceId) {
     return res.status(400).json({ error: `Stripe price not configured for ${plan} plan` });
