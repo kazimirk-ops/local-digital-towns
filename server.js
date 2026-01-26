@@ -4588,11 +4588,10 @@ const PERMS = {
 
 const TIER_NAMES = {
   0: "Visitor",
-  1: "Verified Visitor",
-  2: "Verified Resident",
-  3: "Moderator",
-  4: "Local Business",
-  5: "Admin"
+  1: "Individual",
+  2: "Moderator",
+  3: "Local Business",
+  4: "Admin"
 };
 
 function tierToPerms(tier) {
