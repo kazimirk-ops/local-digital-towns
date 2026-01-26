@@ -130,11 +130,11 @@ function applyStorePermissions(){
   if(!listingApprovalOk){
     setMsg("listingMsg", "Store approval required to create listings.");
   }else if(!perms.listingCreate){
-    setMsg("listingMsg", "Tier 3+ required to create listings.");
+    setMsg("listingMsg", "Tier 1+ required to create listings.");
   }
   const type = document.getElementById("listingType")?.value;
   if(type === "auction" && !canAuction){
-    setMsg("listingMsg", "Tier 2+ required to host auctions.");
+    setMsg("listingMsg", "Tier 1+ required to list auction items.");
   }
 }
 
