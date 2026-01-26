@@ -493,6 +493,7 @@ app.get("/apply/business", async (req, res) =>res.sendFile(path.join(__dirname,"
 app.get("/apply/resident", async (req, res) =>res.sendFile(path.join(__dirname,"public","apply_resident.html")));
 app.get("/privacy", async (req, res) =>res.sendFile(path.join(__dirname,"public","privacy.html")));
 app.get("/terms", async (req, res) =>res.sendFile(path.join(__dirname,"public","terms.html")));
+app.get("/order-confirmed", (req, res) => res.sendFile(path.join(__dirname, "public", "order-confirmed.html")));
 app.get("/u/:id", async (req, res) =>res.sendFile(path.join(__dirname,"public","profile.html")));
 app.get("/me/store", async (req, res) =>res.sendFile(path.join(__dirname,"public","store_profile.html")));
 app.get("/me/profile", async (req, res) =>res.sendFile(path.join(__dirname,"public","my_profile.html")));
