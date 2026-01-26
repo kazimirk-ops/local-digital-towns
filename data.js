@@ -332,8 +332,8 @@ async function updatePlaceProfile(placeId, payload){
   const name = (payload?.name ?? place.name).toString().trim();
   const category = (payload?.category ?? place.category).toString().trim();
   const description = (payload?.description ?? place.description).toString().trim();
-  const bannerUrl = (payload?.bannerUrl ?? place.bannerUrl).toString().trim();
-  const avatarUrl = (payload?.avatarUrl ?? place.avatarUrl).toString().trim();
+  const bannerUrl = (payload?.bannerUrl ?? place.bannerUrl ?? place.bannerurl ?? "").toString().trim();
+  const avatarUrl = (payload?.avatarUrl ?? place.avatarUrl ?? place.avatarurl ?? "").toString().trim();
   const visibilityLevel = (payload?.visibilityLevel ?? place.visibilityLevel).toString().trim();
   const pickupZone = (payload?.pickupZone ?? place.pickupZone).toString().trim();
   const meetupInstructions = (payload?.meetupInstructions ?? place.meetupInstructions).toString().trim();
