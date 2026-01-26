@@ -334,7 +334,7 @@ async function uploadListingPhoto() {
     return;
   }
   try {
-    const placeId = document.getElementById("listingStore").value || null;
+    const placeId = document.getElementById("listingStore")?.value || document.getElementById("storefrontStore")?.value || null;
     const form = new FormData();
     form.append("file", file);
     form.append("kind", "listing_photo");
@@ -357,7 +357,7 @@ async function uploadListingPhoto() {
 
 async function createListing() {
   try {
-    const placeId = document.getElementById("listingStore").value;
+    const placeId = document.getElementById("listingStore")?.value || document.getElementById("storefrontStore")?.value;
     if (!placeId) return setMsg("listingMsg", "Select a store first.");
     if (document.getElementById("listingType").value === "auction") {
       return setMsg("listingMsg", "Use Publish Auction for auction listings.");
@@ -460,7 +460,7 @@ async function handleAuctionPhotoInput() {
       continue;
     }
     try {
-      const placeId = document.getElementById("listingStore").value || null;
+      const placeId = document.getElementById("listingStore")?.value || document.getElementById("storefrontStore")?.value || null;
       const form = new FormData();
       form.append("file", file);
       form.append("kind", "listing_photo");
@@ -497,7 +497,7 @@ function resetAuctionFields() {
 }
 async function createAuctionListing() {
   try {
-    const placeId = document.getElementById("listingStore").value;
+    const placeId = document.getElementById("listingStore")?.value || document.getElementById("storefrontStore")?.value;
     if (!placeId) return setMsg("listingMsg", "Select a store first.");
     const title = document.getElementById("listingTitle").value.trim();
     if (!title) return setMsg("listingMsg", "Title required.");
