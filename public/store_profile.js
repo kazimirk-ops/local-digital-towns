@@ -174,10 +174,10 @@ async function loadOwnedStores() {
   const inboxSelect = document.getElementById("storeInboxStore");
   const salesSelect = document.getElementById("salesStore");
   const ordersSelect = document.getElementById("sellerOrdersStore");
-  list.innerHTML = "";
-  select.innerHTML = "";
-  storefrontSelect.innerHTML = "";
-  inboxSelect.innerHTML = "";
+  if(list) list.innerHTML = "";
+  if(select) select.innerHTML = "";
+  if(storefrontSelect) storefrontSelect.innerHTML = "";
+  if(inboxSelect) inboxSelect.innerHTML = "";
   if(salesSelect) salesSelect.innerHTML = "";
   if(ordersSelect) ordersSelect.innerHTML = "";
   if (!owned.length) {
@@ -187,22 +187,22 @@ async function loadOwnedStores() {
   owned.forEach((p) => {
     const div = document.createElement("div");
     div.textContent = `${p.name} (#${p.id}) • ${p.status || "pending"}`;
-    list.appendChild(div);
+    if(list) list.appendChild(div);
     const inboxOpt = document.createElement("option");
     inboxOpt.value = p.id;
     inboxOpt.textContent = p.name;
-    inboxSelect.appendChild(inboxOpt);
+    if(inboxSelect) inboxSelect.appendChild(inboxOpt);
     const storefrontOpt = document.createElement("option");
     storefrontOpt.value = p.id;
     storefrontOpt.textContent = p.name;
-    storefrontSelect.appendChild(storefrontOpt);
+    if(storefrontSelect) storefrontSelect.appendChild(storefrontOpt);
   });
   approvedStores = owned.filter(p => (p.status || "").toLowerCase() === "approved");
   approvedStores.forEach((p) => {
     const opt = document.createElement("option");
     opt.value = p.id;
     opt.textContent = p.name;
-    select.appendChild(opt);
+    if(select) select.appendChild(opt);
     if(salesSelect){
       const opt3 = document.createElement("option");
       opt3.value = p.id;
