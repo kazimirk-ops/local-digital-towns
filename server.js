@@ -327,6 +327,63 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
         console.error("Error updating business subscription:", err);
       }
     }
+
+    // Handle NEW SUBSCRIPTION SIGNUP
+    const signupEmail = session?.metadata?.signupEmail;
+    if (signupEmail) {
+      const signupDisplayName = session?.metadata?.signupDisplayName || '';
+      const signupPhone = session?.metadata?.signupPhone || '';
+      const plan = session?.metadata?.plan || 'individual';
+      const referredById = session?.metadata?.referredById || null;
+      const businessName = session?.metadata?.businessName || '';
+      const businessType = session?.metadata?.businessType || '';
+      const businessAddress = session?.metadata?.businessAddress || '';
+      const businessWebsite = session?.metadata?.businessWebsite || '';
+
+      console.log("WEBHOOK: Processing subscription signup for:", signupEmail, "plan:", plan);
+
+      try {
+        // Check if user already exists
+        const existingUser = await data.query(`SELECT id FROM users WHERE LOWER(email) = $1`, [signupEmail.toLowerCase()]);
+
+        if (existingUser.rows.length === 0) {
+          // Set trustTier based on plan: individual=1, business=3
+          const trustTier = plan === 'business' ? 3 : 1;
+
+          // Generate referral code
+          const referralCode = (signupDisplayName.slice(0,3) + Math.random().toString(36).slice(2,7)).toUpperCase();
+
+          // Create user
+          const createResult = await data.query(
+            `INSERT INTO users (email, displayName, phone, trustTier, stripeCustomerId, referralCode, referredByUserId, createdAt)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+            [signupEmail.toLowerCase(), signupDisplayName, signupPhone, trustTier, session.customer, referralCode, referredById || null, new Date().toISOString()]
+          );
+          const newUserId = createResult.rows[0]?.id;
+          console.log("WEBHOOK: Created user", newUserId, "with trustTier", trustTier);
+
+          // If business plan, create store/place
+          if (plan === 'business' && newUserId) {
+            const placeResult = await data.query(
+              `INSERT INTO places (name, ownerUserId, sellerType, category, website, addressPublic, isFeatured, townId, districtId, status)
+               VALUES ($1, $2, 'business', $3, $4, $5, 1, 1, 1, 'approved') RETURNING id`,
+              [businessName || signupDisplayName, newUserId, businessType, businessWebsite, businessAddress]
+            );
+            console.log("WEBHOOK: Created business place", placeResult.rows[0]?.id, "for user", newUserId);
+          }
+        } else {
+          // User exists - update their tier and stripe ID
+          const trustTier = plan === 'business' ? 3 : 1;
+          await data.query(
+            `UPDATE users SET trustTier = $1, stripeCustomerId = $2 WHERE LOWER(email) = $3`,
+            [trustTier, session.customer, signupEmail.toLowerCase()]
+          );
+          console.log("WEBHOOK: Updated existing user", signupEmail, "to trustTier", trustTier);
+        }
+      } catch (err) {
+        console.error("WEBHOOK: Error creating subscription user:", err);
+      }
+    }
   }
 
   if(event.type === "payment_intent.succeeded"){
