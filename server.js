@@ -3722,7 +3722,7 @@ app.patch("/places/:id/profile", async (req, res) =>{
   if(!place) return res.status(404).json({error:"not found"});
   const ownerId = place.ownerUserId ?? place.owneruserid;
   if(Number(ownerId)!==Number(u)) return res.status(403).json({error:"Only owner can edit"});
-  if((place.status || "").toLowerCase() !== "approved") return res.status(403).json({error:"Store not approved"});
+  // Approval no longer required: if((place.status || "").toLowerCase() !== "approved") return res.status(403).json({error:"Store not approved"});
   const updated = await data.updatePlaceProfile(place.id, req.body || {});
   res.json(updated);
 });
