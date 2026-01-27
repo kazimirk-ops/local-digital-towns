@@ -1590,18 +1590,21 @@ app.post("/api/admin/verify/business/approve", async (req, res) =>{
 });
 
 app.post("/api/verify/buyer", async (req, res) => {
-  const u = await requireLogin(req, res); if (!u) return;
-  const { fullName, email, address, city, phone } = req.body;
-  if (!fullName || !email || !address || !city) {
-    return res.status(400).json({ error: "Name, email, address, and city are required" });
+  const { fullName, email, password, address, city, phone } = req.body;
+  if (!fullName || !email || !password || !address || !city) {
+    return res.status(400).json({ error: "Name, email, password, address, and city are required" });
   }
-  const user = await data.getUserById(u);
-  if (user.email.toLowerCase() !== email.toLowerCase()) {
-    return res.status(400).json({ error: "Email must match your account email" });
-  }
+  if (password.length < 6) return res.status(400).json({ error: "Password must be at least 6 characters" });
+  const existing = await db.query("SELECT id FROM users WHERE LOWER(email)=$1", [email.toLowerCase()]);
+  if (existing.rows.length > 0) return res.status(400).json({ error: "Email already registered" });
   const addressJson = JSON.stringify({ fullName, address, city, phone: phone || null });
-  await db.query("UPDATE users SET addressJson=$1, isBuyerVerified=1 WHERE id=$2", [addressJson, u]);
-  res.json({ ok: true, message: "Buyer verification complete" });
+  const passwordHash = require("crypto").createHash("sha256").update(password).digest("hex");
+  const result = await db.query(
+    "INSERT INTO users (email, displayName, addressJson, isBuyerVerified, trustTier, createdAt, passwordHash) VALUES ($1,$2,$3,0,0,NOW(),$4) RETURNING id",
+    [email.toLowerCase(), fullName, addressJson, passwordHash]
+  );
+  req.session.userId = result.rows[0].id;
+  res.json({ ok: true, message: "Account created - pending admin approval" });
 });
 
 app.post("/api/trust/apply", async (req, res) =>{

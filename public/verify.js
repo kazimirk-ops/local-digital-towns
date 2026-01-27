@@ -20,13 +20,12 @@
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, email, address, city, phone })
+        body: JSON.stringify({ fullName, email, password: $('password').value, address, city, phone })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Verification failed');
       $('successMsg').style.display = 'block';
       $('verifyForm').style.display = 'none';
-      setTimeout(() => { window.location.href = '/'; }, 2000);
     } catch (err) {
       $('errorMsg').textContent = err.message;
       $('errorMsg').style.display = 'block';
