@@ -1396,7 +1396,8 @@ const tierName = permissions.tierName(trustTier);
       trustTier,
       trustTierLabel: tierName,
       level: trustTier,
-      isAdmin: isAdminUser(r.user)
+      isAdmin: isAdminUser(r.user),
+      isBuyerVerified: Number(r.user.isBuyerVerified ?? r.user.isbuyerverified ?? 0)
     }
   });
 });
@@ -4171,7 +4172,8 @@ app.get("/api/subscription/status", async (req, res) => {
       canceledAt: null
     };
   }
-  res.json({ subscription, tier, trialUsedAt });
+  const isBuyerVerified = Number(user.isBuyerVerified ?? user.isbuyerverified ?? 0);
+  res.json({ subscription, tier, trialUsedAt, isBuyerVerified });
 });
 
 app.post("/api/subscription/start", async (req, res) => {
