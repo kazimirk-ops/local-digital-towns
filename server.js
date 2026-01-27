@@ -4098,7 +4098,7 @@ app.post("/admin/verify/buyer", async (req, res) =>{
 
 app.get("/api/admin/pending-buyers", async (req, res) => {
   const admin = await requireAdmin(req, res, { message: "Admin only" }); if (!admin) return;
-  const pending = await db.query("SELECT id, email, displayName, addressJson, createdAt FROM users WHERE isBuyerVerified = 0 AND trustTier = 0 ORDER BY createdAt DESC");
+  const pending = await db.query("SELECT id, email, displayName, addressJson, createdAt FROM users WHERE isBuyerVerified = 0 AND trustTier = 0 AND (isAdmin IS NULL OR isAdmin != 1) ORDER BY createdAt DESC");
   res.json(pending.rows);
 });
 
