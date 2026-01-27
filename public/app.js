@@ -1246,25 +1246,16 @@ function applyPermissions(ctx){
     if(!btn) return;
     const label = btn.querySelector("span:last-child");
     if(label && !btn.dataset.baseLabel) btn.dataset.baseLabel = label.textContent;
-    if(!ctx?.userId){
-      btn.style.display = "";
-      btn.disabled = true;
-      btn.setAttribute("aria-disabled","true");
-      if(label && btn.dataset.baseLabel) label.textContent = `${btn.dataset.baseLabel} (Login required)`;
-      return;
-    }
+    // Allow all visitors to view - backend handles action permissions
     btn.disabled = false;
     btn.removeAttribute("aria-disabled");
     if(label && btn.dataset.baseLabel) label.textContent = btn.dataset.baseLabel;
     btn.style.display = viewPerms[view] ? "" : "none";
   });
   const sweepPanel = $("panelSweepstake");
-  if(sweepPanel) sweepPanel.style.display = !ctx?.userId ? "none" : "";
+  if(sweepPanel) sweepPanel.style.display = (ctx?.trustTier || 0) < 1 ? "none" : "";
   const current = getRouteView();
-  if(!ctx?.userId && current !== "map"){
-    location.hash = "map";
-    setView("map");
-  }else if(current !== "map" && viewPerms[current] === false){
+  if(current !== "map" && viewPerms[current] === false){
     location.hash = "map";
     setView("map");
   }
