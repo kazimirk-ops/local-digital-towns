@@ -1160,9 +1160,10 @@ function debug(msg){ $("debug").textContent = msg || ""; }
 
 // Show subscription prompt modal
 function showSubscriptionPrompt(message) {
-  const msg = message || "Sign up for $5/month to buy, sell, and enter giveaways";
-  if(confirm(`${msg}\n\nWould you like to subscribe now?`)){
-    window.location.href = "/subscription";
+  const msg = message || "Create a free account to buy items, or subscribe for $5/month to also sell and enter giveaways.";
+  const choice = confirm(`${msg}\n\nClick OK to create a free account, or Cancel to go back.`);
+  if(choice){
+    window.location.href = "/verify";
   }
 }
 
