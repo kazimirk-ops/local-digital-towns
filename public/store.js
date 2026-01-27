@@ -5,9 +5,10 @@ let PLACE=null;
 let CURRENT_USER_ID=null;
 
 function showSubscriptionPrompt(message) {
-  const msg = message || "Sign up for $5/month to buy, sell, and enter giveaways";
-  if(confirm(`${msg}\n\nWould you like to subscribe now?`)){
-    window.location.href = "/subscription";
+  const msg = message || "Create a free account to buy items, or subscribe for $5/month to also sell and enter giveaways.";
+  const choice = confirm(`${msg}\n\nClick OK to create a free account, or Cancel to go back.`);
+  if(choice){
+    window.location.href = "/verify";
   }
 }
 
@@ -53,7 +54,7 @@ function setCartMsg(msg, isError){
     return;
   }
   if(isError && msg === "Subscription required"){
-    el.innerHTML = `<a href="/subscription">Subscribe for $5/mo</a> to buy, sell, and enter giveaways.`;
+    el.innerHTML = `<a href="/verify">Create a free account</a> to buy items, or <a href="/subscribe">subscribe</a> to also sell.`;
     return;
   }
   el.textContent = msg;
