@@ -204,6 +204,16 @@ async function loadBuyers(){
           loadBuyers();
         };
         actCell.appendChild(approveBtn);
+        const rejectBtn = document.createElement("button");
+        rejectBtn.className = "btn btn-reject";
+        rejectBtn.textContent = "Reject";
+        rejectBtn.style.marginLeft = "8px";
+        rejectBtn.onclick = async ()=>{
+          if(!confirm("Reject and delete this application?")) return;
+          await api("/api/admin/reject-buyer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: row.id }) });
+          loadBuyers();
+        };
+        actCell.appendChild(rejectBtn);
       }
       tr.appendChild(actCell);
       body.appendChild(tr);

@@ -4102,6 +4102,14 @@ app.get("/api/admin/pending-buyers", async (req, res) => {
   res.json(pending.rows);
 });
 
+app.post("/api/admin/reject-buyer", async (req, res) => {
+  const admin = await requireAdmin(req, res, { message: "Admin only" }); if (!admin) return;
+  const userId = Number(req.body?.userId);
+  if (!userId) return res.status(400).json({ error: "userId required" });
+  await db.query("DELETE FROM users WHERE id = $1 AND trustTier = 0 AND (isAdmin IS NULL OR isAdmin != 1)", [userId]);
+  res.json({ ok: true, deleted: userId });
+});
+
 app.post("/admin/verify/store", async (req, res) =>{
   const admin=await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
   const id = Number(req.body?.placeId);
