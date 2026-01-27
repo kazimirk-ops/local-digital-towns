@@ -4184,7 +4184,7 @@ app.post("/api/subscription/start", async (req, res) => {
   if(tier >= 1) return res.status(400).json({ error: "You already have an active subscription" });
   const plan = req.body?.plan || 'individual';
   if(plan === 'business') {
-    return res.json({ url: '/apply/business' }); // Redirect to business application
+    return res.json({ url: '/subscribe?plan=business' });
   }
   const trialUsedAt = user.trialUsedAt ?? user.trialusedat;
   const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
