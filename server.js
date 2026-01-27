@@ -4183,10 +4183,32 @@ app.post("/api/subscription/start", async (req, res) => {
   const tier = user.trustTier ?? user.trusttier ?? 0;
   if(tier >= 1) return res.status(400).json({ error: "You already have an active subscription" });
   const plan = req.body?.plan || 'individual';
-  if(plan === 'business') {
-    return res.json({ url: '/subscribe?plan=business' });
-  }
   const trialUsedAt = user.trialUsedAt ?? user.trialusedat;
+  if(plan === 'business') {
+    // Create Stripe checkout for business upgrade
+    const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
+    if(!stripeKey) return res.status(500).json({ error: "Stripe not configured" });
+    const stripe = require('stripe')(stripeKey);
+    const priceId = process.env.STRIPE_BUSINESS_PRICE_ID;
+    if(!priceId) return res.status(500).json({ error: "Business price not configured" });
+    try {
+      const trialDays = trialUsedAt ? 0 : 7;
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${process.env.BASE_URL || 'https://sebastian-florida.com'}/me/subscription?upgraded=true`,
+        cancel_url: `${process.env.BASE_URL || 'https://sebastian-florida.com'}/me/subscription?canceled=true`,
+        client_reference_id: String(user.id),
+        customer_email: user.email,
+        subscription_data: { trial_period_days: trialDays, metadata: { userId: String(user.id), plan: 'business' } }
+      });
+      return res.json({ url: session.url });
+    } catch(e) {
+      console.error("Stripe business checkout error:", e);
+      return res.status(500).json({ error: "Failed to create checkout" });
+    }
+  }
   const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
   // If trial already used and Stripe configured, go to checkout
   if(trialUsedAt && stripeKey) {
