@@ -489,6 +489,7 @@ app.get("/waitlist", async (req, res) =>res.sendFile(path.join(__dirname,"public
 app.get("/subscribe", (req, res) => res.sendFile(path.join(__dirname, "public", "subscribe.html")));
 app.get("/subscribe/success", (req, res) => res.sendFile(path.join(__dirname, "public", "subscribe", "success.html")));
 app.get("/login", (req, res) => res.sendFile(path.join(__dirname, "public", "login.html")));
+app.get("/verify", (req, res) => res.sendFile(path.join(__dirname, "public", "verify.html")));
 app.get("/apply/business", async (req, res) =>res.sendFile(path.join(__dirname,"public","apply_business.html")));
 app.get("/apply/resident", async (req, res) =>res.sendFile(path.join(__dirname,"public","apply_resident.html")));
 app.get("/privacy", async (req, res) =>res.sendFile(path.join(__dirname,"public","privacy.html")));
@@ -1586,6 +1587,21 @@ app.post("/api/admin/verify/business/approve", async (req, res) =>{
   const updated = await data.setUserTrustTier(1, userId, 3);
   if(updated?.error) return res.status(400).json(updated);
   res.json({ ok:true });
+});
+
+app.post("/api/verify/buyer", async (req, res) => {
+  const u = await requireLogin(req, res); if (!u) return;
+  const { fullName, email, address, city, phone } = req.body;
+  if (!fullName || !email || !address || !city) {
+    return res.status(400).json({ error: "Name, email, address, and city are required" });
+  }
+  const user = await data.getUserById(u);
+  if (user.email.toLowerCase() !== email.toLowerCase()) {
+    return res.status(400).json({ error: "Email must match your account email" });
+  }
+  const addressJson = JSON.stringify({ fullName, address, city, phone: phone || null });
+  await db.query("UPDATE users SET addressJson=$1, isBuyerVerified=1 WHERE id=$2", [addressJson, u]);
+  res.json({ ok: true, message: "Buyer verification complete" });
 });
 
 app.post("/api/trust/apply", async (req, res) =>{
