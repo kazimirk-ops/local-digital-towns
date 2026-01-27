@@ -275,7 +275,7 @@ async function startTrial() {
   try {
     // If business plan selected, redirect to business flow
     if (selectedPlan === 'business') {
-      window.location.href = '/apply/business';
+      window.location.href = '/subscribe?plan=business';
       return;
     }
 
