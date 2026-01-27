@@ -1603,8 +1603,7 @@ app.post("/api/verify/buyer", async (req, res) => {
     "INSERT INTO users (email, displayName, addressJson, isBuyerVerified, trustTier, createdAt, passwordHash) VALUES ($1,$2,$3,0,0,NOW(),$4) RETURNING id",
     [email.toLowerCase(), fullName, addressJson, passwordHash]
   );
-  req.session.userId = result.rows[0].id;
-  res.json({ ok: true, message: "Account created - pending admin approval" });
+  res.json({ ok: true, message: "Account created - pending admin approval", userId: result.rows[0].id });
 });
 
 app.post("/api/trust/apply", async (req, res) =>{
