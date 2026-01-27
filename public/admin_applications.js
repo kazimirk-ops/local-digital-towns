@@ -172,10 +172,54 @@ async function loadResident(){
   }
 }
 
+async function loadBuyers(){
+  const status = document.getElementById("buyerStatus").value;
+  const msg = document.getElementById("buyerMsg");
+  msg.textContent = "Loading...";
+  try{
+    const rows = await api(`/api/admin/pending-buyers`);
+    const body = document.getElementById("buyerRows");
+    body.innerHTML = "";
+    const filtered = status === "pending" ? rows.filter(r => !r.isbuyerverified) : rows.filter(r => r.isbuyerverified);
+    if(!filtered.length){
+      msg.textContent = "No applications.";
+      return;
+    }
+    filtered.forEach((row)=>{
+      const tr = document.createElement("tr");
+      const addr = typeof row.addressjson === "string" ? JSON.parse(row.addressjson) : (row.addressjson || {});
+      tr.appendChild(td(row.createdat));
+      tr.appendChild(td(row.displayname || ""));
+      tr.appendChild(td(row.email));
+      tr.appendChild(td(addr.city || ""));
+      tr.appendChild(td(addr.address || ""));
+      tr.appendChild(td(row.isbuyerverified ? "approved" : "pending"));
+      const actCell = document.createElement("td");
+      if(!row.isbuyerverified){
+        const approveBtn = document.createElement("button");
+        approveBtn.className = "btn btn-approve";
+        approveBtn.textContent = "Approve";
+        approveBtn.onclick = async ()=>{
+          await api("/admin/verify/buyer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: row.id }) });
+          loadBuyers();
+        };
+        actCell.appendChild(approveBtn);
+      }
+      tr.appendChild(actCell);
+      body.appendChild(tr);
+    });
+    msg.textContent = "";
+  }catch(err){
+    msg.textContent = err.message;
+  }
+}
+
 document.getElementById("waitlistStatus").addEventListener("change", loadWaitlist);
 document.getElementById("businessStatus").addEventListener("change", loadBusiness);
 document.getElementById("residentStatus").addEventListener("change", loadResident);
+document.getElementById("buyerStatus").addEventListener("change", loadBuyers);
 
 loadWaitlist();
 loadBusiness();
 loadResident();
+loadBuyers();
