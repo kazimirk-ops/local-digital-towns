@@ -3358,7 +3358,7 @@ app.get("/districts/:id/places", async (req, res) =>{
 });
 
 app.get("/market/listings", async (req, res) =>{
-  const access = await requirePerm(req,res,"VIEW_MARKET"); if(!access) return;
+  // Allow anonymous viewing - no login required for marketplace browsing
   const townId = Number(req.query.townId || 1);
   const places = await data.getPlaces();
   const placeById = new Map(places.map(p=>[Number(p.id), p]));
