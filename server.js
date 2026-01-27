@@ -4282,7 +4282,7 @@ app.post("/api/subscription/upgrade", async (req, res) => {
   const u = await requireLogin(req, res); if(!u) return;
   const plan = req.body?.plan || 'business';
   if(plan === 'business') {
-    return res.json({ url: '/apply/business' });
+    return res.json({ url: '/subscribe?plan=business' });
   }
   return res.status(400).json({ error: "Invalid upgrade plan" });
 });
