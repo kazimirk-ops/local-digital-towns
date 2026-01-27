@@ -499,6 +499,8 @@ app.get("/order-confirmed", (req, res) => res.sendFile(path.join(__dirname, "pub
 app.get("/u/:id", async (req, res) =>res.sendFile(path.join(__dirname,"public","profile.html")));
 app.get("/me/store", async (req, res) =>res.sendFile(path.join(__dirname,"public","store_profile.html")));
 app.get("/me/profile", async (req, res) =>res.sendFile(path.join(__dirname,"public","my_profile.html")));
+app.get("/me/subscription", async (req, res) =>res.sendFile(path.join(__dirname,"public","my_subscription.html")));
+app.get("/my-subscription", async (req, res) =>res.redirect("/me/subscription"));
 app.get("/me/orders", async (req, res) =>{
   const u=await requireLogin(req,res); if(!u) return;
   res.sendFile(path.join(__dirname,"public","my_orders.html"));
@@ -4146,6 +4148,141 @@ app.post("/api/admin/places/status", async (req, res) =>{
   const place = await data.updatePlaceStatus(placeId, status);
   if(!place) return res.status(404).json({ error: "Place not found" });
   res.json({ ok:true, place });
+});
+
+// ---------- Individual Subscriptions ----------
+app.get("/api/subscription/status", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const user = await data.getUserById(u);
+  if(!user) return res.status(404).json({ error: "User not found" });
+  // Individual subscriptions are tracked via trustTier and trialUsedAt
+  // Tier 0 = free, Tier 1 = individual, Tier 3+ = business
+  const tier = user.trustTier ?? user.trusttier ?? 0;
+  const trialUsedAt = user.trialUsedAt ?? user.trialusedat;
+  // For now, return a virtual subscription based on tier
+  let subscription = null;
+  if(tier === 1) {
+    subscription = {
+      plan: 'individual',
+      status: 'active',
+      createdAt: user.createdAt ?? user.createdat,
+      currentPeriodEnd: null, // TODO: track actual billing period
+      trialEndsAt: null,
+      canceledAt: null
+    };
+  }
+  res.json({ subscription, tier, trialUsedAt });
+});
+
+app.post("/api/subscription/start", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const user = await data.getUserById(u);
+  if(!user) return res.status(404).json({ error: "User not found" });
+  const tier = user.trustTier ?? user.trusttier ?? 0;
+  if(tier >= 1) return res.status(400).json({ error: "You already have an active subscription" });
+  const plan = req.body?.plan || 'individual';
+  if(plan === 'business') {
+    return res.json({ url: '/apply/business' }); // Redirect to business application
+  }
+  const trialUsedAt = user.trialUsedAt ?? user.trialusedat;
+  const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
+  // If trial already used and Stripe configured, go to checkout
+  if(trialUsedAt && stripeKey) {
+    try {
+      const stripe = require('stripe')(stripeKey);
+      const priceId = process.env.STRIPE_INDIVIDUAL_PRICE_ID;
+      if(!priceId) return res.status(400).json({ error: "Individual subscription not configured yet" });
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${req.protocol}://${req.get('host')}/my-subscription?success=true`,
+        cancel_url: `${req.protocol}://${req.get('host')}/my-subscription?canceled=true`,
+        metadata: { userId: String(u), plan: 'individual' }
+      });
+      return res.json({ url: session.url });
+    } catch(e) {
+      console.error("Stripe checkout error:", e);
+      return res.status(500).json({ error: "Payment setup failed" });
+    }
+  }
+  // Start free trial - upgrade to Tier 1
+  await data.query(
+    'UPDATE users SET trustTier = 1, trialUsedAt = NOW(), updatedAt = NOW() WHERE id = $1',
+    [u]
+  );
+  const updated = await data.getUserById(u);
+  res.json({
+    ok: true,
+    subscription: { plan: 'individual', status: 'trialing' },
+    user: updated
+  });
+});
+
+app.post("/api/subscription/portal", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
+  if(!stripeKey) return res.status(400).json({ error: "Billing portal not available" });
+  // TODO: Implement Stripe customer portal for individual subscriptions
+  return res.status(400).json({ error: "Billing portal coming soon" });
+});
+
+app.post("/api/subscription/cancel", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const user = await data.getUserById(u);
+  if(!user) return res.status(404).json({ error: "User not found" });
+  const tier = user.trustTier ?? user.trusttier ?? 0;
+  if(tier < 1) return res.status(400).json({ error: "No active subscription to cancel" });
+  // For trial users, downgrade immediately
+  // For paid users, would need to cancel in Stripe and wait for period end
+  await data.query(
+    'UPDATE users SET trustTier = 0, updatedAt = NOW() WHERE id = $1',
+    [u]
+  );
+  res.json({ ok: true });
+});
+
+app.post("/api/subscription/reactivate", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const user = await data.getUserById(u);
+  if(!user) return res.status(404).json({ error: "User not found" });
+  const trialUsedAt = user.trialUsedAt ?? user.trialusedat;
+  const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
+  // If trial was used, require payment
+  if(trialUsedAt && stripeKey) {
+    try {
+      const stripe = require('stripe')(stripeKey);
+      const priceId = process.env.STRIPE_INDIVIDUAL_PRICE_ID;
+      if(!priceId) return res.status(400).json({ error: "Individual subscription not configured yet" });
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${req.protocol}://${req.get('host')}/my-subscription?success=true`,
+        cancel_url: `${req.protocol}://${req.get('host')}/my-subscription?canceled=true`,
+        metadata: { userId: String(u), plan: 'individual' }
+      });
+      return res.json({ url: session.url });
+    } catch(e) {
+      console.error("Stripe checkout error:", e);
+      return res.status(500).json({ error: "Payment setup failed" });
+    }
+  }
+  // No trial used yet - shouldn't happen but allow reactivation
+  await data.query(
+    'UPDATE users SET trustTier = 1, trialUsedAt = NOW(), updatedAt = NOW() WHERE id = $1',
+    [u]
+  );
+  res.json({ ok: true });
+});
+
+app.post("/api/subscription/upgrade", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const plan = req.body?.plan || 'business';
+  if(plan === 'business') {
+    return res.json({ url: '/apply/business' });
+  }
+  return res.status(400).json({ error: "Invalid upgrade plan" });
 });
 
 // ---------- Business Subscriptions ----------
