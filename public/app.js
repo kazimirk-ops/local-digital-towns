@@ -1246,7 +1246,7 @@ function applyPermissions(ctx){
     if(!btn) return;
     const label = btn.querySelector("span:last-child");
     if(label && !btn.dataset.baseLabel) btn.dataset.baseLabel = label.textContent;
-    if(tier < 1){
+    if(!ctx?.userId){
       btn.style.display = "";
       btn.disabled = true;
       btn.setAttribute("aria-disabled","true");
@@ -1259,9 +1259,9 @@ function applyPermissions(ctx){
     btn.style.display = viewPerms[view] ? "" : "none";
   });
   const sweepPanel = $("panelSweepstake");
-  if(sweepPanel) sweepPanel.style.display = tier < 1 ? "none" : "";
+  if(sweepPanel) sweepPanel.style.display = !ctx?.userId ? "none" : "";
   const current = getRouteView();
-  if(tier < 1 && current !== "map"){
+  if(!ctx?.userId && current !== "map"){
     location.hash = "map";
     setView("map");
   }else if(current !== "map" && viewPerms[current] === false){
