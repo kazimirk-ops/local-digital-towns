@@ -549,6 +549,13 @@ async function setUserTrustTier(townId, userId, trustTier){
   return stmt("SELECT * FROM town_memberships WHERE townId=$1 AND userId=$2").get(tid, uid);
 }
 
+async function verifyBuyer(userId, status, verifiedBy){
+  const uid = Number(userId);
+  if(!uid) return { error: "Invalid userId" };
+  await stmt("UPDATE users SET isBuyerVerified=1 WHERE id=$1").run(uid);
+  return { ok: true, userId: uid, status, verifiedBy };
+}
+
 async function setUserTermsAcceptedAt(userId, termsAcceptedAt){
   const uid = Number(userId);
   if(!uid) return { error: "Invalid userId" };
@@ -3873,6 +3880,7 @@ module.exports = {
   getPrizeAwardById,
   listPrizeAwardsForUser,
   setUserTrustTier,
+  verifyBuyer,
   setUserTermsAcceptedAt,
   getTownContext,
   updateUserPresence,

@@ -4096,6 +4096,12 @@ app.post("/admin/verify/buyer", async (req, res) =>{
   res.json(r);
 });
 
+app.get("/api/admin/pending-buyers", async (req, res) => {
+  const admin = await requireAdmin(req, res, { message: "Admin only" }); if (!admin) return;
+  const pending = await db.query("SELECT id, email, displayName, addressJson, createdAt FROM users WHERE isBuyerVerified = 0 ORDER BY createdAt DESC");
+  res.json(pending.rows);
+});
+
 app.post("/admin/verify/store", async (req, res) =>{
   const admin=await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
   const id = Number(req.body?.placeId);
