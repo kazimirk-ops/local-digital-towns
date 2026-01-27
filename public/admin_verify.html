@@ -53,7 +53,7 @@ async function loadPending(){
     const list=await r.json();
     if(!list.length){ pendingList.innerHTML="<em>No pending applications</em>"; return; }
     pendingList.innerHTML=list.map(u=>{
-      const addr=u.addressjson?JSON.parse(u.addressjson):{};
+      const addr=typeof u.addressjson==='string'?JSON.parse(u.addressjson):(u.addressjson||{});
       return `<div class="row" style="margin:8px 0;padding:8px;background:var(--panel2);border-radius:8px">
         <span><b>#${u.id}</b> ${u.displayname||u.email} - ${addr.city||'?'}</span>
         <button onclick="approveBuyer(${u.id})">Approve</button>
