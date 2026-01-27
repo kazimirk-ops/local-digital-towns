@@ -1510,7 +1510,7 @@ app.get("/town/context", async (req, res) =>{
   const tierName = TRUST_TIER_LABELS[tier] || "Visitor";
   const permissions = trust.permissionsForTier(tier);
   const limits = trust.limitsForTier(tier);
-  res.json({ ...ctx, trustTier: tier, trustTierLabel: tierName, tierName, permissions, limits });
+  res.json({ ...ctx, userId: u, trustTier: tier, trustTierLabel: tierName, tierName, permissions, limits });
 });
 
 function isInsideSebastian(lat, lng, accuracyMeters){
