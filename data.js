@@ -31,7 +31,8 @@ function toCamelCase(obj) {
       .replace(/totalcents/gi, 'totalCents')
       .replace(/pricecents/gi, 'priceCents')
       .replace(/subtotalcents/gi, 'subtotalCents')
-      .replace(/placename/gi, 'placeName');
+      .replace(/placename/gi, 'placeName')
+      .replace(/sellerplaceid/gi, 'sellerPlaceId');
     result[camelKey] = value;
   }
   return result;
