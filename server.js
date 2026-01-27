@@ -4560,6 +4560,16 @@ app.get("/api/featured-stores", async (req, res) => {
   }
 });
 
+app.get("/api/places/featured", async (req, res) => {
+  try {
+    const businesses = await data.getFeaturedBusinesses();
+    res.json(businesses);
+  } catch(e) {
+    console.error("Featured businesses error:", e);
+    res.status(500).json({ error: "Failed to load featured businesses" });
+  }
+});
+
 // ---------- Ghost Reports (Buyer Non-Payment) ----------
 app.post("/api/orders/:id/report-ghost", async (req, res) => {
   const u = await requireLogin(req, res); if(!u) return;

@@ -3559,6 +3559,19 @@ async function getFeaturedStores() {
   return rows;
 }
 
+async function getFeaturedBusinesses() {
+  // Get places owned by Tier 3 (Business) users with active subscriptions
+  const rows = await stmt(`
+    SELECT p.id, p.name, p.category, p.avatarUrl, p.description, p.bannerUrl,
+           u.displayName AS ownerName
+    FROM places p
+    JOIN users u ON u.id = p.ownerUserId
+    WHERE u.trustTier >= 3
+    ORDER BY p.name ASC
+  `).all();
+  return rows;
+}
+
 // ---------- Ghost Reports (Buyer Non-Payment) ----------
 async function createGhostReport(orderId, buyerUserId, sellerUserId, reason = '') {
   const now = nowISO();
@@ -4026,6 +4039,7 @@ module.exports = {
   // featured stores
   updateGiveawayOfferDates,
   getFeaturedStores,
+  getFeaturedBusinesses,
 
   // ghost reports
   createGhostReport,
