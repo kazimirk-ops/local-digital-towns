@@ -21,6 +21,7 @@ const express = require("express");
 const path = require("path");
 const multer = require("multer");
 const trust = require("./lib/trust");
+const { canBuyAsVerifiedVisitor } = require("./lib/trust");
 const { sendAdminEmail, sendEmail } = require("./lib/notify");
 const db = require("./lib/db");
 const TRUST_TIER_LABELS = trust.TRUST_TIER_LABELS;
@@ -998,7 +999,13 @@ async function requirePerm(req,res,perm){
   const trustTier = (ctx.membership?.trustTier ?? ctx.membership?.trusttier ?? user.trustTier ?? 0);
   const effectiveUser = { ...user, trustTier };
   const permKey = permissions.PERMS[perm] || perm;
-  if(!permissions.hasPerm(effectiveUser, permKey)){
+  let allowed = permissions.hasPerm(effectiveUser, permKey);
+  if (!allowed && (perm === "BUY_MARKET" || perm === "BID_AUCTIONS")) {
+    if (canBuyAsVerifiedVisitor(user)) {
+      allowed = true;
+    }
+  }
+  if(!allowed){
     res.status(403).json({error:`Requires ${perm}`});
     return null;
   }
