@@ -2316,6 +2316,27 @@ app.post("/orders", async (req, res) =>{
     res.status(500).json({error:e.message});
   }
 });
+app.get("/api/orders/:id/detail", async (req, res) => {
+  const u = await requireLogin(req, res); if (!u) return;
+  const order = await data.getOrderById(req.params.id);
+  if (!order) return res.status(404).json({ error: "Order not found" });
+  if (Number(order.buyerUserId) !== Number(u) && Number(order.sellerUserId) !== Number(u)) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+  const items = await data.getOrderItems(order.id);
+  const buyer = await data.getUserById(order.buyerUserId);
+  const seller = order.sellerUserId ? await data.getUserById(order.sellerUserId) : null;
+  const place = order.sellerPlaceId ? await data.getPlaceById(order.sellerPlaceId) : null;
+  const listing = items[0]?.listingId ? await data.getListingById(items[0].listingId) : null;
+
+  const enrichedItems = items.map(item => ({
+    ...item,
+    title: listing?.title || item.title || 'Item',
+    priceCents: item.priceCents || listing?.price * 100 || 0
+  }));
+
+  res.json({ order, items: enrichedItems, buyer, seller, place });
+});
 app.get("/api/orders/:id", async (req, res) =>{
   const u=await requireLogin(req,res); if(!u) return;
   const order=await data.getOrderById(req.params.id);
@@ -2358,7 +2379,7 @@ app.get("/orders/:id", async (req, res) =>{
   if(Number(order.buyerUserId)!==Number(u) && Number(order.sellerUserId)!==Number(u)){
     return res.status(403).json({error:"Forbidden"});
   }
-  res.json(order);
+  res.sendFile(path.join(__dirname, "public", "order.html"));
 });
 app.post("/orders/:id/complete", async (req, res) =>{
   const u=await requireLogin(req,res); if(!u) return;
