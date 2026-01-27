@@ -449,6 +449,19 @@ async function main(){
       const reviews = place.reviewSummary || { count:0, average:0, buyerCount:0, sellerCount:0 };
       $("storeRating").textContent = `★ ${reviews.average.toFixed(1)} (${reviews.count} Reviews)`;
       $("storeReviewRoles").textContent = `Buyer reviews: ${reviews.buyerCount} • Seller reviews: ${reviews.sellerCount}`;
+      // Share button handler
+      const shareBtn = $("shareStoreBtn");
+      if(shareBtn && window.ShareModal){
+        shareBtn.onclick = () => {
+          ShareModal.show({
+            type: 'store',
+            title: `Share ${place.name || 'this store'}`,
+            shareText: `Check out ${place.name || 'this store'} on Digital Sebastian! ${place.description || ''}`.slice(0, 200),
+            shareUrl: window.location.href,
+            imageUrl: place.avatarUrl || place.avatarurl || ''
+          });
+        };
+      }
       updateFollowUi();
       await loadLiveShow();
       if(me?.user && place?.ownerUserId && Number(place.ownerUserId)===Number(me.user.id)){

@@ -195,6 +195,19 @@ async function handleSubmit(event) {
 
     showSuccess('Offer submitted successfully! We\'ll review it and notify you when approved.');
 
+    // Prompt to share the giveaway offer
+    if (window.ShareModal) {
+      setTimeout(() => {
+        ShareModal.show({
+          type: 'giveaway_offer',
+          title: 'Share your giveaway offer!',
+          shareText: `I'm giving away "${title}" on Digital Sebastian! Check out local giveaways and support Sebastian businesses.`,
+          shareUrl: window.location.origin,
+          imageUrl: imageUrl || ''
+        });
+      }, 500);
+    }
+
     // Reset form
     $('offerForm').reset();
     selectedImageFile = null;

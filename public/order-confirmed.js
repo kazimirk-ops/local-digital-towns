@@ -48,6 +48,13 @@ async function main(){
     }else{
       $("sellerInfo").textContent = "Contact seller through the store page.";
     }
+
+    // Prompt share after successful order load
+    if(window.ShareModal && order.id){
+      setTimeout(() => {
+        ShareModal.promptPurchaseShare(order.id);
+      }, 1500);
+    }
   }catch(e){
     statusEl.textContent = `ERROR: ${e.message}`;
   }

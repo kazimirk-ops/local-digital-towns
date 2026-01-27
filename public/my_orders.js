@@ -132,6 +132,10 @@ document.addEventListener("DOMContentLoaded", () => {
       $('reviewModal').style.display = 'none';
       alert('Review submitted!');
       document.querySelector(`.leave-review-btn[data-order="${orderId}"]`)?.remove();
+      // Prompt to share the review
+      if (window.ShareModal && data.reviewId) {
+        setTimeout(() => ShareModal.promptReviewShare(data.reviewId), 500);
+      }
     } catch (err) {
       alert('Error: ' + err.message);
     }

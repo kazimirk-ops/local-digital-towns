@@ -470,6 +470,18 @@ async function createListing() {
     listingPhotos = [];
     syncListingPhotoField();
     renderListingPhotos();
+    // Prompt to share the new listing
+    if (window.ShareModal && created.id) {
+      setTimeout(() => {
+        ShareModal.show({
+          type: 'listing',
+          title: 'Share your new listing!',
+          shareText: `Check out my new listing: ${created.title || 'New item'} on Digital Sebastian!`,
+          shareUrl: `${window.location.origin}/store/${placeId}`,
+          imageUrl: created.photoUrls?.[0] || ''
+        });
+      }, 500);
+    }
   } catch (e) {
     setMsg("listingMsg", `ERROR: ${e.message}`);
   }
@@ -630,6 +642,18 @@ async function createAuctionListing() {
       link.textContent = "View Auction";
     }
     resetAuctionFields();
+    // Prompt to share the new auction
+    if (window.ShareModal && created.id) {
+      setTimeout(() => {
+        ShareModal.show({
+          type: 'auction',
+          title: 'Share your new auction!',
+          shareText: `Check out my new auction: ${created.title || 'New auction'} on Digital Sebastian! Bidding starts now.`,
+          shareUrl: `${window.location.origin}/store/${placeId}`,
+          imageUrl: created.photoUrls?.[0] || ''
+        });
+      }, 500);
+    }
   } catch (e) {
     setMsg("listingMsg", `ERROR: ${e.message}`);
     console.error("Create auction error:", e);
