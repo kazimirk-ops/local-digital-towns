@@ -3403,7 +3403,7 @@ app.get("/market/listings", async (req, res) =>{
   res.json(out);
 });
 app.get("/api/market/listings", async (req, res) =>{
-  const access = await requirePerm(req,res,"VIEW_MARKET"); if(!access) return;
+  // Allow anonymous viewing - no login required for marketplace browsing
   const townId = Number(req.query.townId || 1);
   const places = await data.getPlaces();
   const placeById = new Map(places.map(p=>[Number(p.id), p]));
@@ -3449,7 +3449,7 @@ app.get("/api/market/listings", async (req, res) =>{
 });
 
 app.get("/market/auctions", async (req, res) =>{
-  const access = await requirePerm(req,res,"VIEW_AUCTIONS"); if(!access) return;
+  // Allow anonymous viewing - no login required for auction browsing
   const townId = Number(req.query.townId || 1);
   const places = await data.getPlaces();
   const placeById = new Map(places.map(p=>[Number(p.id), p]));
@@ -3483,7 +3483,7 @@ app.get("/market/auctions", async (req, res) =>{
   res.json(out);
 });
 app.get("/api/auctions/active", async (req, res) =>{
-  const access = await requirePerm(req,res,"VIEW_AUCTIONS"); if(!access) return;
+  // Allow anonymous viewing - no login required for auction browsing
   const townId = Number(req.query.townId || 1);
   const places = await data.getPlaces();
   const placeById = new Map(places.map(p=>[Number(p.id), p]));
@@ -3521,7 +3521,7 @@ app.get("/api/auctions/active", async (req, res) =>{
   res.json(out);
 });
 app.get("/api/auctions/ended", async (req, res) =>{
-  const access = await requirePerm(req,res,"VIEW_AUCTIONS"); if(!access) return;
+  // Allow anonymous viewing - no login required for auction browsing
   const townId = Number(req.query.townId || 1);
   const places = await data.getPlaces();
   const placeById = new Map(places.map(p=>[Number(p.id), p]));
