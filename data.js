@@ -276,6 +276,11 @@ async function getPlaceOwnerPublic(placeId){
   const user = await stmt("SELECT id, email FROM users WHERE id=$1").get(Number(place.ownerUserId)) || null;
   return user ? { id: user.id, email: user.email } : null;
 }
+async function getPlaceByOwnerId(userId){
+  const uid = Number(userId);
+  if(!uid) return null;
+  return stmt("SELECT * FROM places WHERE ownerUserId=$1 LIMIT 1").get(uid);
+}
 async function updatePlaceSettings(placeId, payload){
   const place = await getPlaceById(placeId);
   if(!place) return null;
@@ -3802,6 +3807,7 @@ module.exports = {
   getPlaces,
   getPlaceById,
   getPlaceOwnerPublic,
+  getPlaceByOwnerId,
   updatePlaceSettings,
   listPlacesByStatus,
   listPlacesByOwner,

@@ -404,7 +404,7 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
         const existingStore = await data.getPlaceByOwnerId(uid);
         if(!existingStore) {
           const user = await data.getUserById(uid);
-          await data.createPlace({ name: user?.displayName || 'My Store', ownerUserId: uid, townId: 1, districtId: 1, category: 'Retail Store', status: 'active' });
+          await data.addPlace({ name: user?.displayName || 'My Store', ownerUserId: uid, townId: 1, districtId: 1, category: 'Retail Store', status: 'approved' });
           console.log("AUTO_CREATED_STORE_FOR_UPGRADE", { userId: uid });
         }
       }
