@@ -408,6 +408,20 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
           console.log("AUTO_CREATED_STORE_FOR_UPGRADE", { userId: uid });
         }
       }
+      // Create business_subscriptions record for the store
+      if(upgradePlan === 'business') {
+        const store = await data.getPlaceByOwnerId(uid);
+        if(store) {
+          const subId = session.subscription;
+          const custId = session.customer;
+          await data.query(`
+            INSERT INTO business_subscriptions (placeId, userId, plan, status, stripeCustomerId, stripeSubscriptionId, createdAt, updatedAt)
+            VALUES ($1, $2, 'business', 'active', $3, $4, NOW(), NOW())
+            ON CONFLICT (placeId) DO UPDATE SET status='active', stripeSubscriptionId=$4, updatedAt=NOW()
+          `, [store.id, uid, custId, subId]);
+          console.log("CREATED_BUSINESS_SUBSCRIPTION", { userId: uid, placeId: store.id, subscriptionId: subId });
+        }
+      }
     }
   }
 
