@@ -4225,6 +4225,7 @@ app.post("/api/subscription/start", async (req, res) => {
         cancel_url: `${process.env.BASE_URL || 'https://sebastian-florida.com'}/me/subscription?canceled=true`,
         client_reference_id: String(user.id),
         customer_email: user.email,
+        metadata: { userId: String(user.id), plan: 'business' },
         subscription_data: { trial_period_days: trialDays, metadata: { userId: String(user.id), plan: 'business' } }
       });
       return res.json({ url: session.url });
