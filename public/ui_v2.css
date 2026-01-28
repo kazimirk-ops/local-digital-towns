@@ -339,7 +339,9 @@ textarea { min-height: 90px; }
 .sweep-prize-list { margin-top: 12px; }
 .sweep-winner { margin-top: 12px; }
 
-#sweepPrize { color: #94a3b8; }
+#sweepPrize { color: #e2e8f0; }
+.sweep-prize-list .muted { color: #b8c4ce; }
+.sweep-prize-list .item { color: #e2e8f0; }
 
 @media (max-width: 720px) {
   .sweep-stats { grid-template-columns: 1fr; }
