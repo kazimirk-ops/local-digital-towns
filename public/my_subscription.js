@@ -140,8 +140,7 @@ function renderStatus() {
       <h3 class="card-title">Business Account</h3>
       <p class="muted">You have a business account. Manage your stores and subscriptions on the business page.</p>
       <div class="btn-group">
-        <a href="/business-subscription" class="btn btn-primary">Manage Business Subscription</a>
-        <a href="/me/store" class="btn btn-secondary">Store Dashboard</a>
+        <a href="/me/store" class="btn btn-primary">Store Dashboard</a>
       </div>
     `;
   }
@@ -318,7 +317,7 @@ async function upgradeToBusiness() {
 
     showSuccess('Upgraded to Business plan!');
     setTimeout(() => {
-      window.location.href = '/business-subscription';
+      window.location.href = '/me/store';
     }, 1500);
 
   } catch (e) {
