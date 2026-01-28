@@ -273,13 +273,7 @@ async function startTrial() {
   btn.textContent = 'Processing...';
 
   try {
-    // If business plan selected, redirect to business flow
-    if (selectedPlan === 'business') {
-      window.location.href = '/subscribe?plan=business';
-      return;
-    }
-
-    // Start individual subscription
+    // Start subscription (API handles both individual and business plans)
     const result = await api('/api/subscription/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
