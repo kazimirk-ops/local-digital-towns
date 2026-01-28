@@ -4946,6 +4946,19 @@ app.post("/api/share/log", async (req, res) => {
     return res.status(400).json({ error: "shareType, itemType, and itemId required" });
   }
   const share = await data.logSocialShare(u, shareType, itemType, itemId, platform);
+  // Award sweep tokens for social share
+  try {
+    const eventKey = `social_share_${u}_${itemType}_${itemId}_${platform}`;
+    await data.tryAwardSweepForEvent({
+      townId: 1,
+      userId: u,
+      ruleType: 'social_share',
+      eventKey,
+      meta: { platform, itemType, itemId }
+    });
+  } catch(e) {
+    console.error("Sweep award for share failed:", e);
+  }
   res.json({ ok: true, share });
 });
 
