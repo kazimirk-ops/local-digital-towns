@@ -385,6 +385,30 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
         console.error("WEBHOOK: Error creating subscription user:", err);
       }
     }
+
+    // Handle existing user upgrade (from /api/subscription/start)
+    const upgradeUserId = session.metadata?.userId;
+    const upgradePlan = session.metadata?.plan;
+    if(upgradeUserId && !signupEmail) {
+      const uid = Number(upgradeUserId);
+      const newTier = upgradePlan === 'business' ? 3 : 1;
+      console.log("EXISTING_USER_UPGRADE", { userId: uid, plan: upgradePlan, newTier });
+      await data.setUserTrustTier(1, uid, newTier);
+      // Update stripeCustomerId
+      const custId = session.customer;
+      if(custId) {
+        await data.query("UPDATE users SET stripeCustomerId=$1 WHERE id=$2", [custId, uid]);
+      }
+      // If business, create store if needed
+      if(upgradePlan === 'business') {
+        const existingStore = await data.getPlaceByOwnerId(uid);
+        if(!existingStore) {
+          const user = await data.getUserById(uid);
+          await data.createPlace({ name: user?.displayName || 'My Store', ownerUserId: uid, townId: 1, districtId: 1, category: 'Retail Store', status: 'active' });
+          console.log("AUTO_CREATED_STORE_FOR_UPGRADE", { userId: uid });
+        }
+      }
+    }
   }
 
   if(event.type === "payment_intent.succeeded"){
