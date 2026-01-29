@@ -4251,7 +4251,7 @@ app.post("/api/subscription/start", async (req, res) => {
   // Individual plan is now FREE - skip Stripe, upgrade directly
   try {
     await data.query(
-      'UPDATE users SET trustTier = 1, trialUsedAt = NOW(), updatedAt = NOW() WHERE id = $1',
+      'UPDATE users SET trustTier = 1, trialUsedAt = NOW() WHERE id = $1',
       [u]
     );
     const updated = await data.getUserById(u);
