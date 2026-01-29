@@ -4248,27 +4248,8 @@ app.post("/api/subscription/start", async (req, res) => {
       return res.status(500).json({ error: "Failed to create checkout" });
     }
   }
-  const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
-  // If trial already used and Stripe configured, go to checkout
-  if(trialUsedAt && stripeKey) {
-    try {
-      const stripe = require('stripe')(stripeKey);
-      const priceId = process.env.STRIPE_INDIVIDUAL_PRICE_ID;
-      if(!priceId) return res.status(400).json({ error: "Individual subscription not configured yet" });
-      const session = await stripe.checkout.sessions.create({
-        mode: 'subscription',
-        payment_method_types: ['card'],
-        line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${req.protocol}://${req.get('host')}/my-subscription?success=true`,
-        cancel_url: `${req.protocol}://${req.get('host')}/my-subscription?canceled=true`,
-        metadata: { userId: String(u), plan: 'individual' }
-      });
-      return res.json({ url: session.url });
-    } catch(e) {
-      console.error("Stripe checkout error:", e);
-      return res.status(500).json({ error: "Payment setup failed" });
-    }
-  }
+  // Individual plan is now FREE - skip Stripe, upgrade directly
+  // (Stripe checkout code removed for free tier adoption period)
   // Start free trial - upgrade to Tier 1
   await data.query(
     'UPDATE users SET trustTier = 1, trialUsedAt = NOW(), updatedAt = NOW() WHERE id = $1',

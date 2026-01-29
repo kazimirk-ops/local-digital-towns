@@ -113,7 +113,7 @@ function renderStatus() {
 
     // Check if trial was already used
     if (currentUser.trialUsedAt) {
-      $('startTrialBtn').textContent = 'Subscribe Now - $5/month';
+      $('startTrialBtn').textContent = 'Upgrade to Individual - Free';
       const trialNote = document.querySelector('#upgradeSection .muted:last-child');
       if (trialNote) trialNote.textContent = 'Your free trial has already been used.';
     }
@@ -225,7 +225,7 @@ function renderIndividualStatus() {
 
     // Update tier info
     $('tierName').textContent = 'Individual Plan';
-    $('tierPrice').textContent = currentSubscription.canceledAt ? 'Canceled - access until period end' : '$5/month';
+    $('tierPrice').textContent = currentSubscription.canceledAt ? 'Canceled - access until period end' : 'Free';
   }
 }
 
@@ -260,7 +260,7 @@ function selectPlan(plan) {
       <li>7-day free trial</li>
     `;
     $('startTrialBtn').textContent = currentUser?.trialUsedAt
-      ? 'Subscribe Now - $5/month'
+      ? 'Upgrade to Individual - Free'
       : 'Start 7-Day Free Trial';
   }
 }
