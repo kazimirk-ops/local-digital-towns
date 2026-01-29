@@ -4249,18 +4249,21 @@ app.post("/api/subscription/start", async (req, res) => {
     }
   }
   // Individual plan is now FREE - skip Stripe, upgrade directly
-  // (Stripe checkout code removed for free tier adoption period)
-  // Start free trial - upgrade to Tier 1
-  await data.query(
-    'UPDATE users SET trustTier = 1, trialUsedAt = NOW(), updatedAt = NOW() WHERE id = $1',
-    [u]
-  );
-  const updated = await data.getUserById(u);
-  res.json({
-    ok: true,
-    subscription: { plan: 'individual', status: 'trialing' },
-    user: updated
-  });
+  try {
+    await data.query(
+      'UPDATE users SET trustTier = 1, trialUsedAt = NOW(), updatedAt = NOW() WHERE id = $1',
+      [u]
+    );
+    const updated = await data.getUserById(u);
+    res.json({
+      ok: true,
+      subscription: { plan: 'individual', status: 'active' },
+      user: updated
+    });
+  } catch(e) {
+    console.error("Individual upgrade error:", e);
+    res.status(500).json({ error: "Upgrade failed: " + e.message });
+  }
 });
 
 app.post("/api/subscription/portal", async (req, res) => {
