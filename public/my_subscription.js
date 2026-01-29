@@ -257,11 +257,11 @@ function selectPlan(plan) {
       <li>Sell on marketplace and auctions</li>
       <li>Enter town giveaways</li>
       <li>Direct messaging with buyers</li>
-      <li>7-day free trial</li>
+      <li>Free forever</li>
     `;
     $('startTrialBtn').textContent = currentUser?.trialUsedAt
       ? 'Upgrade to Individual - Free'
-      : 'Start 7-Day Free Trial';
+      : 'Upgrade to Seller - Free';
   }
 }
 
