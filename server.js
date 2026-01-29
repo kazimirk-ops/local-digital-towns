@@ -5104,7 +5104,12 @@ function tierToPerms(tier) {
     PERMS.VIEW_MAP,
     PERMS.BUY_MARKET,
     PERMS.VIEW_EVENTS,
-    PERMS.ENTER_GIVEAWAY
+    PERMS.ENTER_GIVEAWAY,
+    // Individual tier - can sell and message, but no store in featured section
+    PERMS.SELL_MARKET,
+    PERMS.CREATE_LISTING,
+    PERMS.MESSAGE,
+    PERMS.POST_CHANNEL
   ];
 
   return [PERMS.VIEW_MAP];
