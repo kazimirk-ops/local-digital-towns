@@ -1357,8 +1357,19 @@ async function submitPrizeOffer(){
 async function loadSweepstake(){
   const panel = $("panelSweepstake");
   if(!panel) return;
+  // Init v2 section on first call
+  if(window.sweepSectionV2 && !window.sweepSectionV2.container){
+    window.sweepSectionV2.init("panelSweepstake");
+  }
   try{
     const data = await api("/api/sweepstake/active");
+    if(window.sweepSectionV2) window.sweepSectionV2.update({
+      sweepstake: data.sweepstake,
+      totals: data.totals,
+      user: { entries: data.userEntries || 0, balance: data.balance || 0 },
+      donor: data.prize || {},
+      winner: data.winner
+    });
     if(!data.sweepstake){
       $("sweepStatus").textContent = "Inactive";
       $("sweepPrize").textContent = "No active sweepstake";
@@ -1412,6 +1423,8 @@ async function enterSweepstake(){
     msg.textContent = e.message || "Error";
   }
 }
+window.enterSweepstake = enterSweepstake;
+window.loadSweepstakeData = loadSweepstake;
 
 function updateSweepWheelControls(){
   const spinBtn = $("sweepWheelSpinBtn");
