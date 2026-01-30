@@ -727,9 +727,8 @@
 
       if (offerBtn) {
         offerBtn.addEventListener('click', () => {
-          // Open prize offer modal
-          const modal = document.getElementById('prizeOfferModal');
-          if (modal) modal.style.display = 'flex';
+          // Navigate to prize offer form
+          window.location.href = '/giveaway-offer';
         });
       }
     }
