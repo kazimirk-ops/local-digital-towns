@@ -798,7 +798,7 @@ async function loadSubscriptionStatus() {
       badge.textContent = "No Subscription";
       icon.textContent = "📋";
       message.textContent = "Get your store listed on Digital Sebastian";
-      btn.textContent = "Start Free Trial";
+      btn.textContent = "Upgrade to Business - $10/mo";
       btn.classList.add("secondary");
       return;
     }
@@ -838,7 +838,7 @@ async function loadSubscriptionStatus() {
     badge.textContent = "No Subscription";
     icon.textContent = "📋";
     message.textContent = "Get your store listed on Digital Sebastian";
-    btn.textContent = "Start Free Trial";
+    btn.textContent = "Upgrade to Business - $10/mo";
     btn.classList.add("secondary");
   }
 }
