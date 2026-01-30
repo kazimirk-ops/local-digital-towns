@@ -4220,7 +4220,7 @@ app.post("/api/subscription/start", async (req, res) => {
   const user = await data.getUserById(u);
   if(!user) return res.status(404).json({ error: "User not found" });
   const tier = user.trustTier ?? user.trusttier ?? 0;
-  if(tier >= 1) return res.status(400).json({ error: "You already have an active subscription" });
+  if(tier >= 3) return res.status(400).json({ error: "You already have a Business subscription" });
   const plan = req.body?.plan || 'individual';
   const trialUsedAt = user.trialUsedAt ?? user.trialusedat;
   if(plan === 'business') {
