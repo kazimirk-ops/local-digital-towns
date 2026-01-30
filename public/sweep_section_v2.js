@@ -438,20 +438,22 @@
       const sweep = this.data?.sweepstake;
 
       // Different share content based on whether there's an active sweepstake
-      let shareUrl, shareText;
+      let shareUrl, shareText, shareTitle;
       if (sweep?.id) {
         shareUrl = `${window.location.origin}/sweep/${sweep.id}`;
         shareText = `Check out this sweepstake: ${sweep.title} - Worth ${sweep.estimatedValue}!`;
+        shareTitle = sweep.title;
       } else {
         shareUrl = `${window.location.origin}/giveaway-offer`;
         shareText = `Local businesses: Donate prizes to our community sweepstakes and get featured to local customers!`;
+        shareTitle = 'Town Sweepstake';
       }
 
       // Try native share first
       if (navigator.share) {
         try {
           await navigator.share({
-            title: sweep?.title || 'Town Sweepstake',
+            title: shareTitle,
             text: shareText,
             url: shareUrl
           });
