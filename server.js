@@ -1036,7 +1036,7 @@ async function requirePerm(req,res,perm){
   const userId = await requireLogin(req,res); if(!userId) return null;
   const user = await data.getUserById(userId);
   const ctx = await data.getTownContext(1, userId);
-  const trustTier = (ctx.membership?.trustTier ?? ctx.membership?.trusttier ?? user.trustTier ?? user.trusttier ?? 0);
+  const trustTier = ctx.trustTier ?? user.trustTier ?? user.trusttier ?? 0;
   const effectiveUser = { ...user, trustTier };
   const permKey = permissions.PERMS[perm] || perm;
   let allowed = permissions.hasPerm(effectiveUser, permKey);
