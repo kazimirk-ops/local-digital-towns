@@ -1726,9 +1726,26 @@ function initSweepWheel(){
   const overlay = $("sweepWheelOverlay");
   const spinBtn = $("sweepWheelSpinBtn");
   const replayBtn = $("sweepWheelReplayBtn");
-  if(openBtn) openBtn.onclick = ()=>{
-    if(overlay) overlay.style.display = "flex";
-    loadSweepWheelData();
+  if(openBtn) openBtn.onclick = async ()=>{
+    // Use v2 wheel
+    try {
+      const resp = await api('/api/sweepstake/active');
+      if (!resp.sweepstake) {
+        window.sweepWheelV2.open([], null);
+        return;
+      }
+      const entries = (resp.participants || []).map(p => ({
+        id: p.userId,
+        name: p.displayName || p.email || 'Unknown',
+        entries: p.entries || 1
+      }));
+      window.sweepWheelV2.open(entries, (winner) => {
+        console.log('Winner selected:', winner);
+      });
+    } catch (err) {
+      console.error('Failed to load sweep data:', err);
+      window.sweepWheelV2.open([], null);
+    }
   };
   if(closeBtn) closeBtn.onclick = ()=>{
     if(overlay) overlay.style.display = "none";
