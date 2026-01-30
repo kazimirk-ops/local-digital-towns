@@ -436,10 +436,16 @@
 
     async handleShare() {
       const sweep = this.data?.sweepstake;
-      if (!sweep) return;
 
-      const shareUrl = `${window.location.origin}/sweep/${sweep.id}`;
-      const shareText = `Check out this sweepstake: ${sweep.title} - Worth ${sweep.estimatedValue}!`;
+      // Different share content based on whether there's an active sweepstake
+      let shareUrl, shareText;
+      if (sweep?.id) {
+        shareUrl = `${window.location.origin}/sweep/${sweep.id}`;
+        shareText = `Check out this sweepstake: ${sweep.title} - Worth ${sweep.estimatedValue}!`;
+      } else {
+        shareUrl = `${window.location.origin}/giveaway-offer`;
+        shareText = `Local businesses: Donate prizes to our community sweepstakes and get featured to local customers!`;
+      }
 
       // Try native share first
       if (navigator.share) {
@@ -468,6 +474,10 @@
     }
 
     async logShare(platform) {
+      // Only log shares when there's an active sweepstake
+      const sweepId = this.data?.sweepstake?.id;
+      if (!sweepId) return;
+
       try {
         const resp = await fetch('/api/share/log', {
           method: 'POST',
@@ -512,12 +522,36 @@
       if (!sweep.id) {
         this.container.innerHTML = `
           <div class="sweep-v2-container">
+            <div class="sweep-v2-header">
+              <div>
+                <h2 class="sweep-v2-title">Town Sweepstake</h2>
+                <p class="sweep-v2-subtitle">Win amazing prizes from our community</p>
+              </div>
+              <div class="sweep-v2-status inactive">
+                <span class="sweep-v2-status-dot"></span>
+                Inactive
+              </div>
+            </div>
             <div class="sweep-v2-no-sweep">
               <div class="sweep-v2-no-sweep-title">No Active Sweepstake</div>
               <p>Check back soon for exciting prizes!</p>
+              <p style="margin-top:12px;font-size:13px;">Want to donate a prize? Local businesses can submit items for community giveaways.</p>
             </div>
+            <div class="sweep-v2-actions">
+              <button class="sweep-v2-action-btn share" id="sweepV2ShareBtn">
+                \uD83D\uDCE4 Invite Business
+              </button>
+              <button class="sweep-v2-action-btn offer" id="sweepV2OfferBtn">
+                \uD83C\uDF81 Submit Prize
+              </button>
+              <button class="sweep-v2-action-btn wheel" id="sweepV2WheelBtn" disabled style="opacity:0.5">
+                \u2728 Open Wheel
+              </button>
+            </div>
+            <div class="sweep-v2-note">Preferred donor tier members get priority placement</div>
           </div>
         `;
+        this.bindEvents();
         return;
       }
 
