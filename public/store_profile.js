@@ -782,7 +782,7 @@ async function loadSubscriptionStatus() {
 
   // Use first approved store for subscription check
   const placeId = approvedStores[0].id;
-  btn.href = `/me/store?placeId=${placeId}`;
+  btn.href = `/me/subscription?placeId=${placeId}`;
 
   try {
     const result = await api(`/api/business/subscription/${placeId}`);
