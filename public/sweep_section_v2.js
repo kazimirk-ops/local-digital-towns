@@ -451,7 +451,7 @@
       if (navigator.share) {
         try {
           await navigator.share({
-            title: sweep.title,
+            title: sweep?.title || 'Town Sweepstake',
             text: shareText,
             url: shareUrl
           });
