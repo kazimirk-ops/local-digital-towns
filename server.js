@@ -4231,7 +4231,7 @@ app.post("/api/subscription/start", async (req, res) => {
     const priceId = process.env.STRIPE_BUSINESS_PRICE_ID;
     if(!priceId) return res.status(500).json({ error: "Business price not configured" });
     try {
-      const trialDays = trialUsedAt ? 0 : 7;
+      const trialDays = trialUsedAt ? null : 7;
       const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
         payment_method_types: ['card'],
@@ -4241,7 +4241,7 @@ app.post("/api/subscription/start", async (req, res) => {
         client_reference_id: String(user.id),
         customer_email: user.email,
         metadata: { userId: String(user.id), plan: 'business' },
-        subscription_data: { trial_period_days: trialDays, metadata: { userId: String(user.id), plan: 'business' } }
+        subscription_data: { ...(trialDays ? { trial_period_days: trialDays } : {}), metadata: { userId: String(user.id), plan: 'business' } }
       });
       return res.json({ url: session.url });
     } catch(e) {
