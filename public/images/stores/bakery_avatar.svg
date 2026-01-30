@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1424"/>
+      <stop offset="100%" style="stop-color:#1a2744"/>
+    </linearGradient>
+    <linearGradient id="crust" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#d4a053"/>
+      <stop offset="100%" style="stop-color:#b8860b"/>
+    </linearGradient>
+    <linearGradient id="frosting" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fef3c7"/>
+      <stop offset="100%" style="stop-color:#f5d990"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="40" fill="url(#bg)"/>
+  <!-- Cupcake base / wrapper -->
+  <path d="M68 120 L76 155 Q100 162 124 155 L132 120 Z" fill="url(#crust)" opacity="0.9"/>
+  <!-- Wrapper lines -->
+  <line x1="80" y1="122" x2="78" y2="153" stroke="#a06c1a" stroke-width="1" opacity="0.4"/>
+  <line x1="92" y1="120" x2="91" y2="157" stroke="#a06c1a" stroke-width="1" opacity="0.4"/>
+  <line x1="108" y1="120" x2="109" y2="157" stroke="#a06c1a" stroke-width="1" opacity="0.4"/>
+  <line x1="120" y1="122" x2="122" y2="153" stroke="#a06c1a" stroke-width="1" opacity="0.4"/>
+  <!-- Frosting swirl -->
+  <ellipse cx="100" cy="108" rx="38" ry="18" fill="url(#frosting)"/>
+  <ellipse cx="86" cy="96" rx="22" ry="16" fill="url(#frosting)"/>
+  <ellipse cx="114" cy="96" rx="22" ry="16" fill="url(#frosting)"/>
+  <ellipse cx="100" cy="82" rx="18" ry="14" fill="url(#frosting)"/>
+  <!-- Cherry on top -->
+  <circle cx="100" cy="68" r="10" fill="#e74c3c"/>
+  <path d="M100 58 Q106 48 112 52" stroke="#4a7c3f" stroke-width="2" fill="none"/>
+</svg>
