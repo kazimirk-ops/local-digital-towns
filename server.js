@@ -1046,6 +1046,7 @@ async function requirePerm(req,res,perm){
     }
   }
   if(!allowed){
+    console.log("PERM_DENIED:", { userId, perm, permKey, trustTier, userTrustTier: user.trustTier, userTrusttier: user.trusttier, ctxMembership: ctx.membership });
     res.status(403).json({error:`Requires ${perm}`});
     return null;
   }
