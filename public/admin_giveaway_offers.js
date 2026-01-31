@@ -114,10 +114,12 @@ function openApproveModal(offer) {
   $('modalApproveBtn').disabled = false;
   $('modalApproveBtn').textContent = 'Approve';
   $('reviewModal').classList.add('active');
+  document.querySelector('#reviewModal .modal').classList.add('open');
 }
 
 function closeModal() {
   $('reviewModal').classList.remove('active');
+  document.querySelector('#reviewModal .modal').classList.remove('open');
   pendingApprovalOfferId = null;
 }
 
