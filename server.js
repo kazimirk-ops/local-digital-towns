@@ -3440,6 +3440,24 @@ app.post("/api/admin/sweep/sweepstake", async (req, res) =>{
   if(created?.error) return res.status(400).json(created);
   res.status(201).json(created);
 });
+app.put("/api/admin/sweep/sweepstake/:id", async (req, res) =>{
+  const admin = await requireAdmin(req,res); if(!admin) return;
+  const id = parseInt(req.params.id);
+  const status = (req.body?.status || "").toString().trim();
+  if(!id) return res.status(400).json({ error: "Invalid ID" });
+  if(!status) return res.status(400).json({ error: "Status required" });
+  const result = await db.one("UPDATE sweepstakes SET status = $1 WHERE id = $2 RETURNING *", [status, id]);
+  if(!result) return res.status(404).json({ error: "Sweepstake not found" });
+  res.json({ ok: true, sweepstake: result });
+});
+app.delete("/api/admin/sweep/sweepstake/:id", async (req, res) =>{
+  const admin = await requireAdmin(req,res); if(!admin) return;
+  const id = parseInt(req.params.id);
+  if(!id) return res.status(400).json({ error: "Invalid ID" });
+  const result = await db.one("UPDATE sweepstakes SET status = 'cancelled' WHERE id = $1 RETURNING *", [id]);
+  if(!result) return res.status(404).json({ error: "Sweepstake not found" });
+  res.json({ ok: true, sweepstake: result });
+});
 
 // Districts
 app.get("/districts/:id/places", async (req, res) =>{
