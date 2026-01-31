@@ -81,36 +81,55 @@ function renderOffers() {
   $('offersGrid').innerHTML = html;
 }
 
-function handleAction(offerId, action) {
-  var offer = null;
+function findOffer(offerId) {
   for (var i = 0; i < allOffers.length; i++) {
-    if (Number(allOffers[i].id) === Number(offerId)) { offer = allOffers[i]; break; }
+    if (Number(allOffers[i].id) === Number(offerId)) return allOffers[i];
   }
-  if (!offer) { alert('Offer not found'); return; }
+  return null;
+}
 
-  if (action === 'view') {
-    var placeName = (offer.place && offer.place.name) || offer.placeName || offer.placename || 'Unknown Store';
-    alert('Offer: ' + offer.title + '\nStore: ' + placeName + '\nValue: ' + formatMoney(offer.estimatedValue || offer.estimated_value) + '\nStatus: ' + offer.status + '\nSubmitted: ' + formatDate(offer.createdAt || offer.created_at) + (offer.adminNotes ? '\nNotes: ' + offer.adminNotes : ''));
-    return;
-  }
+function toLocalDatetime(d) {
+  var dt = new Date(d);
+  dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+  return dt.toISOString().slice(0, 16);
+}
 
-  var actionLabel = action === 'approve' ? 'APPROVE' : 'REJECT';
-  if (!confirm(actionLabel + ' this offer?\n\n"' + offer.title + '"\nfrom ' + ((offer.place && offer.place.name) || offer.placeName || 'Unknown Store'))) return;
+var pendingApprovalOfferId = null;
 
-  var notes = prompt('Admin notes (optional):', '') || '';
+function openApproveModal(offer) {
+  var placeName = (offer.place && offer.place.name) || offer.placeName || offer.placename || 'Unknown Store';
+  $('modalTitle').textContent = 'Approve Offer';
+  $('modalOfferInfo').innerHTML =
+    '<div style="margin-bottom:12px;">' +
+      '<strong>' + escapeHtml(offer.title) + '</strong><br>' +
+      '<span class="muted">Store: ' + escapeHtml(placeName) + '</span><br>' +
+      '<span class="muted">Value: $' + formatMoney(offer.estimatedValue || offer.estimated_value) + '</span>' +
+    '</div>';
+  var now = new Date();
+  var end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  $('modalStartsAt').value = toLocalDatetime(now);
+  $('modalEndsAt').value = toLocalDatetime(end);
+  $('modalNotes').value = '';
+  pendingApprovalOfferId = offer.id;
+  $('modalApproveBtn').disabled = false;
+  $('modalApproveBtn').textContent = 'Approve';
+  $('reviewModal').classList.add('active');
+}
 
-  var payload = { status: action === 'approve' ? 'approved' : 'rejected', notes: notes };
+function closeModal() {
+  $('reviewModal').classList.remove('active');
+  pendingApprovalOfferId = null;
+}
 
-  if (action === 'approve') {
-    var now = new Date();
-    var end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    payload.startsAt = now.toISOString();
-    payload.endsAt = end.toISOString();
-  }
-
-  var btn = document.querySelector('[data-offer-id="' + offerId + '"][data-action="' + action + '"]');
-  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
-
+function submitApproval() {
+  var offer = findOffer(pendingApprovalOfferId);
+  if (!offer) { alert('Offer not found'); closeModal(); return; }
+  var startsAt = $('modalStartsAt').value ? new Date($('modalStartsAt').value).toISOString() : new Date().toISOString();
+  var endsAt = $('modalEndsAt').value ? new Date($('modalEndsAt').value).toISOString() : new Date(Date.now() + 30*24*60*60*1000).toISOString();
+  var notes = ($('modalNotes').value || '').trim();
+  var payload = { status: 'approved', notes: notes, startsAt: startsAt, endsAt: endsAt };
+  $('modalApproveBtn').disabled = true;
+  $('modalApproveBtn').textContent = 'Saving...';
   fetch('/api/admin/giveaway/offer/' + offer.id + '/review', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -122,13 +141,55 @@ function handleAction(offerId, action) {
     return resp.json();
   })
   .then(function() {
+    closeModal();
     loadOffers();
   })
   .catch(function(err) {
-    console.error('Review error:', err);
+    console.error('Approve error:', err);
     alert('Error: ' + err.message);
-    if (btn) { btn.disabled = false; btn.textContent = action === 'approve' ? 'Approve' : 'Reject'; }
+    $('modalApproveBtn').disabled = false;
+    $('modalApproveBtn').textContent = 'Approve';
   });
+}
+
+function submitReject(offerId) {
+  var offer = findOffer(offerId);
+  if (!offer) { alert('Offer not found'); return; }
+  var placeName = (offer.place && offer.place.name) || offer.placeName || offer.placename || 'Unknown Store';
+  if (!confirm('REJECT this offer?\n\n"' + offer.title + '"\nfrom ' + placeName)) return;
+  var notes = prompt('Rejection reason (optional):', '') || '';
+  var btn = document.querySelector('[data-offer-id="' + offerId + '"][data-action="reject"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  fetch('/api/admin/giveaway/offer/' + offer.id + '/review', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ status: 'rejected', notes: notes })
+  })
+  .then(function(resp) {
+    if (!resp.ok) return resp.json().then(function(d) { throw new Error(d.error || 'Failed'); });
+    return resp.json();
+  })
+  .then(function() {
+    loadOffers();
+  })
+  .catch(function(err) {
+    console.error('Reject error:', err);
+    alert('Error: ' + err.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Reject'; }
+  });
+}
+
+function handleAction(offerId, action) {
+  var offer = findOffer(offerId);
+  if (!offer) { alert('Offer not found'); return; }
+  if (action === 'view') {
+    var placeName = (offer.place && offer.place.name) || offer.placeName || offer.placename || 'Unknown Store';
+    alert('Offer: ' + offer.title + '\nStore: ' + placeName + '\nValue: $' + formatMoney(offer.estimatedValue || offer.estimated_value) + '\nStatus: ' + offer.status + '\nSubmitted: ' + formatDate(offer.createdAt || offer.created_at) + (offer.adminNotes ? '\nNotes: ' + offer.adminNotes : ''));
+    return;
+  }
+  if (action === 'approve') { openApproveModal(offer); return; }
+  if (action === 'reject') { submitReject(offerId); return; }
 }
 
 // Tab filtering
@@ -145,6 +206,15 @@ document.querySelectorAll('.tab-btn').forEach(function(b) {
 $('offersGrid').addEventListener('click', function(e) {
   var btn = e.target.closest('[data-offer-id]');
   if (btn) handleAction(parseInt(btn.dataset.offerId), btn.dataset.action);
+});
+
+// Modal buttons
+$('modalApproveBtn').addEventListener('click', submitApproval);
+$('modalCancelBtn').addEventListener('click', closeModal);
+
+// Close modal on overlay click (background area)
+$('reviewModal').addEventListener('click', function(e) {
+  if (e.target === $('reviewModal')) closeModal();
 });
 
 // Image fallbacks

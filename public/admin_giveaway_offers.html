@@ -53,9 +53,9 @@
       .loading { text-align: center; padding: 40px; color: var(--muted); }
       .empty { text-align: center; padding: 40px; color: var(--muted); }
 
-      .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; padding: 20px; }
+      .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; padding: 20px; pointer-events: none; }
       .modal-overlay.active { display: flex; }
-      .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 24px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
+      .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 24px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; pointer-events: auto; }
       .modal-title { font-size: 20px; font-weight: 600; margin: 0 0 16px 0; }
       .modal-body { margin-bottom: 20px; }
       .form-group { margin-bottom: 16px; }
@@ -128,11 +128,11 @@
 
     <!-- Review Modal -->
     <div class="modal-overlay" id="reviewModal">
-      <div class="modal" style="position:relative; z-index:10001;">
+      <div class="modal">
         <h3 class="modal-title" id="modalTitle">Review Offer</h3>
         <div class="modal-body">
           <div id="modalOfferInfo"></div>
-          <div class="form-group" id="modalDatesGroup" style="display:none;">
+          <div class="form-group" id="modalDatesGroup">
             <label class="form-label">Giveaway Active Period (for featured stores)</label>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px;">
               <div>
@@ -153,13 +153,12 @@
         </div>
         <div class="modal-actions">
           <button class="btn btn-secondary" id="modalCancelBtn">Cancel</button>
-          <button class="btn btn-reject" id="modalRejectBtn">Reject</button>
           <button class="btn btn-approve" id="modalApproveBtn">Approve</button>
         </div>
       </div>
     </div>
 
     <script src="/theme.js?v=1"></script>
-    <script src="/admin_giveaway_offers.js?v=7"></script>
+    <script src="/admin_giveaway_offers.js?v=8"></script>
   </body>
 </html>
