@@ -56,6 +56,7 @@
       .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; padding: 20px; pointer-events: none; }
       .modal-overlay.active { display: flex; }
       .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 24px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; pointer-events: auto; }
+      .modal-overlay.active .modal { display: block; }
       .modal-title { font-size: 20px; font-weight: 600; margin: 0 0 16px 0; }
       .modal-body { margin-bottom: 20px; }
       .form-group { margin-bottom: 16px; }
@@ -159,6 +160,6 @@
     </div>
 
     <script src="/theme.js?v=1"></script>
-    <script src="/admin_giveaway_offers.js?v=8"></script>
+    <script src="/admin_giveaway_offers.js?v=9"></script>
   </body>
 </html>
