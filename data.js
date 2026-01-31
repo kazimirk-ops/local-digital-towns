@@ -1726,11 +1726,14 @@ async function addSweepLedgerEntry(payload){
   );
   return info.rows?.[0]?.id;
 }
-async function listSweepRules(townId=1){
-  const rows = await stmt("SELECT * FROM sweep_rules WHERE town_id=$1 ORDER BY id").all(Number(townId));
+async function listSweepRules(townId=1, sweepstakeId){
+  const rows = sweepstakeId
+    ? await stmt("SELECT * FROM sweep_rules WHERE town_id=$1 AND sweepstake_id=$2 ORDER BY id").all(Number(townId), Number(sweepstakeId))
+    : await stmt("SELECT * FROM sweep_rules WHERE town_id=$1 ORDER BY id").all(Number(townId));
   return rows.map((r)=>({
     id: r.id,
     townId: r.town_id ?? r.townid ?? r.townId ?? Number(townId),
+    sweepstakeId: r.sweepstake_id ?? null,
     ruleType: r.rule_type ?? r.ruleType ?? "",
     enabled: r.enabled === true || Number(r.enabled) === 1,
     amount: Number(r.amount || 0),
@@ -1753,10 +1756,11 @@ async function createSweepRule(townId=1, payload){
   const dailyCap = Number(payload.dailyCap || payload.daily_cap || 0);
   const cooldownSeconds = Number(payload.cooldownSeconds || payload.cooldown_seconds || 0);
   const meta = payload.meta || payload.meta_json || {};
+  const sweepstakeId = payload.sweepstakeId != null ? Number(payload.sweepstakeId) : null;
   const info = await stmt(`
     INSERT INTO sweep_rules
-      (town_id, rule_type, enabled, amount, buyer_amount, seller_amount, daily_cap, cooldown_seconds, meta_json)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      (town_id, rule_type, enabled, amount, buyer_amount, seller_amount, daily_cap, cooldown_seconds, meta_json, sweepstake_id)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
     RETURNING id
   `).run(
     Number(townId),
@@ -1767,7 +1771,8 @@ async function createSweepRule(townId=1, payload){
     sellerAmount,
     dailyCap,
     cooldownSeconds,
-    JSON.stringify(meta || {})
+    JSON.stringify(meta || {}),
+    sweepstakeId
   );
   const row = await stmt("SELECT * FROM sweep_rules WHERE id=$1").get(info.rows?.[0]?.id);
   return row || null;
@@ -1815,8 +1820,9 @@ async function deleteSweepRule(townId=1, ruleId){
 }
 async function tryAwardSweepForEvent({ townId=1, userId, ruleType, eventKey, meta }){
   if(!userId || !ruleType || !eventKey) return { awarded:false, reason:"invalid" };
-  const rules = await stmt("SELECT * FROM sweep_rules WHERE town_id=$1 AND rule_type=$2 AND enabled=true ORDER BY id")
-    .all(Number(townId), String(ruleType));
+  const rules = await stmt(`SELECT * FROM sweep_rules WHERE town_id=$1 AND rule_type=$2 AND enabled=true
+    AND (sweepstake_id IS NULL OR sweepstake_id IN (SELECT id FROM sweepstakes WHERE status='active' AND startAt <= now() AND endAt >= now()))
+    ORDER BY id`).all(Number(townId), String(ruleType));
   if(!rules.length) return { awarded:false, reason:"no_rules" };
   let awardedTotal = 0;
   let lastReason = "no_rules";
@@ -1926,6 +1932,15 @@ async function getActiveSweepstake(){
     ORDER BY startAt DESC
     LIMIT 1
   `).get(now, now)) || null;
+}
+async function getActiveSweepstakes(){
+  const now = nowISO();
+  return stmt(`
+    SELECT * FROM sweepstakes
+    WHERE (status='active' AND startAt <= $1 AND endAt >= $1)
+       OR (status='scheduled' AND startAt <= ($1::timestamptz + interval '7 days'))
+    ORDER BY startAt ASC
+  `).all(now);
 }
 async function addSweepstakeEntry(sweepstakeId, userId, entries){
   const dayKey = nowISO().slice(0,10);
@@ -3935,6 +3950,7 @@ module.exports = {
   createSweepstake,
   getSweepstakeById,
   getActiveSweepstake,
+  getActiveSweepstakes,
   addSweepstakeEntry,
   getSweepstakeEntryTotals,
   getUserEntriesForSweepstake,
