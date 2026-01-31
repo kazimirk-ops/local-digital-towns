@@ -525,7 +525,11 @@
 
     async loadRules() {
       try {
-        const resp = await fetch('/api/sweepstake/rules', { credentials: 'include' });
+        const sweepId = this.data?.sweepstake?.id;
+        const url = sweepId
+          ? '/api/sweepstake/rules?sweepstakeId=' + sweepId
+          : '/api/sweepstake/rules';
+        const resp = await fetch(url, { credentials: 'include' });
         const data = await resp.json();
         this.rules = data.rules || [];
       } catch (err) {
