@@ -4768,14 +4768,19 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
   }
   let subscription = null;
   if(status === "approved"){
-    subscription = await data.awardFreeMonth(offer.placeId);
+    try {
+      subscription = await data.awardFreeMonth(offer.placeId);
+    } catch (e) {
+      console.error("awardFreeMonth failed (non-blocking):", e.message);
+      subscription = null;
+    }
   }
   const place = await data.getPlaceById(offer.placeId);
   const owner = offer.userId ? await data.getUserById(offer.userId) : null;
   if(owner?.email){
     const statusText = status === "approved" ? "approved" : "not approved";
     const rewardText = status === "approved"
-      ? "As a thank you, your subscription has been extended by one free month!"
+      ? "Your prize will be featured in the Town Giveaway. Thank you for supporting the community!"
       : "";
     const emailText = `Hello,
 
