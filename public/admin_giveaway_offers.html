@@ -151,6 +151,23 @@
             <label class="form-label">Admin Notes (optional)</label>
             <textarea class="form-input" id="modalNotes" placeholder="Add notes about this decision..."></textarea>
           </div>
+          <div class="form-group" id="modalRewardsGroup">
+            <label class="form-label">Entry Rewards (entries per action)</label>
+            <div style="display:grid; grid-template-columns:1fr 80px; gap:8px; align-items:center; margin-top:8px;">
+              <span>Send a message:</span>
+              <input type="number" class="form-input" id="rewardMessage" value="1" min="0">
+              <span>Create a listing:</span>
+              <input type="number" class="form-input" id="rewardListing" value="2" min="0">
+              <span>Make a local purchase:</span>
+              <input type="number" class="form-input" id="rewardPurchase" value="3" min="0">
+              <span>Leave a review:</span>
+              <input type="number" class="form-input" id="rewardReview" value="2" min="0">
+              <span>Mark listing as sold:</span>
+              <input type="number" class="form-input" id="rewardSold" value="1" min="0">
+              <span>Share on social media:</span>
+              <input type="number" class="form-input" id="rewardShare" value="1" min="0">
+            </div>
+          </div>
         </div>
         <div class="modal-actions">
           <button class="btn btn-secondary" id="modalCancelBtn">Cancel</button>
@@ -180,6 +197,23 @@
             <label class="form-label">End Date</label>
             <input type="datetime-local" class="form-input" id="editEndsAt" />
           </div>
+          <div class="form-group">
+            <label class="form-label">Entry Rewards (entries per action)</label>
+            <div style="display:grid; grid-template-columns:1fr 80px; gap:8px; align-items:center; margin-top:8px;">
+              <span>Send a message:</span>
+              <input type="number" class="form-input" id="editRewardMessage" value="1" min="0">
+              <span>Create a listing:</span>
+              <input type="number" class="form-input" id="editRewardListing" value="2" min="0">
+              <span>Make a local purchase:</span>
+              <input type="number" class="form-input" id="editRewardPurchase" value="3" min="0">
+              <span>Leave a review:</span>
+              <input type="number" class="form-input" id="editRewardReview" value="2" min="0">
+              <span>Mark listing as sold:</span>
+              <input type="number" class="form-input" id="editRewardSold" value="1" min="0">
+              <span>Share on social media:</span>
+              <input type="number" class="form-input" id="editRewardShare" value="1" min="0">
+            </div>
+          </div>
         </div>
         <div class="modal-actions">
           <button class="btn btn-secondary" id="editCancelBtn">Cancel</button>
@@ -189,6 +223,6 @@
     </div>
 
     <script src="/theme.js?v=1"></script>
-    <script src="/admin_giveaway_offers.js?v=11"></script>
+    <script src="/admin_giveaway_offers.js?v=12"></script>
   </body>
 </html>

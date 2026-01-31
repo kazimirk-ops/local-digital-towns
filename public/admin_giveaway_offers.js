@@ -99,6 +99,16 @@ function toLocalDatetime(d) {
 
 var pendingApprovalOfferId = null;
 var pendingEditOffer = null;
+var pendingEditRules = [];
+
+var ruleTypeToEditInput = {
+  message_send: 'editRewardMessage',
+  listing_create: 'editRewardListing',
+  local_purchase: 'editRewardPurchase',
+  review_left: 'editRewardReview',
+  listing_mark_sold: 'editRewardSold',
+  social_share: 'editRewardShare'
+};
 
 function openApproveModal(offer) {
   var placeName = (offer.place && offer.place.name) || offer.placeName || offer.placename || 'Unknown Store';
@@ -136,6 +146,31 @@ function openEditModal(offer) {
   var endsAt = offer.endsAt || offer.endsat || offer.ends_at || '';
   $('editEndsAt').value = endsAt ? toLocalDatetime(endsAt) : '';
   pendingEditOffer = offer;
+  pendingEditRules = [];
+  // Reset edit reward inputs to defaults
+  $('editRewardMessage').value = 1;
+  $('editRewardListing').value = 2;
+  $('editRewardPurchase').value = 3;
+  $('editRewardReview').value = 2;
+  $('editRewardSold').value = 1;
+  $('editRewardShare').value = 1;
+  // Fetch per-sweepstake rules if sweepstakeId exists
+  var swId = offer.sweepstakeId || offer.sweepstakeid;
+  if (swId) {
+    fetch('/api/admin/sweep/rules?sweepstakeId=' + swId, { credentials: 'include' })
+      .then(function(resp) { return resp.ok ? resp.json() : []; })
+      .then(function(rules) {
+        pendingEditRules = rules || [];
+        for (var i = 0; i < pendingEditRules.length; i++) {
+          var r = pendingEditRules[i];
+          var inputId = ruleTypeToEditInput[r.matchEventType];
+          if (inputId && $(inputId)) {
+            $(inputId).value = Number(r.amount) || 0;
+          }
+        }
+      })
+      .catch(function(err) { console.error('Failed to load rules:', err); });
+  }
   $('editSaveBtn').disabled = false;
   $('editSaveBtn').textContent = 'Save Changes';
   $('editModal').classList.add('active');
@@ -172,6 +207,34 @@ function submitEdit() {
   .then(function(resp) {
     if (!resp.ok) return resp.json().then(function(d) { throw new Error(d.error || 'Failed'); });
     return resp.json();
+  })
+  .then(function() {
+    // Patch entry rules if we have loaded rules
+    if (pendingEditRules.length === 0) return;
+    var editInputMap = {
+      message_send: 'editRewardMessage',
+      listing_create: 'editRewardListing',
+      local_purchase: 'editRewardPurchase',
+      review_left: 'editRewardReview',
+      listing_mark_sold: 'editRewardSold',
+      social_share: 'editRewardShare'
+    };
+    var patches = [];
+    for (var i = 0; i < pendingEditRules.length; i++) {
+      var rule = pendingEditRules[i];
+      var inputId = editInputMap[rule.matchEventType];
+      if (!inputId || !$(inputId)) continue;
+      var newAmount = parseInt($(inputId).value) || 0;
+      if (newAmount !== Number(rule.amount)) {
+        patches.push(fetch('/api/admin/sweep/rules/' + rule.id, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ amount: newAmount })
+        }));
+      }
+    }
+    if (patches.length > 0) return Promise.all(patches);
   })
   .then(function() {
     closeEditModal();
@@ -226,7 +289,15 @@ function submitApproval() {
   var startsAt = $('modalStartsAt').value ? new Date($('modalStartsAt').value).toISOString() : new Date().toISOString();
   var endsAt = $('modalEndsAt').value ? new Date($('modalEndsAt').value).toISOString() : new Date(Date.now() + 30*24*60*60*1000).toISOString();
   var notes = ($('modalNotes').value || '').trim();
-  var payload = { status: 'approved', notes: notes, startsAt: startsAt, endsAt: endsAt };
+  var entryRules = {
+    message_send: parseInt($('rewardMessage').value) || 0,
+    listing_create: parseInt($('rewardListing').value) || 0,
+    local_purchase: parseInt($('rewardPurchase').value) || 0,
+    review_left: parseInt($('rewardReview').value) || 0,
+    listing_mark_sold: parseInt($('rewardSold').value) || 0,
+    social_share: parseInt($('rewardShare').value) || 0
+  };
+  var payload = { status: 'approved', notes: notes, startsAt: startsAt, endsAt: endsAt, entryRules: entryRules };
   $('modalApproveBtn').disabled = true;
   $('modalApproveBtn').textContent = 'Saving...';
   fetch('/api/admin/giveaway/offer/' + offer.id + '/review', {

@@ -3449,7 +3449,8 @@ app.get("/api/admin/sweep/last", async (req, res) =>{
 });
 app.get("/api/admin/sweep/rules", async (req, res) =>{
   const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
-  const rows = await data.listSweepRules(1);
+  const sweepstakeId = req.query.sweepstakeId ? Number(req.query.sweepstakeId) : undefined;
+  const rows = await data.listSweepRules(1, sweepstakeId);
   res.json(rows.map(r=>({
     id: r.id,
     matchEventType: r.ruleType || "",
@@ -4853,6 +4854,7 @@ app.get("/api/admin/giveaway/offers", async (req, res) => {
     const place = await data.getPlaceById(offer.placeId);
     const user = await data.getUserById(offer.userId);
     let prizeOfferId = null;
+    let sweepstakeId = null;
     if (offer.status === 'approved') {
       try {
         const pId = offer.placeid || offer.placeId;
@@ -4861,12 +4863,20 @@ app.get("/api/admin/giveaway/offers", async (req, res) => {
           if (prize) prizeOfferId = prize.id;
         }
       } catch(e) {}
+      try {
+        const offerTitle = offer.title || '';
+        if (offerTitle) {
+          const sw = await db.one('SELECT id FROM sweepstakes WHERE title=$1 ORDER BY createdat DESC LIMIT 1', [offerTitle]);
+          if (sw) sweepstakeId = sw.id;
+        }
+      } catch(e) {}
     }
     return {
       ...offer,
       place: place ? { id: place.id, name: place.name } : null,
       user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null,
-      prizeOfferId
+      prizeOfferId,
+      sweepstakeId
     };
   }));
   res.json(enriched);
