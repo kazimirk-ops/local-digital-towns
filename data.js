@@ -1820,9 +1820,10 @@ async function deleteSweepRule(townId=1, ruleId){
 }
 async function tryAwardSweepForEvent({ townId=1, userId, ruleType, eventKey, meta }){
   if(!userId || !ruleType || !eventKey) return { awarded:false, reason:"invalid" };
+  const now = nowISO();
   const rules = await stmt(`SELECT * FROM sweep_rules WHERE town_id=$1 AND rule_type=$2 AND enabled=true
-    AND (sweepstake_id IS NULL OR sweepstake_id IN (SELECT id FROM sweepstakes WHERE status='active' AND startAt <= now() AND endAt >= now()))
-    ORDER BY id`).all(Number(townId), String(ruleType));
+    AND (sweepstake_id IS NULL OR sweepstake_id IN (SELECT id FROM sweepstakes WHERE status='active' AND startat <= $3 AND endat >= $3))
+    ORDER BY id`).all(Number(townId), String(ruleType), now);
   if(!rules.length) return { awarded:false, reason:"no_rules" };
   let awardedTotal = 0;
   let lastReason = "no_rules";
