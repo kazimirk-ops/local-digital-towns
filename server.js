@@ -3045,6 +3045,28 @@ app.post("/api/admin/prizes/:id/approve", async (req, res) =>{
   if(!updated) return res.status(404).json({error:"Not found"});
   res.json(updated);
 });
+app.put("/api/admin/prizes/:id", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const id = Number(req.params.id);
+  if(!id) return res.status(400).json({error:"Invalid ID"});
+  const existing = await data.getPrizeOfferById(id);
+  if(!existing) return res.status(404).json({error:"Not found"});
+  const fields = [];
+  const values = [];
+  var idx = 1;
+  if(req.body.title != null){ fields.push("title=$"+idx); values.push(String(req.body.title)); idx++; }
+  if(req.body.description != null){ fields.push("description=$"+idx); values.push(String(req.body.description)); idx++; }
+  if(req.body.valueCents != null){ fields.push("\"valueCents\"=$"+idx); values.push(Number(req.body.valueCents)); idx++; }
+  if(req.body.imageUrl != null){ fields.push("\"imageUrl\"=$"+idx); values.push(String(req.body.imageUrl)); idx++; }
+  if(req.body.expiresAt != null){ fields.push("\"expiresAt\"=$"+idx); values.push(String(req.body.expiresAt)); idx++; }
+  if(req.body.status != null){ fields.push("status=$"+idx); values.push(String(req.body.status)); idx++; }
+  if(req.body.donorDisplayName != null){ fields.push("\"donorDisplayName\"=$"+idx); values.push(String(req.body.donorDisplayName)); idx++; }
+  if(fields.length === 0) return res.status(400).json({error:"No fields to update"});
+  values.push(id);
+  const result = await db.one("UPDATE prize_offers SET "+fields.join(", ")+" WHERE id=$"+idx+" RETURNING *", values);
+  if(!result) return res.status(500).json({error:"Update failed"});
+  res.json(result);
+});
 app.post("/api/admin/prizes/:id/reject", async (req, res) =>{
   const admin=await requireAdmin(req,res); if(!admin) return;
   const reason=(req.body?.reason || "").toString().trim();
@@ -4761,7 +4783,7 @@ app.post("/api/giveaway/offer", async (req, res) => {
 Business: ${place.name}
 Title: ${offer.title}
 Description: ${offer.description}
-Estimated Value: $${(offer.estimatedValue || 0) / 100}
+Estimated Value: $${offer.estimatedValue || offer.estimatedvalue || 0}
 Submitted by: ${user?.displayName || user?.email || 'Unknown'}
 
 Review at: ${getAdminReviewLink()}`;
