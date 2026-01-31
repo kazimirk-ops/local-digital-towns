@@ -256,5 +256,10 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Modal button listeners
+$('modalCancelBtn').addEventListener('click', closeModal);
+$('modalRejectBtn').addEventListener('click', () => submitReview('rejected'));
+$('modalApproveBtn').addEventListener('click', () => submitReview('approved'));
+
 // Initialize
 loadOffers();
