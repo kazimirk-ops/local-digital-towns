@@ -4876,23 +4876,29 @@ app.get("/api/admin/giveaway/offers", async (req, res) => {
   const enriched = await Promise.all(offers.map(async (offer) => {
     const place = await data.getPlaceById(offer.placeId);
     const user = await data.getUserById(offer.userId);
-    let prizeOfferId = null;
-    let sweepstakeId = null;
+    // Read linked IDs directly from the offer row (set by bridge on approval)
+    let prizeOfferId = offer.prize_offer_id || offer.prizeOfferid || null;
+    let sweepstakeId = offer.sweepstake_id || offer.sweepstakeId || null;
+    // Fallback: look up by place/title for offers approved before migration 0023
     if (offer.status === 'approved') {
-      try {
-        const pId = offer.placeid || offer.placeId;
-        if (pId) {
-          const prize = await db.one('SELECT id FROM prize_offers WHERE donorPlaceId=$1 ORDER BY createdAt DESC LIMIT 1', [pId]);
-          if (prize) prizeOfferId = prize.id;
-        }
-      } catch(e) {}
-      try {
-        const offerTitle = offer.title || '';
-        if (offerTitle) {
-          const sw = await db.one('SELECT id FROM sweepstakes WHERE title=$1 ORDER BY createdat DESC LIMIT 1', [offerTitle]);
-          if (sw) sweepstakeId = sw.id;
-        }
-      } catch(e) {}
+      if (!prizeOfferId) {
+        try {
+          const pId = offer.placeid || offer.placeId;
+          if (pId) {
+            const prize = await db.one('SELECT id FROM prize_offers WHERE donorplaceid=$1 ORDER BY createdat DESC LIMIT 1', [pId]);
+            if (prize) prizeOfferId = prize.id;
+          }
+        } catch(e) {}
+      }
+      if (!sweepstakeId) {
+        try {
+          const offerTitle = offer.title || '';
+          if (offerTitle) {
+            const sw = await db.one('SELECT id FROM sweepstakes WHERE title=$1 ORDER BY createdat DESC LIMIT 1', [offerTitle]);
+            if (sw) sweepstakeId = sw.id;
+          }
+        } catch(e) {}
+      }
     }
     return {
       ...offer,
@@ -4991,6 +4997,14 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
         console.log("GIVEAWAY_BRIDGE: Created " + rulesCreated + "/6 entry rules for sweepstake " + newSweepstake.id);
       } else {
         console.error("GIVEAWAY_BRIDGE: createSweepstake returned:", newSweepstake);
+      }
+      // Link IDs back to the giveaway offer row
+      const linkIds = {};
+      if(prizeOffer && prizeOffer.id) linkIds.prizeOfferId = prizeOffer.id;
+      if(newSweepstake && newSweepstake.id) linkIds.sweepstakeId = newSweepstake.id;
+      if(Object.keys(linkIds).length > 0){
+        await data.linkGiveawayOffer(offerId, linkIds);
+        console.log("GIVEAWAY_BRIDGE: Linked offer " + offerId + " →", linkIds);
       }
     } catch(e) {
       console.error("Failed to create prize_offers/sweepstake:", e.message, e.stack);

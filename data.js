@@ -3569,6 +3569,18 @@ async function updateGiveawayOfferDates(offerId, startsAt, endsAt) {
   return stmt("SELECT * FROM giveaway_offers WHERE id=$1").get(Number(offerId));
 }
 
+async function linkGiveawayOffer(offerId, { sweepstakeId, prizeOfferId }) {
+  const sets = [];
+  const params = [];
+  let idx = 1;
+  if (sweepstakeId != null) { sets.push("sweepstake_id=$" + idx); params.push(Number(sweepstakeId)); idx++; }
+  if (prizeOfferId != null) { sets.push("prize_offer_id=$" + idx); params.push(Number(prizeOfferId)); idx++; }
+  if (sets.length === 0) return null;
+  params.push(Number(offerId));
+  await stmt("UPDATE giveaway_offers SET " + sets.join(", ") + " WHERE id=$" + idx).run(...params);
+  return stmt("SELECT * FROM giveaway_offers WHERE id=$1").get(Number(offerId));
+}
+
 async function getFeaturedStores() {
   // Get businesses with currently active giveaways (status=approved, startsAt <= now <= endsAt)
   const now = new Date().toISOString();
@@ -4068,6 +4080,7 @@ module.exports = {
 
   // featured stores
   updateGiveawayOfferDates,
+  linkGiveawayOffer,
   getFeaturedStores,
   getFeaturedBusinesses,
 
