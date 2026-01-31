@@ -3501,6 +3501,29 @@ app.delete("/api/admin/sweep/rules/:id", async (req, res) =>{
   if(!ok) return res.status(404).json({error:"Rule not found"});
   res.json({ ok:true });
 });
+// Backfill: create default entry rules for sweepstakes that have none
+app.post("/api/admin/sweep/backfill-rules", async (req, res) =>{
+  const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+  try {
+    const allSweeps = await db.many("SELECT id, title, status FROM sweepstakes ORDER BY id");
+    const defaultRules = { message_send: 1, listing_create: 2, local_purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
+    const results = [];
+    for(const sweep of allSweeps){
+      const existing = await data.listSweepRules(1, sweep.id);
+      if(existing.length > 0){ results.push({ id: sweep.id, title: sweep.title, status: 'skipped', existingRules: existing.length }); continue; }
+      let created = 0;
+      for(const [ruleType, amount] of Object.entries(defaultRules)){
+        const rule = await data.createSweepRule(1, { ruleType, amount, enabled: true, sweepstakeId: sweep.id });
+        if(rule && rule.id) created++;
+      }
+      results.push({ id: sweep.id, title: sweep.title, status: 'backfilled', rulesCreated: created });
+    }
+    res.json({ ok: true, results });
+  } catch(e) {
+    console.error("Backfill rules error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
 app.post("/api/admin/sweep/sweepstake", async (req, res) =>{
   const created = await data.createSweepstake({
     status: (req.body?.status || "").toString(),
@@ -4955,15 +4978,22 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
         maxEntriesPerUserPerDay: 10
       });
       if(newSweepstake && newSweepstake.id){
+        console.log("GIVEAWAY_BRIDGE: Created sweepstake id=" + newSweepstake.id + " for offer '" + offer.title + "'");
         const entryRules = req.body?.entryRules || {};
         const defaultRules = { message_send: 1, listing_create: 2, local_purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
+        let rulesCreated = 0;
         for(const [ruleType, defaultAmount] of Object.entries(defaultRules)){
           const amount = Number(entryRules[ruleType]) || defaultAmount;
-          await data.createSweepRule(1, { ruleType, amount, enabled: true, sweepstakeId: newSweepstake.id });
+          const rule = await data.createSweepRule(1, { ruleType, amount, enabled: true, sweepstakeId: newSweepstake.id });
+          if(rule && rule.id) rulesCreated++;
+          else console.error("GIVEAWAY_BRIDGE: Failed to create rule " + ruleType + " for sweepstake " + newSweepstake.id, rule);
         }
+        console.log("GIVEAWAY_BRIDGE: Created " + rulesCreated + "/6 entry rules for sweepstake " + newSweepstake.id);
+      } else {
+        console.error("GIVEAWAY_BRIDGE: createSweepstake returned:", newSweepstake);
       }
     } catch(e) {
-      console.error("Failed to create prize_offers/sweepstake:", e.message);
+      console.error("Failed to create prize_offers/sweepstake:", e.message, e.stack);
     }
   }
   const place = await data.getPlaceById(offer.placeId);
