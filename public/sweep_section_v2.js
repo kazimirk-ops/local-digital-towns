@@ -431,9 +431,15 @@
       this.render();
     }
 
+    getEndDateString() {
+      const sweep = this.data?.sweepstake;
+      return sweep?.endDate || sweep?.endAt || sweep?.endat || '';
+    }
+
     getDaysRemaining() {
-      if (!this.data?.sweepstake?.endDate) return 0;
-      const end = new Date(this.data.sweepstake.endDate);
+      const endStr = this.getEndDateString();
+      if (!endStr) return 0;
+      const end = new Date(endStr);
       const now = new Date();
       return Math.max(0, Math.ceil((end - now) / (1000 * 60 * 60 * 24)));
     }
@@ -559,6 +565,9 @@
       const prizeValue = prize.valueCents ? '$' + (Number(prize.valueCents) / 100).toFixed(0) : (sweep.estimatedValue || '');
       const isActive = !!sweep.id && sweep.status === 'active';
       const daysLeft = this.getDaysRemaining();
+      const endStr = this.getEndDateString();
+      const endDateFormatted = endStr ? new Date(endStr).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+      const activeRules = (this.rules || []).filter(r => (r.buyerAmount || r.sellerAmount || r.amount || 0) > 0);
 
       if (!sweep.id) {
         this.container.innerHTML = `
@@ -647,7 +656,7 @@
               <div class="sweep-v2-prize-image-section">
                 <div class="sweep-v2-prize-badges">
                   <div class="sweep-v2-badge featured">\uD83C\uDFC6 Featured Prize</div>
-                  <div class="sweep-v2-badge time">\u23F0 ${daysLeft > 0 ? daysLeft + ' days left' : 'Ending soon'}</div>
+                  <div class="sweep-v2-badge time">\u23F0 ${endDateFormatted ? 'Ends ' + endDateFormatted : (daysLeft > 0 ? daysLeft + ' days left' : 'Ending soon')}</div>
                 </div>
                 <div class="sweep-v2-prize-image">
                   ${prizeImage ? `<img src="${prizeImage}" alt="${prizeTitle}">` : '\u2728'}
@@ -679,10 +688,10 @@
                 </div>
                 ` : ''}
 
-                ${this.rules?.length ? `
+                ${activeRules.length ? `
                 <div style="margin-bottom:12px;">
                   <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Ways to Earn Entries</div>
-                  ${this.rules.map(r => `<div style="font-size:13px;color:#94a3b8;padding:4px 0;">${this.formatRuleDescription(r)}</div>`).join('')}
+                  ${activeRules.map(r => `<div style="font-size:13px;color:#94a3b8;padding:4px 0;">${this.formatRuleDescription(r)}</div>`).join('')}
                 </div>
                 ` : ''}
 
