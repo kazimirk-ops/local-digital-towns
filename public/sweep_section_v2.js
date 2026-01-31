@@ -567,7 +567,7 @@
       const daysLeft = this.getDaysRemaining();
       const endStr = this.getEndDateString();
       const endDateFormatted = endStr ? new Date(endStr).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
-      const activeRules = (this.rules || []).filter(r => (r.buyerAmount || r.sellerAmount || r.amount || 0) > 0);
+      const displayRules = this.rules || [];
 
       if (!sweep.id) {
         this.container.innerHTML = `
@@ -688,10 +688,10 @@
                 </div>
                 ` : ''}
 
-                ${activeRules.length ? `
+                ${displayRules.length ? `
                 <div style="margin-bottom:12px;">
                   <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Ways to Earn Entries</div>
-                  ${activeRules.map(r => `<div style="font-size:13px;color:#94a3b8;padding:4px 0;">${this.formatRuleDescription(r)}</div>`).join('')}
+                  ${displayRules.map(r => `<div style="font-size:13px;color:#94a3b8;padding:4px 0;">${this.formatRuleDescription(r)}</div>`).join('')}
                 </div>
                 ` : ''}
 
