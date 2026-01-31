@@ -5056,6 +5056,73 @@ Thank you for being part of our community!`;
   res.json({ ok: true, offer, subscription });
 });
 
+// Repair: create missing sweepstake + rules for approved offers that lack them
+app.post("/api/admin/giveaway/offer/:id/repair", async (req, res) => {
+  const admin = await requireAdmin(req, res); if(!admin) return;
+  const offerId = Number(req.params.id || 0);
+  if(!offerId) return res.status(400).json({ error: "offerId required" });
+  const offer = await db.one("SELECT * FROM giveaway_offers WHERE id=$1", [offerId]);
+  if(!offer) return res.status(404).json({ error: "Offer not found" });
+  if(offer.status !== 'approved') return res.status(400).json({ error: "Offer is not approved (status: " + offer.status + ")" });
+  const existingSwId = offer.sweepstake_id;
+  if(existingSwId){
+    // Already has a sweepstake — just check if it needs rules
+    const existingRules = await data.listSweepRules(1, existingSwId);
+    if(existingRules.length > 0) return res.json({ ok: true, message: "Already has sweepstake " + existingSwId + " with " + existingRules.length + " rules", sweepstakeId: existingSwId });
+    // Create rules for existing sweepstake
+    const defaultRules = { message_send: 1, listing_create: 2, local_purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
+    let rulesCreated = 0;
+    for(const [ruleType, amount] of Object.entries(defaultRules)){
+      const rule = await data.createSweepRule(1, { ruleType, amount, enabled: true, sweepstakeId: existingSwId });
+      if(rule && rule.id) rulesCreated++;
+    }
+    return res.json({ ok: true, message: "Created " + rulesCreated + " rules for existing sweepstake " + existingSwId, sweepstakeId: existingSwId, rulesCreated });
+  }
+  // No sweepstake — create one
+  const startDate = offer.startsat || offer.startsAt || new Date().toISOString();
+  const endDate = offer.endsat || offer.endsAt || new Date(Date.now() + 30*24*60*60*1000).toISOString();
+  console.log("REPAIR: Creating sweepstake for offer " + offerId + ", title='" + offer.title + "'");
+  const newSweepstake = await data.createSweepstake({
+    status: 'active',
+    title: offer.title,
+    prize: offer.title,
+    startAt: startDate,
+    endAt: endDate,
+    drawAt: endDate,
+    entryCost: 1,
+    maxEntriesPerUserPerDay: 10
+  });
+  if(!newSweepstake || newSweepstake.error){
+    console.error("REPAIR: createSweepstake failed:", newSweepstake);
+    return res.status(500).json({ error: "createSweepstake failed", detail: newSweepstake?.error || "returned null" });
+  }
+  console.log("REPAIR: Created sweepstake id=" + newSweepstake.id);
+  // Create rules
+  const defaultRules = { message_send: 1, listing_create: 2, local_purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
+  let rulesCreated = 0;
+  for(const [ruleType, amount] of Object.entries(defaultRules)){
+    const rule = await data.createSweepRule(1, { ruleType, amount, enabled: true, sweepstakeId: newSweepstake.id });
+    if(rule && rule.id) rulesCreated++;
+    else console.error("REPAIR: Failed to create rule " + ruleType + ":", rule);
+  }
+  // Link to offer + prize
+  const linkIds = { sweepstakeId: newSweepstake.id };
+  const existingPrizeId = offer.prize_offer_id;
+  if(!existingPrizeId){
+    // Also look up prize by placeId
+    try {
+      const pId = offer.placeid;
+      if(pId){
+        const prize = await db.one('SELECT id FROM prize_offers WHERE donorplaceid=$1 ORDER BY createdat DESC LIMIT 1', [pId]);
+        if(prize) linkIds.prizeOfferId = prize.id;
+      }
+    } catch(e) {}
+  }
+  await data.linkGiveawayOffer(offerId, linkIds);
+  console.log("REPAIR: Linked offer " + offerId + " → sweepstake " + newSweepstake.id + ", rules created: " + rulesCreated);
+  res.json({ ok: true, sweepstakeId: newSweepstake.id, rulesCreated, linked: linkIds });
+});
+
 // ---------- Featured Stores ----------
 app.get("/api/featured-stores", async (req, res) => {
   try {
