@@ -3454,6 +3454,7 @@ app.get("/api/admin/sweep/rules", async (req, res) =>{
   res.json(rows.map(r=>({
     id: r.id,
     matchEventType: r.ruleType || "",
+    sweepstakeId: r.sweepstakeId || null,
     enabled: !!r.enabled,
     amount: Number(r.amount || 0),
     buyerAmount: Number(r.buyerAmount || 0),
