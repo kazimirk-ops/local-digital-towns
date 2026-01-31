@@ -3161,10 +3161,60 @@ app.get("/sweepstake/active", async (req, res) =>{
 app.get("/api/sweepstake/active", async (req, res) =>{
   return res.json(await getSweepstakeActivePayload(req));
 });
+// Multi-sweepstake endpoint - returns ALL active + upcoming sweepstakes
+app.get("/api/sweepstakes/active", async (req, res) => {
+  try {
+    const sweeps = await data.getActiveSweepstakes();
+    if(!sweeps || !sweeps.length) return res.json({ sweepstakes: [], balance: 0 });
+    const u = await getUserId(req);
+    const balance = u ? await data.getSweepBalance(u) : 0;
+    const results = [];
+    for(const sweep of sweeps){
+      const totals = await data.getSweepstakeEntryTotals(sweep.id);
+      const draw = await data.getSweepDrawBySweepId(sweep.id);
+      let snapshot = {};
+      if(draw?.snapshotJson){ try{ snapshot = JSON.parse(draw.snapshotJson || "{}"); }catch(_){} }
+      const prize = await getSweepPrizeInfo(sweep, snapshot.prize);
+      const donor = {
+        businessName: prize.businessName || prize.donorName || "",
+        name: prize.donorName || "",
+        placeId: prize.donorPlaceId,
+        avatarUrl: "", website: "", description: ""
+      };
+      if(prize.donorPlaceId){
+        try {
+          const donorPlace = await data.getPlaceById(prize.donorPlaceId);
+          if(donorPlace){
+            donor.avatarUrl = donorPlace.avatarUrl || donorPlace.avatarurl || "";
+            donor.website = donorPlace.website || "";
+            donor.description = donorPlace.description || "";
+            if(!donor.businessName) donor.businessName = donorPlace.name || "";
+          }
+        } catch(e) {}
+      }
+      const rules = await data.listSweepRules(1, sweep.id);
+      const enabledRules = rules.filter(r => r.enabled).map(r => ({
+        eventType: r.ruleType, amount: r.amount, buyerAmount: r.buyerAmount,
+        sellerAmount: r.sellerAmount, dailyCap: r.dailyCap
+      }));
+      const userEntries = u ? await data.getUserEntriesForSweepstake(sweep.id, u) : 0;
+      results.push({
+        sweepstake: sweep, totals, prize, donor,
+        rules: enabledRules, userEntries,
+        isUpcoming: sweep.status === 'scheduled'
+      });
+    }
+    res.json({ sweepstakes: results, balance });
+  } catch(e) {
+    console.error("Error fetching active sweepstakes:", e);
+    res.status(500).json({ error: "Failed to fetch sweepstakes" });
+  }
+});
 // Public endpoint - get enabled sweep rules for display
 app.get("/api/sweepstake/rules", async (req, res) => {
   try {
-    const rules = await data.listSweepRules(1);
+    const sweepstakeId = req.query.sweepstakeId ? Number(req.query.sweepstakeId) : undefined;
+    const rules = await data.listSweepRules(1, sweepstakeId);
     const enabled = rules.filter(r => r.enabled);
     res.json({ rules: enabled.map(r => ({
       eventType: r.ruleType,
@@ -4881,8 +4931,29 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
       if(prizeOffer && prizeOffer.id){
         await data.updatePrizeOfferDecision(prizeOffer.id, "active", admin.id, "Auto-approved via giveaway offer");
       }
+      // Create sweepstake + per-giveaway entry rules
+      const effectiveStartsAt = startsAt || new Date().toISOString();
+      const effectiveEndsAt = endsAt || new Date(Date.now() + 30*24*60*60*1000).toISOString();
+      const newSweepstake = await data.createSweepstake({
+        status: 'active',
+        title: offer.title,
+        prize: offer.title,
+        startAt: effectiveStartsAt,
+        endAt: effectiveEndsAt,
+        drawAt: effectiveEndsAt,
+        entryCost: 1,
+        maxEntriesPerUserPerDay: 10
+      });
+      if(newSweepstake && newSweepstake.id){
+        const entryRules = req.body?.entryRules || {};
+        const defaultRules = { message_send: 1, listing_create: 2, local_purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
+        for(const [ruleType, defaultAmount] of Object.entries(defaultRules)){
+          const amount = Number(entryRules[ruleType]) || defaultAmount;
+          await data.createSweepRule(1, { ruleType, amount, enabled: true, sweepstakeId: newSweepstake.id });
+        }
+      }
     } catch(e) {
-      console.error("Failed to create prize_offers row:", e.message);
+      console.error("Failed to create prize_offers/sweepstake:", e.message);
     }
   }
   const place = await data.getPlaceById(offer.placeId);
