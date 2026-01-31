@@ -422,8 +422,12 @@
       this.render();
     }
 
-    update(data) {
+    async update(data) {
       this.data = data;
+      // Load rules when there's an active sweepstake
+      if (data?.sweepstake?.id) {
+        await this.loadRules();
+      }
       this.render();
     }
 
@@ -508,6 +512,33 @@
       if (window.enterSweepstake) {
         await window.enterSweepstake(amount);
       }
+    }
+
+    async loadRules() {
+      try {
+        const resp = await fetch('/api/sweepstake/rules', { credentials: 'include' });
+        const data = await resp.json();
+        this.rules = data.rules || [];
+      } catch (err) {
+        console.error('Failed to load sweep rules:', err);
+        this.rules = [];
+      }
+    }
+
+    formatRuleDescription(rule) {
+      const labels = {
+        'message_send': 'Send a message',
+        'listing_create': 'Create a listing',
+        'local_purchase': 'Make a local purchase',
+        'review_left': 'Leave a review',
+        'listing_mark_sold': 'Mark a listing as sold',
+        'social_share': 'Share on social media'
+      };
+      const label = labels[rule.eventType] || rule.eventType;
+      const amount = rule.buyerAmount || rule.sellerAmount || rule.amount || 0;
+      let desc = `${label}: +${amount} entries`;
+      if (rule.dailyCap > 0) desc += ` (max ${rule.dailyCap}/day)`;
+      return desc;
     }
 
     render() {
@@ -637,6 +668,13 @@
                       <div class="sweep-v2-donor-desc">${donor.description || ''}</div>
                     </div>
                   </div>
+                </div>
+                ` : ''}
+
+                ${this.rules?.length ? `
+                <div style="margin-bottom:12px;">
+                  <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:8px;">Ways to Earn Entries</div>
+                  ${this.rules.map(r => `<div style="font-size:13px;color:#94a3b8;padding:4px 0;">${this.formatRuleDescription(r)}</div>`).join('')}
                 </div>
                 ` : ''}
 

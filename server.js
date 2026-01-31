@@ -3105,6 +3105,24 @@ app.get("/sweepstake/active", async (req, res) =>{
 app.get("/api/sweepstake/active", async (req, res) =>{
   return res.json(await getSweepstakeActivePayload(req));
 });
+// Public endpoint - get enabled sweep rules for display
+app.get("/api/sweepstake/rules", async (req, res) => {
+  try {
+    const rules = await data.listSweepRules(1);
+    const enabled = rules.filter(r => r.enabled);
+    res.json({ rules: enabled.map(r => ({
+      eventType: r.ruleType,
+      amount: r.amount,
+      buyerAmount: r.buyerAmount,
+      sellerAmount: r.sellerAmount,
+      dailyCap: r.dailyCap,
+      cooldownSeconds: r.cooldownSeconds
+    })) });
+  } catch (e) {
+    console.error("Error fetching sweep rules:", e);
+    res.status(500).json({ error: "Failed to fetch rules" });
+  }
+});
 app.get("/sweep/claim/:drawId", async (req, res) =>{
   const u=await requireLogin(req,res); if(!u) return;
   const draw = await data.getSweepDrawById(req.params.drawId);
