@@ -108,7 +108,7 @@ function renderOffers() {
 
     return `
       <div class="offer-card" data-id="${offer.id}">
-        <img class="offer-thumb" src="${escapeHtml(imageUrl) || '/placeholder.png'}" alt="" onerror="this.src='/placeholder.png'">
+        <img class="offer-thumb" src="${escapeHtml(imageUrl) || '/placeholder.png'}" alt="" data-fallback="/placeholder.png">
         <div class="offer-info">
           <h4 class="offer-title">${escapeHtml(offer.title)}</h4>
           <p class="offer-desc">${escapeHtml(offer.description)}</p>
@@ -149,7 +149,7 @@ function openReviewModal(offerId, action) {
 
   $('modalOfferInfo').innerHTML = `
     <div style="margin-bottom:16px;">
-      ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" style="width:100%; max-height:200px; object-fit:cover; border-radius:10px; margin-bottom:12px;" onerror="this.style.display='none'">` : ''}
+      ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" style="width:100%; max-height:200px; object-fit:cover; border-radius:10px; margin-bottom:12px;" data-hide-on-error="true">` : ''}
       <h4 style="margin:0 0 8px 0;">${escapeHtml(selectedOffer.title)}</h4>
       <p class="muted" style="margin:0 0 12px 0;">${escapeHtml(selectedOffer.description)}</p>
       <div class="offer-meta">
@@ -270,6 +270,19 @@ $('offersGrid').addEventListener('click', function(e) {
     openReviewModal(offerId, action);
   }
 });
+
+// Handle image fallbacks without inline handlers
+document.addEventListener('error', function(e) {
+  if (e.target.tagName === 'IMG') {
+    if (e.target.dataset.fallback) {
+      e.target.src = e.target.dataset.fallback;
+      e.target.removeAttribute('data-fallback');
+    }
+    if (e.target.dataset.hideOnError) {
+      e.target.style.display = 'none';
+    }
+  }
+}, true);
 
 // Initialize
 loadOffers();
