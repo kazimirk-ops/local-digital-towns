@@ -4822,8 +4822,9 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
         fulfillmentNotes: "",
         expiresAt: endsAt || new Date(Date.now() + 30*24*60*60*1000).toISOString(),
         imageUrl: offer.imageurl || offer.imageUrl || "",
-        donorPlaceId: offer.placeId,
-      }, offer.userId);
+        donorPlaceId: offer.placeid || offer.placeId,
+        donorDisplayName: donorName,
+      }, offer.userid || offer.userId);
       if(prizeOffer && prizeOffer.id){
         await data.updatePrizeOfferDecision(prizeOffer.id, "active", admin.id, "Auto-approved via giveaway offer");
       }

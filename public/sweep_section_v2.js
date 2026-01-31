@@ -445,8 +445,11 @@
       let shareUrl, shareText, shareTitle;
       if (sweep?.id) {
         shareUrl = `${window.location.origin}/sweep/${sweep.id}`;
-        shareText = `Check out this sweepstake: ${sweep.title} - Worth ${sweep.estimatedValue}!`;
-        shareTitle = sweep.title;
+        const _prize = this.data?.prize || {};
+        const _title = _prize.title || sweep.prize || sweep.title || 'Town Sweepstake';
+        const _val = _prize.valueCents ? '$' + (Number(_prize.valueCents) / 100).toFixed(0) : (sweep.estimatedValue || '');
+        shareText = `Check out this sweepstake: ${_title}${_val ? ' - Worth ' + _val + '!' : ''}`;
+        shareTitle = _title;
       } else {
         shareUrl = `${window.location.origin}/giveaway-offer`;
         shareText = `Local businesses: Donate prizes to our community sweepstakes and get featured to local customers!`;
@@ -546,9 +549,14 @@
 
       const d = this.data || {};
       const sweep = d.sweepstake || {};
+      const prize = d.prize || {};
       const totals = d.totals || {};
       const user = d.user || {};
       const donor = d.donor || sweep.donor || {};
+      const prizeTitle = prize.title || sweep.prize || sweep.title || 'Untitled Prize';
+      const prizeDesc = prize.description || sweep.description || '';
+      const prizeImage = prize.imageUrl || sweep.imageUrl || '';
+      const prizeValue = prize.valueCents ? '$' + (Number(prize.valueCents) / 100).toFixed(0) : (sweep.estimatedValue || '');
       const isActive = !!sweep.id && sweep.status === 'active';
       const daysLeft = this.getDaysRemaining();
 
@@ -642,16 +650,16 @@
                   <div class="sweep-v2-badge time">\u23F0 ${daysLeft > 0 ? daysLeft + ' days left' : 'Ending soon'}</div>
                 </div>
                 <div class="sweep-v2-prize-image">
-                  ${sweep.imageUrl ? `<img src="${sweep.imageUrl}" alt="${sweep.title}">` : '\u2728'}
+                  ${prizeImage ? `<img src="${prizeImage}" alt="${prizeTitle}">` : '\u2728'}
                 </div>
               </div>
               <div class="sweep-v2-prize-details">
                 <div class="sweep-v2-prize-header">
                   <div class="sweep-v2-category">${sweep.category || 'Prize'}</div>
-                  <div class="sweep-v2-value">${sweep.estimatedValue || 0}<span>value</span></div>
+                  <div class="sweep-v2-value">${prizeValue}<span>value</span></div>
                 </div>
-                <h3 class="sweep-v2-prize-title">${sweep.title || 'Untitled Prize'}</h3>
-                <p class="sweep-v2-prize-desc">${sweep.description || ''}</p>
+                <h3 class="sweep-v2-prize-title">${prizeTitle}</h3>
+                <p class="sweep-v2-prize-desc">${prizeDesc}</p>
 
                 ${donor.businessName ? `
                 <div class="sweep-v2-donor">

@@ -732,7 +732,7 @@ async function addPrizeOffer(payload, userId){
   if(!["physical","service","giftcard","experience"].includes(prizeType)) return { error: "invalid prizeType" };
   if(!["pickup","meetup","shipping"].includes(fulfillmentMethod)) return { error: "invalid fulfillmentMethod" };
   const donor = await getUserById(userId);
-  const donorDisplayName = donor ? await getDisplayNameForUser(donor) : "Donor";
+  const donorDisplayName = (payload.donorDisplayName || "").toString().trim() || (donor ? await getDisplayNameForUser(donor) : "Donor");
   const info = await stmt(`
     INSERT INTO prize_offers
       (townId, status, title, description, valueCents, prizeType, fulfillmentMethod, fulfillmentNotes, expiresAt, imageUrl, donorUserId, donorPlaceId, donorDisplayName, createdAt)
