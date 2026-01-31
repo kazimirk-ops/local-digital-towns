@@ -542,7 +542,7 @@
       const labels = {
         'message_send': 'Send a message',
         'listing_create': 'Create a listing',
-        'local_purchase': 'Make a local purchase',
+        'purchase': 'Make a local purchase',
         'review_left': 'Leave a review',
         'listing_mark_sold': 'Mark a listing as sold',
         'social_share': 'Share on social media'

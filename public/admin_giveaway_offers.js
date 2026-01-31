@@ -105,7 +105,7 @@ var rulesLoadPromise = null;
 var ruleTypeToEditInput = {
   message_send: 'editRewardMessage',
   listing_create: 'editRewardListing',
-  local_purchase: 'editRewardPurchase',
+  purchase: 'editRewardPurchase',
   review_left: 'editRewardReview',
   listing_mark_sold: 'editRewardSold',
   social_share: 'editRewardShare'
@@ -218,7 +218,7 @@ function submitEdit() {
     var editInputMap = {
       message_send: 'editRewardMessage',
       listing_create: 'editRewardListing',
-      local_purchase: 'editRewardPurchase',
+      purchase: 'editRewardPurchase',
       review_left: 'editRewardReview',
       listing_mark_sold: 'editRewardSold',
       social_share: 'editRewardShare'
@@ -315,7 +315,7 @@ function submitApproval() {
   var entryRules = {
     message_send: parseInt($('rewardMessage').value) || 0,
     listing_create: parseInt($('rewardListing').value) || 0,
-    local_purchase: parseInt($('rewardPurchase').value) || 0,
+    purchase: parseInt($('rewardPurchase').value) || 0,
     review_left: parseInt($('rewardReview').value) || 0,
     listing_mark_sold: parseInt($('rewardSold').value) || 0,
     social_share: parseInt($('rewardShare').value) || 0

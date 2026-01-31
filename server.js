@@ -3518,7 +3518,7 @@ app.post("/api/admin/sweep/backfill-rules", async (req, res) =>{
   const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
   try {
     const allSweeps = await db.many("SELECT id, title, status FROM sweepstakes ORDER BY id");
-    const defaultRules = { message_send: 1, listing_create: 2, local_purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
+    const defaultRules = { message_send: 1, listing_create: 2, purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
     const results = [];
     for(const sweep of allSweeps){
       const existing = await data.listSweepRules(1, sweep.id);
@@ -3533,6 +3533,51 @@ app.post("/api/admin/sweep/backfill-rules", async (req, res) =>{
     res.json({ ok: true, results });
   } catch(e) {
     console.error("Backfill rules error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+// Cleanup: deduplicate rules, rename local_purchase→purchase, reset globals
+app.post("/api/admin/sweep/cleanup-rules", async (req, res) =>{
+  const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+  try {
+    const before = (await data.query("SELECT id, rule_type, amount, sweepstake_id, enabled FROM sweep_rules ORDER BY rule_type, sweepstake_id")).rows;
+
+    // 1. Rename stale local_purchase → purchase
+    await data.query("UPDATE sweep_rules SET rule_type='purchase' WHERE rule_type='local_purchase'");
+
+    // 2. Find keeper IDs: min(id) per (rule_type, sweepstake_id) for globals and sweepstake 4 only
+    const keepers = (await data.query(`
+      SELECT MIN(id) AS keeper_id FROM sweep_rules
+      WHERE sweepstake_id IS NULL OR sweepstake_id = 4
+      GROUP BY rule_type, sweepstake_id
+    `)).rows.map(r => Number(r.keeper_id));
+
+    // 3. Delete everything not in keeper set
+    let deleted = 0;
+    if(keepers.length > 0){
+      const del = await data.query("DELETE FROM sweep_rules WHERE NOT (id = ANY($1::int[]))", [keepers]);
+      deleted = del.rowCount || 0;
+    }
+
+    // 4. Set amount=0 on global rules (sweepstake_id IS NULL)
+    await data.query("UPDATE sweep_rules SET amount=0 WHERE sweepstake_id IS NULL");
+
+    // 5. Ensure sweepstake 4 has all 6 rule types
+    const ruleTypes = ['message_send', 'listing_create', 'purchase', 'review_left', 'listing_mark_sold', 'social_share'];
+    const defaults = { message_send: 1, listing_create: 2, purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
+    const existing4 = (await data.query("SELECT rule_type FROM sweep_rules WHERE sweepstake_id = 4")).rows.map(r => r.rule_type);
+    let created = 0;
+    for(const rt of ruleTypes){
+      if(!existing4.includes(rt)){
+        await data.createSweepRule(1, { ruleType: rt, amount: defaults[rt], enabled: true, sweepstakeId: 4 });
+        created++;
+      }
+    }
+
+    const after = (await data.query("SELECT id, rule_type, amount, sweepstake_id, enabled FROM sweep_rules ORDER BY rule_type, sweepstake_id")).rows;
+    res.json({ ok: true, before, after, deleted, createdForSweepstake4: created });
+  } catch(e) {
+    console.error("Cleanup rules error:", e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -5050,7 +5095,7 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
       } else if(bridgeSweepstake && bridgeSweepstake.id){
         console.log("GIVEAWAY_BRIDGE: Created sweepstake id=" + bridgeSweepstake.id);
         const entryRules = req.body?.entryRules || {};
-        const defaultRules = { message_send: 1, listing_create: 2, local_purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
+        const defaultRules = { message_send: 1, listing_create: 2, purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
         let rulesCreated = 0;
         for(const [ruleType, defaultAmount] of Object.entries(defaultRules)){
           const amount = Number(entryRules[ruleType]) || defaultAmount;
@@ -5114,7 +5159,7 @@ app.post("/api/admin/giveaway/offer/:id/repair", async (req, res) => {
     const existingRules = await data.listSweepRules(1, existingSwId);
     if(existingRules.length > 0) return res.json({ ok: true, message: "Already has sweepstake " + existingSwId + " with " + existingRules.length + " rules", sweepstakeId: existingSwId });
     // Create rules for existing sweepstake
-    const defaultRules = { message_send: 1, listing_create: 2, local_purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
+    const defaultRules = { message_send: 1, listing_create: 2, purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
     let rulesCreated = 0;
     for(const [ruleType, amount] of Object.entries(defaultRules)){
       const rule = await data.createSweepRule(1, { ruleType, amount, enabled: true, sweepstakeId: existingSwId });
@@ -5142,7 +5187,7 @@ app.post("/api/admin/giveaway/offer/:id/repair", async (req, res) => {
   }
   console.log("REPAIR: Created sweepstake id=" + newSweepstake.id);
   // Create rules
-  const defaultRules = { message_send: 1, listing_create: 2, local_purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
+  const defaultRules = { message_send: 1, listing_create: 2, purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
   let rulesCreated = 0;
   for(const [ruleType, amount] of Object.entries(defaultRules)){
     const rule = await data.createSweepRule(1, { ruleType, amount, enabled: true, sweepstakeId: newSweepstake.id });
