@@ -4697,8 +4697,6 @@ app.post("/api/giveaway/offer", async (req, res) => {
   if(!place) return res.status(404).json({ error: "Place not found" });
   const ownerId = place.ownerUserId ?? place.owneruserid;
   if(Number(ownerId) !== Number(u)) return res.status(403).json({ error: "Only owner can submit offers" });
-  const hasActiveSub = await requireActiveSubscription(req, res, placeId);
-  if(!hasActiveSub) return;
   const offer = await data.createGiveawayOffer(placeId, u, {
     title: req.body?.title,
     description: req.body?.description,
