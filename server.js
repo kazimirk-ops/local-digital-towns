@@ -4775,6 +4775,27 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
       subscription = null;
     }
   }
+  // Bridge: create a prize_offers row so the sweepstake UI can display this prize
+  if(status === "approved"){
+    try {
+      const place = await data.getPlaceById(offer.placeId);
+      const user = await data.getUserById(offer.userId);
+      const donorName = (place && place.name) || (user && (user.displayName || user.email)) || "Local Business";
+      await data.addPrizeOffer({
+        title: offer.title,
+        description: offer.description,
+        valueCents: offer.estimatedvalue || offer.estimatedValue || 0,
+        prizeType: "physical",
+        fulfillmentMethod: "pickup",
+        fulfillmentNotes: "",
+        expiresAt: endsAt || new Date(Date.now() + 30*24*60*60*1000).toISOString(),
+        imageUrl: offer.imageurl || offer.imageUrl || "",
+        donorPlaceId: offer.placeId,
+      }, offer.userId);
+    } catch(e) {
+      console.error("Failed to create prize_offers row:", e.message);
+    }
+  }
   const place = await data.getPlaceById(offer.placeId);
   const owner = offer.userId ? await data.getUserById(offer.userId) : null;
   if(owner?.email){
