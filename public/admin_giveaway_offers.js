@@ -100,6 +100,7 @@ function toLocalDatetime(d) {
 var pendingApprovalOfferId = null;
 var pendingEditOffer = null;
 var pendingEditRules = [];
+var rulesLoadPromise = null;
 
 var ruleTypeToEditInput = {
   message_send: 'editRewardMessage',
@@ -147,6 +148,7 @@ function openEditModal(offer) {
   $('editEndsAt').value = endsAt ? toLocalDatetime(endsAt) : '';
   pendingEditOffer = offer;
   pendingEditRules = [];
+  rulesLoadPromise = null;
   // Reset edit reward inputs to defaults
   $('editRewardMessage').value = 1;
   $('editRewardListing').value = 2;
@@ -157,7 +159,7 @@ function openEditModal(offer) {
   // Fetch per-sweepstake rules if sweepstakeId exists
   var swId = offer.sweepstakeId || offer.sweepstakeid;
   if (swId) {
-    fetch('/api/admin/sweep/rules?sweepstakeId=' + swId, { credentials: 'include' })
+    rulesLoadPromise = fetch('/api/admin/sweep/rules?sweepstakeId=' + swId, { credentials: 'include' })
       .then(function(resp) { return resp.ok ? resp.json() : []; })
       .then(function(rules) {
         pendingEditRules = rules || [];
@@ -209,8 +211,10 @@ function submitEdit() {
     return resp.json();
   })
   .then(function() {
-    // Patch entry rules if we have loaded rules
-    if (pendingEditRules.length === 0) return;
+    // Wait for rules fetch to complete before processing
+    return rulesLoadPromise || Promise.resolve();
+  })
+  .then(function() {
     var editInputMap = {
       message_send: 'editRewardMessage',
       listing_create: 'editRewardListing',
@@ -219,22 +223,41 @@ function submitEdit() {
       listing_mark_sold: 'editRewardSold',
       social_share: 'editRewardShare'
     };
-    var patches = [];
-    for (var i = 0; i < pendingEditRules.length; i++) {
-      var rule = pendingEditRules[i];
-      var inputId = editInputMap[rule.matchEventType];
-      if (!inputId || !$(inputId)) continue;
-      var newAmount = parseInt($(inputId).value) || 0;
-      if (newAmount !== Number(rule.amount)) {
-        patches.push(fetch('/api/admin/sweep/rules/' + rule.id, {
-          method: 'PATCH',
+    var swId = offer.sweepstakeId || offer.sweepstakeid;
+    if (pendingEditRules.length > 0) {
+      // Patch existing rules
+      var patches = [];
+      for (var i = 0; i < pendingEditRules.length; i++) {
+        var rule = pendingEditRules[i];
+        var inputId = editInputMap[rule.matchEventType];
+        if (!inputId || !$(inputId)) continue;
+        var newAmount = parseInt($(inputId).value) || 0;
+        if (newAmount !== Number(rule.amount)) {
+          patches.push(fetch('/api/admin/sweep/rules/' + rule.id, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ amount: newAmount })
+          }));
+        }
+      }
+      if (patches.length > 0) return Promise.all(patches);
+    } else if (swId) {
+      // No existing rules — create them for this sweepstake
+      var creates = [];
+      for (var ruleType in editInputMap) {
+        var inputId = editInputMap[ruleType];
+        if (!$(inputId)) continue;
+        var amount = parseInt($(inputId).value) || 0;
+        creates.push(fetch('/api/admin/sweep/rules', {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ amount: newAmount })
+          body: JSON.stringify({ ruleType: ruleType, amount: amount, enabled: true, sweepstakeId: swId })
         }));
       }
+      if (creates.length > 0) return Promise.all(creates);
     }
-    if (patches.length > 0) return Promise.all(patches);
   })
   .then(function() {
     closeEditModal();
