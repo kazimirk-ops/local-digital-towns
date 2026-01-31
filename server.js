@@ -2514,6 +2514,17 @@ app.post("/orders/:id/review", async (req, res) =>{
   const role = reviewerIsBuyer ? "buyer" : "seller";
   const created=await data.addReview({orderId:order.id, reviewerUserId:u, revieweeUserId, role, rating, text});
   await data.addTrustEvent({orderId:order.id, userId:revieweeUserId, eventType:"review_received", meta:{rating, role}});
+  try{
+    await data.tryAwardSweepForEvent({
+      townId: 1,
+      userId: u,
+      ruleType: "review_left",
+      eventKey: `review:${created.id}`,
+      meta: { orderId: order.id, rating }
+    });
+  }catch(err){
+    console.error("SWEEP_AWARD_REVIEW_ERROR", err?.message);
+  }
   res.status(201).json(created);
 });
 app.post("/orders/:id/dispute", async (req, res) =>{
@@ -4028,6 +4039,17 @@ app.post("/conversations/:id/messages", async (req, res) =>{
   const text = (req.body?.text || "").toString().trim();
   if(!text) return res.status(400).json({error:"text required"});
   const msg = await data.addMessage({ conversationId: convo.id, sender, text });
+  try{
+    await data.tryAwardSweepForEvent({
+      townId: 1,
+      userId: u,
+      ruleType: "message_send",
+      eventKey: `dm:${msg.id}`,
+      meta: { conversationId: convo.id }
+    });
+  }catch(err){
+    console.error("SWEEP_AWARD_MESSAGE_ERROR", err?.message);
+  }
   res.status(201).json({ ok:true, id: msg.id });
 });
 app.patch("/conversations/:id/read", async (req, res) =>{
@@ -4074,6 +4096,17 @@ app.post("/places/:id/listings", async (req, res) =>{
   }
   if(!req.body?.title) return res.status(400).json({error:"title required"});
   const created=await data.addListing({...req.body,placeId:pid});
+  try{
+    await data.tryAwardSweepForEvent({
+      townId: 1,
+      userId: u,
+      ruleType: "listing_create",
+      eventKey: `listing:${created.id}`,
+      meta: { placeId: pid }
+    });
+  }catch(err){
+    console.error("SWEEP_AWARD_LISTING_CREATE_ERROR", err?.message);
+  }
   res.status(201).json(created);
 });
 app.patch("/listings/:id/sold", async (req, res) =>{
@@ -4081,6 +4114,17 @@ app.patch("/listings/:id/sold", async (req, res) =>{
   const listing = await data.getListingById(req.params.id);
   if(!listing) return res.status(404).json({error:"Listing not found"});
   const updated = await data.updateListingStatus(listing.id, "sold");
+  try{
+    await data.tryAwardSweepForEvent({
+      townId: 1,
+      userId: u,
+      ruleType: "listing_mark_sold",
+      eventKey: `sold:${listing.id}`,
+      meta: { listingId: listing.id }
+    });
+  }catch(err){
+    console.error("SWEEP_AWARD_LISTING_SOLD_ERROR", err?.message);
+  }
   res.json(updated);
 });
 
