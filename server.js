@@ -4800,10 +4800,21 @@ app.get("/api/admin/giveaway/offers", async (req, res) => {
   const enriched = await Promise.all(offers.map(async (offer) => {
     const place = await data.getPlaceById(offer.placeId);
     const user = await data.getUserById(offer.userId);
+    let prizeOfferId = null;
+    if (offer.status === 'approved') {
+      try {
+        const pId = offer.placeid || offer.placeId;
+        if (pId) {
+          const prize = await db.one('SELECT id FROM prize_offers WHERE donorPlaceId=$1 ORDER BY createdAt DESC LIMIT 1', [pId]);
+          if (prize) prizeOfferId = prize.id;
+        }
+      } catch(e) {}
+    }
     return {
       ...offer,
       place: place ? { id: place.id, name: place.name } : null,
-      user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null
+      user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null,
+      prizeOfferId
     };
   }));
   res.json(enriched);
