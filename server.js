@@ -4781,7 +4781,7 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
       const place = await data.getPlaceById(offer.placeId);
       const user = await data.getUserById(offer.userId);
       const donorName = (place && place.name) || (user && (user.displayName || user.email)) || "Local Business";
-      await data.addPrizeOffer({
+      const prizeOffer = await data.addPrizeOffer({
         title: offer.title,
         description: offer.description,
         valueCents: offer.estimatedvalue || offer.estimatedValue || 0,
@@ -4792,6 +4792,9 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
         imageUrl: offer.imageurl || offer.imageUrl || "",
         donorPlaceId: offer.placeId,
       }, offer.userId);
+      if(prizeOffer && prizeOffer.id){
+        await data.updatePrizeOfferDecision(prizeOffer.id, "active", admin.id, "Auto-approved via giveaway offer");
+      }
     } catch(e) {
       console.error("Failed to create prize_offers row:", e.message);
     }
