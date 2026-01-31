@@ -122,10 +122,10 @@ function renderOffers() {
         </div>
         <div class="offer-actions">
           ${isPending ? `
-            <button class="btn btn-approve" onclick="openReviewModal(${offer.id}, 'approve')">Approve</button>
-            <button class="btn btn-reject" onclick="openReviewModal(${offer.id}, 'reject')">Reject</button>
+            <button class="btn btn-approve" data-offer-id="${offer.id}" data-action="approve">Approve</button>
+            <button class="btn btn-reject" data-offer-id="${offer.id}" data-action="reject">Reject</button>
           ` : `
-            <button class="btn btn-secondary" onclick="openReviewModal(${offer.id}, 'view')">View Details</button>
+            <button class="btn btn-secondary" data-offer-id="${offer.id}" data-action="view">View Details</button>
           `}
         </div>
       </div>
@@ -260,6 +260,16 @@ document.addEventListener('keydown', (e) => {
 $('modalCancelBtn').addEventListener('click', closeModal);
 $('modalRejectBtn').addEventListener('click', () => submitReview('rejected'));
 $('modalApproveBtn').addEventListener('click', () => submitReview('approved'));
+
+// Event delegation for offer action buttons
+$('offersGrid').addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-offer-id]');
+  if (btn) {
+    const offerId = parseInt(btn.dataset.offerId);
+    const action = btn.dataset.action;
+    openReviewModal(offerId, action);
+  }
+});
 
 // Initialize
 loadOffers();
