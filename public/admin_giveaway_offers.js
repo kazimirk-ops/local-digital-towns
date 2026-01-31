@@ -99,7 +99,7 @@ function renderOffers() {
 
   $('offersGrid').innerHTML = filtered.map(offer => {
     const isPending = (offer.status || 'pending').toLowerCase() === 'pending';
-    const placeName = offer.placeName || offer.placename || 'Unknown Store';
+    const placeName = offer.place?.name || offer.placeName || offer.placename || 'Unknown Store';
     const placeId = offer.placeId || offer.placeid;
     const imageUrl = offer.imageUrl || offer.imageurl || '';
     const estimatedValue = offer.estimatedValue || offer.estimatedvalue || 0;
@@ -139,7 +139,7 @@ function openReviewModal(offerId, action) {
 
   if (!selectedOffer) return;
 
-  const placeName = selectedOffer.placeName || selectedOffer.placename || 'Unknown Store';
+  const placeName = selectedOffer.place?.name || selectedOffer.placeName || selectedOffer.placename || 'Unknown Store';
   const placeId = selectedOffer.placeId || selectedOffer.placeid;
   const estimatedValue = selectedOffer.estimatedValue || selectedOffer.estimatedvalue || 0;
   const imageUrl = selectedOffer.imageUrl || selectedOffer.imageurl || '';
