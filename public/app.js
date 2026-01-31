@@ -1367,7 +1367,8 @@ async function loadSweepstake(){
       sweepstake: data.sweepstake,
       totals: data.totals,
       user: { entries: data.userEntries || 0, balance: data.balance || 0 },
-      donor: data.prize || {},
+      prize: data.prize || {},
+      donor: data.donor || {},
       winner: data.winner
     });
     if(!data.sweepstake){

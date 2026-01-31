@@ -4816,7 +4816,7 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
       const prizeOffer = await data.addPrizeOffer({
         title: offer.title,
         description: offer.description,
-        valueCents: offer.estimatedvalue || offer.estimatedValue || 0,
+        valueCents: Math.round((offer.estimatedvalue || offer.estimatedValue || 0) * 100),
         prizeType: "physical",
         fulfillmentMethod: "pickup",
         fulfillmentNotes: "",
