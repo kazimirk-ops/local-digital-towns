@@ -4949,16 +4949,22 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
       subscription = null;
     }
   }
-  // Bridge: create a prize_offers row so the sweepstake UI can display this prize
+  // Bridge: create prize_offers + sweepstake + rules on approval
+  // Each step is independent so one failure doesn't block the others
+  let bridgePrizeOffer = null;
+  let bridgeSweepstake = null;
   if(status === "approved"){
+    // Step 1: Create prize_offers row
     try {
       const place = await data.getPlaceById(offer.placeId);
       const user = await data.getUserById(offer.userId);
       const donorName = (place && place.name) || (user && (user.displayName || user.email)) || "Local Business";
-      const prizeOffer = await data.addPrizeOffer({
+      const valueCents = Math.round((offer.estimatedvalue || offer.estimatedValue || 0) * 100) || 1;
+      console.log("GIVEAWAY_BRIDGE: Creating prize for offer " + offerId + ", valueCents=" + valueCents);
+      bridgePrizeOffer = await data.addPrizeOffer({
         title: offer.title,
         description: offer.description,
-        valueCents: Math.round((offer.estimatedvalue || offer.estimatedValue || 0) * 100),
+        valueCents: valueCents,
         prizeType: "physical",
         fulfillmentMethod: "pickup",
         fulfillmentNotes: "",
@@ -4967,13 +4973,23 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
         donorPlaceId: offer.placeid || offer.placeId,
         donorDisplayName: donorName,
       }, offer.userid || offer.userId);
-      if(prizeOffer && prizeOffer.id){
-        await data.updatePrizeOfferDecision(prizeOffer.id, "active", admin.id, "Auto-approved via giveaway offer");
+      if(bridgePrizeOffer && bridgePrizeOffer.error){
+        console.error("GIVEAWAY_BRIDGE: addPrizeOffer returned error:", bridgePrizeOffer.error);
+        bridgePrizeOffer = null;
+      } else if(bridgePrizeOffer && bridgePrizeOffer.id){
+        console.log("GIVEAWAY_BRIDGE: Created prize id=" + bridgePrizeOffer.id);
+        await data.updatePrizeOfferDecision(bridgePrizeOffer.id, "active", admin.id, "Auto-approved via giveaway offer");
       }
-      // Create sweepstake + per-giveaway entry rules
+    } catch(e) {
+      console.error("GIVEAWAY_BRIDGE: Prize creation failed:", e.message);
+    }
+
+    // Step 2: Create sweepstake + entry rules (independent of prize)
+    try {
       const effectiveStartsAt = startsAt || new Date().toISOString();
       const effectiveEndsAt = endsAt || new Date(Date.now() + 30*24*60*60*1000).toISOString();
-      const newSweepstake = await data.createSweepstake({
+      console.log("GIVEAWAY_BRIDGE: Creating sweepstake for offer " + offerId + ", title='" + offer.title + "', start=" + effectiveStartsAt + ", end=" + effectiveEndsAt);
+      bridgeSweepstake = await data.createSweepstake({
         status: 'active',
         title: offer.title,
         prize: offer.title,
@@ -4983,31 +4999,39 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
         entryCost: 1,
         maxEntriesPerUserPerDay: 10
       });
-      if(newSweepstake && newSweepstake.id){
-        console.log("GIVEAWAY_BRIDGE: Created sweepstake id=" + newSweepstake.id + " for offer '" + offer.title + "'");
+      if(bridgeSweepstake && bridgeSweepstake.error){
+        console.error("GIVEAWAY_BRIDGE: createSweepstake returned error:", bridgeSweepstake.error);
+        bridgeSweepstake = null;
+      } else if(bridgeSweepstake && bridgeSweepstake.id){
+        console.log("GIVEAWAY_BRIDGE: Created sweepstake id=" + bridgeSweepstake.id);
         const entryRules = req.body?.entryRules || {};
         const defaultRules = { message_send: 1, listing_create: 2, local_purchase: 3, review_left: 2, listing_mark_sold: 1, social_share: 1 };
         let rulesCreated = 0;
         for(const [ruleType, defaultAmount] of Object.entries(defaultRules)){
           const amount = Number(entryRules[ruleType]) || defaultAmount;
-          const rule = await data.createSweepRule(1, { ruleType, amount, enabled: true, sweepstakeId: newSweepstake.id });
+          const rule = await data.createSweepRule(1, { ruleType, amount, enabled: true, sweepstakeId: bridgeSweepstake.id });
           if(rule && rule.id) rulesCreated++;
-          else console.error("GIVEAWAY_BRIDGE: Failed to create rule " + ruleType + " for sweepstake " + newSweepstake.id, rule);
+          else console.error("GIVEAWAY_BRIDGE: Failed to create rule " + ruleType + ", result:", rule);
         }
-        console.log("GIVEAWAY_BRIDGE: Created " + rulesCreated + "/6 entry rules for sweepstake " + newSweepstake.id);
+        console.log("GIVEAWAY_BRIDGE: Created " + rulesCreated + "/6 entry rules for sweepstake " + bridgeSweepstake.id);
       } else {
-        console.error("GIVEAWAY_BRIDGE: createSweepstake returned:", newSweepstake);
-      }
-      // Link IDs back to the giveaway offer row
-      const linkIds = {};
-      if(prizeOffer && prizeOffer.id) linkIds.prizeOfferId = prizeOffer.id;
-      if(newSweepstake && newSweepstake.id) linkIds.sweepstakeId = newSweepstake.id;
-      if(Object.keys(linkIds).length > 0){
-        await data.linkGiveawayOffer(offerId, linkIds);
-        console.log("GIVEAWAY_BRIDGE: Linked offer " + offerId + " →", linkIds);
+        console.error("GIVEAWAY_BRIDGE: createSweepstake returned unexpected:", JSON.stringify(bridgeSweepstake));
       }
     } catch(e) {
-      console.error("Failed to create prize_offers/sweepstake:", e.message, e.stack);
+      console.error("GIVEAWAY_BRIDGE: Sweepstake creation failed:", e.message, e.stack);
+    }
+
+    // Step 3: Link IDs back to the giveaway offer row
+    try {
+      const linkIds = {};
+      if(bridgePrizeOffer && bridgePrizeOffer.id) linkIds.prizeOfferId = bridgePrizeOffer.id;
+      if(bridgeSweepstake && bridgeSweepstake.id) linkIds.sweepstakeId = bridgeSweepstake.id;
+      if(Object.keys(linkIds).length > 0){
+        await data.linkGiveawayOffer(offerId, linkIds);
+        console.log("GIVEAWAY_BRIDGE: Linked offer " + offerId + " →", JSON.stringify(linkIds));
+      }
+    } catch(e) {
+      console.error("GIVEAWAY_BRIDGE: Link failed:", e.message);
     }
   }
   const place = await data.getPlaceById(offer.placeId);
