@@ -770,13 +770,25 @@ async function getSweepPrizeInfo(sweep, snapshotPrize){
   const offers = await data.listActivePrizeOffers();
   const offer = offers[0];
   const title = (offer?.title || sweep?.prize || sweep?.title || "").toString().trim();
-  const donorName = (offer?.donorDisplayName || "").toString().trim();
+  const donorName = (offer?.donordisplayname || offer?.donorDisplayName || "").toString().trim();
+  const donorPlaceId = offer?.donorplaceid || offer?.donorPlaceId || null;
+  const donorUserId = offer?.donoruserid || offer?.donorUserId || null;
+  const imageUrl = (offer?.imageurl || offer?.imageUrl || "").toString().trim();
+  const valueCents = offer?.valuecents || offer?.valueCents || 0;
+  const description = (offer?.description || "").toString().trim();
+
+  // Resolve business name from place if donorName is just a username
+  let businessName = donorName;
+  if(donorPlaceId){
+    try {
+      const place = await data.getPlaceById(donorPlaceId);
+      if(place && place.name) businessName = place.name;
+    } catch(e) {}
+  }
+
   return {
-    title,
-    donorName,
-    donorUserId: offer?.donorUserId ?? null,
-    donorPlaceId: offer?.donorPlaceId ?? null,
-    prizeOfferId: offer?.id ?? null
+    title, donorName: businessName, donorUserId, donorPlaceId, prizeOfferId: offer?.id ?? null,
+    imageUrl, valueCents, description, businessName
   };
 }
 
@@ -875,6 +887,25 @@ async function getSweepstakeActivePayload(req){
     try{ snapshot = JSON.parse(draw.snapshotJson || "{}"); }catch(_){}
   }
   const prize = await getSweepPrizeInfo(sweep, snapshot.prize);
+  const donor = {
+    businessName: prize.businessName || prize.donorName || "",
+    name: prize.donorName || "",
+    placeId: prize.donorPlaceId,
+    avatarUrl: "",
+    website: "",
+    description: ""
+  };
+  if(prize.donorPlaceId){
+    try {
+      const donorPlace = await data.getPlaceById(prize.donorPlaceId);
+      if(donorPlace){
+        donor.avatarUrl = donorPlace.avatarUrl || donorPlace.avatarurl || "";
+        donor.website = donorPlace.website || "";
+        donor.description = donorPlace.description || "";
+        if(!donor.businessName) donor.businessName = donorPlace.name || "";
+      }
+    } catch(e) {}
+  }
   const winnerUserId = draw?.winnerUserId || sweep.winnerUserId || null;
   const winner = winnerUserId
     ? {
@@ -892,6 +923,7 @@ async function getSweepstakeActivePayload(req){
     participants,
     winner,
     prize,
+    donor,
     drawId: draw?.id || null,
     createdAt: draw?.createdAt || "",
     userEntries,
