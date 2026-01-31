@@ -4721,8 +4721,10 @@ Review at: ${getAdminReviewLink()}`;
 
 app.get("/api/admin/giveaway/offers", async (req, res) => {
   const admin = await requireAdmin(req, res); if(!admin) return;
-  const status = (req.query.status || "pending").toString().trim().toLowerCase();
-  const offers = await data.getGiveawayOffersByStatus(status);
+  const status = (req.query.status || "all").toString().trim().toLowerCase();
+  const offers = status === "all"
+    ? [].concat(await data.getGiveawayOffersByStatus("pending"), await data.getGiveawayOffersByStatus("approved"), await data.getGiveawayOffersByStatus("rejected"))
+    : await data.getGiveawayOffersByStatus(status);
   const enriched = await Promise.all(offers.map(async (offer) => {
     const place = await data.getPlaceById(offer.placeId);
     const user = await data.getUserById(offer.userId);

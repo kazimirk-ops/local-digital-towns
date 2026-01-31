@@ -29,7 +29,7 @@ async function loadOffers() {
   $('offersGrid').style.display = 'none';
   $('offersEmpty').style.display = 'none';
   try {
-    const resp = await fetch('/api/admin/giveaway/offers?status=all', { credentials: 'include' });
+    const resp = await fetch('/api/admin/giveaway/offers', { credentials: 'include' });
     if (!resp.ok) throw new Error('Failed to load offers');
     const data = await resp.json();
     allOffers = Array.isArray(data) ? data : (data.offers || []);
