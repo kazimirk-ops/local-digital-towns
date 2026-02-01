@@ -39,27 +39,21 @@ async function loadFeaturedStores(){
     }
     panel.style.display = "block";
     list.innerHTML = "";
-    // Group by placeId
-    var grouped = {};
-    stores.forEach(function(s){
-      var pid = s.placeId || s.placeid;
-      if(!grouped[pid]) grouped[pid] = { placeName: s.placeName || s.placename || "Store", avatarUrl: s.avatarUrl || s.avatarurl || "", placeId: pid, offers: [] };
-      grouped[pid].offers.push(s);
-    });
-    Object.values(grouped).forEach(function(g){
+    // Data is pre-grouped by server: { placeId, placeName, avatarUrl, giveawayCount, offers }
+    stores.forEach(function(g){
       const div = document.createElement("div");
       div.className = "item";
       const avatar = g.avatarUrl ? `<img src="${g.avatarUrl}" alt="" style="width:48px;height:48px;border-radius:10px;object-fit:cover;margin-right:12px;" />` : "";
-      const count = g.offers.length;
+      const count = g.giveawayCount || g.offers?.length || 1;
       const badge = count > 1 ? ` <span class="pill" style="font-size:11px;">${count} giveaways</span>` : "";
-      const latest = g.offers[0];
-      const endsAt = latest.endsAt || latest.endsat;
+      const latest = (g.offers && g.offers[0]) || {};
+      const endsAt = latest.endsAt || "";
       const endsStr = endsAt ? new Date(endsAt).toLocaleDateString() : "";
       div.innerHTML = `
         <div style="display:flex;align-items:center;">
           ${avatar}
           <div style="flex:1;">
-            <div><strong>${escapeHtml(g.placeName)}</strong>${badge}</div>
+            <div><strong>${escapeHtml(g.placeName || "Store")}</strong>${badge}</div>
             <div class="muted">${escapeHtml(latest.title || "Active Giveaway")}</div>
             ${endsStr ? `<div class="muted">Ends: ${endsStr}</div>` : ""}
           </div>

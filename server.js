@@ -5292,8 +5292,28 @@ app.post("/api/admin/giveaway/offer/:id/repair", async (req, res) => {
 // ---------- Featured Stores ----------
 app.get("/api/featured-stores", async (req, res) => {
   try {
-    const stores = await data.getFeaturedStores();
-    res.json(stores);
+    const rows = await data.getFeaturedStores();
+    // Group by placeId server-side
+    const grouped = {};
+    for(const r of rows){
+      const pid = String(r.placeId || r.placeid || r.placeid || 0);
+      if(!grouped[pid]){
+        grouped[pid] = {
+          placeId: Number(pid),
+          placeName: r.placeName || r.placename || "Store",
+          avatarUrl: r.avatarUrl || r.avatarurl || "",
+          category: r.category || "",
+          giveawayCount: 0,
+          offers: []
+        };
+      }
+      grouped[pid].giveawayCount++;
+      grouped[pid].offers.push({
+        title: r.title || "",
+        endsAt: r.endsAt || r.endsat || ""
+      });
+    }
+    res.json(Object.values(grouped));
   } catch(e) {
     console.error("Featured stores error:", e);
     res.status(500).json({ error: "Failed to load featured stores" });
