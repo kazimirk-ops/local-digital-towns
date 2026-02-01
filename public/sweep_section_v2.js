@@ -597,47 +597,36 @@
       return Math.max(0, Math.ceil((end - now) / (1000 * 60 * 60 * 24)));
     }
 
-    async handleShare() {
-      const sweep = this.data?.sweepstake;
-
-      // Different share content based on whether there's an active sweepstake
-      let shareUrl, shareText, shareTitle;
+    handleShare() {
+      var sweep = this.data?.sweepstake;
+      var shareUrl, shareText, shareTitle, imageUrl;
       if (sweep?.id) {
-        shareUrl = `${window.location.origin}/sweep/${sweep.id}`;
-        const _prize = this.data?.prize || {};
-        const _title = _prize.title || sweep.prize || sweep.title || 'Town Sweepstake';
-        const _val = _prize.valueCents ? '$' + (Number(_prize.valueCents) / 100).toFixed(0) : (sweep.estimatedValue || '');
-        shareText = `Check out this sweepstake: ${_title}${_val ? ' - Worth ' + _val + '!' : ''}`;
+        shareUrl = window.location.origin + '/sweep/' + sweep.id;
+        var _prize = this.data?.prize || {};
+        var _title = _prize.title || sweep.prize || sweep.title || 'Town Sweepstake';
+        var _val = _prize.valueCents ? '$' + (Number(_prize.valueCents) / 100).toFixed(0) : (sweep.estimatedValue || '');
+        shareText = 'Check out this sweepstake: ' + _title + (_val ? ' - Worth ' + _val + '!' : '');
         shareTitle = _title;
+        imageUrl = _prize.imageUrl || '';
       } else {
-        shareUrl = `${window.location.origin}/giveaway-offer`;
-        shareText = `Local businesses: Donate prizes to our community sweepstakes and get featured to local customers!`;
+        shareUrl = window.location.origin + '/giveaway-offer';
+        shareText = 'Local businesses: Donate prizes to our community sweepstakes and get featured to local customers!';
         shareTitle = 'Town Sweepstake';
+        imageUrl = '';
       }
 
-      // Try native share first
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: shareTitle,
-            text: shareText,
-            url: shareUrl
-          });
-          await this.logShare('native');
-        } catch (err) {
-          if (err.name !== 'AbortError') {
-            console.error('Share failed:', err);
-          }
-        }
+      if (window.ShareModal) {
+        ShareModal.show({
+          type: 'sweepstake',
+          title: 'Share this giveaway!',
+          shareText: shareText,
+          shareUrl: shareUrl,
+          imageUrl: imageUrl,
+          itemId: sweep?.id || 0
+        });
       } else {
-        // Fallback: copy to clipboard
-        try {
-          await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-          alert('Link copied to clipboard!');
-          await this.logShare('clipboard');
-        } catch (err) {
-          console.error('Copy failed:', err);
-        }
+        // Fallback if share_modal.js not loaded
+        window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(shareUrl) + '&quote=' + encodeURIComponent(shareText), 'facebook-share', 'width=600,height=400');
       }
     }
 
