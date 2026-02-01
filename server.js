@@ -769,9 +769,11 @@ async function getSweepPrizeInfo(sweep, snapshotPrize){
   if(snapshotPrize && snapshotPrize.title) return snapshotPrize;
   // Find the prize offer linked to this specific sweepstake via giveaway_offers
   let offer = null;
+  let giveawayEstimatedValue = 0; // giveaway_offers.estimatedValue is already in cents
   if(sweep?.id){
     try {
       const giveaway = await data.getGiveawayOfferBySweepstakeId(sweep.id);
+      giveawayEstimatedValue = Math.round(giveaway?.estimatedvalue || giveaway?.estimatedValue || 0);
       const prizeOfferId = giveaway?.prizeOfferId || giveaway?.prize_offer_id || null;
       if(prizeOfferId){
         offer = await data.getPrizeOfferById(prizeOfferId);
@@ -792,10 +794,14 @@ async function getSweepPrizeInfo(sweep, snapshotPrize){
   const donorPlaceId = offer?.donorplaceid || offer?.donorPlaceId || offer?.placeid || offer?.placeId || null;
   const donorUserId = offer?.donoruserid || offer?.donorUserId || offer?.userid || offer?.userId || null;
   const imageUrl = (offer?.imageurl || offer?.imageUrl || "").toString().trim();
-  let valueCents = offer?.valuecents || offer?.valueCents || 0;
-  // giveaway_offers stores estimatedValue in dollars, not cents
+  // Prefer giveaway_offer.estimatedValue (already in cents, source of truth)
+  // over prize_offer.valueCents (which may be 100x inflated from prior bug)
+  let valueCents = giveawayEstimatedValue;
+  if(!valueCents){
+    valueCents = offer?.valuecents || offer?.valueCents || 0;
+  }
   if(!valueCents && (offer?.estimatedvalue || offer?.estimatedValue)){
-    valueCents = Math.round((offer.estimatedvalue || offer.estimatedValue) * 100);
+    valueCents = Math.round(offer.estimatedvalue || offer.estimatedValue);
   }
   const description = (offer?.description || "").toString().trim();
 
@@ -5126,7 +5132,8 @@ app.post("/api/admin/giveaway/offer/:id/review", async (req, res) => {
       const place = await data.getPlaceById(offer.placeId);
       const user = await data.getUserById(offer.userId);
       const donorName = (place && place.name) || (user && (user.displayName || user.email)) || "Local Business";
-      const valueCents = Math.round((offer.estimatedvalue || offer.estimatedValue || 0) * 100) || 1;
+      // estimatedValue is already stored in cents by the giveaway offer form
+      const valueCents = Math.round(offer.estimatedvalue || offer.estimatedValue || 0) || 1;
       console.log("GIVEAWAY_BRIDGE: Creating prize for offer " + offerId + ", valueCents=" + valueCents);
       bridgePrizeOffer = await data.addPrizeOffer({
         title: offer.title,
