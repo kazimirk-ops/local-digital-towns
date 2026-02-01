@@ -40,7 +40,10 @@ function toCamelCase(obj) {
       .replace(/totalentries/gi, 'totalEntries')
       .replace(/claimedat/gi, 'claimedAt')
       .replace(/\busera\b/gi, 'userA')
-      .replace(/\buserb\b/gi, 'userB');
+      .replace(/\buserb\b/gi, 'userB')
+      .replace(/senderuserid/gi, 'senderUserId')
+      .replace(/displayname/gi, 'displayName')
+      .replace(/conversationid/gi, 'conversationId');
     result[camelKey] = value;
   }
   return result;
