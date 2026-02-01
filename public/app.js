@@ -572,9 +572,10 @@ function renderFeaturedEvent(){
   if(!feat) feat=all[0];
   if(!feat){ featEl.innerHTML=''; return; }
   var fd=new Date(feat.startAt||Date.now());
+  var fCat=(feat.category||"other").toLowerCase();
   var fImg=feat.imageUrl
     ? '<img class="event-featured-img" src="'+feat.imageUrl+'" alt="" />'
-    : '<div class="event-featured-img-placeholder">\u{1F4C5}</div>';
+    : '<div class="event-featured-img-placeholder event-cat--'+fCat+'">'+evtCatIcon(fCat)+'</div>';
   var fLoc=feat.locationName ? '<span>\u{1F4CD} '+feat.locationName+'</span>' : '';
   var fEnd=feat.endAt ? ' \u2013 '+evtTimeStr(feat.endAt) : '';
   var fDesc=feat.description||'';
