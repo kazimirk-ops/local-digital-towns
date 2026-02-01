@@ -68,7 +68,10 @@ async function loadFeaturedStores(){
 }
 function setRouteViewLabel(view){
   const routeEl=$("routeView");
-  if(routeEl) routeEl.textContent=`/ui#${view}`;
+  if(!routeEl) return;
+  const navBtn=document.querySelector('.navItem[data-view="'+view+'"]');
+  const label=navBtn?navBtn.textContent.trim():view;
+  routeEl.textContent=label;
 }
 function setView(view){
   const views=document.querySelectorAll(".view");
