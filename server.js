@@ -767,14 +767,36 @@ function getAdminReviewLink(){
 
 async function getSweepPrizeInfo(sweep, snapshotPrize){
   if(snapshotPrize && snapshotPrize.title) return snapshotPrize;
-  const offers = await data.listActivePrizeOffers();
-  const offer = offers[0];
+  // Find the prize offer linked to this specific sweepstake via giveaway_offers
+  let offer = null;
+  if(sweep?.id){
+    try {
+      const giveaway = await data.getGiveawayOfferBySweepstakeId(sweep.id);
+      const prizeOfferId = giveaway?.prizeOfferId || giveaway?.prize_offer_id || null;
+      if(prizeOfferId){
+        offer = await data.getPrizeOfferById(prizeOfferId);
+      }
+      // If no prize_offer link, use giveaway_offer data directly
+      if(!offer && giveaway){
+        offer = giveaway;
+      }
+    } catch(_){}
+  }
+  // Fallback: first active prize offer (legacy behavior)
+  if(!offer){
+    const offers = await data.listActivePrizeOffers();
+    offer = offers[0];
+  }
   const title = (offer?.title || sweep?.prize || sweep?.title || "").toString().trim();
   const donorName = (offer?.donordisplayname || offer?.donorDisplayName || "").toString().trim();
-  const donorPlaceId = offer?.donorplaceid || offer?.donorPlaceId || null;
-  const donorUserId = offer?.donoruserid || offer?.donorUserId || null;
+  const donorPlaceId = offer?.donorplaceid || offer?.donorPlaceId || offer?.placeid || offer?.placeId || null;
+  const donorUserId = offer?.donoruserid || offer?.donorUserId || offer?.userid || offer?.userId || null;
   const imageUrl = (offer?.imageurl || offer?.imageUrl || "").toString().trim();
-  const valueCents = offer?.valuecents || offer?.valueCents || 0;
+  let valueCents = offer?.valuecents || offer?.valueCents || 0;
+  // giveaway_offers stores estimatedValue in dollars, not cents
+  if(!valueCents && (offer?.estimatedvalue || offer?.estimatedValue)){
+    valueCents = Math.round((offer.estimatedvalue || offer.estimatedValue) * 100);
+  }
   const description = (offer?.description || "").toString().trim();
 
   // Resolve business name from place if donorName is just a username
@@ -3236,7 +3258,7 @@ app.get("/api/sweepstakes/active", async (req, res) => {
       results.push({
         sweepstake: sweep, totals, prize, donor, winner,
         participants, rules: enabledRules, userEntries,
-        isUpcoming: sweep.status === 'scheduled',
+        isUpcoming: sweep.status === 'scheduled' || (sweep.startAt || sweep.startat) > new Date().toISOString(),
         hasWinner: !!winnerUserId
       });
       } catch(itemErr) {

@@ -1951,8 +1951,11 @@ async function getActiveSweepstakes(){
     WHERE (startAt <= $1 AND endAt >= $1 AND status='active')
        OR (winnerUserId IS NOT NULL AND startAt <= $1)
        OR (status='scheduled' AND startAt <= $2)
+       OR (status='active' AND startAt > $1 AND startAt <= $2)
     ORDER BY
-      CASE WHEN winnerUserId IS NOT NULL THEN 0 WHEN status='active' THEN 1 ELSE 2 END,
+      CASE WHEN winnerUserId IS NOT NULL THEN 0
+           WHEN status='active' AND startAt <= $1 THEN 1
+           ELSE 2 END,
       startAt DESC
   `).all(now, weekFromNow);
 }
@@ -3595,6 +3598,10 @@ async function linkGiveawayOffer(offerId, { sweepstakeId, prizeOfferId }) {
   return stmt("SELECT * FROM giveaway_offers WHERE id=$1").get(Number(offerId));
 }
 
+async function getGiveawayOfferBySweepstakeId(sweepstakeId) {
+  return (await stmt("SELECT * FROM giveaway_offers WHERE sweepstake_id=$1 LIMIT 1").get(Number(sweepstakeId))) || null;
+}
+
 async function getFeaturedStores() {
   // Get businesses with currently active giveaways (status=approved, startsAt <= now <= endsAt)
   const now = new Date().toISOString();
@@ -4095,6 +4102,7 @@ module.exports = {
   // featured stores
   updateGiveawayOfferDates,
   linkGiveawayOffer,
+  getGiveawayOfferBySweepstakeId,
   getFeaturedStores,
   getFeaturedBusinesses,
 

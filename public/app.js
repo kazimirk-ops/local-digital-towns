@@ -39,20 +39,31 @@ async function loadFeaturedStores(){
     }
     panel.style.display = "block";
     list.innerHTML = "";
-    stores.forEach(store=>{
+    // Group by placeId
+    var grouped = {};
+    stores.forEach(function(s){
+      var pid = s.placeId || s.placeid;
+      if(!grouped[pid]) grouped[pid] = { placeName: s.placeName || s.placename || "Store", avatarUrl: s.avatarUrl || s.avatarurl || "", placeId: pid, offers: [] };
+      grouped[pid].offers.push(s);
+    });
+    Object.values(grouped).forEach(function(g){
       const div = document.createElement("div");
       div.className = "item";
-      const avatar = store.avatarUrl ? `<img src="${store.avatarUrl}" alt="" style="width:48px;height:48px;border-radius:10px;object-fit:cover;margin-right:12px;" />` : "";
-      const endsAt = store.endsAt ? new Date(store.endsAt).toLocaleDateString() : "";
+      const avatar = g.avatarUrl ? `<img src="${g.avatarUrl}" alt="" style="width:48px;height:48px;border-radius:10px;object-fit:cover;margin-right:12px;" />` : "";
+      const count = g.offers.length;
+      const badge = count > 1 ? ` <span class="pill" style="font-size:11px;">${count} giveaways</span>` : "";
+      const latest = g.offers[0];
+      const endsAt = latest.endsAt || latest.endsat;
+      const endsStr = endsAt ? new Date(endsAt).toLocaleDateString() : "";
       div.innerHTML = `
         <div style="display:flex;align-items:center;">
           ${avatar}
           <div style="flex:1;">
-            <div><strong>${escapeHtml(store.placeName || "Store")}</strong></div>
-            <div class="muted">${escapeHtml(store.title || "Active Giveaway")}</div>
-            ${endsAt ? `<div class="muted">Giveaway ends: ${endsAt}</div>` : ""}
+            <div><strong>${escapeHtml(g.placeName)}</strong>${badge}</div>
+            <div class="muted">${escapeHtml(latest.title || "Active Giveaway")}</div>
+            ${endsStr ? `<div class="muted">Ends: ${endsStr}</div>` : ""}
           </div>
-          <a class="pill" href="/store/${store.placeId}">Visit Store</a>
+          <a class="pill" href="/store/${g.placeId}">Visit Store</a>
         </div>
       `;
       list.appendChild(div);
