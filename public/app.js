@@ -156,7 +156,6 @@ async function initChannels(){
 }
 
 async function initScheduledShows(){
-  await loadScheduledShows();
   renderScheduledShows();
 }
 
