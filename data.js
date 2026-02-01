@@ -1933,8 +1933,8 @@ async function getActiveSweepstake(){
   const now = nowISO();
   return (await stmt(`
     SELECT * FROM sweepstakes
-    WHERE startAt <= $1 AND endAt >= $1
-      AND (status='active' OR (status='ended' AND winnerUserId IS NOT NULL))
+    WHERE (startAt <= $1 AND endAt >= $1 AND status='active')
+       OR (winnerUserId IS NOT NULL AND startAt <= $1)
     ORDER BY
       CASE WHEN winnerUserId IS NOT NULL THEN 0 ELSE 1 END,
       startAt DESC
