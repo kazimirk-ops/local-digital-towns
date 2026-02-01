@@ -824,7 +824,7 @@ async function getSweepDrawContext(draw){
   if(!draw) return { sweep: null, prize: null, snapshot: {} };
   const sweep = await data.getSweepstakeById(draw.sweepId);
   let snapshot = {};
-  try{ snapshot = JSON.parse(draw.snapshotJson || "{}"); }catch(_){}
+  try{ snapshot = draw.snapshotJson ? (typeof draw.snapshotJson === "string" ? JSON.parse(draw.snapshotJson) : draw.snapshotJson) : {}; }catch(_){}
   const prize = await getSweepPrizeInfo(sweep, snapshot.prize);
   return { sweep, prize, snapshot };
 }
@@ -890,9 +890,10 @@ async function notifySweepDrawUsers({ draw, sweep, winner, prize, adminId, force
       const winnerEmailText = isSameUser
         ? `Congratulations!\n\nYou won your own giveaway prize: ${prizeTitle}!\n\nSince you are also the prize donor, no further coordination is needed.\n\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}\n\nThank you for supporting the community!`
         : `Congratulations!\n\nYou won: ${prizeTitle}!\nDonated by: ${donorName}\n\nPlease check your inbox on the app for a message thread with the donor to coordinate pickup or delivery.\n\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}\n\nThank you for being part of our community!`;
-      console.log("SWEEP_NOTIFY_WINNER_EMAIL", { to: winnerUser.email, subject: `You won: ${prizeTitle}!` });
-      sendEmail(winnerUser.email, `\uD83C\uDF89 You won: ${prizeTitle}!`, winnerEmailText);
-      result.emailSent = true;
+      console.log("SWEEP_NOTIFY_WINNER_EMAIL_ATTEMPT", { to: winnerUser.email, subject: `You won: ${prizeTitle}!` });
+      const emailResult = await sendEmail(winnerUser.email, `\uD83C\uDF89 You won: ${prizeTitle}!`, winnerEmailText);
+      result.emailSent = !!emailResult?.ok;
+      console.log("SWEEP_NOTIFY_WINNER_EMAIL_RESULT", emailResult);
     } else {
       console.warn("SWEEP_NOTIFY_NO_WINNER_EMAIL", { winnerId: winner.userId, email: winnerUser?.email });
     }
@@ -912,9 +913,10 @@ async function notifySweepDrawUsers({ draw, sweep, winner, prize, adminId, force
       }
       const donorUser = await data.getUserById(donorUserId);
       if(donorUser?.email){
-        console.log("SWEEP_NOTIFY_DONOR_EMAIL", { to: donorUser.email });
-        sendEmail(donorUser.email, `Your prize "${prizeTitle}" has been won!`, `Hello,\n\n${winnerName} has won your donated prize: ${prizeTitle}!\n\nPlease check your inbox on the app for a message thread with the winner to coordinate pickup or delivery.\n\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}\n\nThank you for supporting the community!`);
-        result.donorEmailSent = true;
+        console.log("SWEEP_NOTIFY_DONOR_EMAIL_ATTEMPT", { to: donorUser.email });
+        const donorEmailResult = await sendEmail(donorUser.email, `Your prize "${prizeTitle}" has been won!`, `Hello,\n\n${winnerName} has won your donated prize: ${prizeTitle}!\n\nPlease check your inbox on the app for a message thread with the winner to coordinate pickup or delivery.\n\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}\n\nThank you for supporting the community!`);
+        result.donorEmailSent = !!donorEmailResult?.ok;
+        console.log("SWEEP_NOTIFY_DONOR_EMAIL_RESULT", donorEmailResult);
       }
     }
 
@@ -954,7 +956,7 @@ async function getSweepstakeActivePayload(req){
   const draw = await data.getSweepDrawBySweepId(sweep.id);
   let snapshot = {};
   if(draw?.snapshotJson){
-    try{ snapshot = JSON.parse(draw.snapshotJson || "{}"); }catch(_){}
+    try{ snapshot = typeof draw.snapshotJson === "string" ? JSON.parse(draw.snapshotJson) : draw.snapshotJson; }catch(_){}
   }
   const prize = await getSweepPrizeInfo(sweep, snapshot.prize);
   const donor = {
@@ -3259,7 +3261,7 @@ app.get("/api/sweepstakes/active", async (req, res) => {
       const totals = await data.getSweepstakeEntryTotals(sweep.id);
       const draw = await data.getSweepDrawBySweepId(sweep.id);
       let snapshot = {};
-      if(draw?.snapshotJson){ try{ snapshot = JSON.parse(draw.snapshotJson || "{}"); }catch(_){} }
+      if(draw?.snapshotJson){ try{ snapshot = typeof draw.snapshotJson === "string" ? JSON.parse(draw.snapshotJson) : draw.snapshotJson; }catch(_){} }
       const prize = await getSweepPrizeInfo(sweep, snapshot.prize);
       const donor = {
         businessName: prize.businessName || prize.donorName || "",
@@ -3473,7 +3475,7 @@ app.post("/api/admin/sweep/draw", async (req, res) =>{
   const existing = await data.getSweepDrawBySweepId(sweep.id);
   if(existing){
     let snapshot = {};
-    try{ snapshot = JSON.parse(existing.snapshotJson || "{}"); }catch(_){}
+    try{ snapshot = existing.snapshotJson ? (typeof existing.snapshotJson === "string" ? JSON.parse(existing.snapshotJson) : existing.snapshotJson) : {}; }catch(_){}
     const participants = Array.isArray(snapshot.participants) ? snapshot.participants : await buildSweepParticipants(sweep.id);
     const winner = snapshot.winner || participants.find(p=>Number(p.userId)===Number(existing.winnerUserId)) || null;
     const prize = await getSweepPrizeInfo(sweep, snapshot.prize);
@@ -3541,7 +3543,7 @@ app.post("/api/admin/sweep/notify/:drawId", async (req, res) =>{
   }
   const winner = { userId: Number(winnerUserId), displayName, entries: participant?.entries || 0 };
   let snapshot = {};
-  try{ snapshot = JSON.parse(draw.snapshotJson || "{}"); }catch(_){}
+  try{ snapshot = draw.snapshotJson ? (typeof draw.snapshotJson === "string" ? JSON.parse(draw.snapshotJson) : draw.snapshotJson) : {}; }catch(_){}
   const prize = await getSweepPrizeInfo(sweep, snapshot.prize);
   // Force-bypass notified check since this is an explicit admin re-trigger
   const notifyResult = await notifySweepDrawUsers({ draw, sweep, winner, prize, adminId: admin.id, force: true });
@@ -3558,7 +3560,7 @@ app.get("/api/admin/sweep/last", async (req, res) =>{
   const existing = await data.getLatestSweepDraw();
   if(!existing) return res.status(404).json({ error: "No draw yet" });
   let snapshot = {};
-  try{ snapshot = JSON.parse(existing.snapshotJson || "{}"); }catch(_){}
+  try{ snapshot = existing.snapshotJson ? (typeof existing.snapshotJson === "string" ? JSON.parse(existing.snapshotJson) : existing.snapshotJson) : {}; }catch(_){}
   const participants = Array.isArray(snapshot.participants) ? snapshot.participants : await buildSweepParticipants(existing.sweepId);
   const winner = snapshot.winner || participants.find(p=>Number(p.userId)===Number(existing.winnerUserId)) || null;
   const sweep = await data.getSweepstakeById(existing.sweepId);
