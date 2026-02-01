@@ -631,7 +631,7 @@
 
           <!-- Stats -->
           <div class="sweep-v2-stats">
-            <div class="sweep-v2-stat-card">
+            ${!hasWinner ? `<div class="sweep-v2-stat-card">
               <div class="sweep-v2-stat-card-inner">
                 <div class="sweep-v2-stat-icon entries">\uD83D\uDC65</div>
                 <div>
@@ -648,7 +648,7 @@
                   <div class="sweep-v2-stat-label">Your Entries</div>
                 </div>
               </div>
-            </div>
+            </div>` : ''}
             <div class="sweep-v2-stat-card">
               <div class="sweep-v2-stat-card-inner">
                 <div class="sweep-v2-stat-icon balance">\uD83D\uDCB0</div>
