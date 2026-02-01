@@ -562,6 +562,38 @@ function evtCatIcon(cat){
   return "\u{1F4CC}";
 }
 
+function renderFeaturedEvent(){
+  var all=eventsState.list||[];
+  var featEl=$("featuredEvent");
+  if(!featEl) return;
+  var feat=eventsState.selectedId
+    ? all.find(function(e){ return e.id===eventsState.selectedId; })
+    : null;
+  if(!feat) feat=all[0];
+  if(!feat){ featEl.innerHTML=''; return; }
+  var fd=new Date(feat.startAt||Date.now());
+  var fImg=feat.imageUrl
+    ? '<img class="event-featured-img" src="'+feat.imageUrl+'" alt="" />'
+    : '<div class="event-featured-img-placeholder">\u{1F4C5}</div>';
+  var fLoc=feat.locationName ? '<span>\u{1F4CD} '+feat.locationName+'</span>' : '';
+  var fEnd=feat.endAt ? ' \u2013 '+evtTimeStr(feat.endAt) : '';
+  var fDesc=feat.description||'';
+  if(!eventsState.selectedId && fDesc.length>140) fDesc=fDesc.slice(0,140)+'\u2026';
+  var fRsvp=typeof feat.rsvpCount==='number' ? '<span>\u{1F465} '+feat.rsvpCount+' going</span>' : '';
+  var fOrg=feat.organizerName ? '<span>\u{1F464} '+feat.organizerName+'</span>' : '';
+  featEl.innerHTML=
+    '<div class="event-featured">'+fImg+
+    '<div class="event-featured-body">'+
+      '<div class="event-featured-badge">'+(feat.category||"event")+'</div>'+
+      '<div class="event-featured-title">'+(feat.title||"Event")+'</div>'+
+      (fDesc ? '<div style="font-size:13px;color:var(--ev-text);margin-bottom:8px;line-height:1.5;">'+fDesc+'</div>' : '')+
+      '<div class="event-featured-meta">'+
+        '<span>\u{1F4C5} '+evtMonthAbbr(fd.getMonth())+' '+fd.getDate()+', '+evtTimeStr(feat.startAt)+fEnd+'</span>'+
+        fLoc+fRsvp+fOrg+
+      '</div>'+
+    '</div></div>';
+}
+
 function renderEventsList(){
   var all=eventsState.list||[];
   var filtered=all;
@@ -572,33 +604,7 @@ function renderEventsList(){
     filtered=filtered.filter(function(ev){ return (ev.category||"").toLowerCase()===eventsState.selectedCategory; });
   }
 
-  /* ── Featured event ── */
-  var featEl=$("featuredEvent");
-  if(featEl){
-    var feat=all[0];
-    if(feat){
-      var fd=new Date(feat.startAt||Date.now());
-      var fImg=feat.imageUrl
-        ? '<img class="event-featured-img" src="'+feat.imageUrl+'" alt="" />'
-        : '<div class="event-featured-img-placeholder">\u{1F4C5}</div>';
-      var fLoc=feat.locationName ? '<span>\u{1F4CD} '+feat.locationName+'</span>' : '';
-      var fEnd=feat.endAt ? ' \u2013 '+evtTimeStr(feat.endAt) : '';
-      var fDesc=feat.description||'';
-      if(fDesc.length>140) fDesc=fDesc.slice(0,140)+'\u2026';
-      var fRsvp=typeof feat.rsvpCount==='number' ? '<span>\u{1F465} '+feat.rsvpCount+' going</span>' : '';
-      featEl.innerHTML=
-        '<div class="event-featured">'+fImg+
-        '<div class="event-featured-body">'+
-          '<div class="event-featured-badge">'+(feat.category||"event")+'</div>'+
-          '<div class="event-featured-title">'+(feat.title||"Event")+'</div>'+
-          (fDesc ? '<div style="font-size:13px;color:var(--ev-text);margin-bottom:8px;line-height:1.5;">'+fDesc+'</div>' : '')+
-          '<div class="event-featured-meta">'+
-            '<span>\u{1F4C5} '+evtMonthAbbr(fd.getMonth())+' '+fd.getDate()+', '+evtTimeStr(feat.startAt)+fEnd+'</span>'+
-            fLoc+fRsvp+
-          '</div>'+
-        '</div></div>';
-    } else { featEl.innerHTML=''; }
-  }
+  renderFeaturedEvent();
 
   /* ── Category chips ── */
   var chipsEl=$("eventChips");
@@ -630,6 +636,12 @@ function renderEventsList(){
       var loc=ev.locationName ? '<span>\u{1F4CD} '+ev.locationName+'</span>' : '';
       var card=document.createElement("div");
       card.className="event-card event-cat--"+(ev.category||"other").toLowerCase();
+      if(eventsState.selectedId===ev.id) card.classList.add("active");
+      var endStr=ev.endAt ? ' \u2013 '+evtTimeStr(ev.endAt) : '';
+      var addr=ev.address ? ' \u00B7 '+ev.address : '';
+      var desc=ev.description||'';
+      var org=ev.organizerName ? '<span>\u{1F464} '+ev.organizerName+'</span>' : '';
+      var web=ev.website ? '<span><a href="'+ev.website+'" target="_blank" rel="noopener" style="color:var(--ev-accent);">Website \u2197</a></span>' : '';
       card.innerHTML=
         '<div class="event-card-date">'+
           '<div class="event-card-date-month">'+evtMonthAbbr(d.getMonth())+'</div>'+
@@ -638,12 +650,32 @@ function renderEventsList(){
         '<div class="event-card-info">'+
           '<div class="event-card-title">'+(ev.title||"Event")+'</div>'+
           '<div class="event-card-meta">'+
-            '<span>\u{1F551} '+evtTimeStr(ev.startAt)+'</span>'+
+            '<span>\u{1F551} '+evtTimeStr(ev.startAt)+endStr+'</span>'+
             loc+
           '</div>'+
           '<div class="event-card-category" data-cat="'+(ev.category||"other").toLowerCase()+'">'+(ev.category||"other")+'</div>'+
         '</div>'+
-        '<div class="event-card-actions"></div>';
+        '<div class="event-card-actions"></div>'+
+        '<div class="event-card-expand"><div class="event-card-expand-inner">'+
+          (desc ? '<div class="event-card-desc">'+desc+'</div>' : '')+
+          '<div class="event-card-expand-meta">'+
+            '<span>\u{1F4C5} '+evtMonthAbbr(d.getMonth())+' '+d.getDate()+', '+evtTimeStr(ev.startAt)+endStr+'</span>'+
+            (ev.locationName ? '<span>\u{1F4CD} '+ev.locationName+addr+'</span>' : '')+
+            '<span>\u{1F3F7} '+(ev.category||'other')+'</span>'+
+            org+web+
+          '</div>'+
+        '</div></div>';
+      card.onclick=function(){
+        var wasActive=card.classList.contains("active");
+        el.querySelectorAll(".event-card.active").forEach(function(c){ c.classList.remove("active"); });
+        if(wasActive){
+          eventsState.selectedId=null;
+        } else {
+          card.classList.add("active");
+          eventsState.selectedId=ev.id;
+        }
+        renderFeaturedEvent();
+      };
       el.appendChild(card);
     });
   }

@@ -887,6 +887,37 @@ textarea { min-height: 90px; }
   gap: 6px;
   flex-shrink: 0;
 }
+.event-card-expand {
+  grid-column: 1 / -1;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+.event-card.active .event-card-expand {
+  max-height: 300px;
+}
+.event-card-expand-inner {
+  padding: 12px 0 4px;
+  border-top: 1px solid var(--ev-border);
+}
+.event-card-desc {
+  font-size: 13px;
+  color: var(--ev-text);
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.event-card-expand-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--ev-muted);
+}
+.event-card-expand-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 .event-card-rsvp {
   font-size: 11px;
   font-weight: 600;
