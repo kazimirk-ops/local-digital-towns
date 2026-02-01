@@ -3455,6 +3455,32 @@ app.post("/api/admin/sweep/draw", async (req, res) =>{
     claimedAt: draw?.claimedAt || ""
   });
 });
+app.post("/api/admin/sweep/notify/:drawId", async (req, res) =>{
+  const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
+  const draw = await data.getSweepDrawById(req.params.drawId);
+  if(!draw) return res.status(404).json({ error: "Draw not found" });
+  const sweep = await data.getSweepstakeById(draw.sweepId);
+  if(!sweep) return res.status(404).json({ error: "Sweepstake not found" });
+  const participants = await buildSweepParticipants(sweep.id);
+  const winnerUserId = draw.winnerUserId || sweep.winnerUserId;
+  if(!winnerUserId) return res.status(400).json({ error: "No winner on this draw" });
+  const participant = participants.find(p=>Number(p.userId)===Number(winnerUserId));
+  let displayName = participant?.displayName || "";
+  if(!displayName){
+    const winnerUser = await data.getUserById(winnerUserId);
+    displayName = await data.getDisplayNameForUser(winnerUser);
+    try { const place = await data.getPlaceByOwnerId(winnerUserId); if(place?.name) displayName = place.name; } catch(_){}
+  }
+  const winner = { userId: Number(winnerUserId), displayName, entries: participant?.entries || 0 };
+  let snapshot = {};
+  try{ snapshot = JSON.parse(draw.snapshotJson || "{}"); }catch(_){}
+  const prize = await getSweepPrizeInfo(sweep, snapshot.prize);
+  // Reset notified flag so notifySweepDrawUsers will re-send
+  await data.query("UPDATE sweep_draws SET notified=0 WHERE id=$1", [Number(draw.id)]);
+  const freshDraw = await data.getSweepDrawById(draw.id);
+  await notifySweepDrawUsers({ draw: freshDraw, sweep, winner, prize, adminId: admin.id });
+  res.json({ ok: true, drawId: draw.id, winnerId: winnerUserId, notified: true });
+});
 app.post("/api/admin/sweep/grant_test_balance", async (req, res) =>{
   const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
   if(process.env.SWEEP_TEST_MODE !== "true") return res.status(403).json({error:"Sweep test mode disabled"});

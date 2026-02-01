@@ -718,7 +718,11 @@
       const daysLeft = this.getDaysRemaining();
       const endStr = this.getEndDateString();
       const endDateFormatted = endStr ? new Date(endStr).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
-      const displayRules = this.rules || [];
+      const ruleLabels = {
+        'message_send': true, 'listing_create': true, 'purchase': true,
+        'review_left': true, 'listing_mark_sold': true, 'social_share': true
+      };
+      const displayRules = (this.rules || []).filter(function(r) { return r.eventType && ruleLabels[r.eventType]; });
 
       if (!sweep.id) {
         this.container.innerHTML = `
