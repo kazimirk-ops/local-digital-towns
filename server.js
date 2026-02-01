@@ -5316,13 +5316,34 @@ app.post("/api/admin/giveaway/:id/cancel", async (req, res) => {
   // Cancel the giveaway offer
   await db.query("UPDATE giveaway_offers SET status='cancelled', adminNotes=COALESCE(adminNotes,'')||$1, reviewedAt=$2, reviewedByUserId=$3 WHERE id=$4",
     ['\nCancelled by admin', new Date().toISOString(), admin.id, offerId]);
-  // Cancel the linked sweepstake
+  // Cancel the linked sweepstake (multiple fallback lookups)
   let sweepstakeId = offer.sweepstake_id || null;
-  if(!sweepstakeId){
+  // Fallback 1: title match
+  if(!sweepstakeId && offer.title){
     try {
-      const sw = await db.one("SELECT id FROM sweepstakes WHERE title=$1 ORDER BY createdat DESC LIMIT 1", [offer.title || '']);
+      const sw = await db.one("SELECT id FROM sweepstakes WHERE title=$1 ORDER BY createdat DESC LIMIT 1", [offer.title]);
       if(sw) sweepstakeId = sw.id;
     } catch(e){}
+  }
+  // Fallback 2: via prize_offer_id -> prize title -> sweepstake
+  if(!sweepstakeId && offer.prize_offer_id){
+    try {
+      const prize = await db.one("SELECT title FROM prize_offers WHERE id=$1", [offer.prize_offer_id]);
+      if(prize && prize.title){
+        const sw = await db.one("SELECT id FROM sweepstakes WHERE title=$1 ORDER BY createdat DESC LIMIT 1", [prize.title]);
+        if(sw) sweepstakeId = sw.id;
+      }
+    } catch(e){}
+  }
+  // Fallback 3: via placeId -> prize donor -> sweepstake title
+  if(!sweepstakeId){
+    const pId = offer.placeid || offer.place_id;
+    if(pId){
+      try {
+        const sw = await db.one("SELECT s.id FROM sweepstakes s JOIN prize_offers p ON p.title = s.title WHERE p.donorplaceid=$1 AND s.status != 'cancelled' ORDER BY s.createdat DESC LIMIT 1", [pId]);
+        if(sw) sweepstakeId = sw.id;
+      } catch(e){}
+    }
   }
   if(sweepstakeId){
     await db.query("UPDATE sweepstakes SET status='cancelled' WHERE id=$1", [sweepstakeId]);
