@@ -183,13 +183,14 @@ async function loadPrizeClaims(){
 async function openConversation(id) {
   currentConversationId = id;
   const msgs = await api(`/dm/${id}/messages`);
+  console.log("DM_MESSAGES_RAW", JSON.stringify(msgs[0] || {}).slice(0, 300));
   const list = document.getElementById("dmMessages");
   list.innerHTML = "";
-  msgs.forEach((m) => {
-    const div = document.createElement("div");
-    const name = m.sender?.displayName || `User ${m.senderUserId}`;
-    const tier = m.sender?.trustTierLabel ? ` • ${m.sender.trustTierLabel}` : "";
-    div.textContent = `${name}${tier}: ${m.text}`;
+  msgs.forEach(function(m) {
+    var div = document.createElement("div");
+    var sender = m.sender || {};
+    var name = sender.displayName || m.displayName || "Unknown";
+    div.textContent = name + ": " + m.text;
     list.appendChild(div);
   });
 }
