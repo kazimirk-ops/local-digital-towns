@@ -4104,6 +4104,24 @@ app.post("/api/admin/channel-requests/:id/deny", async (req, res) =>{
   res.json(updated);
 });
 
+// Direct admin channel creation
+app.post("/api/admin/channels", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const { name, description, isPublic } = req.body || {};
+  if(!name || !name.trim()) return res.status(400).json({error:"name required"});
+  const channel = await data.createChannel(name.trim(), (description || "").trim(), isPublic !== undefined ? isPublic : 1);
+  res.json(channel);
+});
+
+// Admin channel deletion (cascades messages, threads, memberships, mutes)
+app.delete("/api/admin/channels/:id", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  const channel=await data.getChannelById(req.params.id);
+  if(!channel) return res.status(404).json({error:"Channel not found"});
+  await data.deleteChannel(channel.id);
+  res.json({ ok:true, deleted: channel });
+});
+
 // Channel moderator management
 app.get("/api/admin/channels/:id/moderators", async (req, res) =>{
   const admin=await requireAdmin(req,res); if(!admin) return;

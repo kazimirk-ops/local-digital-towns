@@ -492,6 +492,16 @@ async function deleteChannelMute(channelId, userId){
   return { ok:true };
 }
 
+async function deleteChannel(id){
+  const cid = Number(id);
+  await stmt('DELETE FROM channel_messages WHERE "channelId"=$1').run(cid);
+  await stmt('DELETE FROM message_threads WHERE "channelId"=$1').run(cid);
+  await stmt('DELETE FROM channel_memberships WHERE "channelId"=$1').run(cid);
+  await stmt("DELETE FROM channel_mutes WHERE channel_id=$1").run(cid);
+  await stmt("DELETE FROM channels WHERE id=$1").run(cid);
+  return { ok: true };
+}
+
 async function createLiveRoom(payload){
   const info = await stmt(`
     INSERT INTO live_rooms
@@ -3930,6 +3940,7 @@ module.exports = {
   createChannelThread,
   addChannelMessage,
   deleteChannelMessage,
+  deleteChannel,
   isUserMutedInChannel,
   upsertChannelMute,
   deleteChannelMute,
