@@ -1613,7 +1613,7 @@ function applyPermissions(ctx){
     archive: !!perms.archive,
     localbiz: !!perms.localbiz,
     services: !!perms.marketplace,
-    scheduled: !!perms.scheduled
+    scheduled: true
   };
   Object.keys(viewPerms).forEach((view)=>{
     const btn = document.querySelector(`.navItem[data-view="${view}"]`);
