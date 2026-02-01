@@ -347,6 +347,27 @@ textarea { min-height: 90px; }
   .sweep-stats { grid-template-columns: 1fr; }
 }
 
+/* ── Channel V0 Layout ────────────────────────────── */
+
+.channels-v0 {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 16px;
+  align-items: start;
+}
+.channels-v0-main { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.channels-v0-sidebar { min-width: 0; display: flex; flex-direction: column; gap: 12px; position: sticky; top: 80px; }
+.channels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 1100px) {
+  .channels-v0 { grid-template-columns: 1fr; }
+  .channels-v0-sidebar { position: static; }
+}
+
 /* ── Channel V0 Styles ───────────────────────────── */
 
 :root {
