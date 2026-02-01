@@ -23,6 +23,8 @@ function toCamelCase(obj) {
       .replace(/bannerurl/gi, 'bannerUrl')
       .replace(/avatarurl/gi, 'avatarUrl')
       .replace(/owneruserid/gi, 'ownerUserId')
+      .replace(/winneruserid/gi, 'winnerUserId')
+      .replace(/winnerentryid/gi, 'winnerEntryId')
       .replace(/buyeruserid/gi, 'buyerUserId')
       .replace(/selleruserid/gi, 'sellerUserId')
       .replace(/trusttier/gi, 'trustTier')
