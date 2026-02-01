@@ -3,7 +3,7 @@ const $ = (id) => document.getElementById(id);
 let state = { districtId:null, placeId:null, place:null, conversationId:null, viewer:"buyer", trustTier:0, trustTierLabel:"Visitor" };
 let market = { listings:[], auctions:[], categories:[], districts:[], selectedCategory:null };
 let channels = { list:[], messages:[], selectedId:null, replyToId:null, pendingImageUrl:"" };
-let eventsState = { list:[], selectedId:null, range:"week", bound:false, calYear:0, calMonth:0, selectedDay:null, selectedCategory:null };
+let eventsState = { list:[], selectedId:null, range:"month", bound:false, calYear:0, calMonth:0, selectedDay:null, selectedCategory:null };
 let localBizState = { list:[], bound:false };
 let scheduledState = { list:[], selectedId:null, thumbnailUrl:"" };
 let pulseState = { latest:null };
@@ -530,7 +530,7 @@ function bindChannels(){
 }
 
 async function loadEvents(range){
-  eventsState.range = range || "week";
+  eventsState.range = range || "month";
   const now = new Date();
   const days = eventsState.range === "month" ? 30 : 7;
   const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
@@ -817,7 +817,7 @@ async function initEvents(){
     };
     eventsState.bound=true;
   }
-  await loadEvents(eventsState.range || "week");
+  await loadEvents(eventsState.range || "month");
   renderEventsList();
   renderEventsCalendar();
   loadEventStats();
@@ -2120,11 +2120,6 @@ async function main(){
   $("createListingBtn").onclick=createListing;
   $("sendMsg").onclick=sendMessage;
   $("markReadBtn").onclick=markRead;
-  $("eventsWeekBtn").onclick=async ()=>{
-    await loadEvents("week");
-    renderEventsList();
-    renderEventsCalendar();
-  };
   $("eventsMonthBtn").onclick=async ()=>{
     await loadEvents("month");
     renderEventsList();
