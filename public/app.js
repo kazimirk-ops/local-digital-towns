@@ -1440,7 +1440,12 @@ function initSweepWheel(){
           name: p.displayName || 'Unknown',
           entries: p.entries || 1
         }));
-        if(window.sweepWheelV2) window.sweepWheelV2.open(entries, null);
+        const winnerId = payload.winner ? (payload.winner.userId || null) : null;
+        if(window.sweepWheelV2) window.sweepWheelV2.open(entries, null, {
+          isAdmin: access.isAdmin,
+          winnerId: winnerId,
+          autoReplay: true
+        });
       }
     }catch(_){}
   }

@@ -223,11 +223,18 @@
       this.onWinnerCallback = null;
     }
 
-    open(entries, onWinner) {
+    open(entries, onWinner, options) {
       this.entries = entries || [];
       this.onWinnerCallback = onWinner;
       this.winner = null;
+      this.isAdmin = !!(options && options.isAdmin);
+      this.sweepstakeId = (options && options.sweepstakeId) || null;
+      this.preselectedWinnerId = (options && options.winnerId) || null;
+      this.lastWinnerId = this.preselectedWinnerId;
       this.render();
+      if (options && options.autoReplay && this.lastWinnerId) {
+        setTimeout(function() { this.replay(); }.bind(this), 600);
+      }
     }
 
     close() {
@@ -243,53 +250,126 @@
 
     spin() {
       if (this.isSpinning || this.entries.length === 0) return;
+      var self = this;
 
-      this.isSpinning = true;
-      this.winner = null;
-      this.updateControls();
+      self.isSpinning = true;
+      self.winner = null;
+      self.updateControls();
 
-      const spins = 5 + Math.random() * 5;
-      const extraDegrees = Math.random() * 360;
-      const totalRotation = spins * 360 + extraDegrees;
-
-      const wheel = this.overlay.querySelector('.sweep-wheel-svg');
-      this.rotation += totalRotation;
-      wheel.style.transition = 'transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
-      wheel.style.transform = `rotate(${this.rotation}deg)`;
-
-      setTimeout(() => {
-        // Pick winner based on weighted probability
-        const randomValue = Math.random() * this.totalEntries;
-        let cumulative = 0;
-        let selectedWinner = this.entries[0];
-
-        for (const entry of this.entries) {
-          cumulative += (entry.entries || 1);
-          if (randomValue <= cumulative) {
-            selectedWinner = entry;
-            break;
+      if (self.isAdmin) {
+        // Call backend draw endpoint for cryptographic winner selection
+        fetch('/api/admin/sweep/draw', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        })
+        .then(function(resp) { return resp.json().then(function(d) { return { ok: resp.ok, data: d }; }); })
+        .then(function(result) {
+          if (!result.ok || !result.data.winner) {
+            self.isSpinning = false;
+            self.updateControls();
+            alert(result.data.error || 'Draw failed');
+            return;
           }
+          var serverWinner = result.data.winner;
+          var selected = null;
+          for (var i = 0; i < self.entries.length; i++) {
+            if (Number(self.entries[i].id) === Number(serverWinner.userId)) {
+              selected = self.entries[i];
+              break;
+            }
+          }
+          if (!selected) {
+            selected = { id: serverWinner.userId, name: serverWinner.displayName || 'Unknown', entries: serverWinner.entries || 1 };
+          }
+          // Store for replay from admin dashboard
+          try { localStorage.setItem("lastSweepDrawPayload", JSON.stringify(result.data)); } catch(_) {}
+          self.animateToWinner(selected);
+        })
+        .catch(function(err) {
+          self.isSpinning = false;
+          self.updateControls();
+          alert('Draw request failed: ' + err.message);
+        });
+      } else {
+        // Fallback: client-side random (shouldn't normally happen - Spin hidden for non-admins)
+        var randomValue = Math.random() * self.totalEntries;
+        var cumulative = 0;
+        var selectedWinner = self.entries[0];
+        for (var i = 0; i < self.entries.length; i++) {
+          cumulative += (self.entries[i].entries || 1);
+          if (randomValue <= cumulative) { selectedWinner = self.entries[i]; break; }
         }
+        self.animateToWinner(selectedWinner);
+      }
+    }
 
-        this.winner = selectedWinner;
-        this.isSpinning = false;
-        this.showConfetti();
-        this.updateWinnerDisplay();
-        this.updateControls();
+    animateToWinner(selectedWinner) {
+      var self = this;
+      self.lastWinnerId = selectedWinner.id;
 
-        if (this.onWinnerCallback) {
-          this.onWinnerCallback(selectedWinner);
+      // Calculate segment midpoint offset (degrees clockwise from top)
+      var currentOffset = 0;
+      var segmentMidOffset = 0;
+      for (var i = 0; i < self.entries.length; i++) {
+        var segAngle = ((self.entries[i].entries || 1) / self.totalEntries) * 360;
+        if (Number(self.entries[i].id) === Number(selectedWinner.id)) {
+          segmentMidOffset = currentOffset + segAngle / 2;
+          break;
         }
-      }, 5000);
+        currentOffset += segAngle;
+      }
+
+      // Rotate wheel to land pointer on winner's segment
+      var numFullSpins = 5 + Math.floor(Math.random() * 3);
+      var currentMod = ((self.rotation % 360) + 360) % 360;
+      var targetMod = ((360 - segmentMidOffset) % 360 + 360) % 360;
+      var delta = targetMod - currentMod;
+      if (delta < 0) delta += 360;
+      delta += numFullSpins * 360;
+
+      var wheel = self.overlay.querySelector('.sweep-wheel-svg');
+      self.rotation += delta;
+      wheel.style.transition = 'transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+      wheel.style.transform = 'rotate(' + self.rotation + 'deg)';
+
+      setTimeout(function() {
+        self.winner = selectedWinner;
+        self.isSpinning = false;
+        self.showConfetti();
+        self.updateWinnerDisplay();
+        self.updateControls();
+
+        if (self.onWinnerCallback) {
+          self.onWinnerCallback(selectedWinner);
+        }
+      }, 5200);
     }
 
     replay() {
-      this.rotation = 0;
-      this.winner = null;
-      const wheel = this.overlay.querySelector('.sweep-wheel-svg');
+      var self = this;
+      self.winner = null;
+      var wheel = self.overlay.querySelector('.sweep-wheel-svg');
       wheel.style.transition = 'none';
       wheel.style.transform = 'rotate(0deg)';
-      this.updateWinnerDisplay();
+      self.rotation = 0;
+      self.updateWinnerDisplay();
+      self.updateControls();
+
+      var replayId = self.lastWinnerId || self.preselectedWinnerId;
+      if (replayId) {
+        var winner = null;
+        for (var i = 0; i < self.entries.length; i++) {
+          if (Number(self.entries[i].id) === Number(replayId)) { winner = self.entries[i]; break; }
+        }
+        if (winner) {
+          setTimeout(function() {
+            self.isSpinning = true;
+            self.updateControls();
+            self.animateToWinner(winner);
+          }, 400);
+        }
+      }
     }
 
     showConfetti() {
@@ -314,15 +394,19 @@
     }
 
     updateControls() {
-      const spinBtn = this.overlay.querySelector('.sweep-wheel-btn-spin');
-      const replayBtn = this.overlay.querySelector('.sweep-wheel-btn-replay');
+      if (!this.overlay) return;
+      var spinBtn = this.overlay.querySelector('.sweep-wheel-btn-spin');
+      var replayBtn = this.overlay.querySelector('.sweep-wheel-btn-replay');
 
-      spinBtn.disabled = this.isSpinning || this.entries.length === 0;
-      replayBtn.disabled = this.isSpinning;
-
-      spinBtn.innerHTML = this.isSpinning
-        ? '<span style="display:flex;align-items:center;gap:8px"><span style="width:16px;height:16px;border:2px solid white;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite"></span>Spinning...</span>'
-        : 'Spin';
+      if (spinBtn) {
+        spinBtn.disabled = this.isSpinning || this.entries.length === 0;
+        spinBtn.innerHTML = this.isSpinning
+          ? '<span style="display:flex;align-items:center;gap:8px"><span style="width:16px;height:16px;border:2px solid white;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite"></span>Spinning...</span>'
+          : 'Spin';
+      }
+      if (replayBtn) {
+        replayBtn.disabled = this.isSpinning;
+      }
     }
 
     updateWinnerDisplay() {
@@ -461,8 +545,8 @@
               <div class="sweep-wheel-winner" style="display:none"></div>
 
               <div class="sweep-wheel-controls">
-                <button class="sweep-wheel-btn-spin" ${this.entries.length === 0 ? 'disabled' : ''}>Spin</button>
-                <button class="sweep-wheel-btn-replay">\u21BA Replay</button>
+                ${this.isAdmin ? '<button class="sweep-wheel-btn-spin" ' + (this.entries.length === 0 ? 'disabled' : '') + '>Spin</button>' : ''}
+                ${(this.isAdmin || this.preselectedWinnerId) ? '<button class="sweep-wheel-btn-replay">\u21BA Replay</button>' : ''}
               </div>
 
               ${this.entries.length === 0 ? '<div class="sweep-wheel-no-entries">No active sweepstake.</div>' : ''}
@@ -475,11 +559,14 @@
       this.overlay = overlay;
 
       // Event listeners
-      overlay.querySelector('.sweep-wheel-close').addEventListener('click', () => this.close());
-      overlay.querySelector('.sweep-wheel-btn-spin').addEventListener('click', () => this.spin());
-      overlay.querySelector('.sweep-wheel-btn-replay').addEventListener('click', () => this.replay());
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) this.close();
+      var self = this;
+      overlay.querySelector('.sweep-wheel-close').addEventListener('click', function() { self.close(); });
+      var spinBtn = overlay.querySelector('.sweep-wheel-btn-spin');
+      if (spinBtn) spinBtn.addEventListener('click', function() { self.spin(); });
+      var replayBtn = overlay.querySelector('.sweep-wheel-btn-replay');
+      if (replayBtn) replayBtn.addEventListener('click', function() { self.replay(); });
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) self.close();
       });
 
       // Add spin keyframe

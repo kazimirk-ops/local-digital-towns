@@ -763,7 +763,6 @@
 
       if (wheelBtn) {
         wheelBtn.addEventListener('click', async () => {
-          // Use v2 wheel
           try {
             const resp = await fetch('/api/sweepstake/active', { credentials: 'include' });
             const data = await resp.json();
@@ -776,8 +775,12 @@
               name: p.displayName || p.email || 'Unknown',
               entries: p.entries || 1
             }));
-            window.sweepWheelV2?.open(entries, (winner) => {
-              console.log('Winner selected:', winner);
+            const isAdmin = !!(window.access && window.access.isAdmin);
+            const winnerId = data.winner ? (data.winner.userId || data.winner.id || null) : null;
+            window.sweepWheelV2?.open(entries, null, {
+              isAdmin: isAdmin,
+              sweepstakeId: data.sweepstake.id,
+              winnerId: winnerId
             });
           } catch (err) {
             console.error('Failed to load sweep data:', err);
