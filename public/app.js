@@ -171,35 +171,35 @@ function renderScheduledShows(){
   list.innerHTML = `
     <div style="max-width:640px;margin:0 auto;padding:24px 0;">
       <div style="text-align:center;margin-bottom:28px;">
-        <div style="font-size:48px;margin-bottom:12px;">📡</div>
-        <div style="font-size:22px;font-weight:700;color:#fff;">Live Shows &mdash; Coming Soon</div>
-        <div class="muted" style="margin-top:6px;font-size:14px;line-height:1.5;">A new way to connect with your community in real time</div>
+        <div style="width:64px;height:64px;margin:0 auto 14px;border-radius:16px;background:rgba(20,184,166,.12);display:flex;align-items:center;justify-content:center;font-size:32px;">📡</div>
+        <div style="font-size:22px;font-weight:700;color:#f0f0f0;">Live Shows &mdash; Coming Soon</div>
+        <div style="margin-top:6px;font-size:14px;line-height:1.5;color:#8899a6;">A new way to connect with your community in real time</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;">
-        <div style="background:var(--panel2,rgba(255,255,255,.04));border:1px solid var(--border,rgba(255,255,255,.08));border-radius:12px;padding:16px;">
-          <div style="font-size:24px;margin-bottom:8px;">🛍️</div>
-          <div style="font-weight:600;color:#fff;margin-bottom:4px;">Live Sales</div>
-          <div class="muted" style="font-size:13px;line-height:1.5;">Local businesses can showcase and sell products in real-time to the community</div>
+        <div style="background:rgba(30,42,54,.3);border:1px solid #2a3a4a;border-radius:16px;padding:18px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(20,184,166,.15);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:10px;">🛍️</div>
+          <div style="font-weight:600;color:#f0f0f0;margin-bottom:4px;">Live Sales</div>
+          <div style="font-size:13px;line-height:1.5;color:#8899a6;">Local businesses can showcase and sell products in real-time to the community</div>
         </div>
-        <div style="background:var(--panel2,rgba(255,255,255,.04));border:1px solid var(--border,rgba(255,255,255,.08));border-radius:12px;padding:16px;">
-          <div style="font-size:24px;margin-bottom:8px;">🎥</div>
-          <div style="font-weight:600;color:#fff;margin-bottom:4px;">Live Events</div>
-          <div class="muted" style="font-size:13px;line-height:1.5;">Stream community events, town halls, and meetups for everyone to join remotely</div>
+        <div style="background:rgba(30,42,54,.3);border:1px solid #2a3a4a;border-radius:16px;padding:18px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(245,158,11,.15);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:10px;">🎥</div>
+          <div style="font-weight:600;color:#f0f0f0;margin-bottom:4px;">Live Events</div>
+          <div style="font-size:13px;line-height:1.5;color:#8899a6;">Stream community events, town halls, and meetups for everyone to join remotely</div>
         </div>
-        <div style="background:var(--panel2,rgba(255,255,255,.04));border:1px solid var(--border,rgba(255,255,255,.08));border-radius:12px;padding:16px;">
-          <div style="font-size:24px;margin-bottom:8px;">💬</div>
-          <div style="font-weight:600;color:#fff;margin-bottom:4px;">Live Interaction</div>
-          <div class="muted" style="font-size:13px;line-height:1.5;">Chat, ask questions, and engage directly with hosts during broadcasts</div>
+        <div style="background:rgba(30,42,54,.3);border:1px solid #2a3a4a;border-radius:16px;padding:18px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(34,211,238,.15);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:10px;">💬</div>
+          <div style="font-weight:600;color:#f0f0f0;margin-bottom:4px;">Live Interaction</div>
+          <div style="font-size:13px;line-height:1.5;color:#8899a6;">Chat, ask questions, and engage directly with hosts during broadcasts</div>
         </div>
-        <div style="background:var(--panel2,rgba(255,255,255,.04));border:1px solid var(--border,rgba(255,255,255,.08));border-radius:12px;padding:16px;">
-          <div style="font-size:24px;margin-bottom:8px;">📢</div>
-          <div style="font-weight:600;color:#fff;margin-bottom:4px;">Business Engagement</div>
-          <div class="muted" style="font-size:13px;line-height:1.5;">Businesses connect with their customer base through live demonstrations and Q&amp;A sessions</div>
+        <div style="background:rgba(30,42,54,.3);border:1px solid #2a3a4a;border-radius:16px;padding:18px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(139,92,246,.15);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:10px;">📢</div>
+          <div style="font-weight:600;color:#f0f0f0;margin-bottom:4px;">Business Engagement</div>
+          <div style="font-size:13px;line-height:1.5;color:#8899a6;">Businesses connect with their customer base through live demonstrations and Q&amp;A sessions</div>
         </div>
       </div>
-      <div style="text-align:center;margin-top:24px;padding:16px;background:var(--panel2,rgba(255,255,255,.04));border:1px solid var(--border,rgba(255,255,255,.08));border-radius:12px;">
-        <div style="font-size:14px;color:#fff;font-weight:500;">Stay Tuned</div>
-        <div class="muted" style="font-size:13px;margin-top:4px;">We're building something great. Live shows will be available soon.</div>
+      <div style="text-align:center;margin-top:24px;padding:16px;background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.25);border-radius:16px;">
+        <div style="font-size:14px;color:#14b8a6;font-weight:600;">Stay Tuned</div>
+        <div style="font-size:13px;margin-top:4px;color:#8899a6;">We're building something great. Live shows will be available soon.</div>
       </div>
     </div>`;
   return;
