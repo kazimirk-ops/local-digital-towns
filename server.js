@@ -849,9 +849,16 @@ async function resolveSweepDonorName(prize, donorUserId){
   return "";
 }
 
-async function notifySweepDrawUsers({ draw, sweep, winner, prize, adminId }){
-  if(!draw?.id || !winner?.userId) return;
-  if(Number(draw.notified) === 1) return;
+async function notifySweepDrawUsers({ draw, sweep, winner, prize, adminId, force }){
+  console.log("SWEEP_NOTIFY_START", { drawId: draw?.id, winnerId: winner?.userId, adminId, force: !!force, notified: draw?.notified });
+  if(!draw?.id || !winner?.userId){
+    console.warn("SWEEP_NOTIFY_SKIP: missing draw.id or winner.userId", { drawId: draw?.id, winnerId: winner?.userId });
+    return { sent: false, reason: "missing draw or winner" };
+  }
+  if(!force && Number(draw.notified) === 1){
+    console.warn("SWEEP_NOTIFY_SKIP: already notified", { drawId: draw.id, notified: draw.notified });
+    return { sent: false, reason: "already notified" };
+  }
   const prizeTitle = (prize?.title || sweep?.prize || sweep?.title || "Prize").toString().trim();
   const donorUserId = await resolveSweepDonorUserId(prize);
   const donorName = await resolveSweepDonorName(prize, donorUserId) || "Donor";
@@ -860,16 +867,22 @@ async function notifySweepDrawUsers({ draw, sweep, winner, prize, adminId }){
   const drawnAt = draw.createdAt || new Date().toISOString();
   const systemPrefix = "[SYSTEM] ";
   const isSameUser = donorUserId && Number(donorUserId) === Number(winner.userId);
+  console.log("SWEEP_NOTIFY_RESOLVED", { prizeTitle, donorUserId, donorName, winnerName, winnerEmail: winnerUser?.email || null, isSameUser });
 
+  const result = { sent: true, dmSent: false, emailSent: false, donorDmSent: false, donorEmailSent: false };
   try{
     // 1. Always DM the winner via admin conversation
     const winnerConvo = await data.addDirectConversation(adminId, winner.userId);
+    console.log("SWEEP_NOTIFY_WINNER_CONVO", { convoId: winnerConvo?.id, adminId, winnerId: winner.userId });
     if(winnerConvo?.id){
-      if(isSameUser){
-        await data.addDirectMessage(winnerConvo.id, adminId, `${systemPrefix}\uD83C\uDF89 Congratulations! You won your own giveaway: ${prizeTitle}! Since you're also the donor, no coordination needed. Draw ID: ${draw.id}`);
-      } else {
-        await data.addDirectMessage(winnerConvo.id, adminId, `${systemPrefix}\uD83C\uDF89 Congratulations! You won: ${prizeTitle}! Donated by ${donorName}. Check your inbox for a thread with the donor to coordinate pickup/delivery. Draw ID: ${draw.id}`);
-      }
+      const msg = isSameUser
+        ? `${systemPrefix}\uD83C\uDF89 Congratulations! You won your own giveaway: ${prizeTitle}! Since you're also the donor, no coordination needed. Draw ID: ${draw.id}`
+        : `${systemPrefix}\uD83C\uDF89 Congratulations! You won: ${prizeTitle}! Donated by ${donorName}. Check your inbox for a thread with the donor to coordinate pickup/delivery. Draw ID: ${draw.id}`;
+      const dmResult = await data.addDirectMessage(winnerConvo.id, adminId, msg);
+      console.log("SWEEP_NOTIFY_WINNER_DM", { messageId: dmResult?.id, convoId: winnerConvo.id });
+      result.dmSent = !!dmResult?.id;
+    } else {
+      console.warn("SWEEP_NOTIFY_WINNER_CONVO_FAILED: no convo id");
     }
 
     // 2. Always email the winner
@@ -877,33 +890,40 @@ async function notifySweepDrawUsers({ draw, sweep, winner, prize, adminId }){
       const winnerEmailText = isSameUser
         ? `Congratulations!\n\nYou won your own giveaway prize: ${prizeTitle}!\n\nSince you are also the prize donor, no further coordination is needed.\n\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}\n\nThank you for supporting the community!`
         : `Congratulations!\n\nYou won: ${prizeTitle}!\nDonated by: ${donorName}\n\nPlease check your inbox on the app for a message thread with the donor to coordinate pickup or delivery.\n\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}\n\nThank you for being part of our community!`;
+      console.log("SWEEP_NOTIFY_WINNER_EMAIL", { to: winnerUser.email, subject: `You won: ${prizeTitle}!` });
       sendEmail(winnerUser.email, `\uD83C\uDF89 You won: ${prizeTitle}!`, winnerEmailText);
+      result.emailSent = true;
+    } else {
+      console.warn("SWEEP_NOTIFY_NO_WINNER_EMAIL", { winnerId: winner.userId, email: winnerUser?.email });
     }
 
     // 3. If donor is different from winner, DM + email the donor, and create coordination thread
     if(donorUserId && !isSameUser){
-      // Coordination thread between winner and donor
       const coordConvo = await data.addDirectConversation(winner.userId, donorUserId);
+      console.log("SWEEP_NOTIFY_COORD_CONVO", { convoId: coordConvo?.id });
       if(coordConvo?.id){
         await data.addDirectMessage(coordConvo.id, adminId, `${systemPrefix}\uD83C\uDF81 Prize Coordination: ${winnerName} won ${prizeTitle}. Please use this thread to arrange pickup/delivery.\nDraw ID: ${draw.id} | Drawn: ${drawnAt}`);
       }
-      // DM donor via admin
       const donorConvo = await data.addDirectConversation(adminId, donorUserId);
+      console.log("SWEEP_NOTIFY_DONOR_CONVO", { convoId: donorConvo?.id });
       if(donorConvo?.id){
-        await data.addDirectMessage(donorConvo.id, adminId, `${systemPrefix}${winnerName} won your prize: ${prizeTitle}! Please check your inbox for a thread with the winner to coordinate pickup/delivery. Draw ID: ${draw.id}`);
+        const donorDm = await data.addDirectMessage(donorConvo.id, adminId, `${systemPrefix}${winnerName} won your prize: ${prizeTitle}! Please check your inbox for a thread with the winner to coordinate pickup/delivery. Draw ID: ${draw.id}`);
+        result.donorDmSent = !!donorDm?.id;
       }
-      // Email donor
       const donorUser = await data.getUserById(donorUserId);
       if(donorUser?.email){
-        const donorEmailText = `Hello,\n\n${winnerName} has won your donated prize: ${prizeTitle}!\n\nPlease check your inbox on the app for a message thread with the winner to coordinate pickup or delivery.\n\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}\n\nThank you for supporting the community!`;
-        sendEmail(donorUser.email, `Your prize "${prizeTitle}" has been won!`, donorEmailText);
+        console.log("SWEEP_NOTIFY_DONOR_EMAIL", { to: donorUser.email });
+        sendEmail(donorUser.email, `Your prize "${prizeTitle}" has been won!`, `Hello,\n\n${winnerName} has won your donated prize: ${prizeTitle}!\n\nPlease check your inbox on the app for a message thread with the winner to coordinate pickup or delivery.\n\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}\n\nThank you for supporting the community!`);
+        result.donorEmailSent = true;
       }
     }
 
     await data.setSweepDrawNotified(draw.id);
-    console.log("SWEEP_NOTIFY_SUCCESS", { drawId: draw.id, winnerId: winner.userId, donorId: donorUserId, isSameUser, winnerEmail: !!winnerUser?.email });
+    console.log("SWEEP_NOTIFY_COMPLETE", result);
+    return result;
   }catch(err){
-    console.warn("Sweep draw notify failed", err?.message || err);
+    console.error("SWEEP_NOTIFY_FAILED", err?.message || err, err?.stack);
+    return { sent: false, reason: err?.message || "unknown error" };
   }
 }
 
@@ -3523,11 +3543,9 @@ app.post("/api/admin/sweep/notify/:drawId", async (req, res) =>{
   let snapshot = {};
   try{ snapshot = JSON.parse(draw.snapshotJson || "{}"); }catch(_){}
   const prize = await getSweepPrizeInfo(sweep, snapshot.prize);
-  // Reset notified flag so notifySweepDrawUsers will re-send
-  await data.query("UPDATE sweep_draws SET notified=0 WHERE id=$1", [Number(draw.id)]);
-  const freshDraw = await data.getSweepDrawById(draw.id);
-  await notifySweepDrawUsers({ draw: freshDraw, sweep, winner, prize, adminId: admin.id });
-  res.json({ ok: true, drawId: draw.id, winnerId: winnerUserId, notified: true });
+  // Force-bypass notified check since this is an explicit admin re-trigger
+  const notifyResult = await notifySweepDrawUsers({ draw, sweep, winner, prize, adminId: admin.id, force: true });
+  res.json({ ok: true, drawId: draw.id, winnerId: winnerUserId, notify: notifyResult });
 });
 app.post("/api/admin/sweep/grant_test_balance", async (req, res) =>{
   const admin = await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
