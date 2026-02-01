@@ -667,15 +667,26 @@ async function loadStoreInbox(placeId){
   list.innerHTML = "";
   msgs.innerHTML = "";
   if(!placeId) return;
-  const convos = await api(`/places/${placeId}/conversations?viewer=seller`);
+  const convos = await api("/dm");
   if(!convos.length){
     list.innerHTML = `<div class="muted">No conversations yet.</div>`;
     return;
   }
   convos.forEach((c)=>{
     const div = document.createElement("div");
-    div.textContent = `Conversation #${c.id}`;
-    div.onclick = () => openStoreConversation(c.id);
+    const name = c.otherUser ? c.otherUser.displayName : ("Conversation " + c.id);
+    const preview = c.lastMessage ? c.lastMessage.text : "";
+    const strong = document.createElement("strong");
+    strong.textContent = name;
+    div.appendChild(strong);
+    if(preview){
+      const sub = document.createElement("div");
+      sub.className = "muted";
+      sub.textContent = preview.length > 60 ? preview.slice(0,60) + "…" : preview;
+      div.appendChild(sub);
+    }
+    div.style.cursor = "pointer";
+    div.addEventListener("click", function(){ openStoreConversation(c.id); });
     list.appendChild(div);
   });
 }
@@ -700,12 +711,13 @@ async function loadPrizeClaims(placeId){
 }
 async function openStoreConversation(id){
   storeConversationId = id;
-  const msgs = await api(`/conversations/${id}/messages`);
+  const msgs = await api(`/dm/${id}/messages`);
   const list = document.getElementById("storeInboxMessages");
   list.innerHTML = "";
   msgs.forEach((m)=>{
     const div = document.createElement("div");
-    div.textContent = `${m.sender}: ${m.text}`;
+    const name = m.sender ? m.sender.displayName : ("User " + (m.senderUserId || m.senderuserid));
+    div.textContent = name + ": " + m.text;
     list.appendChild(div);
   });
 }
@@ -713,10 +725,10 @@ async function sendStoreMessage(){
   if(!storeConversationId) return setMsg("storeInboxMsg", "Select a conversation.");
   const text = document.getElementById("storeInboxInput").value.trim();
   if(!text) return;
-  await api(`/conversations/${storeConversationId}/messages`, {
+  await api(`/dm/${storeConversationId}/messages`, {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ sender:"seller", text })
+    body: JSON.stringify({ text })
   });
   document.getElementById("storeInboxInput").value = "";
   await openStoreConversation(storeConversationId);
