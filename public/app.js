@@ -348,41 +348,71 @@ async function loadChannelMessages(id){
   channels.messages=await api(`/channels/${id}/messages`);
   renderChannelMessages();
 }
+function userInitials(name){
+  if(!name) return "?";
+  var parts=name.trim().split(/\s+/);
+  if(parts.length>=2) return (parts[0][0]+parts[1][0]).toUpperCase();
+  return name.slice(0,2).toUpperCase();
+}
+function formatMsgTime(raw){
+  if(!raw) return "";
+  try{
+    var d=new Date(raw);
+    if(isNaN(d.getTime())) return String(raw);
+    var mon=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
+    var day=d.getDate();
+    var h=d.getHours(); var ap=h>=12?"pm":"am"; h=h%12||12;
+    var min=("0"+d.getMinutes()).slice(-2);
+    return mon+" "+day+", "+h+":"+min+ap;
+  }catch(e){ return String(raw); }
+}
 function renderChannelMessages(){
-  const el=$("channelMessages");
+  var el=$("channelMessages");
   el.innerHTML="";
   if(!channels.messages.length){
-    el.innerHTML=`<div class="muted">No messages yet.</div>`;
+    el.innerHTML='<div class="channel-empty"><div class="channel-empty-icon">\u{1F4AC}</div><div class="channel-empty-text">No messages yet. Start the conversation!</div></div>';
     return;
   }
-  const byId=new Map(channels.messages.map(m=>[m.id,m]));
-  channels.messages.forEach(m=>{
-    const div=document.createElement("div");
-    div.className="item";
-    const parent=m.replyToId ? byId.get(m.replyToId) : null;
-    const prefix=parent ? `↳ ${parent.text.slice(0,60)}` : "";
-    const imageHtml = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" rel="noopener"><img src="${m.imageUrl}" alt="" style="max-width:260px;border-radius:10px;border:1px solid rgba(255,255,255,.12);margin-top:6px;" /></a>` : "";
-    const canDelete = access.isAdmin || Number(m.userId) === Number(currentUser.id);
-    const deleteBtn = canDelete ? `<button data-delete="${m.id}" style="color:#f87171;">Delete</button>` : "";
-    div.innerHTML=`
-      <div class="muted">${prefix}</div>
-      <div>${m.text}</div>
-      ${imageHtml}
-      <div class="muted">${m.user?.displayName || `User ${m.userId}`}${m.user?.trustTierLabel ? ` · ${m.user.trustTierLabel}` : ""} · ${m.createdAt}</div>
-      <div class="row" style="margin-top:6px;">
-        <button data-reply="${m.id}">Reply</button>
-        ${deleteBtn}
-      </div>
-    `;
-    div.querySelector("button[data-reply]").onclick=()=>{
+  var byId=new Map(channels.messages.map(function(m){ return [m.id,m]; }));
+  channels.messages.forEach(function(m){
+    var div=document.createElement("div");
+    div.className="activity-item";
+    var name=(m.user&&m.user.displayName)?m.user.displayName:"User "+m.userId;
+    var initials=userInitials(name);
+    var time=formatMsgTime(m.createdAt);
+    var tier=(m.user&&m.user.trustTierLabel)?'<span class="channel-card-badge">'+m.user.trustTierLabel+'</span>':"";
+    var parent=m.replyToId?byId.get(m.replyToId):null;
+    var replyCtx=parent?'<div class="channel-thread-indicator">\u21B3 '+parent.text.slice(0,60)+'</div>':"";
+    var imageHtml=m.imageUrl?'<a href="'+m.imageUrl+'" target="_blank" rel="noopener"><img class="activity-image" src="'+m.imageUrl+'" alt="" /></a>':"";
+    var canDelete=access.isAdmin||Number(m.userId)===Number(currentUser.id);
+    var deleteHtml=canDelete?'<button class="activity-reply-btn" data-delete="'+m.id+'" style="color:#f87171;">Delete</button>':"";
+    div.innerHTML=
+      '<div class="activity-avatar">'+initials+'</div>'+
+      '<div class="activity-body">'+
+        '<div class="activity-header">'+
+          '<span class="activity-author">'+name+'</span>'+
+          tier+
+          '<span class="activity-time">'+time+'</span>'+
+        '</div>'+
+        replyCtx+
+        '<div class="activity-text">'+m.text+'</div>'+
+        imageHtml+
+        '<div class="activity-reply-bar">'+
+          '<button class="activity-reply-btn" data-reply="'+m.id+'">Reply</button>'+
+          deleteHtml+
+        '</div>'+
+      '</div>';
+    div.querySelector("button[data-reply]").onclick=function(){
       channels.replyToId=m.id;
-      $("replyToText").textContent=`Replying to: ${m.text.slice(0,80)}`;
+      $("replyToText").textContent="Replying to: "+m.text.slice(0,80);
       $("replyToBar").style.display="block";
     };
-    const delBtn = div.querySelector("button[data-delete]");
-    if(delBtn) delBtn.onclick = () => deleteChannelMessage(m.id);
+    var delBtn=div.querySelector("button[data-delete]");
+    if(delBtn) delBtn.onclick=function(){ deleteChannelMessage(m.id); };
     el.appendChild(div);
   });
+  var statEl=$("statMessages");
+  if(statEl) statEl.textContent=channels.messages.length;
 }
 async function sendChannelMessage(){
   if(!channels.selectedId) return alert("Select a channel first");
