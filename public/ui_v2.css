@@ -405,6 +405,16 @@ textarea { min-height: 90px; }
   box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
 }
 
+/* Color variants */
+.channel-card--amber .channel-icon  { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3); color: #fbbf24; }
+.channel-card--amber.active         { border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.1); }
+.channel-card--emerald .channel-icon { background: rgba(52, 211, 153, 0.15); border-color: rgba(52, 211, 153, 0.3); color: #34d399; }
+.channel-card--emerald.active        { border-color: rgba(52, 211, 153, 0.4); background: rgba(52, 211, 153, 0.1); }
+.channel-card--cyan .channel-icon    { background: rgba(34, 211, 238, 0.15); border-color: rgba(34, 211, 238, 0.3); color: #22d3ee; }
+.channel-card--cyan.active           { border-color: rgba(34, 211, 238, 0.4); background: rgba(34, 211, 238, 0.1); }
+.channel-card--sky .channel-icon     { background: rgba(56, 189, 248, 0.15); border-color: rgba(56, 189, 248, 0.3); color: #38bdf8; }
+.channel-card--sky.active            { border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.1); }
+
 .channel-icon {
   width: 40px;
   height: 40px;

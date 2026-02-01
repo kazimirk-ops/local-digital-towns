@@ -148,8 +148,11 @@ async function initChannels(){
     renderChannelsList();
     const listEl = $("channelsList");
     const stackEl = $("channelsStack");
-    if(listEl) listEl.style.display = channels.list.length ? "block" : "none";
-    if(stackEl) stackEl.style.display = channels.list.length ? "none" : "block";
+    const gridEl = $("channelsGrid");
+    const hasChannels = channels.list.length > 0;
+    if(listEl) listEl.style.display = hasChannels ? "block" : "none";
+    if(gridEl) gridEl.style.display = hasChannels ? "grid" : "none";
+    if(stackEl) stackEl.style.display = hasChannels ? "none" : "block";
   }catch{}
 }
 
@@ -269,20 +272,68 @@ function bindRouter(){
 async function loadChannels(){
   channels.list=await api("/channels");
 }
+function channelColorClass(name){
+  var n=(name||"").toLowerCase();
+  if(n.indexOf("announce")!==-1||n.indexOf("news")!==-1) return "channel-card--amber";
+  if(n.indexOf("market")!==-1||n.indexOf("shop")!==-1||n.indexOf("store")!==-1) return "channel-card--emerald";
+  if(n.indexOf("event")!==-1||n.indexOf("meetup")!==-1||n.indexOf("activit")!==-1) return "channel-card--cyan";
+  return "channel-card--sky";
+}
+function channelIcon(name){
+  var n=(name||"").toLowerCase();
+  if(n.indexOf("neighbor")!==-1||n.indexOf("friend")!==-1) return "\u{1F3D8}\u{FE0F}";
+  if(n.indexOf("community")!==-1||n.indexOf("chat")!==-1) return "\u{1F4AC}";
+  if(n.indexOf("fun")!==-1||n.indexOf("activit")!==-1) return "\u{1F389}";
+  if(n.indexOf("lifestyle")!==-1||n.indexOf("wellness")!==-1) return "\u{1F33F}";
+  if(n.indexOf("walk")!==-1||n.indexOf("meetup")!==-1) return "\u{1F6B6}";
+  if(n.indexOf("culture")!==-1||n.indexOf("memor")!==-1) return "\u{1F4F8}";
+  if(n.indexOf("county")!==-1||n.indexOf("happen")!==-1) return "\u{1F4F0}";
+  if(n.indexOf("ladies")!==-1||n.indexOf("social")!==-1) return "\u2728";
+  if(n.indexOf("river")!==-1||n.indexOf("reflect")!==-1) return "\u{1F30A}";
+  if(n.indexOf("market")!==-1) return "\u{1F6CD}\u{FE0F}";
+  if(n.indexOf("announce")!==-1) return "\u{1F4E2}";
+  return "\u{1F4FA}";
+}
 function renderChannelsList(){
-  const el=$("channelsList");
+  var el=$("channelsList");
   el.innerHTML="";
   if(!channels.list.length){
-    el.innerHTML=`<div class="muted">No channels.</div>`;
+    el.innerHTML='<div class="muted">No channels.</div>';
     return;
   }
-  channels.list.forEach(c=>{
-    const div=document.createElement("div");
+  channels.list.forEach(function(c){
+    var div=document.createElement("div");
     div.className="item";
-    div.innerHTML=`<div><strong>#${c.name}</strong></div><div class="muted">${c.description||""}</div>`;
-    div.onclick=()=>selectChannel(c.id);
+    div.innerHTML='<div><strong>#'+c.name+'</strong></div><div class="muted">'+(c.description||"")+'</div>';
+    div.onclick=function(){ selectChannel(c.id); };
     el.appendChild(div);
   });
+  var grid=$("channelsGrid");
+  if(!grid) return;
+  grid.innerHTML="";
+  channels.list.forEach(function(c){
+    var color=channelColorClass(c.name);
+    var icon=channelIcon(c.name);
+    var isActive=channels.selectedId==c.id;
+    var card=document.createElement("div");
+    card.className="channel-card "+color+(isActive?" active":"");
+    card.setAttribute("data-channel-id",c.id);
+    card.innerHTML=
+      '<div class="channel-icon">'+icon+'</div>'+
+      '<div class="channel-card-info">'+
+        '<div class="channel-card-name">#'+c.name+'</div>'+
+        '<div class="channel-card-meta">'+(c.description||"")+'</div>'+
+      '</div>';
+    card.onclick=function(){
+      var all=grid.querySelectorAll(".channel-card");
+      for(var i=0;i<all.length;i++) all[i].classList.remove("active");
+      card.classList.add("active");
+      selectChannel(c.id);
+    };
+    grid.appendChild(card);
+  });
+  var statEl=$("statChannels");
+  if(statEl) statEl.textContent=channels.list.length;
 }
 async function selectChannel(id){
   channels.selectedId=id;
