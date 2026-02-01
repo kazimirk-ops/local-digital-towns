@@ -699,6 +699,7 @@
                 </div>
                 ` : ''}
 
+                ${!d.winner ? `
                 <div class="sweep-v2-entry-section">
                   <div class="sweep-v2-entry-row">
                     <input type="number" class="sweep-v2-entry-input" value="1" min="1" id="sweepV2EntryAmount">
@@ -708,6 +709,7 @@
                   </div>
                   <div class="sweep-v2-entry-note">Each entry costs 1 token from your balance</div>
                 </div>
+                ` : ''}
               </div>
             </div>
           </div>
