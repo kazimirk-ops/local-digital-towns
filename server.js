@@ -2090,7 +2090,7 @@ app.post("/api/signup", async (req, res) =>{
 
 // Events v1 (submission + approvals)
 app.post("/api/events/submit", async (req, res) =>{
-  const access = await requirePerm(req,res,"CREATE_EVENTS"); if(!access) return;
+  const u=await requireLogin(req,res); if(!u) return;
   const created=await data.addEventSubmission(req.body || {});
   if(created?.error) return res.status(400).json(created);
   res.status(201).json(created);
@@ -2231,8 +2231,7 @@ app.post("/events", async (req, res) =>{
     await data.logEvent(req.body || {});
     return res.json({ok:true});
   }
-  const access = await requirePerm(req,res,"CREATE_EVENTS"); if(!access) return;
-  const u=access.userId;
+  const u=await requireLogin(req,res); if(!u) return;
   if(!req.body?.title || !req.body?.startsAt) return res.status(400).json({error:"title and startsAt required"});
   const created = await data.addCalendarEvent(req.body, u);
   res.status(201).json(created);
