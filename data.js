@@ -1989,8 +1989,9 @@ async function getActiveSweepstake(){
   const now = nowISO();
   return (await stmt(`
     SELECT * FROM sweepstakes
-    WHERE (startAt <= $1 AND endAt >= $1 AND status='active')
-       OR (winnerUserId IS NOT NULL AND startAt <= $1)
+    WHERE status != 'cancelled'
+      AND ((startAt <= $1 AND endAt >= $1 AND status='active')
+        OR (winnerUserId IS NOT NULL AND startAt <= $1))
     ORDER BY
       CASE WHEN winnerUserId IS NOT NULL THEN 0 ELSE 1 END,
       startAt DESC
@@ -2002,10 +2003,11 @@ async function getActiveSweepstakes(){
   const weekFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   return stmt(`
     SELECT * FROM sweepstakes
-    WHERE (startAt <= $1 AND endAt >= $1 AND status='active')
-       OR (winnerUserId IS NOT NULL AND startAt <= $1)
-       OR (status='scheduled' AND startAt <= $2)
-       OR (status='active' AND startAt > $1 AND startAt <= $2)
+    WHERE status != 'cancelled'
+      AND ((startAt <= $1 AND endAt >= $1 AND status='active')
+        OR (winnerUserId IS NOT NULL AND startAt <= $1)
+        OR (status='scheduled' AND startAt <= $2)
+        OR (status='active' AND startAt > $1 AND startAt <= $2))
     ORDER BY
       CASE WHEN winnerUserId IS NOT NULL THEN 0
            WHEN status='active' AND startAt <= $1 THEN 1
