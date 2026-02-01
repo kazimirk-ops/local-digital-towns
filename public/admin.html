@@ -135,6 +135,7 @@
           <a href="/admin/giveaway-offers" class="nav-btn">Giveaway Offers</a>
           <a href="/admin/trust" class="nav-btn">Trust Moderation</a>
           <a href="/admin/media" class="nav-btn">Media</a>
+          <a href="#channels" class="nav-btn" onclick="document.getElementById('channelsCard').scrollIntoView({behavior:'smooth'})">Channels</a>
           <a href="#support" class="nav-btn" onclick="document.getElementById('supportCard').scrollIntoView({behavior:'smooth'})">Support Requests</a>
         </div>
       </div>
@@ -186,6 +187,63 @@
             </table>
           </div>
           <div class="muted" id="supportMsg" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="card" id="channelsCard">
+          <div class="card-header">
+            <div>
+              <strong class="card-title">📺 Channel Management</strong>
+              <div class="muted">Create, manage, and delete community channels</div>
+            </div>
+            <button class="btn-outline" id="refreshChannelsBtn" type="button">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Channel</th>
+                  <th>Description</th>
+                  <th>Messages</th>
+                  <th>Public</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="channelRows"></tbody>
+            </table>
+          </div>
+          <div class="muted" id="channelMsg" style="margin-top:8px;"></div>
+          <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.08); padding-top:16px;">
+            <strong>Create Channel</strong>
+            <div class="row" style="margin-top:8px;">
+              <input id="newChannelName" placeholder="Channel name" style="flex:1;min-width:180px;" />
+              <input id="newChannelDesc" placeholder="Description" style="flex:2;min-width:240px;" />
+              <button id="createChannelBtn" class="btn-primary">Create</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="channelRequestsCard">
+          <div class="card-header">
+            <div>
+              <strong class="card-title">Channel Requests</strong>
+              <div class="muted">Pending channel creation requests from users</div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Channel Name</th>
+                  <th>Description</th>
+                  <th>Requested By</th>
+                  <th>Reason</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="channelRequestRows"></tbody>
+            </table>
+          </div>
+          <div class="muted" id="channelRequestMsg" style="margin-top:8px;"></div>
         </div>
 
         <div class="card">

@@ -419,6 +419,16 @@ async function getListings(){
 async function getChannels(){
   return stmt("SELECT id, name, description, isPublic, createdAt FROM channels ORDER BY id").all();
 }
+async function getChannelsAdmin(){
+  return stmt(`
+    SELECT c.id, c.name, c.description, c."isPublic", c."createdAt",
+           COUNT(cm.id)::int AS "messageCount"
+    FROM channels c
+    LEFT JOIN channel_messages cm ON cm."channelId" = c.id
+    GROUP BY c.id
+    ORDER BY c.id
+  `).all();
+}
 async function createChannel(name, description, isPublic=1){
   const info = await stmt("INSERT INTO channels (name, description, isPublic, createdAt) VALUES ($1,$2,$3,$4) RETURNING id")
     .run(String(name), String(description || ""), Number(isPublic ? 1 : 0), nowISO());
@@ -3934,6 +3944,7 @@ module.exports = {
   createChannel,
   getChannelById,
   isChannelMember,
+  getChannelsAdmin,
   getChannelMessages,
   getRecentChannelMessages,
   getChannelMessageById,

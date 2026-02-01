@@ -4104,6 +4104,12 @@ app.post("/api/admin/channel-requests/:id/deny", async (req, res) =>{
   res.json(updated);
 });
 
+// Admin channel list (with message counts)
+app.get("/api/admin/channels", async (req, res) =>{
+  const admin=await requireAdmin(req,res); if(!admin) return;
+  res.json(await data.getChannelsAdmin());
+});
+
 // Direct admin channel creation
 app.post("/api/admin/channels", async (req, res) =>{
   const admin=await requireAdmin(req,res); if(!admin) return;

@@ -275,6 +275,117 @@ async function loadPrizeOffers(){
   }
 }
 
+async function loadAdminChannels(){
+  try{
+    const channels = await api("/api/admin/channels");
+    const body = document.getElementById("channelRows");
+    body.innerHTML = "";
+    if(!channels.length){
+      body.innerHTML = `<tr><td colspan="5">(no channels)</td></tr>`;
+      return;
+    }
+    channels.forEach(function(c){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><strong>#${esc(c.name)}</strong> <span style="opacity:.6">(#${c.id})</span></td>
+        <td>${esc(c.description)}</td>
+        <td>${c.messageCount || 0}</td>
+        <td>${Number(c.isPublic) === 1 ? "Yes" : "No"}</td>
+        <td><button data-delete="${c.id}" style="color:#f87171;">Delete</button></td>
+      `;
+      tr.querySelector("[data-delete]").onclick = function(){ deleteAdminChannel(c.id, c.name); };
+      body.appendChild(tr);
+    });
+  }catch(e){
+    document.getElementById("channelMsg").textContent = "ERROR: " + e.message;
+  }
+}
+
+async function createAdminChannel(){
+  const msg = document.getElementById("channelMsg");
+  try{
+    const name = document.getElementById("newChannelName").value.trim();
+    const description = document.getElementById("newChannelDesc").value.trim();
+    if(!name){ msg.textContent = "Channel name required."; return; }
+    await api("/api/admin/channels", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, description })
+    });
+    document.getElementById("newChannelName").value = "";
+    document.getElementById("newChannelDesc").value = "";
+    msg.textContent = "Channel created.";
+    await loadAdminChannels();
+  }catch(e){
+    msg.textContent = "ERROR: " + e.message;
+  }
+}
+
+async function deleteAdminChannel(id, name){
+  if(!confirm("Delete channel #" + name + " and all its messages? This cannot be undone.")) return;
+  const msg = document.getElementById("channelMsg");
+  try{
+    await api("/api/admin/channels/" + id, { method: "DELETE" });
+    msg.textContent = "Channel deleted.";
+    await loadAdminChannels();
+  }catch(e){
+    msg.textContent = "ERROR: " + e.message;
+  }
+}
+
+async function loadChannelRequests(){
+  try{
+    const requests = await api("/api/admin/channel-requests?status=pending");
+    const body = document.getElementById("channelRequestRows");
+    body.innerHTML = "";
+    if(!requests.length){
+      body.innerHTML = `<tr><td colspan="5">(no pending requests)</td></tr>`;
+      return;
+    }
+    requests.forEach(function(r){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><strong>${esc(r.name)}</strong></td>
+        <td>${esc(r.description || "")}</td>
+        <td>User #${r.userId || r.userid}</td>
+        <td>${esc(r.reason || "")}</td>
+        <td>
+          <button data-action="approve">Approve</button>
+          <button data-action="deny">Deny</button>
+        </td>
+      `;
+      tr.querySelector('[data-action="approve"]').onclick = function(){ approveChannelRequest(r.id); };
+      tr.querySelector('[data-action="deny"]').onclick = function(){ denyChannelRequest(r.id); };
+      body.appendChild(tr);
+    });
+  }catch(e){
+    document.getElementById("channelRequestMsg").textContent = "ERROR: " + e.message;
+  }
+}
+
+async function approveChannelRequest(id){
+  const msg = document.getElementById("channelRequestMsg");
+  try{
+    await api("/api/admin/channel-requests/" + id + "/approve", { method: "POST" });
+    msg.textContent = "Request #" + id + " approved — channel created.";
+    await loadChannelRequests();
+    await loadAdminChannels();
+  }catch(e){
+    msg.textContent = "ERROR: " + e.message;
+  }
+}
+
+async function denyChannelRequest(id){
+  const msg = document.getElementById("channelRequestMsg");
+  try{
+    await api("/api/admin/channel-requests/" + id + "/deny", { method: "POST" });
+    msg.textContent = "Request #" + id + " denied.";
+    await loadChannelRequests();
+  }catch(e){
+    msg.textContent = "ERROR: " + e.message;
+  }
+}
+
 async function main() {
   const pulse = await api("/api/admin/pulse?hours=24");
   document.getElementById("pulseMeta").textContent = `Since: ${pulse.since}`;
@@ -321,12 +432,19 @@ async function main() {
   await loadLocalBizApplications();
   await loadPrizeOffers();
   await loadSupportRequests();
+  await loadAdminChannels();
+  await loadChannelRequests();
 
   // Hook up refresh button for support requests
   const refreshSupportBtn = document.getElementById("refreshSupportBtn");
   if(refreshSupportBtn){
     refreshSupportBtn.onclick = loadSupportRequests;
   }
+  // Hook up channel management buttons
+  const createChannelBtn = document.getElementById("createChannelBtn");
+  if(createChannelBtn) createChannelBtn.onclick = createAdminChannel;
+  const refreshChannelsBtn = document.getElementById("refreshChannelsBtn");
+  if(refreshChannelsBtn) refreshChannelsBtn.onclick = loadAdminChannels;
 }
 
 main().catch((e) => {
