@@ -3287,6 +3287,7 @@ app.post("/sweepstake/enter", async (req, res) =>{
   const sweep = await data.getSweepstakeById(sweepId);
   if(!sweep) return res.status(404).json({error:"Sweepstake not found"});
   if(String(sweep.status) !== "active") return res.status(400).json({error:"Sweepstake not active"});
+  if(sweep.winnerUserId) return res.status(400).json({error:"Sweepstake already drawn"});
   const now = Date.now();
   const startAt = Date.parse(sweep.startAt || "");
   const endAt = Date.parse(sweep.endAt || "");

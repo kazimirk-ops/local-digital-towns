@@ -2045,7 +2045,7 @@ async function setSweepClaimPostedMessageId(drawId, messageId){
   return true;
 }
 async function setSweepstakeWinner(sweepstakeId, winnerUserId){
-  await stmt("UPDATE sweepstakes SET winnerUserId=$1, winnerEntryId=NULL, status='ended' WHERE id=$2")
+  await stmt("UPDATE sweepstakes SET winnerUserId=$1, winnerEntryId=NULL WHERE id=$2")
     .run(Number(winnerUserId), Number(sweepstakeId));
   return getSweepstakeById(sweepstakeId);
 }
