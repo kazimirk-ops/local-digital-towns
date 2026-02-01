@@ -1936,10 +1936,7 @@ async function getActiveSweepstake(){
     WHERE startAt <= $1 AND endAt >= $1
       AND (status='active' OR (status='ended' AND winnerUserId IS NOT NULL))
     ORDER BY
-      CASE WHEN status='active' AND winnerUserId IS NOT NULL THEN 0
-           WHEN status='active' THEN 1
-           WHEN status='ended' AND winnerUserId IS NOT NULL THEN 2
-           ELSE 3 END,
+      CASE WHEN winnerUserId IS NOT NULL THEN 0 ELSE 1 END,
       startAt DESC
     LIMIT 1
   `).get(now)) || null;

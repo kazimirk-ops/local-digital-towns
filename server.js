@@ -913,13 +913,17 @@ async function getSweepstakeActivePayload(req){
     } catch(e) {}
   }
   const winnerUserId = draw?.winnerUserId || sweep.winnerUserId || null;
-  const winner = winnerUserId
-    ? {
-      userId: Number(winnerUserId),
-      displayName: await data.getDisplayNameForUser(await data.getUserById(winnerUserId)),
-      entries: participants.find(p=>Number(p.userId)===Number(winnerUserId))?.entries || 0
+  let winner = null;
+  if(winnerUserId){
+    const participant = participants.find(p=>Number(p.userId)===Number(winnerUserId));
+    let displayName = participant?.displayName || "";
+    if(!displayName){
+      const winnerUser = await data.getUserById(winnerUserId);
+      displayName = await data.getDisplayNameForUser(winnerUser);
+      try { const place = await data.getPlaceByOwnerId(winnerUserId); if(place?.name) displayName = place.name; } catch(_){}
     }
-    : null;
+    winner = { userId: Number(winnerUserId), displayName, entries: participant?.entries || 0 };
+  }
   const u = await getUserId(req);
   const userEntries = u ? await data.getUserEntriesForSweepstake(sweep.id, u) : 0;
   const balance = u ? await data.getSweepBalance(u) : 0;
