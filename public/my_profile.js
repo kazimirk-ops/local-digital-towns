@@ -51,8 +51,6 @@ async function loadProfile() {
     document.getElementById("showBio").checked = !!profile.showBio;
     document.getElementById("showInterests").checked = !!profile.showInterests;
     document.getElementById("showAgeRange").checked = !!profile.showAgeRange;
-    const buyerStatus = profile.isBuyerVerified ? "Buyer status: Verified" : "Buyer status: Not verified";
-    document.getElementById("buyerStatus").textContent = buyerStatus;
     setMsg("profileLoginNote", "");
     updateHeroPreview();
     updateAvatarPreview();
