@@ -1947,9 +1947,12 @@ async function getActiveSweepstakes(){
   const now = nowISO();
   return stmt(`
     SELECT * FROM sweepstakes
-    WHERE (status='active' AND startAt <= $1 AND endAt >= $1)
+    WHERE (startAt <= $1 AND endAt >= $1 AND status='active')
+       OR (winnerUserId IS NOT NULL AND startAt <= $1)
        OR (status='scheduled' AND startAt <= ($1::timestamptz + interval '7 days'))
-    ORDER BY startAt ASC
+    ORDER BY
+      CASE WHEN winnerUserId IS NOT NULL THEN 0 WHEN status='active' THEN 1 ELSE 2 END,
+      startAt DESC
   `).all(now);
 }
 async function addSweepstakeEntry(sweepstakeId, userId, entries){

@@ -1349,43 +1349,14 @@ async function loadSweepstake(){
   if(window.sweepSectionV2 && !window.sweepSectionV2.container){
     window.sweepSectionV2.init("panelSweepstake");
   }
-  try{
-    const data = await api("/api/sweepstake/active");
-    if(window.sweepSectionV2) window.sweepSectionV2.update({
-      sweepstake: data.sweepstake,
-      totals: data.totals,
-      user: { entries: data.userEntries || 0, balance: data.balance || 0 },
-      prize: data.prize || {},
-      donor: data.donor || {},
-      winner: data.winner
-    });
-    if(!data.sweepstake){
-      $("sweepStatus").textContent = "Inactive";
-      $("sweepPrize").textContent = "No active sweepstake";
-      $("sweepTime").textContent = "Check back soon";
-      $("sweepMeta").textContent = "—";
-      $("sweepTotalEntries").textContent = "0";
-      $("sweepUserEntries").textContent = "0";
-      $("sweepUserBalance").textContent = "0";
-      $("sweepWinner").textContent = "Winner: —";
-      $("sweepEnterBtn").disabled = true;
-      return;
+  // Use loadAll() to fetch all sweepstakes via plural endpoint
+  if(window.sweepSectionV2 && window.sweepSectionV2.loadAll){
+    try{
+      await window.sweepSectionV2.loadAll();
+    }catch(e){
+      console.error("loadAll failed:", e);
     }
-    const sweep = data.sweepstake;
-    $("sweepStatus").textContent = (sweep.status || "active").toUpperCase();
-    const prizeTitle = (data.prize?.title || sweep.prize || sweep.title || "—").toString().trim() || "—";
-    $("sweepPrize").textContent = `Prize: ${prizeTitle}`;
-    $("sweepTime").textContent = `Starts ${formatISO(sweep.startAt)} • Draw ${formatISO(sweep.drawAt)}`;
-    $("sweepMeta").textContent = `Entries close ${formatISO(sweep.endAt)} • 1 coin = 1 entry`;
-    $("sweepTotalEntries").textContent = data.totals?.totalEntries ?? 0;
-    $("sweepUserEntries").textContent = data.userEntries ?? 0;
-    $("sweepUserBalance").textContent = data.balance ?? 0;
-    $("sweepWinner").textContent = formatSweepWinnerText(data.winner, data.prize);
-    $("sweepEnterBtn").disabled = !access.loggedIn || state.trustTier < 1;
-  }catch(e){
-    var el;
-    if((el=$("sweepStatus"))) el.textContent = "Error";
-    if((el=$("sweepPrize"))) el.textContent = "Sweepstake unavailable";
+    return;
   }
 }
 async function enterSweepstake(amount){

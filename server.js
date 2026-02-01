@@ -3218,11 +3218,25 @@ app.get("/api/sweepstakes/active", async (req, res) => {
         eventType: r.ruleType, amount: r.amount, buyerAmount: r.buyerAmount,
         sellerAmount: r.sellerAmount, dailyCap: r.dailyCap
       }));
+      const participants = await buildSweepParticipants(sweep.id);
+      const winnerUserId = draw?.winnerUserId || sweep.winnerUserId || null;
+      let winner = null;
+      if(winnerUserId){
+        const participant = participants.find(p=>Number(p.userId)===Number(winnerUserId));
+        let displayName = participant?.displayName || "";
+        if(!displayName){
+          const winnerUser = await data.getUserById(winnerUserId);
+          displayName = await data.getDisplayNameForUser(winnerUser);
+          try { const place = await data.getPlaceByOwnerId(winnerUserId); if(place?.name) displayName = place.name; } catch(_){}
+        }
+        winner = { userId: Number(winnerUserId), displayName, entries: participant?.entries || 0 };
+      }
       const userEntries = u ? await data.getUserEntriesForSweepstake(sweep.id, u) : 0;
       results.push({
-        sweepstake: sweep, totals, prize, donor,
-        rules: enabledRules, userEntries,
-        isUpcoming: sweep.status === 'scheduled'
+        sweepstake: sweep, totals, prize, donor, winner,
+        participants, rules: enabledRules, userEntries,
+        isUpcoming: sweep.status === 'scheduled',
+        hasWinner: !!winnerUserId
       });
     }
     res.json({ sweepstakes: results, balance });

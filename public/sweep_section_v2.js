@@ -407,6 +407,75 @@
       color: #94a3b8;
       margin-bottom: 8px;
     }
+    .sweep-v2-others-heading {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #64748b;
+      margin: 16px 0 10px;
+    }
+    .sweep-v2-others-row {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .sweep-v2-others-row::-webkit-scrollbar { height: 4px; }
+    .sweep-v2-others-row::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+    .sweep-v2-thumb {
+      flex: 0 0 200px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(100, 116, 139, 0.2);
+      border-radius: 10px;
+      padding: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .sweep-v2-thumb:hover {
+      border-color: rgba(99, 102, 241, 0.5);
+    }
+    .sweep-v2-thumb-img {
+      width: 100%;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 6px;
+      background: #1e293b;
+      margin-bottom: 8px;
+    }
+    .sweep-v2-thumb-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .sweep-v2-thumb-date {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+    .sweep-v2-thumb-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .sweep-v2-thumb-badge.active {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+    .sweep-v2-thumb-badge.upcoming {
+      background: rgba(99, 102, 241, 0.2);
+      color: #818cf8;
+    }
+    .sweep-v2-thumb-badge.drawn {
+      background: rgba(245, 158, 11, 0.2);
+      color: #f59e0b;
+    }
   `;
   document.head.appendChild(style);
 
@@ -415,6 +484,7 @@
       this.containerId = containerId;
       this.container = null;
       this.data = null;
+      this.otherSweepstakes = [];
     }
 
     init(containerId) {
@@ -434,6 +504,77 @@
         await this.loadRules();
       }
       this.render();
+    }
+
+    async loadAll() {
+      if (!this.container) this.init(this.containerId);
+      try {
+        var resp = await fetch('/api/sweepstakes/active', { credentials: 'include' });
+        var json = await resp.json();
+        var list = json.sweepstakes || [];
+        var balance = json.balance || 0;
+        if (!list.length) {
+          this.otherSweepstakes = [];
+          this.data = { sweepstake: {}, user: { entries: 0, balance: balance }, prize: {}, donor: {}, winner: null };
+          this.render();
+          return;
+        }
+        // Primary = first item (query orders: winner > active > upcoming)
+        var primary = list[0];
+        this.otherSweepstakes = list.slice(1);
+        this.data = {
+          sweepstake: primary.sweepstake,
+          totals: primary.totals,
+          user: { entries: primary.userEntries || 0, balance: balance },
+          prize: primary.prize || {},
+          donor: primary.donor || {},
+          winner: primary.winner,
+          participants: primary.participants
+        };
+        if (this.data.sweepstake?.id) {
+          await this.loadRules();
+        }
+        this.render();
+      } catch (e) {
+        console.error('Failed to load sweepstakes:', e);
+      }
+    }
+
+    switchToPrimary(item) {
+      // Swap clicked thumbnail into primary view
+      var oldPrimary = {
+        sweepstake: this.data?.sweepstake,
+        totals: this.data?.totals,
+        prize: this.data?.prize,
+        donor: this.data?.donor,
+        winner: this.data?.winner,
+        participants: this.data?.participants,
+        userEntries: this.data?.user?.entries || 0,
+        isUpcoming: this.data?.sweepstake?.status === 'scheduled',
+        hasWinner: !!this.data?.winner
+      };
+      var balance = this.data?.user?.balance || 0;
+      // Replace others list: remove clicked, add old primary
+      this.otherSweepstakes = this.otherSweepstakes.filter(function(o) {
+        return o.sweepstake?.id !== item.sweepstake?.id;
+      });
+      if (oldPrimary.sweepstake?.id) this.otherSweepstakes.unshift(oldPrimary);
+      this.data = {
+        sweepstake: item.sweepstake,
+        totals: item.totals,
+        user: { entries: item.userEntries || 0, balance: balance },
+        prize: item.prize || {},
+        donor: item.donor || {},
+        winner: item.winner,
+        participants: item.participants
+      };
+      this.rules = [];
+      var self = this;
+      if (this.data.sweepstake?.id) {
+        this.loadRules().then(function() { self.render(); });
+      } else {
+        this.render();
+      }
     }
 
     getEndDateString() {
@@ -609,6 +750,7 @@
               </button>
             </div>
             <div class="sweep-v2-note">Preferred donor tier members get priority placement</div>
+            ${this.renderOtherSweepstakes()}
           </div>
         `;
         this.bindEvents();
@@ -744,11 +886,43 @@
           </div>
 
           <div class="sweep-v2-note">Share for bonus entries \u2022 Preferred donors get priority placement</div>
+
+          ${this.renderOtherSweepstakes()}
         </div>
       `;
 
       // Bind events
       this.bindEvents();
+    }
+
+    renderOtherSweepstakes() {
+      var others = this.otherSweepstakes || [];
+      if (!others.length) return '';
+      var self = this;
+      var cards = others.map(function(item, idx) {
+        var s = item.sweepstake || {};
+        var p = item.prize || {};
+        var title = p.title || s.prize || s.title || 'Prize';
+        var img = p.imageUrl || '';
+        var isUpcoming = item.isUpcoming || s.status === 'scheduled';
+        var hasWinner = item.hasWinner || !!item.winner;
+        var badgeClass = hasWinner ? 'drawn' : (isUpcoming ? 'upcoming' : 'active');
+        var badgeText = hasWinner ? 'Winner Drawn' : (isUpcoming ? 'Coming Soon' : 'Active');
+        var dateStr = '';
+        if (isUpcoming && s.startAt) {
+          dateStr = 'Starts ' + new Date(s.startAt || s.startat).toLocaleString('en-US', { month: 'short', day: 'numeric' });
+        } else if (s.endAt || s.endat) {
+          dateStr = 'Ends ' + new Date(s.endAt || s.endat).toLocaleString('en-US', { month: 'short', day: 'numeric' });
+        }
+        return '<div class="sweep-v2-thumb" data-sweep-idx="' + idx + '">' +
+          (img ? '<img class="sweep-v2-thumb-img" src="' + img + '" alt="' + title + '">' : '<div class="sweep-v2-thumb-img" style="display:flex;align-items:center;justify-content:center;font-size:28px;">\u2728</div>') +
+          '<div class="sweep-v2-thumb-title">' + title + '</div>' +
+          '<div class="sweep-v2-thumb-date">' + dateStr + '</div>' +
+          '<span class="sweep-v2-thumb-badge ' + badgeClass + '">' + badgeText + '</span>' +
+          '</div>';
+      }).join('');
+      return '<div class="sweep-v2-others-heading">More Giveaways</div>' +
+        '<div class="sweep-v2-others-row">' + cards + '</div>';
     }
 
     bindEvents() {
@@ -803,6 +977,17 @@
           window.location.href = '/giveaway-offer';
         });
       }
+
+      // Thumbnail card click handlers
+      var self = this;
+      var thumbs = document.querySelectorAll('.sweep-v2-thumb');
+      thumbs.forEach(function(el) {
+        el.addEventListener('click', function() {
+          var idx = parseInt(el.getAttribute('data-sweep-idx'));
+          var item = self.otherSweepstakes[idx];
+          if (item) self.switchToPrimary(item);
+        });
+      });
     }
   }
 
