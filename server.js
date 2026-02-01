@@ -31,9 +31,10 @@ async function getTrustBadgeForUser(userId){
   if(!user) return null;
   const ctx = await data.getTownContext(1, userId);
   const tier = trust.resolveTier(user, ctx);
+  const isAdmin = !!(user.isAdmin ?? user.isadmin);
   return {
     userId: user.id,
-    displayName: await data.getDisplayNameForUser(user),
+    displayName: isAdmin ? "Digital Sebastian" : await data.getDisplayNameForUser(user),
     trustTier: tier,
     trustTierLabel: TRUST_TIER_LABELS[tier] || "Visitor"
   };
