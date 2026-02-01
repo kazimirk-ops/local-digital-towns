@@ -11,19 +11,6 @@ let access = { loggedIn:false, eligible:false, email:null, reason:null, isAdmin:
 let currentUser = { id:null, displayName:"" };
 let auctionsTabsBound = false;
 let map, markersLayer, boundaryLayer;
-let sweepWheelState = {
-  participants: [],
-  totalEntries: 0,
-  segments: [],
-  rotation: 0,
-  spinning: false,
-  winner: null,
-  drawId: null,
-  sweepId: null,
-  createdAt: "",
-  highlightWinnerId: null
-};
-
 async function loadNeighborTowns(){
   try{
     const res=await api("/towns/neighbor");
@@ -1431,13 +1418,6 @@ async function enterSweepstake(amount){
 window.enterSweepstake = enterSweepstake;
 window.loadSweepstakeData = loadSweepstake;
 
-function updateSweepWheelControls(){
-  const spinBtn = $("sweepWheelSpinBtn");
-  if(spinBtn) spinBtn.style.display = access.isAdmin ? "" : "none";
-  const replayBtn = $("sweepWheelReplayBtn");
-  if(replayBtn) replayBtn.style.display = access.isAdmin ? "" : "none";
-}
-
 function formatSweepWinnerText(winner, prize){
   if(!winner?.displayName) return "Winner: —";
   const prizeTitle = (prize?.title || "").toString().trim();
@@ -1448,345 +1428,21 @@ function formatSweepWinnerText(winner, prize){
   return line;
 }
 
-function updateSweepWinnerPanel(winner, prize){
-  const el = $("sweepWinner");
-  if(!el) return;
-  el.textContent = formatSweepWinnerText(winner, prize);
-}
-
-function updateSweepPrizePanel(prize){
-  const el = $("sweepPrize");
-  if(!el) return;
-  const title = (prize?.title || "").toString().trim();
-  if(title) el.textContent = `Prize: ${title}`;
-}
-
-function setupWheelCanvas(){
-  const canvas = $("sweepWheelCanvas");
-  if(!canvas) return null;
-  const size = 420;
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = size * dpr;
-  canvas.height = size * dpr;
-  canvas.style.width = `${size}px`;
-  canvas.style.height = `${size}px`;
-  const ctx = canvas.getContext("2d");
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return { canvas, ctx, size };
-}
-
-function buildWheelSegments(participants, totalEntries){
-  const segments = [];
-  let start = -Math.PI / 2;
-  for(const p of participants){
-    const span = totalEntries > 0 ? (Number(p.entries || 0) / totalEntries) * Math.PI * 2 : 0;
-    segments.push({
-      ...p,
-      startAngle: start,
-      endAngle: start + span,
-      midAngle: start + span / 2
-    });
-    start += span;
-  }
-  return segments;
-}
-
-function drawSweepWheel(rotation = 0){
-  const setup = setupWheelCanvas();
-  if(!setup) return;
-  const { ctx, size } = setup;
-  const radius = size / 2 - 12;
-  ctx.clearRect(0, 0, size, size);
-  ctx.save();
-  ctx.translate(size / 2, size / 2);
-  ctx.rotate(rotation);
-  if(!sweepWheelState.segments.length){
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.fillStyle = "#0f172a";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(148, 163, 184, 0.4)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.fillStyle = "#e2e8f0";
-    ctx.font = "14px Sora, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("No entries yet", 0, 6);
-    ctx.restore();
-    return;
-  }
-  const palette = ["#38bdf8", "#22d3ee", "#a78bfa", "#f97316", "#34d399", "#facc15", "#f472b6", "#60a5fa"];
-  sweepWheelState.segments.forEach((seg, idx)=>{
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, radius, seg.startAngle, seg.endAngle);
-    ctx.closePath();
-    const isWinner = sweepWheelState.highlightWinnerId != null && Number(seg.userId) === Number(sweepWheelState.highlightWinnerId);
-    const baseColor = palette[idx % palette.length];
-    const dimmed = sweepWheelState.highlightWinnerId != null && !isWinner;
-    ctx.fillStyle = dimmed ? "rgba(15, 23, 42, 0.45)" : baseColor;
-    ctx.fill();
-    ctx.strokeStyle = isWinner ? "rgba(255, 255, 255, 0.9)" : "rgba(15, 23, 42, 0.5)";
-    ctx.lineWidth = isWinner ? 3 : 1;
-    ctx.stroke();
-    if(isWinner){
-      ctx.save();
-      ctx.shadowColor = "rgba(56, 189, 248, 0.7)";
-      ctx.shadowBlur = 20;
-      ctx.beginPath();
-      ctx.arc(0, 0, radius - 2, seg.startAngle, seg.endAngle);
-      ctx.strokeStyle = "rgba(56, 189, 248, 0.7)";
-      ctx.lineWidth = 4;
-      ctx.stroke();
-      ctx.restore();
-    }
-    const label = `${seg.displayName} (${seg.entries})`;
-    ctx.save();
-    ctx.rotate(seg.midAngle);
-    ctx.textAlign = "right";
-    ctx.fillStyle = dimmed ? "rgba(148, 163, 184, 0.7)" : "#0b1220";
-    ctx.font = "12px Sora, sans-serif";
-    ctx.translate(radius - 12, 4);
-    const flip = seg.midAngle > Math.PI / 2 && seg.midAngle < (Math.PI * 3) / 2;
-    if(flip){
-      ctx.rotate(Math.PI);
-      ctx.textAlign = "left";
-    }
-    ctx.fillText(label, 0, 0);
-    ctx.restore();
-  });
-  ctx.beginPath();
-  ctx.arc(0, 0, 46, 0, Math.PI * 2);
-  ctx.fillStyle = "#0b1220";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(148, 163, 184, 0.5)";
-  ctx.stroke();
-  ctx.restore();
-}
-
-function updateWheelWinnerCard(){
-  const card = $("sweepWheelWinner");
-  const name = $("sweepWheelWinnerName");
-  const meta = $("sweepWheelWinnerMeta");
-  if(!card || !name || !meta) return;
-  if(!sweepWheelState.winner){
-    card.style.display = "none";
-    card.classList.remove("pulse");
-    return;
-  }
-  card.style.display = "block";
-  card.classList.add("pulse");
-  name.textContent = sweepWheelState.winner.displayName || "Winner";
-  const time = sweepWheelState.createdAt ? ` • ${new Date(sweepWheelState.createdAt).toLocaleString()}` : "";
-  meta.textContent = `Entries: ${sweepWheelState.winner.entries || 0} • Draw #${sweepWheelState.drawId || "—"} • Total ${sweepWheelState.totalEntries || 0}${time}`;
-}
-
-async function loadSweepWheelData(){
-  const status = $("sweepWheelStatus");
-  if(status) status.textContent = "Loading...";
-  try{
-    const data = await api("/api/sweepstake/active");
-    if(!data.sweepstake){
-      sweepWheelState.participants = [];
-      sweepWheelState.totalEntries = 0;
-      sweepWheelState.segments = [];
-      sweepWheelState.winner = null;
-      sweepWheelState.drawId = null;
-      sweepWheelState.createdAt = "";
-      sweepWheelState.highlightWinnerId = null;
-      if(status) status.textContent = "No active sweepstake.";
-      if($("sweepWheelTotal")) $("sweepWheelTotal").textContent = "Total entries: 0";
-      drawSweepWheel(sweepWheelState.rotation);
-      updateWheelWinnerCard();
-      return;
-    }
-    sweepWheelState.participants = data.participants || [];
-    sweepWheelState.totalEntries = Number(data.totals?.totalEntries || 0);
-    sweepWheelState.segments = buildWheelSegments(sweepWheelState.participants, sweepWheelState.totalEntries);
-    sweepWheelState.winner = data.winner || null;
-    sweepWheelState.drawId = data.drawId || null;
-    sweepWheelState.createdAt = data.createdAt || "";
-    sweepWheelState.highlightWinnerId = sweepWheelState.winner?.userId ?? null;
-    sweepWheelState.sweepId = data.sweepstake.id;
-    if($("sweepWheelTotal")) $("sweepWheelTotal").textContent = `Total entries: ${sweepWheelState.totalEntries}`;
-    if(status) status.textContent = sweepWheelState.winner ? "Draw complete." : "Ready to spin.";
-    drawSweepWheel(sweepWheelState.rotation);
-    updateWheelWinnerCard();
-  }catch(e){
-    if(status) status.textContent = "Failed to load sweep data.";
-  }
-}
-
-function getWinnerTargetRotation(winnerUserId){
-  const seg = sweepWheelState.segments.find(s=>Number(s.userId)===Number(winnerUserId));
-  if(!seg) return sweepWheelState.rotation;
-  const pointerAngle = -Math.PI / 2;
-  const base = pointerAngle - seg.midAngle;
-  let target = base + Math.PI * 2 * 6;
-  while(target <= sweepWheelState.rotation + Math.PI * 2){
-    target += Math.PI * 2;
-  }
-  return target;
-}
-
-function snapRotationToWinner(winnerUserId){
-  const seg = sweepWheelState.segments.find(s=>Number(s.userId)===Number(winnerUserId));
-  if(!seg) return;
-  const pointerAngle = -Math.PI / 2;
-  const exactRotation = pointerAngle - seg.midAngle + Math.round((sweepWheelState.rotation) / (Math.PI * 2)) * Math.PI * 2;
-  const tolerance = (0.5 * Math.PI) / 180;
-  const delta = Math.abs(sweepWheelState.rotation - exactRotation);
-  if(delta > tolerance){
-    sweepWheelState.rotation = exactRotation;
-  }else{
-    sweepWheelState.rotation = exactRotation;
-  }
-  drawSweepWheel(sweepWheelState.rotation);
-}
-
-function animateSweepWheel(targetRotation){
-  const status = $("sweepWheelStatus");
-  sweepWheelState.spinning = true;
-  const startRotation = sweepWheelState.rotation;
-  const delta = targetRotation - startRotation;
-  const duration = 7200;
-  const startTime = performance.now();
-  const easeOutCubic = (t)=>1 - Math.pow(1 - t, 3);
-  function frame(now){
-    const t = Math.min(1, (now - startTime) / duration);
-    const eased = easeOutCubic(t);
-    sweepWheelState.rotation = startRotation + delta * eased;
-    drawSweepWheel(sweepWheelState.rotation);
-    if(t < 1){
-      requestAnimationFrame(frame);
-    }else{
-      sweepWheelState.spinning = false;
-      if(status) status.textContent = "Wheel stopped.";
-      if(sweepWheelState.winner?.userId != null){
-        snapRotationToWinner(sweepWheelState.winner.userId);
-        sweepWheelState.highlightWinnerId = sweepWheelState.winner.userId;
-        drawSweepWheel(sweepWheelState.rotation);
-      }
-      updateWheelWinnerCard();
-    }
-  }
-  if(status) status.textContent = "Spinning...";
-  requestAnimationFrame(frame);
-}
-
-async function spinSweepWheel(){
-  if(sweepWheelState.spinning) return;
-  const status = $("sweepWheelStatus");
-  if(status) status.textContent = "Drawing winner...";
-  try{
-    const res = await api("/api/admin/sweep/draw", { method:"POST", headers:{ "Content-Type":"application/json" }, body: "{}" });
-    sweepWheelState.participants = res.participants || [];
-    sweepWheelState.totalEntries = Number(res.totalEntries || 0);
-    sweepWheelState.segments = buildWheelSegments(sweepWheelState.participants, sweepWheelState.totalEntries);
-    sweepWheelState.winner = res.winner || null;
-    sweepWheelState.drawId = res.drawId || null;
-    sweepWheelState.createdAt = res.createdAt || "";
-    sweepWheelState.highlightWinnerId = null;
-    if($("sweepWheelTotal")) $("sweepWheelTotal").textContent = `Total entries: ${sweepWheelState.totalEntries}`;
-    drawSweepWheel(sweepWheelState.rotation);
-    updateSweepPrizePanel(res.prize);
-    updateSweepWinnerPanel(res.winner, res.prize);
-    if(!sweepWheelState.winner){
-      if(status) status.textContent = "No winner selected.";
-      return;
-    }
-    const target = getWinnerTargetRotation(sweepWheelState.winner.userId);
-    animateSweepWheel(target);
-  }catch(e){
-    if(status) status.textContent = e.message || "Draw failed.";
-  }
-}
-
-function loadSweepWheelPayload(payload){
-  if(!payload) return;
-  sweepWheelState.participants = payload.participants || [];
-  sweepWheelState.totalEntries = Number(payload.totalEntries || 0);
-  sweepWheelState.segments = buildWheelSegments(sweepWheelState.participants, sweepWheelState.totalEntries);
-  sweepWheelState.winner = payload.winner || null;
-  sweepWheelState.drawId = payload.drawId || null;
-  sweepWheelState.createdAt = payload.createdAt || "";
-  sweepWheelState.highlightWinnerId = sweepWheelState.winner?.userId ?? null;
-  if($("sweepWheelTotal")) $("sweepWheelTotal").textContent = `Total entries: ${sweepWheelState.totalEntries}`;
-  drawSweepWheel(sweepWheelState.rotation);
-  updateWheelWinnerCard();
-}
-
-async function replaySweepWheel(){
-  if(sweepWheelState.spinning) return;
-  const status = $("sweepWheelStatus");
-  if(status) status.textContent = "Loading last draw...";
-  if(!sweepWheelState.winner){
-    try{
-      const res = await api("/api/admin/sweep/last");
-      loadSweepWheelPayload(res);
-    }catch(e){
-      if(status) status.textContent = e.message || "No draw to replay.";
-      return;
-    }
-  }
-  if(!sweepWheelState.winner){
-    if(status) status.textContent = "No winner to replay.";
-    return;
-  }
-  sweepWheelState.highlightWinnerId = null;
-  const target = getWinnerTargetRotation(sweepWheelState.winner.userId);
-  animateSweepWheel(target);
-}
-
 function initSweepWheel(){
-  const openBtn = $("sweepWheelOpenBtn");
-  const closeBtn = $("sweepWheelCloseBtn");
-  const overlay = $("sweepWheelOverlay");
-  const spinBtn = $("sweepWheelSpinBtn");
-  const replayBtn = $("sweepWheelReplayBtn");
-  if(openBtn) openBtn.onclick = async ()=>{
-    // Use v2 wheel
-    try {
-      const resp = await api('/api/sweepstake/active');
-      if (!resp.sweepstake) {
-        window.sweepWheelV2.open([], null);
-        return;
-      }
-      const entries = (resp.participants || []).map(p => ({
-        id: p.userId,
-        name: p.displayName || p.email || 'Unknown',
-        entries: p.entries || 1
-      }));
-      window.sweepWheelV2.open(entries, (winner) => {
-        console.log('Winner selected:', winner);
-      });
-    } catch (err) {
-      console.error('Failed to load sweep data:', err);
-      window.sweepWheelV2.open([], null);
-    }
-  };
-  if(closeBtn) closeBtn.onclick = ()=>{
-    if(overlay) overlay.style.display = "none";
-  };
-  if(spinBtn) spinBtn.onclick = spinSweepWheel;
-  if(replayBtn) replayBtn.onclick = replaySweepWheel;
-
   const hash = (window.location.hash || "").toLowerCase();
-  const shouldAutoOpen = hash.includes("sweepdraw");
-  if(shouldAutoOpen && overlay){
-    overlay.style.display = "flex";
-  }
-  try{
-    const stored = localStorage.getItem("lastSweepDrawPayload");
-    if(stored && shouldAutoOpen){
-      const payload = JSON.parse(stored);
-      loadSweepWheelPayload(payload);
-      if(overlay) overlay.style.display = "flex";
-      return;
-    }
-  }catch(_){}
-  if(shouldAutoOpen){
-    loadSweepWheelData();
+  if(hash.includes("sweepdraw")){
+    try{
+      const stored = localStorage.getItem("lastSweepDrawPayload");
+      if(stored){
+        const payload = JSON.parse(stored);
+        const entries = (payload.participants || []).map(p => ({
+          id: p.userId,
+          name: p.displayName || 'Unknown',
+          entries: p.entries || 1
+        }));
+        if(window.sweepWheelV2) window.sweepWheelV2.open(entries, null);
+      }
+    }catch(_){}
   }
 }
 
@@ -1894,7 +1550,6 @@ function setControlsEnabled() {
     $("authTag").innerHTML = `🟡 Waitlist • ${access.reason || ""}`;
   }
   updateSidebarAuth();
-  updateSweepWheelControls();
 }
 
 async function loadMe() {

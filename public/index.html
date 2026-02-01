@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
     <link rel="stylesheet" href="/ui-kit.css?v=1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-    <link rel="stylesheet" href="/ui_v2.css?v=1">
+    <link rel="stylesheet" href="/ui_v2.css?v=2">
   </head>
   <body data-town="sebastian" class="theme-light">
     <div class="ui-shell">
@@ -171,10 +171,6 @@
 
                   <div class="sweep-winner">
                     <span class="pill" id="sweepWinner">Winner: —</span>
-                  </div>
-
-                  <div class="sweep-wheel-cta">
-                    <button id="sweepWheelOpenBtn" class="pill">Open Wheel</button>
                   </div>
 
                   <div id="prizeOfferModal" class="panel" style="display:none; margin-top:12px;">
@@ -769,35 +765,6 @@
       </main>
     </div>
 
-    <div id="sweepWheelOverlay" class="wheel-overlay" style="display:none;">
-      <div class="wheel-card">
-        <div class="wheel-header">
-          <div>
-            <div class="wheel-title">Sweepstake Wheel</div>
-            <div class="muted" id="sweepWheelTotal">Total entries: 0</div>
-          </div>
-          <button id="sweepWheelCloseBtn" class="pill" type="button">Close</button>
-        </div>
-        <div class="wheel-body">
-          <div class="wheel-canvas-wrap">
-            <canvas id="sweepWheelCanvas" width="420" height="420"></canvas>
-            <div class="wheel-guide"></div>
-            <div class="wheel-pointer"></div>
-          </div>
-          <div class="wheel-actions">
-            <button id="sweepWheelSpinBtn" class="pill" type="button" style="display:none;">Spin</button>
-            <button id="sweepWheelReplayBtn" class="pill" type="button" style="display:none;">Replay</button>
-            <div class="muted" id="sweepWheelStatus"></div>
-          </div>
-          <div class="wheel-winner" id="sweepWheelWinner" style="display:none;">
-            <div><strong>Winner</strong></div>
-            <div id="sweepWheelWinnerName">—</div>
-            <div class="muted" id="sweepWheelWinnerMeta"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <footer class="beta-footer">
       Digital Towns Beta v0.1 - Built with &#10084; for local communities
     </footer>
@@ -806,7 +773,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="/sweep_wheel_v2.js"></script>
     <script src="/sweep_section_v2.js?v=3"></script>
-    <script src="/app.js?v=sweepfix1"></script>
+    <script src="/app.js?v=sweepfix2"></script>
     <script src="/ui_v2.js?v=1"></script>
     <script src="/js/beta-banner.js?v=1"></script>
   </body>
