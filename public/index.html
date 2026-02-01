@@ -599,16 +599,18 @@
             <div class="panel">
               <div class="panelHead">
                 <div>
-                  <strong>Events</strong>
-                  <div class="muted">Upcoming gatherings</div>
+                  <strong>Community Events</strong>
+                  <div class="muted">Discover what's happening locally</div>
                 </div>
                 <div class="row">
                   <button id="eventsWeekBtn">Week</button>
                   <button id="eventsMonthBtn">Month</button>
-                  <button id="eventsOpenSubmit">Submit an Event</button>
+                  <button id="eventsOpenSubmit">Submit Event</button>
                 </div>
               </div>
               <div class="panelBody">
+
+                <!-- Submit form (hidden until toggled) -->
                 <form class="item eventsForm" id="eventsSubmitWrap" style="display:none;">
                   <div class="row" style="justify-content:space-between;">
                     <div class="contextTitle">Submit an Event</div>
@@ -686,16 +688,77 @@
                   </div>
                 </form>
 
-                <div class="eventsLayout">
-                  <div>
-                    <div class="muted">Event List</div>
-                    <div class="list" id="eventsList"></div>
+                <!-- V0 Events Layout -->
+                <div class="events-v0">
+                  <div class="events-v0-main">
+
+                    <!-- Featured event (populated by JS) -->
+                    <div id="featuredEvent"></div>
+
+                    <!-- Category chips (populated by JS) -->
+                    <div class="event-chips" id="eventChips"></div>
+
+                    <!-- Event list (V0 cards rendered by JS) -->
+                    <div class="event-list" id="eventsList"></div>
+
+                    <!-- Event detail (shown when an event is selected) -->
+                    <div class="event-detail" id="eventDetail"></div>
+
+                    <!-- Legacy calendar (hidden, kept for existing app.js compat) -->
+                    <div class="calendarGrid" id="eventsCalendar" style="display:none;"></div>
+
                   </div>
-                  <div>
-                    <div class="muted">Calendar</div>
-                    <div class="calendarGrid" id="eventsCalendar"></div>
-                  </div>
+
+                  <aside class="events-v0-sidebar">
+
+                    <!-- V0 Calendar -->
+                    <div class="event-calendar" id="calGrid">
+                      <div class="event-calendar-header">
+                        <span class="event-calendar-title" id="calTitle"></span>
+                        <div class="event-calendar-nav">
+                          <button type="button" id="calPrev">&#8249;</button>
+                          <button type="button" id="calNext">&#8250;</button>
+                        </div>
+                      </div>
+                      <div class="event-calendar-grid" id="calDays"></div>
+                    </div>
+
+                    <!-- Upcoming events -->
+                    <div class="event-sidebar-card">
+                      <div class="event-sidebar-card-header">Upcoming</div>
+                      <div class="event-sidebar-card-body">
+                        <div class="event-upcoming-list" id="upcomingEventsList"></div>
+                      </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="event-sidebar-card">
+                      <div class="event-sidebar-card-header">Community Stats</div>
+                      <div class="event-sidebar-card-body">
+                        <div class="event-stats" id="eventStats">
+                          <div class="event-stat">
+                            <div class="event-stat-value" id="statTotalEvents">0</div>
+                            <div class="event-stat-label">Events</div>
+                          </div>
+                          <div class="event-stat">
+                            <div class="event-stat-value" id="statThisWeek">0</div>
+                            <div class="event-stat-label">This Week</div>
+                          </div>
+                          <div class="event-stat">
+                            <div class="event-stat-value" id="statCategories">0</div>
+                            <div class="event-stat-label">Categories</div>
+                          </div>
+                          <div class="event-stat">
+                            <div class="event-stat-value" id="statRsvps">0</div>
+                            <div class="event-stat-label">RSVPs</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </aside>
                 </div>
+
               </div>
             </div>
           </section>
