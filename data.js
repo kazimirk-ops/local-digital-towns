@@ -43,7 +43,14 @@ function toCamelCase(obj) {
       .replace(/\busera\b/gi, 'userA')
       .replace(/\buserb\b/gi, 'userB')
       .replace(/displayname/gi, 'displayName')
-      .replace(/conversationid/gi, 'conversationId');
+      .replace(/conversationid/gi, 'conversationId')
+      .replace(/channelid/gi, 'channelId')
+      .replace(/channelname/gi, 'channelName')
+      .replace(/ispublic/gi, 'isPublic')
+      .replace(/imageurl/gi, 'imageUrl')
+      .replace(/replytoid/gi, 'replyToId')
+      .replace(/threadid/gi, 'threadId')
+      .replace(/messagecount/gi, 'messageCount');
     result[camelKey] = value;
   }
   return result;
@@ -421,10 +428,10 @@ async function getChannels(){
 }
 async function getChannelsAdmin(){
   return stmt(`
-    SELECT c.id, c.name, c.description, c."isPublic", c."createdAt",
-           COUNT(cm.id)::int AS "messageCount"
+    SELECT c.id, c.name, c.description, c.ispublic, c.createdat,
+           COUNT(cm.id)::int AS messagecount
     FROM channels c
-    LEFT JOIN channel_messages cm ON cm."channelId" = c.id
+    LEFT JOIN channel_messages cm ON cm.channelid = c.id
     GROUP BY c.id
     ORDER BY c.id
   `).all();
@@ -454,11 +461,11 @@ async function getChannelMessages(channelId, limit=200){
 }
 async function getRecentChannelMessages(limit=10){
   return stmt(`
-    SELECT cm.id, cm."channelId", cm."userId", cm.text, cm."imageUrl", cm."createdAt",
-           c.name AS "channelName"
+    SELECT cm.id, cm.channelid, cm.userid, cm.text, cm.imageurl, cm.createdat,
+           c.name AS channelname
     FROM channel_messages cm
-    JOIN channels c ON c.id = cm."channelId"
-    ORDER BY cm."createdAt" DESC
+    JOIN channels c ON c.id = cm.channelid
+    ORDER BY cm.createdat DESC
     LIMIT $1
   `).all(Number(limit));
 }
@@ -504,9 +511,9 @@ async function deleteChannelMute(channelId, userId){
 
 async function deleteChannel(id){
   const cid = Number(id);
-  await stmt('DELETE FROM channel_messages WHERE "channelId"=$1').run(cid);
-  await stmt('DELETE FROM message_threads WHERE "channelId"=$1').run(cid);
-  await stmt('DELETE FROM channel_memberships WHERE "channelId"=$1').run(cid);
+  await stmt('DELETE FROM channel_messages WHERE channelid=$1').run(cid);
+  await stmt('DELETE FROM message_threads WHERE channelid=$1').run(cid);
+  await stmt('DELETE FROM channel_memberships WHERE channelid=$1').run(cid);
   await stmt("DELETE FROM channel_mutes WHERE channel_id=$1").run(cid);
   await stmt("DELETE FROM channels WHERE id=$1").run(cid);
   return { ok: true };
