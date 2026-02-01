@@ -661,7 +661,7 @@ function renderEventsList(){
         var item=document.createElement("div");
         item.className="event-upcoming-item";
         item.innerHTML=
-          '<div class="event-upcoming-dot" data-cat="'+(ev.category||"other").toLowerCase()+'"></div>'+
+          '<div class="event-upcoming-dot event-cat--'+(ev.category||"other").toLowerCase()+'" data-cat="'+(ev.category||"other").toLowerCase()+'"></div>'+
           '<div class="event-upcoming-info">'+
             '<div class="event-upcoming-title">'+(ev.title||"Event")+'</div>'+
             '<div class="event-upcoming-time">'+evtMonthAbbr(d.getMonth())+' '+d.getDate()+' \u00B7 '+evtTimeStr(ev.startAt)+'</div>'+
@@ -713,7 +713,9 @@ function renderEventsCalendar(){
   var evDays={};
   (eventsState.list||[]).forEach(function(ev){
     var iso=(ev.startAt||"").slice(0,10);
-    if(iso) evDays[iso]=(evDays[iso]||0)+1;
+    if(iso){
+      if(!evDays[iso]) evDays[iso]=(ev.category||"other").toLowerCase();
+    }
   });
 
   var prevLast=new Date(year,month,0).getDate();
@@ -729,7 +731,7 @@ function renderEventsCalendar(){
     var cls="event-calendar-day";
     if(iso===todayISO) cls+=" today";
     if(iso===eventsState.selectedDay) cls+=" selected";
-    if(evDays[iso]) cls+=" has-events";
+    if(evDays[iso]) cls+=" has-events event-cat--"+evDays[iso];
     var cell=document.createElement("div");
     cell.className=cls;
     cell.textContent=d;

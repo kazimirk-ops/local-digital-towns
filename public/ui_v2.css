@@ -1000,7 +1000,7 @@ textarea { min-height: 90px; }
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--ev-accent);
+  background: var(--cat-color, var(--ev-accent));
   margin: 2px auto 0;
 }
 .event-calendar-day.selected.has-events::after {
@@ -1095,15 +1095,17 @@ textarea { min-height: 90px; }
 }
 
 /* Category color variants */
-.event-cat--community { --cat-color: #22d3ee; }
+.event-cat--community { --cat-color: #14b8a6; }
+.event-cat--education { --cat-color: #f59e0b; }
+.event-cat--social    { --cat-color: #8b5cf6; }
 .event-cat--market    { --cat-color: #34d399; }
+.event-cat--official  { --cat-color: #f59e0b; }
 .event-cat--music     { --cat-color: #a78bfa; }
 .event-cat--outdoors  { --cat-color: #4ade80; }
-.event-cat--education { --cat-color: #60a5fa; }
 .event-cat--charity   { --cat-color: #f472b6; }
 .event-cat--sports    { --cat-color: #fb923c; }
 .event-cat--kids      { --cat-color: #facc15; }
-.event-cat--other     { --cat-color: #94a3b8; }
+.event-cat--other     { --cat-color: #22d3ee; }
 
 .event-card-category[data-cat] {
   color: var(--cat-color, var(--ev-muted));
