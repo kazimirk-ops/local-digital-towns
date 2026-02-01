@@ -414,7 +414,10 @@ async function main(){
   $("cartClose")?.addEventListener("click", ()=>{ $("cartModal").style.display="none"; });
   $("cartModal")?.addEventListener("click", (e)=>{ if(e.target?.id==="cartModal") $("cartModal").style.display="none"; });
   $("cartCheckoutBtn")?.addEventListener("click", checkoutCart);
-  $("cartPayBtn")?.addEventListener("click", payCartOrder);
+  $("cartClearBtn")?.addEventListener("click", async ()=>{
+    try{ await api("/api/cart/clear",{method:"POST"}); await loadCart(); setCartMsg("Cart cleared."); }
+    catch(e){ setCartMsg("ERROR: "+e.message, true); }
+  });
   $("listingModalClose")?.addEventListener("click", ()=>{ $("listingModal").style.display="none"; });
   $("listingModal")?.addEventListener("click", (e)=>{ if(e.target?.id==="listingModal") $("listingModal").style.display="none"; });
 
