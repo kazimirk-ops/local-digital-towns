@@ -3191,6 +3191,7 @@ app.get("/api/sweepstakes/active", async (req, res) => {
     const balance = u ? await data.getSweepBalance(u) : 0;
     const results = [];
     for(const sweep of sweeps){
+      try {
       const totals = await data.getSweepstakeEntryTotals(sweep.id);
       const draw = await data.getSweepDrawBySweepId(sweep.id);
       let snapshot = {};
@@ -3238,6 +3239,9 @@ app.get("/api/sweepstakes/active", async (req, res) => {
         isUpcoming: sweep.status === 'scheduled',
         hasWinner: !!winnerUserId
       });
+      } catch(itemErr) {
+        console.warn("Skipping sweepstake", sweep.id, itemErr?.message || itemErr);
+      }
     }
     res.json({ sweepstakes: results, balance });
   } catch(e) {
