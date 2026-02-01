@@ -721,7 +721,8 @@
       const prizeImage = prize.imageUrl || sweep.imageUrl || '';
       const prizeValue = prize.valueCents ? '$' + (Number(prize.valueCents) / 100).toFixed(0) : (sweep.estimatedValue || '');
       const hasWinner = !!d.winner;
-      const isUpcoming = d.isUpcoming || false;
+      const sweepStart = sweep.startAt || sweep.startat || '';
+      const isUpcoming = !hasWinner && sweepStart && new Date(sweepStart) > new Date();
       const isActive = !!sweep.id && sweep.status === 'active' && !hasWinner && !isUpcoming;
       const daysLeft = this.getDaysRemaining();
       const endStr = this.getEndDateString();
@@ -916,19 +917,20 @@
         var p = item.prize || {};
         var title = p.title || s.prize || s.title || 'Prize';
         var img = p.imageUrl || '';
-        var isUpcoming = item.isUpcoming || s.status === 'scheduled';
         var hasWinner = item.hasWinner || !!item.winner;
-        var badgeClass = hasWinner ? 'drawn' : (isUpcoming ? 'upcoming' : 'active');
-        var badgeText = hasWinner ? 'Winner Drawn' : (isUpcoming ? 'Coming Soon' : 'Active');
         var startDate = s.startAt || s.startat || '';
         var endDate = s.endAt || s.endat || '';
+        var isUpcoming = !hasWinner && startDate && new Date(startDate) > new Date();
+        var badgeClass = hasWinner ? 'drawn' : (isUpcoming ? 'upcoming' : 'active');
+        var badgeText = hasWinner ? 'Winner Drawn' : (isUpcoming ? 'Coming Soon' : 'Active');
+        var dateFmt = { month: 'short', day: 'numeric' };
         var dateStr = '';
-        if (isUpcoming && startDate) {
-          dateStr = 'Starts ' + new Date(startDate).toLocaleString('en-US', { month: 'short', day: 'numeric' });
-        } else if (!hasWinner && startDate) {
-          dateStr = 'Started ' + new Date(startDate).toLocaleString('en-US', { month: 'short', day: 'numeric' });
+        if (startDate && endDate) {
+          dateStr = new Date(startDate).toLocaleString('en-US', dateFmt) + ' \u2013 ' + new Date(endDate).toLocaleString('en-US', dateFmt);
+        } else if (isUpcoming && startDate) {
+          dateStr = 'Starts ' + new Date(startDate).toLocaleString('en-US', dateFmt);
         } else if (endDate) {
-          dateStr = 'Ends ' + new Date(endDate).toLocaleString('en-US', { month: 'short', day: 'numeric' });
+          dateStr = 'Ends ' + new Date(endDate).toLocaleString('en-US', dateFmt);
         }
         return '<div class="sweep-v2-thumb" data-sweep-idx="' + idx + '">' +
           (img ? '<img class="sweep-v2-thumb-img" src="' + img + '" alt="' + title + '">' : '<div class="sweep-v2-thumb-img" style="display:flex;align-items:center;justify-content:center;font-size:28px;">\u2728</div>') +
