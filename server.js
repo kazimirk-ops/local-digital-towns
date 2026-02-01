@@ -2110,6 +2110,10 @@ app.get("/api/events", async (req, res) =>{
   }));
   res.json(rows);
 });
+app.get("/api/events/stats", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_EVENTS"); if(!access) return;
+  res.json(await data.getEventStats());
+});
 
 // Local businesses (applications) - any logged in user can apply for business status
 app.post("/api/localbiz/apply", async (req, res) =>{

@@ -582,14 +582,19 @@ function renderEventsList(){
         ? '<img class="event-featured-img" src="'+feat.imageUrl+'" alt="" />'
         : '<div class="event-featured-img-placeholder">\u{1F4C5}</div>';
       var fLoc=feat.locationName ? '<span>\u{1F4CD} '+feat.locationName+'</span>' : '';
+      var fEnd=feat.endAt ? ' \u2013 '+evtTimeStr(feat.endAt) : '';
+      var fDesc=feat.description||'';
+      if(fDesc.length>140) fDesc=fDesc.slice(0,140)+'\u2026';
+      var fRsvp=typeof feat.rsvpCount==='number' ? '<span>\u{1F465} '+feat.rsvpCount+' going</span>' : '';
       featEl.innerHTML=
         '<div class="event-featured">'+fImg+
         '<div class="event-featured-body">'+
           '<div class="event-featured-badge">'+(feat.category||"event")+'</div>'+
           '<div class="event-featured-title">'+(feat.title||"Event")+'</div>'+
+          (fDesc ? '<div style="font-size:13px;color:var(--ev-text);margin-bottom:8px;line-height:1.5;">'+fDesc+'</div>' : '')+
           '<div class="event-featured-meta">'+
-            '<span>\u{1F4C5} '+evtMonthAbbr(fd.getMonth())+' '+fd.getDate()+', '+evtTimeStr(feat.startAt)+'</span>'+
-            fLoc+
+            '<span>\u{1F4C5} '+evtMonthAbbr(fd.getMonth())+' '+fd.getDate()+', '+evtTimeStr(feat.startAt)+fEnd+'</span>'+
+            fLoc+fRsvp+
           '</div>'+
         '</div></div>';
     } else { featEl.innerHTML=''; }
@@ -666,14 +671,18 @@ function renderEventsList(){
     }
   }
 
-  /* ── Stats ── */
-  var now=new Date();
-  var weekEnd=new Date(now.getTime()+7*24*60*60*1000);
-  var thisWeek=all.filter(function(ev){ var s=new Date(ev.startAt||0); return s>=now&&s<=weekEnd; }).length;
+  /* ── Stats (client-side fallback) ── */
   var catSet={}; all.forEach(function(ev){ catSet[(ev.category||"other").toLowerCase()]=1; });
-  var sTot=$("statTotalEvents"); if(sTot) sTot.textContent=all.length;
-  var sWk=$("statThisWeek"); if(sWk) sWk.textContent=thisWeek;
   var sCat=$("statCategories"); if(sCat) sCat.textContent=Object.keys(catSet).length;
+}
+
+function loadEventStats(){
+  api("/api/events/stats").then(function(s){
+    if(!s) return;
+    var sTot=$("statTotalEvents"); if(sTot) sTot.textContent=s.totalThisMonth||0;
+    var sWk=$("statThisWeek"); if(sWk) sWk.textContent=s.newThisWeek||0;
+    var sRsvp=$("statRsvps"); if(sRsvp) sRsvp.textContent=s.totalRsvps||0;
+  }).catch(function(){});
 }
 
 function renderEventsCalendar(){
@@ -811,6 +820,7 @@ async function initEvents(){
   await loadEvents(eventsState.range || "week");
   renderEventsList();
   renderEventsCalendar();
+  loadEventStats();
 }
 
 function escapeHtml(s){

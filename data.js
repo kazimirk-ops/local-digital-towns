@@ -50,7 +50,19 @@ function toCamelCase(obj) {
       .replace(/imageurl/gi, 'imageUrl')
       .replace(/replytoid/gi, 'replyToId')
       .replace(/threadid/gi, 'threadId')
-      .replace(/messagecount/gi, 'messageCount');
+      .replace(/messagecount/gi, 'messageCount')
+      .replace(/rsvpcount/gi, 'rsvpCount')
+      .replace(/organizeruserid/gi, 'organizerUserId')
+      .replace(/organizername/gi, 'organizerName')
+      .replace(/organizeremail/gi, 'organizerEmail')
+      .replace(/organizerphone/gi, 'organizerPhone')
+      .replace(/locationname/gi, 'locationName')
+      .replace(/notestoadmin/gi, 'notesToAdmin')
+      .replace(/reviewedat/gi, 'reviewedAt')
+      .replace(/reviewedbyuserid/gi, 'reviewedByUserId')
+      .replace(/decisionreason/gi, 'decisionReason')
+      .replace(/startat\b/gi, 'startAt')
+      .replace(/endat\b/gi, 'endAt');
     result[camelKey] = value;
   }
   return result;
@@ -2216,11 +2228,23 @@ async function listApprovedEvents(range){
   const start = range?.from ? toISOOrEmpty(range.from) : now.toISOString();
   const end = range?.to ? toISOOrEmpty(range.to) : new Date(now.getTime()+30*24*60*60*1000).toISOString();
   return stmt(`
-    SELECT *
-    FROM events_v1
-    WHERE townId=1 AND status='approved' AND startAt >= $1 AND startAt <= $2
-    ORDER BY startAt ASC
+    SELECT e.*, COALESCE(r.cnt, 0)::int AS rsvpcount
+    FROM events_v1 e
+    LEFT JOIN (SELECT eventid, COUNT(*)::int AS cnt FROM event_rsvps GROUP BY eventid) r ON r.eventid = e.id
+    WHERE e.townid=1 AND e.status='approved' AND e.startat >= $1 AND e.startat <= $2
+    ORDER BY e.startat ASC
   `).all(start, end);
+}
+
+async function getEventStats(){
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const monthEnd = new Date(now.getFullYear(), now.getMonth()+1, 0, 23, 59, 59).toISOString();
+  const weekAgo = new Date(now.getTime() - 7*24*60*60*1000).toISOString();
+  const total = await stmt("SELECT COUNT(*)::int AS count FROM events_v1 WHERE townid=1 AND status='approved' AND startat >= $1 AND startat <= $2").get(monthStart, monthEnd);
+  const rsvps = await stmt("SELECT COUNT(*)::int AS count FROM event_rsvps WHERE townid=1").get();
+  const newEvts = await stmt("SELECT COUNT(*)::int AS count FROM events_v1 WHERE townid=1 AND status='approved' AND createdat >= $1").get(weekAgo);
+  return { totalThisMonth: total?.count||0, totalRsvps: rsvps?.count||0, newThisWeek: newEvts?.count||0 };
 }
 
 async function getEventById(id){
@@ -4048,6 +4072,7 @@ module.exports = {
   addEventRsvp,
   addEventSubmission,
   listApprovedEvents,
+  getEventStats,
   getEventById,
   addScheduledLiveShow,
   listScheduledLiveShows,
