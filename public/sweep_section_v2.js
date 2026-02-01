@@ -45,6 +45,11 @@
       color: #94a3b8;
       border: 1px solid rgba(100, 116, 139, 0.3);
     }
+    .sweep-v2-status.drawn {
+      background: rgba(245, 158, 11, 0.2);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
     .sweep-v2-status-dot {
       width: 8px;
       height: 8px;
@@ -567,7 +572,8 @@
       const prizeDesc = prize.description || sweep.description || '';
       const prizeImage = prize.imageUrl || sweep.imageUrl || '';
       const prizeValue = prize.valueCents ? '$' + (Number(prize.valueCents) / 100).toFixed(0) : (sweep.estimatedValue || '');
-      const isActive = !!sweep.id && sweep.status === 'active';
+      const hasWinner = !!d.winner;
+      const isActive = !!sweep.id && sweep.status === 'active' && !hasWinner;
       const daysLeft = this.getDaysRemaining();
       const endStr = this.getEndDateString();
       const endDateFormatted = endStr ? new Date(endStr).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
@@ -617,9 +623,9 @@
               <h2 class="sweep-v2-title">Town Sweepstake</h2>
               <p class="sweep-v2-subtitle">Win amazing prizes from our community</p>
             </div>
-            <div class="sweep-v2-status ${isActive ? 'active' : 'inactive'}">
+            <div class="sweep-v2-status ${hasWinner ? 'drawn' : (isActive ? 'active' : 'inactive')}">
               <span class="sweep-v2-status-dot"></span>
-              ${isActive ? 'Active' : 'Inactive'}
+              ${hasWinner ? 'Winner Drawn' : (isActive ? 'Active' : 'Inactive')}
             </div>
           </div>
 
