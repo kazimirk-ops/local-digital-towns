@@ -3,7 +3,7 @@ const $ = (id) => document.getElementById(id);
 let state = { districtId:null, placeId:null, place:null, conversationId:null, viewer:"buyer", trustTier:0, trustTierLabel:"Visitor" };
 let market = { listings:[], auctions:[], categories:[], districts:[], selectedCategory:null };
 let channels = { list:[], messages:[], selectedId:null, replyToId:null, pendingImageUrl:"" };
-let eventsState = { list:[], selectedId:null, range:"week", bound:false };
+let eventsState = { list:[], selectedId:null, range:"week", bound:false, calYear:0, calMonth:0, selectedDay:null, selectedCategory:null };
 let localBizState = { list:[], bound:false };
 let scheduledState = { list:[], selectedId:null, thumbnailUrl:"" };
 let pulseState = { latest:null };
@@ -541,34 +541,206 @@ async function loadEvents(range){
   });
   eventsState.list = await api(`/api/events?${params.toString()}`);
 }
-function renderEventsList(){
-  const el=$("eventsList");
-  el.innerHTML="";
-  if(!eventsState.list.length){
-    el.innerHTML=`<div class="muted">No upcoming events.</div>`;
-    return;
-  }
-  eventsState.list.forEach(ev=>{
-    const div=document.createElement("div");
-    div.className="item";
-    const tier = ev.organizerTrustTierLabel ? ` • ${ev.organizerTrustTierLabel}` : "";
-    div.innerHTML=`<div><strong>${ev.title || "Event"}</strong></div><div class="muted">${ev.startAt || ""}${tier}</div>`;
-    el.appendChild(div);
-  });
+var EVT_MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function evtMonthAbbr(m){ return EVT_MONTHS[m]||""; }
+function evtTimeStr(iso){
+  if(!iso) return "";
+  var d=new Date(iso); var h=d.getHours(); var m=d.getMinutes();
+  var ap=h>=12?"pm":"am"; h=h%12||12;
+  return h+":"+(m<10?"0":"")+m+ap;
 }
-function renderEventsCalendar(){
-  const el=$("eventsCalendar");
+function evtCatIcon(cat){
+  var c=(cat||"").toLowerCase();
+  if(c==="community") return "\u{1F3D8}";
+  if(c==="market") return "\u{1F6CD}";
+  if(c==="music") return "\u{1F3B5}";
+  if(c==="outdoors") return "\u{1F332}";
+  if(c==="education") return "\u{1F4DA}";
+  if(c==="charity") return "\u{1F49D}";
+  if(c==="sports") return "\u26BD";
+  if(c==="kids") return "\u{1F388}";
+  return "\u{1F4CC}";
+}
+
+function renderEventsList(){
+  var all=eventsState.list||[];
+  var filtered=all;
+  if(eventsState.selectedDay){
+    filtered=filtered.filter(function(ev){ return (ev.startAt||"").slice(0,10)===eventsState.selectedDay; });
+  }
+  if(eventsState.selectedCategory){
+    filtered=filtered.filter(function(ev){ return (ev.category||"").toLowerCase()===eventsState.selectedCategory; });
+  }
+
+  /* ── Featured event ── */
+  var featEl=$("featuredEvent");
+  if(featEl){
+    var feat=all[0];
+    if(feat){
+      var fd=new Date(feat.startAt||Date.now());
+      var fImg=feat.imageUrl
+        ? '<img class="event-featured-img" src="'+feat.imageUrl+'" alt="" />'
+        : '<div class="event-featured-img-placeholder">\u{1F4C5}</div>';
+      var fLoc=feat.locationName ? '<span>\u{1F4CD} '+feat.locationName+'</span>' : '';
+      featEl.innerHTML=
+        '<div class="event-featured">'+fImg+
+        '<div class="event-featured-body">'+
+          '<div class="event-featured-badge">'+(feat.category||"event")+'</div>'+
+          '<div class="event-featured-title">'+(feat.title||"Event")+'</div>'+
+          '<div class="event-featured-meta">'+
+            '<span>\u{1F4C5} '+evtMonthAbbr(fd.getMonth())+' '+fd.getDate()+', '+evtTimeStr(feat.startAt)+'</span>'+
+            fLoc+
+          '</div>'+
+        '</div></div>';
+    } else { featEl.innerHTML=''; }
+  }
+
+  /* ── Category chips ── */
+  var chipsEl=$("eventChips");
+  if(chipsEl){
+    var cats={};
+    all.forEach(function(ev){ var c=(ev.category||"other").toLowerCase(); cats[c]=(cats[c]||0)+1; });
+    var ch='<div class="event-chip'+(!eventsState.selectedCategory?' active':'')+'" data-cat-filter="">All <span class="event-chip-count">'+all.length+'</span></div>';
+    Object.keys(cats).forEach(function(c){
+      var act=eventsState.selectedCategory===c?' active':'';
+      ch+='<div class="event-chip event-cat--'+c+act+'" data-cat="'+c+'" data-cat-filter="'+c+'">'+evtCatIcon(c)+' '+c+' <span class="event-chip-count">'+cats[c]+'</span></div>';
+    });
+    chipsEl.innerHTML=ch;
+    chipsEl.querySelectorAll(".event-chip").forEach(function(chip){
+      chip.onclick=function(){
+        eventsState.selectedCategory=chip.getAttribute("data-cat-filter")||null;
+        renderEventsList();
+      };
+    });
+  }
+
+  /* ── Event card list ── */
+  var el=$("eventsList");
   el.innerHTML="";
-  const days = eventsState.range==="month" ? 30 : 7;
-  const now = new Date();
-  for(let i=0;i<days;i++){
-    const d=new Date(now.getTime()+i*24*60*60*1000);
-    const iso=d.toISOString().slice(0,10);
-    const count=eventsState.list.filter(ev=>ev.startAt?.slice(0,10)===iso).length;
-    const cell=document.createElement("div");
-    cell.className="calendarCell";
-    cell.innerHTML=`<strong>${d.getMonth()+1}/${d.getDate()}</strong><div class="muted">${count} events</div>`;
-    el.appendChild(cell);
+  if(!filtered.length){
+    el.innerHTML='<div class="event-empty"><div class="event-empty-icon">\u{1F4C5}</div><div class="event-empty-text">'+(eventsState.selectedDay||eventsState.selectedCategory?'No events match this filter':'No upcoming events')+'</div></div>';
+  } else {
+    filtered.forEach(function(ev){
+      var d=new Date(ev.startAt||Date.now());
+      var loc=ev.locationName ? '<span>\u{1F4CD} '+ev.locationName+'</span>' : '';
+      var card=document.createElement("div");
+      card.className="event-card event-cat--"+(ev.category||"other").toLowerCase();
+      card.innerHTML=
+        '<div class="event-card-date">'+
+          '<div class="event-card-date-month">'+evtMonthAbbr(d.getMonth())+'</div>'+
+          '<div class="event-card-date-day">'+d.getDate()+'</div>'+
+        '</div>'+
+        '<div class="event-card-info">'+
+          '<div class="event-card-title">'+(ev.title||"Event")+'</div>'+
+          '<div class="event-card-meta">'+
+            '<span>\u{1F551} '+evtTimeStr(ev.startAt)+'</span>'+
+            loc+
+          '</div>'+
+          '<div class="event-card-category" data-cat="'+(ev.category||"other").toLowerCase()+'">'+(ev.category||"other")+'</div>'+
+        '</div>'+
+        '<div class="event-card-actions"></div>';
+      el.appendChild(card);
+    });
+  }
+
+  /* ── Upcoming sidebar ── */
+  var upEl=$("upcomingEventsList");
+  if(upEl){
+    var upcoming=all.slice(0,5);
+    if(!upcoming.length){
+      upEl.innerHTML='<div class="muted" style="font-size:12px;">No upcoming events</div>';
+    } else {
+      upEl.innerHTML="";
+      upcoming.forEach(function(ev){
+        var d=new Date(ev.startAt||Date.now());
+        var item=document.createElement("div");
+        item.className="event-upcoming-item";
+        item.innerHTML=
+          '<div class="event-upcoming-dot" data-cat="'+(ev.category||"other").toLowerCase()+'"></div>'+
+          '<div class="event-upcoming-info">'+
+            '<div class="event-upcoming-title">'+(ev.title||"Event")+'</div>'+
+            '<div class="event-upcoming-time">'+evtMonthAbbr(d.getMonth())+' '+d.getDate()+' \u00B7 '+evtTimeStr(ev.startAt)+'</div>'+
+          '</div>';
+        upEl.appendChild(item);
+      });
+    }
+  }
+
+  /* ── Stats ── */
+  var now=new Date();
+  var weekEnd=new Date(now.getTime()+7*24*60*60*1000);
+  var thisWeek=all.filter(function(ev){ var s=new Date(ev.startAt||0); return s>=now&&s<=weekEnd; }).length;
+  var catSet={}; all.forEach(function(ev){ catSet[(ev.category||"other").toLowerCase()]=1; });
+  var sTot=$("statTotalEvents"); if(sTot) sTot.textContent=all.length;
+  var sWk=$("statThisWeek"); if(sWk) sWk.textContent=thisWeek;
+  var sCat=$("statCategories"); if(sCat) sCat.textContent=Object.keys(catSet).length;
+}
+
+function renderEventsCalendar(){
+  var now=new Date();
+  if(!eventsState.calYear){ eventsState.calYear=now.getFullYear(); eventsState.calMonth=now.getMonth(); }
+  var year=eventsState.calYear;
+  var month=eventsState.calMonth;
+
+  var titleEl=$("calTitle");
+  if(titleEl) titleEl.textContent=evtMonthAbbr(month)+" "+year;
+
+  var gridEl=$("calDays");
+  if(!gridEl) return;
+  gridEl.innerHTML="";
+
+  var dows=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  dows.forEach(function(d){
+    var cell=document.createElement("div");
+    cell.className="event-calendar-dow";
+    cell.textContent=d;
+    gridEl.appendChild(cell);
+  });
+
+  var firstDow=new Date(year,month,1).getDay();
+  var daysInMonth=new Date(year,month+1,0).getDate();
+  var todayISO=now.toISOString().slice(0,10);
+
+  var evDays={};
+  (eventsState.list||[]).forEach(function(ev){
+    var iso=(ev.startAt||"").slice(0,10);
+    if(iso) evDays[iso]=(evDays[iso]||0)+1;
+  });
+
+  var prevLast=new Date(year,month,0).getDate();
+  for(var p=0;p<firstDow;p++){
+    var pad=document.createElement("div");
+    pad.className="event-calendar-day other-month";
+    pad.textContent=prevLast-firstDow+1+p;
+    gridEl.appendChild(pad);
+  }
+
+  for(var d=1;d<=daysInMonth;d++){
+    var iso=year+"-"+String(month+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+    var cls="event-calendar-day";
+    if(iso===todayISO) cls+=" today";
+    if(iso===eventsState.selectedDay) cls+=" selected";
+    if(evDays[iso]) cls+=" has-events";
+    var cell=document.createElement("div");
+    cell.className=cls;
+    cell.textContent=d;
+    cell.setAttribute("data-iso",iso);
+    cell.onclick=function(){
+      var clicked=this.getAttribute("data-iso");
+      eventsState.selectedDay=(eventsState.selectedDay===clicked)?null:clicked;
+      renderEventsCalendar();
+      renderEventsList();
+    };
+    gridEl.appendChild(cell);
+  }
+
+  var totalCells=firstDow+daysInMonth;
+  var rem=totalCells%7===0?0:7-(totalCells%7);
+  for(var r=1;r<=rem;r++){
+    var pad=document.createElement("div");
+    pad.className="event-calendar-day other-month";
+    pad.textContent=r;
+    gridEl.appendChild(pad);
   }
 }
 async function initEvents(){
@@ -622,6 +794,18 @@ async function initEvents(){
         }
       };
     }
+    var calPrevBtn=$("calPrev");
+    var calNextBtn=$("calNext");
+    if(calPrevBtn) calPrevBtn.onclick=function(){
+      eventsState.calMonth--;
+      if(eventsState.calMonth<0){ eventsState.calMonth=11; eventsState.calYear--; }
+      renderEventsCalendar();
+    };
+    if(calNextBtn) calNextBtn.onclick=function(){
+      eventsState.calMonth++;
+      if(eventsState.calMonth>11){ eventsState.calMonth=0; eventsState.calYear++; }
+      renderEventsCalendar();
+    };
     eventsState.bound=true;
   }
   await loadEvents(eventsState.range || "week");
