@@ -867,9 +867,15 @@ async function buildSweepParticipants(sweepId){
   const rows = await data.listSweepstakeParticipants(sweepId);
   const participants = await Promise.all(rows.map(async (row)=>{
     const user = await data.getUserById(row.userId);
+    let displayName = await data.getDisplayNameForUser(user);
+    // Show store/place name if user owns one
+    try {
+      const place = await data.getPlaceByOwnerId(row.userId);
+      if(place && place.name) displayName = place.name;
+    } catch(_){}
     return {
       userId: Number(row.userId),
-      displayName: await data.getDisplayNameForUser(user),
+      displayName,
       entries: Number(row.entries || 0)
     };
   }));

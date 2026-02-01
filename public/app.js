@@ -8,6 +8,7 @@ let localBizState = { list:[], bound:false };
 let scheduledState = { list:[], selectedId:null, thumbnailUrl:"" };
 let pulseState = { latest:null };
 let access = { loggedIn:false, eligible:false, email:null, reason:null, isAdmin:false };
+window.access = access;
 let currentUser = { id:null, displayName:"" };
 let auctionsTabsBound = false;
 let map, markersLayer, boundaryLayer;
@@ -1561,6 +1562,7 @@ async function loadMe() {
   const me = await api("/me");
   if (!me.user) {
     access = { loggedIn:false, eligible:false, email:null, reason:null, isAdmin:false };
+    window.access = access;
     currentUser = { id:null, displayName:"" };
     setControlsEnabled();
     await refreshSweep();
@@ -1574,6 +1576,7 @@ async function loadMe() {
   const reason = me.signup?.reason || "No signup record yet.";
   const isAdmin = Number(me.user.isAdmin) === 1;
   access = { loggedIn:true, eligible: status==="eligible", email, reason, isAdmin };
+  window.access = access;
   currentUser = { id: me.user.id, displayName };
   setControlsEnabled();
   await refreshSweep();
