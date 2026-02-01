@@ -168,7 +168,40 @@ function renderScheduledShows(){
   const list = $("scheduledShowList");
   if(!list) return;
   // Live Shows feature coming soon
-  list.innerHTML = `<div class="muted" style="text-align:center;padding:20px;"><strong>Coming Soon</strong><br>Live streaming shows are currently in development.</div>`;
+  list.innerHTML = `
+    <div style="max-width:640px;margin:0 auto;padding:24px 0;">
+      <div style="text-align:center;margin-bottom:28px;">
+        <div style="font-size:48px;margin-bottom:12px;">📡</div>
+        <div style="font-size:22px;font-weight:700;color:#fff;">Live Shows &mdash; Coming Soon</div>
+        <div class="muted" style="margin-top:6px;font-size:14px;line-height:1.5;">A new way to connect with your community in real time</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;">
+        <div style="background:var(--panel2,rgba(255,255,255,.04));border:1px solid var(--border,rgba(255,255,255,.08));border-radius:12px;padding:16px;">
+          <div style="font-size:24px;margin-bottom:8px;">🛍️</div>
+          <div style="font-weight:600;color:#fff;margin-bottom:4px;">Live Sales</div>
+          <div class="muted" style="font-size:13px;line-height:1.5;">Local businesses can showcase and sell products in real-time to the community</div>
+        </div>
+        <div style="background:var(--panel2,rgba(255,255,255,.04));border:1px solid var(--border,rgba(255,255,255,.08));border-radius:12px;padding:16px;">
+          <div style="font-size:24px;margin-bottom:8px;">🎥</div>
+          <div style="font-weight:600;color:#fff;margin-bottom:4px;">Live Events</div>
+          <div class="muted" style="font-size:13px;line-height:1.5;">Stream community events, town halls, and meetups for everyone to join remotely</div>
+        </div>
+        <div style="background:var(--panel2,rgba(255,255,255,.04));border:1px solid var(--border,rgba(255,255,255,.08));border-radius:12px;padding:16px;">
+          <div style="font-size:24px;margin-bottom:8px;">💬</div>
+          <div style="font-weight:600;color:#fff;margin-bottom:4px;">Live Interaction</div>
+          <div class="muted" style="font-size:13px;line-height:1.5;">Chat, ask questions, and engage directly with hosts during broadcasts</div>
+        </div>
+        <div style="background:var(--panel2,rgba(255,255,255,.04));border:1px solid var(--border,rgba(255,255,255,.08));border-radius:12px;padding:16px;">
+          <div style="font-size:24px;margin-bottom:8px;">📢</div>
+          <div style="font-weight:600;color:#fff;margin-bottom:4px;">Business Engagement</div>
+          <div class="muted" style="font-size:13px;line-height:1.5;">Businesses connect with their customer base through live demonstrations and Q&amp;A sessions</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:24px;padding:16px;background:var(--panel2,rgba(255,255,255,.04));border:1px solid var(--border,rgba(255,255,255,.08));border-radius:12px;">
+        <div style="font-size:14px;color:#fff;font-weight:500;">Stay Tuned</div>
+        <div class="muted" style="font-size:13px;margin-top:4px;">We're building something great. Live shows will be available soon.</div>
+      </div>
+    </div>`;
   return;
   // Original code below - uncomment when live shows are ready
   if(!scheduledState.list.length){
