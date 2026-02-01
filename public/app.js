@@ -153,6 +153,7 @@ async function initChannels(){
     if(listEl) listEl.style.display = hasChannels ? "block" : "none";
     if(gridEl) gridEl.style.display = hasChannels ? "grid" : "none";
     if(stackEl) stackEl.style.display = hasChannels ? "none" : "block";
+    loadActivityFeed();
   }catch{}
 }
 
@@ -347,6 +348,7 @@ async function selectChannel(id){
 async function loadChannelMessages(id){
   channels.messages=await api(`/channels/${id}/messages`);
   renderChannelMessages();
+  loadActivityFeed();
 }
 function userInitials(name){
   if(!name) return "?";
@@ -413,6 +415,46 @@ function renderChannelMessages(){
   });
   var statEl=$("statMessages");
   if(statEl) statEl.textContent=channels.messages.length;
+}
+async function loadActivityFeed(){
+  try{
+    var msgs=await api("/channels/recent-activity");
+    renderActivityFeed(msgs);
+  }catch(e){}
+}
+function renderActivityFeed(msgs){
+  var el=$("activityFeed");
+  if(!el) return;
+  if(!msgs||!msgs.length){
+    el.innerHTML='<div class="channel-empty"><div class="channel-empty-icon">\u{1F4AC}</div><div class="channel-empty-text">No recent activity</div></div>';
+    return;
+  }
+  el.innerHTML="";
+  msgs.forEach(function(m){
+    var div=document.createElement("div");
+    div.className="activity-item";
+    var name=(m.user&&m.user.displayName)?m.user.displayName:"User "+m.userId;
+    var initials=userInitials(name);
+    var time=formatMsgTime(m.createdAt);
+    var chTag=m.channelName?'<span class="channel-card-badge">#'+m.channelName+'</span>':"";
+    var text=(m.text||"");
+    if(text.length>80) text=text.slice(0,80)+"\u2026";
+    div.innerHTML=
+      '<div class="activity-avatar">'+initials+'</div>'+
+      '<div class="activity-body">'+
+        '<div class="activity-header">'+
+          '<span class="activity-author">'+name+'</span>'+
+          chTag+
+          '<span class="activity-time">'+time+'</span>'+
+        '</div>'+
+        '<div class="activity-text">'+text+'</div>'+
+      '</div>';
+    if(m.channelId){
+      div.style.cursor="pointer";
+      div.onclick=function(){ selectChannel(m.channelId); };
+    }
+    el.appendChild(div);
+  });
 }
 async function sendChannelMessage(){
   if(!channels.selectedId) return alert("Select a channel first");

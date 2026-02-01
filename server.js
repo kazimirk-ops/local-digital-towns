@@ -3951,6 +3951,20 @@ app.get("/channels", async (req, res) =>{
   if(!u) return res.json(channels.filter(c=>Number(c.isPublic)===1));
   res.json(channels);
 });
+app.get("/channels/recent-activity", async (req, res) =>{
+  const access = await requirePerm(req,res,"VIEW_CHANNELS"); if(!access) return;
+  const messages = await data.getRecentChannelMessages(10);
+  const msgs = await Promise.all(messages.map(async (m)=>({
+    ...m,
+    userId: m.userId || m.userid,
+    channelId: m.channelId || m.channelid,
+    channelName: m.channelName || m.channelname,
+    createdAt: m.createdAt || m.createdat,
+    imageUrl: m.imageUrl || m.imageurl,
+    user: await getTrustBadgeForUser(m.userId || m.userid)
+  })));
+  res.json(msgs);
+});
 app.get("/channels/:id/messages", async (req, res) =>{
   const access = await requirePerm(req,res,"VIEW_CHANNELS"); if(!access) return;
   const channel=await data.getChannelById(req.params.id);

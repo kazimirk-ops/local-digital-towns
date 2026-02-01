@@ -442,6 +442,16 @@ async function getChannelMessages(channelId, limit=200){
     LIMIT $2
   `).all(Number(channelId), Number(limit));
 }
+async function getRecentChannelMessages(limit=10){
+  return stmt(`
+    SELECT cm.id, cm."channelId", cm."userId", cm.text, cm."imageUrl", cm."createdAt",
+           c.name AS "channelName"
+    FROM channel_messages cm
+    JOIN channels c ON c.id = cm."channelId"
+    ORDER BY cm."createdAt" DESC
+    LIMIT $1
+  `).all(Number(limit));
+}
 async function getChannelMessageById(id){
   return stmt(`
     SELECT id, channelId, userId, text, imageUrl, createdAt, replyToId, threadId
@@ -3915,6 +3925,7 @@ module.exports = {
   getChannelById,
   isChannelMember,
   getChannelMessages,
+  getRecentChannelMessages,
   getChannelMessageById,
   createChannelThread,
   addChannelMessage,
