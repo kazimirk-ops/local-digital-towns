@@ -146,11 +146,9 @@ async function initChannels(){
   try{
     await loadChannels();
     renderChannelsList();
-    const listEl = $("channelsList");
     const stackEl = $("channelsStack");
     const gridEl = $("channelsGrid");
     const hasChannels = channels.list.length > 0;
-    if(listEl) listEl.style.display = hasChannels ? "block" : "none";
     if(gridEl) gridEl.style.display = hasChannels ? "grid" : "none";
     if(stackEl) stackEl.style.display = hasChannels ? "none" : "block";
     loadActivityFeed();
@@ -296,19 +294,6 @@ function channelIcon(name){
   return "\u{1F4FA}";
 }
 function renderChannelsList(){
-  var el=$("channelsList");
-  el.innerHTML="";
-  if(!channels.list.length){
-    el.innerHTML='<div class="muted">No channels.</div>';
-    return;
-  }
-  channels.list.forEach(function(c){
-    var div=document.createElement("div");
-    div.className="item";
-    div.innerHTML='<div><strong>#'+c.name+'</strong></div><div class="muted">'+(c.description||"")+'</div>';
-    div.onclick=function(){ selectChannel(c.id); };
-    el.appendChild(div);
-  });
   var grid=$("channelsGrid");
   if(!grid) return;
   grid.innerHTML="";
