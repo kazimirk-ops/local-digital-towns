@@ -445,6 +445,13 @@ async function deleteChannelMessage(messageId){
 }
 function bindChannels(){
   $("channelSendBtn").onclick=()=>sendChannelMessage().catch(e=>alert(e.message));
+  var msgInput=$("channelMessageInput");
+  if(msgInput) msgInput.addEventListener("keydown",function(e){
+    if(e.key==="Enter"&&!e.shiftKey){
+      e.preventDefault();
+      sendChannelMessage().catch(function(err){ alert(err.message); });
+    }
+  });
   $("clearReplyBtn").onclick=()=>{
     channels.replyToId=null;
     $("replyToBar").style.display="none";
