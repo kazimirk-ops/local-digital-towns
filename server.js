@@ -859,33 +859,49 @@ async function notifySweepDrawUsers({ draw, sweep, winner, prize, adminId }){
   const winnerName = winner.displayName || (winnerUser ? await data.getDisplayNameForUser(winnerUser) : "Winner");
   const drawnAt = draw.createdAt || new Date().toISOString();
   const systemPrefix = "[SYSTEM] ";
+  const isSameUser = donorUserId && Number(donorUserId) === Number(winner.userId);
 
   try{
-    if(donorUserId && Number(donorUserId) !== Number(winner.userId)){
-      const convo = await data.addDirectConversation(winner.userId, donorUserId);
-      const longText = `${systemPrefix}🎉 You won: ${prizeTitle} (Donor: ${donorName}). Please coordinate pickup/delivery here. Winner: reply with preferred pickup time/location. Donor: reply with instructions.\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}`;
-      if(convo?.id){
-        await data.addDirectMessage(convo.id, adminId, longText);
-        const winnerNote = `${systemPrefix}🎉 You won ${prizeTitle}! Check your inbox thread with ${donorName} for instructions.`;
-        await data.addDirectMessage(convo.id, adminId, winnerNote);
-        const donorNote = `${systemPrefix}${winnerName} won your prize ${prizeTitle}. Please send pickup instructions in this thread.`;
-        await data.addDirectMessage(convo.id, adminId, donorNote);
-      }
-    }else{
-      const convo = await data.addDirectConversation(adminId, winner.userId);
-      if(convo?.id){
-        const winnerNote = `${systemPrefix}🎉 You won ${prizeTitle}! We will follow up with donor details soon.`;
-        await data.addDirectMessage(convo.id, adminId, winnerNote);
-      }
-      if(donorUserId){
-        const donorConvo = await data.addDirectConversation(adminId, donorUserId);
-        if(donorConvo?.id){
-          const donorNote = `${systemPrefix}${winnerName} won your prize ${prizeTitle}. Please send pickup instructions in the winner thread.`;
-          await data.addDirectMessage(donorConvo.id, adminId, donorNote);
-        }
+    // 1. Always DM the winner via admin conversation
+    const winnerConvo = await data.addDirectConversation(adminId, winner.userId);
+    if(winnerConvo?.id){
+      if(isSameUser){
+        await data.addDirectMessage(winnerConvo.id, adminId, `${systemPrefix}\uD83C\uDF89 Congratulations! You won your own giveaway: ${prizeTitle}! Since you're also the donor, no coordination needed. Draw ID: ${draw.id}`);
+      } else {
+        await data.addDirectMessage(winnerConvo.id, adminId, `${systemPrefix}\uD83C\uDF89 Congratulations! You won: ${prizeTitle}! Donated by ${donorName}. Check your inbox for a thread with the donor to coordinate pickup/delivery. Draw ID: ${draw.id}`);
       }
     }
+
+    // 2. Always email the winner
+    if(winnerUser?.email){
+      const winnerEmailText = isSameUser
+        ? `Congratulations!\n\nYou won your own giveaway prize: ${prizeTitle}!\n\nSince you are also the prize donor, no further coordination is needed.\n\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}\n\nThank you for supporting the community!`
+        : `Congratulations!\n\nYou won: ${prizeTitle}!\nDonated by: ${donorName}\n\nPlease check your inbox on the app for a message thread with the donor to coordinate pickup or delivery.\n\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}\n\nThank you for being part of our community!`;
+      sendEmail(winnerUser.email, `\uD83C\uDF89 You won: ${prizeTitle}!`, winnerEmailText);
+    }
+
+    // 3. If donor is different from winner, DM + email the donor, and create coordination thread
+    if(donorUserId && !isSameUser){
+      // Coordination thread between winner and donor
+      const coordConvo = await data.addDirectConversation(winner.userId, donorUserId);
+      if(coordConvo?.id){
+        await data.addDirectMessage(coordConvo.id, adminId, `${systemPrefix}\uD83C\uDF81 Prize Coordination: ${winnerName} won ${prizeTitle}. Please use this thread to arrange pickup/delivery.\nDraw ID: ${draw.id} | Drawn: ${drawnAt}`);
+      }
+      // DM donor via admin
+      const donorConvo = await data.addDirectConversation(adminId, donorUserId);
+      if(donorConvo?.id){
+        await data.addDirectMessage(donorConvo.id, adminId, `${systemPrefix}${winnerName} won your prize: ${prizeTitle}! Please check your inbox for a thread with the winner to coordinate pickup/delivery. Draw ID: ${draw.id}`);
+      }
+      // Email donor
+      const donorUser = await data.getUserById(donorUserId);
+      if(donorUser?.email){
+        const donorEmailText = `Hello,\n\n${winnerName} has won your donated prize: ${prizeTitle}!\n\nPlease check your inbox on the app for a message thread with the winner to coordinate pickup or delivery.\n\nDraw ID: ${draw.id}\nDrawn: ${drawnAt}\n\nThank you for supporting the community!`;
+        sendEmail(donorUser.email, `Your prize "${prizeTitle}" has been won!`, donorEmailText);
+      }
+    }
+
     await data.setSweepDrawNotified(draw.id);
+    console.log("SWEEP_NOTIFY_SUCCESS", { drawId: draw.id, winnerId: winner.userId, donorId: donorUserId, isSameUser, winnerEmail: !!winnerUser?.email });
   }catch(err){
     console.warn("Sweep draw notify failed", err?.message || err);
   }
