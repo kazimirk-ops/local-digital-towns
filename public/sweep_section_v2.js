@@ -50,6 +50,11 @@
       color: #f59e0b;
       border: 1px solid rgba(245, 158, 11, 0.3);
     }
+    .sweep-v2-status.upcoming {
+      background: rgba(99, 102, 241, 0.2);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
     .sweep-v2-status-dot {
       width: 8px;
       height: 8px;
@@ -529,7 +534,8 @@
           prize: primary.prize || {},
           donor: primary.donor || {},
           winner: primary.winner,
-          participants: primary.participants
+          participants: primary.participants,
+          isUpcoming: primary.isUpcoming || false
         };
         if (this.data.sweepstake?.id) {
           await this.loadRules();
@@ -550,7 +556,7 @@
         winner: this.data?.winner,
         participants: this.data?.participants,
         userEntries: this.data?.user?.entries || 0,
-        isUpcoming: this.data?.sweepstake?.status === 'scheduled',
+        isUpcoming: this.data?.isUpcoming || false,
         hasWinner: !!this.data?.winner
       };
       var balance = this.data?.user?.balance || 0;
@@ -566,7 +572,8 @@
         prize: item.prize || {},
         donor: item.donor || {},
         winner: item.winner,
-        participants: item.participants
+        participants: item.participants,
+        isUpcoming: item.isUpcoming || false
       };
       this.rules = [];
       var self = this;
@@ -714,7 +721,8 @@
       const prizeImage = prize.imageUrl || sweep.imageUrl || '';
       const prizeValue = prize.valueCents ? '$' + (Number(prize.valueCents) / 100).toFixed(0) : (sweep.estimatedValue || '');
       const hasWinner = !!d.winner;
-      const isActive = !!sweep.id && sweep.status === 'active' && !hasWinner;
+      const isUpcoming = d.isUpcoming || false;
+      const isActive = !!sweep.id && sweep.status === 'active' && !hasWinner && !isUpcoming;
       const daysLeft = this.getDaysRemaining();
       const endStr = this.getEndDateString();
       const endDateFormatted = endStr ? new Date(endStr).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
@@ -769,9 +777,9 @@
               <h2 class="sweep-v2-title">Town Sweepstake</h2>
               <p class="sweep-v2-subtitle">Win amazing prizes from our community</p>
             </div>
-            <div class="sweep-v2-status ${hasWinner ? 'drawn' : (isActive ? 'active' : 'inactive')}">
+            <div class="sweep-v2-status ${hasWinner ? 'drawn' : (isUpcoming ? 'upcoming' : (isActive ? 'active' : 'inactive'))}">
               <span class="sweep-v2-status-dot"></span>
-              ${hasWinner ? 'Winner Drawn' : (isActive ? 'Active' : 'Inactive')}
+              ${hasWinner ? 'Winner Drawn' : (isUpcoming ? 'Coming Soon' : (isActive ? 'Active' : 'Inactive'))}
             </div>
           </div>
 
@@ -912,11 +920,15 @@
         var hasWinner = item.hasWinner || !!item.winner;
         var badgeClass = hasWinner ? 'drawn' : (isUpcoming ? 'upcoming' : 'active');
         var badgeText = hasWinner ? 'Winner Drawn' : (isUpcoming ? 'Coming Soon' : 'Active');
+        var startDate = s.startAt || s.startat || '';
+        var endDate = s.endAt || s.endat || '';
         var dateStr = '';
-        if (isUpcoming && s.startAt) {
-          dateStr = 'Starts ' + new Date(s.startAt || s.startat).toLocaleString('en-US', { month: 'short', day: 'numeric' });
-        } else if (s.endAt || s.endat) {
-          dateStr = 'Ends ' + new Date(s.endAt || s.endat).toLocaleString('en-US', { month: 'short', day: 'numeric' });
+        if (isUpcoming && startDate) {
+          dateStr = 'Starts ' + new Date(startDate).toLocaleString('en-US', { month: 'short', day: 'numeric' });
+        } else if (!hasWinner && startDate) {
+          dateStr = 'Started ' + new Date(startDate).toLocaleString('en-US', { month: 'short', day: 'numeric' });
+        } else if (endDate) {
+          dateStr = 'Ends ' + new Date(endDate).toLocaleString('en-US', { month: 'short', day: 'numeric' });
         }
         return '<div class="sweep-v2-thumb" data-sweep-idx="' + idx + '">' +
           (img ? '<img class="sweep-v2-thumb-img" src="' + img + '" alt="' + title + '">' : '<div class="sweep-v2-thumb-img" style="display:flex;align-items:center;justify-content:center;font-size:28px;">\u2728</div>') +
