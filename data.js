@@ -38,7 +38,9 @@ function toCamelCase(obj) {
       .replace(/sweepid/gi, 'sweepId')
       .replace(/snapshotjson/gi, 'snapshotJson')
       .replace(/totalentries/gi, 'totalEntries')
-      .replace(/claimedat/gi, 'claimedAt');
+      .replace(/claimedat/gi, 'claimedAt')
+      .replace(/\busera\b/gi, 'userA')
+      .replace(/\buserb\b/gi, 'userB');
     result[camelKey] = value;
   }
   return result;
