@@ -5121,7 +5121,7 @@ app.get("/api/admin/giveaway/offers", async (req, res) => {
   const admin = await requireAdmin(req, res); if(!admin) return;
   const status = (req.query.status || "all").toString().trim().toLowerCase();
   const offers = status === "all"
-    ? [].concat(await data.getGiveawayOffersByStatus("pending"), await data.getGiveawayOffersByStatus("approved"), await data.getGiveawayOffersByStatus("rejected"))
+    ? [].concat(await data.getGiveawayOffersByStatus("pending"), await data.getGiveawayOffersByStatus("approved"), await data.getGiveawayOffersByStatus("rejected"), await data.getGiveawayOffersByStatus("cancelled"))
     : await data.getGiveawayOffersByStatus(status);
   const enriched = await Promise.all(offers.map(async (offer) => {
     const place = await data.getPlaceById(offer.placeId);
@@ -5304,6 +5304,30 @@ Thank you for being part of our community!`;
     sendEmail(owner.email, `Giveaway Offer ${status === "approved" ? "Approved" : "Update"}`, emailText);
   }
   res.json({ ok: true, offer, subscription });
+});
+
+// Cancel an active giveaway (offer + linked sweepstake)
+app.post("/api/admin/giveaway/:id/cancel", async (req, res) => {
+  const admin = await requireAdmin(req, res); if(!admin) return;
+  const offerId = Number(req.params.id || 0);
+  if(!offerId) return res.status(400).json({ error: "offerId required" });
+  const offer = await db.one("SELECT * FROM giveaway_offers WHERE id=$1", [offerId]);
+  if(!offer) return res.status(404).json({ error: "Offer not found" });
+  // Cancel the giveaway offer
+  await db.query("UPDATE giveaway_offers SET status='cancelled', adminNotes=COALESCE(adminNotes,'')||$1, reviewedAt=$2, reviewedByUserId=$3 WHERE id=$4",
+    ['\nCancelled by admin', new Date().toISOString(), admin.id, offerId]);
+  // Cancel the linked sweepstake
+  let sweepstakeId = offer.sweepstake_id || null;
+  if(!sweepstakeId){
+    try {
+      const sw = await db.one("SELECT id FROM sweepstakes WHERE title=$1 ORDER BY createdat DESC LIMIT 1", [offer.title || '']);
+      if(sw) sweepstakeId = sw.id;
+    } catch(e){}
+  }
+  if(sweepstakeId){
+    await db.query("UPDATE sweepstakes SET status='cancelled' WHERE id=$1", [sweepstakeId]);
+  }
+  res.json({ ok: true, offerId, sweepstakeId });
 });
 
 // Repair: create missing sweepstake + rules for approved offers that lack them

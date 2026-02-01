@@ -55,7 +55,7 @@ function renderOffers() {
     var placeName = (offer.place && offer.place.name) || offer.placeName || offer.placename || 'Unknown Store';
     var placeId = offer.placeId || offer.place_id;
     var imageUrl = offer.imageUrl || offer.image_url || '';
-    var sc = offer.status === 'approved' ? 'pill-approved' : offer.status === 'rejected' ? 'pill-rejected' : 'pill-pending';
+    var sc = offer.status === 'approved' ? 'pill-approved' : offer.status === 'rejected' ? 'pill-rejected' : offer.status === 'cancelled' ? 'pill-cancelled' : 'pill-pending';
     var statusLabel = offer.status.charAt(0).toUpperCase() + offer.status.slice(1);
     html += '<div class="offer-card" data-id="' + offer.id + '">' +
       '<img class="offer-thumb" src="' + (escapeHtml(imageUrl) || '/placeholder.png') + '" alt="" data-fallback="/placeholder.png">' +
@@ -76,7 +76,7 @@ function renderOffers() {
             '<button class="btn btn-reject" data-offer-id="' + offer.id + '" data-action="reject">Reject</button>'
           : offer.status === 'approved'
             ? '<button class="btn btn-primary" data-offer-id="' + offer.id + '" data-action="edit">Edit</button>' +
-              '<button class="btn btn-reject" data-offer-id="' + offer.id + '" data-action="cancel">Cancel</button>'
+              '<button class="btn btn-reject" data-offer-id="' + offer.id + '" data-action="cancel">Cancel Giveaway</button>'
             : '<button class="btn btn-secondary" data-offer-id="' + offer.id + '" data-action="view">View Details</button>') +
       '</div>' +
     '</div>';
@@ -273,28 +273,17 @@ function submitEdit() {
 
 function handleCancel(offer) {
   var placeName = (offer.place && offer.place.name) || offer.placeName || offer.placename || 'Unknown Store';
-  if (!confirm('Cancel this giveaway?\n\n"' + offer.title + '"\nfrom ' + placeName + '\n\nThis will remove it from the active sweepstake.')) return;
-  var prizeId = offer.prizeOfferId || offer.prizeofferid;
-  if (!prizeId) { alert('No linked prize found for this offer.'); return; }
+  if (!confirm('Cancel this giveaway?\n\n"' + offer.title + '"\nfrom ' + placeName + '\n\nThis will cancel the offer and its linked sweepstake.')) return;
   var btn = document.querySelector('[data-offer-id="' + offer.id + '"][data-action="cancel"]');
   if (btn) { btn.disabled = true; btn.textContent = 'Cancelling...'; }
-  fetch('/api/admin/prizes/' + prizeId + '/reject', {
+  fetch('/api/admin/giveaway/' + offer.id + '/cancel', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ reason: 'Cancelled by admin' })
+    credentials: 'include'
   })
   .then(function(resp) {
     if (!resp.ok) return resp.json().then(function(d) { throw new Error(d.error || 'Failed'); });
     return resp.json();
-  })
-  .then(function() {
-    return fetch('/api/admin/giveaway/offer/' + offer.id + '/review', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ status: 'rejected', notes: 'Cancelled by admin' })
-    });
   })
   .then(function() {
     loadOffers();

@@ -24,6 +24,7 @@
       .pill-pending { background: #f59e0b20; color: #f59e0b; border-color: #f59e0b; }
       .pill-approved { background: #22c55e20; color: #22c55e; border-color: #22c55e; }
       .pill-rejected { background: #ef444420; color: #ef4444; border-color: #ef4444; }
+      .pill-cancelled { background: #64748b20; color: #64748b; border-color: #64748b; }
 
       .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
       .tab-btn { padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
@@ -119,6 +120,7 @@
         <button class="tab-btn" data-status="pending">Pending</button>
         <button class="tab-btn" data-status="approved">Approved</button>
         <button class="tab-btn" data-status="rejected">Rejected</button>
+        <button class="tab-btn" data-status="cancelled">Cancelled</button>
       </div>
 
       <!-- Offers List -->
@@ -223,6 +225,6 @@
     </div>
 
     <script src="/theme.js?v=1"></script>
-    <script src="/admin_giveaway_offers.js?v=14"></script>
+    <script src="/admin_giveaway_offers.js?v=15"></script>
   </body>
 </html>
