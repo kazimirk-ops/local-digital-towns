@@ -425,15 +425,23 @@ async function main() {
   </tr>`).join("");
   document.getElementById("placeRows").innerHTML = rows || `<tr><td colspan="5">(no place events yet)</td></tr>`;
 
-  const events = await api("/api/admin/events?status=approved");
-  document.getElementById("recentEvents").textContent = JSON.stringify(events, null, 2);
-  await loadStoreApplications();
-  await loadEventSubmissions();
-  await loadLocalBizApplications();
-  await loadPrizeOffers();
-  await loadSupportRequests();
-  await loadAdminChannels();
-  await loadChannelRequests();
+  try {
+    const events = await api("/api/admin/events?status=approved");
+    document.getElementById("recentEvents").textContent = JSON.stringify(events, null, 2);
+  } catch(e) { console.warn("admin: load approved events failed:", e.message); }
+
+  const sectionLoaders = [
+    loadStoreApplications,
+    loadEventSubmissions,
+    loadLocalBizApplications,
+    loadPrizeOffers,
+    loadSupportRequests,
+    loadAdminChannels,
+    loadChannelRequests,
+  ];
+  for (const loader of sectionLoaders) {
+    try { await loader(); } catch(e) { console.warn("admin: " + loader.name + " failed:", e.message); }
+  }
 
   // Hook up refresh button for support requests
   const refreshSupportBtn = document.getElementById("refreshSupportBtn");
