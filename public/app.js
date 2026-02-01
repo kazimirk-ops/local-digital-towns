@@ -1395,19 +1395,20 @@ async function loadSweepstake(){
     $("sweepWinner").textContent = formatSweepWinnerText(data.winner, data.prize);
     $("sweepEnterBtn").disabled = !access.loggedIn || state.trustTier < 1;
   }catch(e){
-    $("sweepStatus").textContent = "Error";
-    $("sweepPrize").textContent = "Sweepstake unavailable";
+    var el;
+    if((el=$("sweepStatus"))) el.textContent = "Error";
+    if((el=$("sweepPrize"))) el.textContent = "Sweepstake unavailable";
   }
 }
-async function enterSweepstake(){
+async function enterSweepstake(amount){
   const msg = $("sweepEnterMsg");
-  msg.textContent = "";
+  if(msg) msg.textContent = "";
   try{
     const data = await api("/api/sweepstake/active");
     if(!data.sweepstake) return;
-    const entries = Number($("sweepEntryAmount").value || 0);
+    const entries = Number(amount) || Number($("sweepEntryAmount")?.value) || 0;
     if(!Number.isFinite(entries) || entries <= 0){
-      msg.textContent = "Enter a valid amount.";
+      if(msg) msg.textContent = "Enter a valid amount.";
       return;
     }
     const res = await api("/sweepstake/enter",{
@@ -1415,13 +1416,16 @@ async function enterSweepstake(){
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ sweepstakeId: data.sweepstake.id, entries })
     });
-    $("sweepUserEntries").textContent = res.userEntries ?? 0;
-    $("sweepTotalEntries").textContent = res.totals?.totalEntries ?? 0;
-    $("sweepUserBalance").textContent = res.balance ?? 0;
-    $("sweepBal").textContent = res.balance ?? 0;
-    msg.textContent = "Entered.";
+    var el;
+    if((el=$("sweepUserEntries"))) el.textContent = res.userEntries ?? 0;
+    if((el=$("sweepTotalEntries"))) el.textContent = res.totals?.totalEntries ?? 0;
+    if((el=$("sweepUserBalance"))) el.textContent = res.balance ?? 0;
+    if((el=$("sweepBal"))) el.textContent = res.balance ?? 0;
+    if(msg) msg.textContent = "Entered.";
+    // Refresh v2 section to show updated balances/entries
+    if(window.loadSweepstakeData) window.loadSweepstakeData();
   }catch(e){
-    msg.textContent = e.message || "Error";
+    if(msg) msg.textContent = e.message || "Error";
   }
 }
 window.enterSweepstake = enterSweepstake;
