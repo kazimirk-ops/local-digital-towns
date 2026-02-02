@@ -1457,7 +1457,11 @@ function renderAuctionCard(l, opts={}){
   const ends = l.auctionEndAt || l.endsAt || "—";
   const ended = !!opts.ended;
   const statusBadge = ended ? `<span class="pill badge-ended">Ended</span>` : "";
+  const photos = l.photoUrls || l.photourls || [];
+  const firstPhoto = photos[0] || "";
+  const imgHtml = firstPhoto ? `<img src="${firstPhoto}" style="width:100%;max-height:150px;object-fit:cover;border-radius:8px;margin-bottom:8px;">` : "";
   div.innerHTML=`
+    ${imgHtml}
     <div class="row" style="justify-content:space-between;">
       <strong>${l.title || "Auction"}</strong>
       ${statusBadge}

@@ -4301,6 +4301,14 @@ app.post("/places/:id/listings", async (req, res) =>{
     if(tier < 2) return res.status(403).json({error:"Sebastian Resident required for offers/requests"});
   }
   if(!req.body?.title) return res.status(400).json({error:"title required"});
+  if(req.body.listingType === "auction"){
+    if(!req.body.auctionEndAt || !Date.parse(req.body.auctionEndAt)){
+      return res.status(400).json({error:"Auction end time is required"});
+    }
+    if(!req.body.startBidCents || req.body.startBidCents < 1){
+      return res.status(400).json({error:"Starting bid is required"});
+    }
+  }
   const created=await data.addListing({...req.body,placeId:pid});
   try{
     await data.tryAwardSweepForEvent({
