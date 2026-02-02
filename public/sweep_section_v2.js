@@ -849,7 +849,8 @@
                 </div>
                 ` : ''}
 
-                ${!d.winner ? `
+                ${!d.winner ? (
+                  (window.access && window.access.loggedIn && (window.state?.trustTier || 0) >= 1) ? `
                 <div class="sweep-v2-entry-section">
                   <div class="sweep-v2-entry-row">
                     <input type="number" class="sweep-v2-entry-input" value="1" min="1" id="sweepV2EntryAmount">
@@ -859,7 +860,15 @@
                   </div>
                   <div class="sweep-v2-entry-note">Each entry costs 1 token from your balance</div>
                 </div>
-                ` : ''}
+                ` : `
+                <div class="sweep-v2-entry-section">
+                  <a href="/signup" class="sweep-v2-entry-btn" style="text-decoration:none;text-align:center;display:block;">
+                    \uD83C\uDF9F\uFE0F Sign Up Free to Enter
+                  </a>
+                  <div class="sweep-v2-entry-note">Create a free account to enter this giveaway</div>
+                </div>
+                `
+                ) : ''}
               </div>
             </div>
           </div>

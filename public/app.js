@@ -1626,7 +1626,7 @@ function applyPermissions(ctx){
     btn.style.display = viewPerms[view] ? "" : "none";
   });
   const sweepPanel = $("panelSweepstake");
-  if(sweepPanel) sweepPanel.style.display = (ctx?.trustTier || 0) < 1 ? "none" : "";
+  if(sweepPanel) sweepPanel.style.display = "";
   const current = getRouteView();
   if(current !== "map" && viewPerms[current] === false){
     location.hash = "map";
