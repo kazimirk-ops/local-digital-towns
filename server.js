@@ -4279,6 +4279,7 @@ app.get("/places/:id/listings", async (req, res) =>{
   }));
 });
 app.post("/places/:id/listings", async (req, res) =>{
+  console.log("LISTING REQUEST BODY:", JSON.stringify(req.body, null, 2));
   const u=await requireLogin(req,res); if(!u) return;
   const ctx=await data.getTownContext(1, u);
   const user=await data.getUserById(u);

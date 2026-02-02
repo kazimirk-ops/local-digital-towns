@@ -628,6 +628,7 @@ async function createAuctionListing() {
       minIncrementCents,
       photoUrls: auctionPhotos
     };
+    console.log("AUCTION PAYLOAD:", JSON.stringify(payload, null, 2));
     setMsg("listingMsg", "Publishing auction...");
     const created = await api(`/places/${placeId}/listings`, {
       method: "POST",
