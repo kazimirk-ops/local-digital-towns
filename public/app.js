@@ -2203,6 +2203,15 @@ async function main(){
   bindRouter();
   await loadStatus();
   await loadMe();
+
+  // Welcome banner for anonymous visitors
+  (function() {
+    var banner = document.getElementById('welcomeBanner');
+    if (banner && !access.loggedIn) {
+      banner.style.display = 'block';
+    }
+  })();
+
   await refreshSweep();
   await loadSweepstake();
   await loadPrizeOffers();

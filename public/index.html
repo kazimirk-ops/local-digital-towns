@@ -16,6 +16,15 @@
     <link rel="stylesheet" href="/ui_v2.css?v=4">
   </head>
   <body data-town="sebastian" class="theme-light">
+    <div id="welcomeBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:99999; background:linear-gradient(135deg,#0f1923,#1a2332); border-bottom:2px solid #2dd4bf; padding:16px 20px; text-align:center; font-family:system-ui,sans-serif;">
+      <div style="max-width:600px; margin:0 auto;">
+        <div style="font-size:18px; font-weight:700; color:#f0f0f0; margin-bottom:6px;">Welcome to Sebastian, Florida</div>
+        <div style="font-size:14px; color:rgba(240,240,240,0.6); margin-bottom:12px;">Your local community platform — buy, sell, chat, win giveaways.</div>
+        <a href="/signup" style="display:inline-block; background:linear-gradient(135deg,#2dd4bf,#14b8a6); color:#0a1018; padding:10px 28px; border-radius:10px; font-weight:700; font-size:15px; text-decoration:none; margin-right:12px;">Join Free</a>
+        <a href="/login" style="color:#2dd4bf; font-size:13px; text-decoration:underline;">Already a member? Log in</a>
+      </div>
+      <button onclick="document.getElementById('welcomeBanner').style.display='none'" style="position:absolute; top:8px; right:12px; background:none; border:none; color:rgba(240,240,240,0.4); font-size:20px; cursor:pointer;">✕</button>
+    </div>
     <div class="ui-shell">
       <aside class="sidebar ui-sidebar">
         <div class="ui-sidebar-header">
