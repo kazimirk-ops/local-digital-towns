@@ -1559,14 +1559,21 @@ async function loadFishingConditions() {
     const stationId = "8721604";
     const baseUrl = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter";
 
+    // Calculate time range for trend data (last 3 hours)
+    const now = new Date();
+    const threeHoursAgoDate = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+    const pad = n => n.toString().padStart(2, '0');
+    const nowStr = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const threeHoursAgo = `${threeHoursAgoDate.getFullYear()}${pad(threeHoursAgoDate.getMonth()+1)}${pad(threeHoursAgoDate.getDate())} ${pad(threeHoursAgoDate.getHours())}:${pad(threeHoursAgoDate.getMinutes())}`;
+
     // Fetch multiple products in parallel
     const [tideRes, waterTempRes, airTempRes, windRes, pressureRes, waterLevelRes] = await Promise.all([
       fetch(`${baseUrl}?date=today&station=${stationId}&product=predictions&datum=MLLW&time_zone=lst_ldt&units=english&interval=hilo&format=json`),
       fetch(`${baseUrl}?date=latest&station=${stationId}&product=water_temperature&units=english&time_zone=lst_ldt&format=json`),
       fetch(`${baseUrl}?date=latest&station=${stationId}&product=air_temperature&units=english&time_zone=lst_ldt&format=json`),
       fetch(`${baseUrl}?date=latest&station=${stationId}&product=wind&units=english&time_zone=lst_ldt&format=json`),
-      fetch(`${baseUrl}?date=latest&station=${stationId}&product=air_pressure&units=english&time_zone=lst_ldt&format=json`),
-      fetch(`${baseUrl}?date=latest&station=${stationId}&product=water_level&datum=MLLW&units=english&time_zone=lst_ldt&format=json`)
+      fetch(`${baseUrl}?begin_date=${threeHoursAgo}&end_date=${nowStr}&station=${stationId}&product=air_pressure&units=english&time_zone=lst_ldt&format=json`),
+      fetch(`${baseUrl}?begin_date=${threeHoursAgo}&end_date=${nowStr}&station=${stationId}&product=water_level&datum=MLLW&units=english&time_zone=lst_ldt&format=json`)
     ]);
 
     const [tideData, waterTempData, airTempData, windData, pressureData, waterLevelData] = await Promise.all([
@@ -1584,8 +1591,35 @@ async function loadFishingConditions() {
     const windSpeed = windData?.data?.[0]?.s || "N/A";
     const windDir = windData?.data?.[0]?.dr || "";
     const windGust = windData?.data?.[0]?.g || "";
-    const pressure = pressureData?.data?.[0]?.v || "N/A";
-    const waterLevel = waterLevelData?.data?.[0]?.v || "N/A";
+    // Calculate pressure with trend
+    let pressure = "N/A";
+    let pressureTrend = "";
+    if(pressureData?.data?.length > 1) {
+      const oldest = parseFloat(pressureData.data[0].v);
+      const latest = parseFloat(pressureData.data[pressureData.data.length - 1].v);
+      pressure = latest.toFixed(1);
+      const diff = latest - oldest;
+      if(diff < -0.02) pressureTrend = "falling";
+      else if(diff > 0.02) pressureTrend = "rising";
+      else pressureTrend = "steady";
+    } else if(pressureData?.data?.[0]?.v) {
+      pressure = parseFloat(pressureData.data[0].v).toFixed(1);
+    }
+
+    // Calculate water level with trend
+    let waterLevel = "N/A";
+    let waterLevelTrend = "";
+    if(waterLevelData?.data?.length > 1) {
+      const oldest = parseFloat(waterLevelData.data[0].v);
+      const latest = parseFloat(waterLevelData.data[waterLevelData.data.length - 1].v);
+      waterLevel = latest.toFixed(2);
+      const diff = latest - oldest;
+      if(diff > 0.1) waterLevelTrend = "rising";
+      else if(diff < -0.1) waterLevelTrend = "falling";
+      else waterLevelTrend = "slack";
+    } else if(waterLevelData?.data?.[0]?.v) {
+      waterLevel = parseFloat(waterLevelData.data[0].v).toFixed(2);
+    }
 
     // Format tides
     let tidesHtml = "";
@@ -1642,13 +1676,21 @@ async function loadFishingConditions() {
             <div><span style="font-size:1.4rem; font-weight:600; color:var(--text);">${windSpeed}</span><span style="color:var(--muted); margin-left:4px;">mph</span></div>
             ${windDir ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:2px;">${windDir}${windGust ? ' • Gusts ' + windGust + ' mph' : ''}</div>` : ''}
           </div>
-          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
-            <div style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">📊 Pressure</div>
+          <div style="background:${pressureTrend === 'falling' ? 'rgba(47,164,185,0.1)' : 'rgba(255,255,255,0.03)'}; border:1px solid ${pressureTrend === 'falling' ? 'rgba(47,164,185,0.5)' : 'var(--border)'}; border-radius:10px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:0.8rem; color:var(--muted);">📊 Pressure</span>
+              ${pressureTrend ? `<span style="font-size:0.75rem; color:${pressureTrend === 'falling' ? 'var(--accent)' : 'var(--muted)'};">${pressureTrend === 'falling' ? '↓' : pressureTrend === 'rising' ? '↑' : '→'}</span>` : ''}
+            </div>
             <div><span style="font-size:1.4rem; font-weight:600; color:var(--text);">${pressure}</span><span style="color:var(--muted); margin-left:4px;">mb</span></div>
+            ${pressureTrend === 'falling' ? `<div style="font-size:0.75rem; color:var(--accent); margin-top:4px;">Falling ↓ Good for fishing!</div>` : ''}
           </div>
           <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
-            <div style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">🌊 Water Level</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:0.8rem; color:var(--muted);">🌊 Water Level</span>
+              ${waterLevelTrend ? `<span style="font-size:0.75rem; color:${waterLevelTrend === 'rising' ? '#6cc4a1' : waterLevelTrend === 'falling' ? 'var(--accent)' : 'var(--muted)'};">${waterLevelTrend === 'rising' ? '↑' : waterLevelTrend === 'falling' ? '↓' : '→'}</span>` : ''}
+            </div>
             <div><span style="font-size:1.4rem; font-weight:600; color:var(--text);">${waterLevel}</span><span style="color:var(--muted); margin-left:4px;">ft</span></div>
+            ${waterLevelTrend ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">${waterLevelTrend === 'rising' ? 'Rising tide' : waterLevelTrend === 'falling' ? 'Falling tide' : 'Slack tide'}</div>` : ''}
           </div>
         </div>
 
