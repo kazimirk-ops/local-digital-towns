@@ -1660,7 +1660,7 @@ async function loadFishingConditions() {
         const type = p.type === "H" ? "High" : "Low";
         const heightNum = parseFloat(p.v);
         const heightStr = (heightNum >= 0 ? "+" : "") + heightNum.toFixed(2) + " ft";
-        return `<div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:rgba(255,255,255,0.04); border-radius:10px;">
+        return `<div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:#273449; border-radius:10px;">
           <span style="width:50px; font-size:0.85rem; color:var(--muted); font-weight:500;">${type}</span>
           <span style="flex:1; text-align:center; font-weight:600; color:var(--text); font-size:1rem;">${time}</span>
           <span style="width:75px; text-align:right; font-size:0.9rem; font-weight:500; color:${heightNum >= 0 ? '#6cc4a1' : 'var(--muted)'};">${heightStr}</span>
@@ -1686,7 +1686,7 @@ async function loadFishingConditions() {
 
     // Build the dashboard HTML
     fishDash.innerHTML = `
-      <div style="background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:12px;">
+      <div style="background:#1e293b; border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:12px;">
 
         <!-- Header -->
         <div style="padding:20px 20px 16px; display:flex; justify-content:space-between; align-items:flex-start;">
@@ -1698,7 +1698,7 @@ async function loadFishingConditions() {
         </div>
 
         <!-- Fishing Score - Centered -->
-        <div style="padding:24px 20px; background:linear-gradient(135deg, rgba(47,164,185,0.12), rgba(108,196,161,0.08)); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+        <div style="padding:24px 20px; background:linear-gradient(135deg, rgba(47,164,185,0.15), rgba(30,41,59,0.95)); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
           <div style="display:flex; flex-direction:column; align-items:center; text-align:center;">
             <div style="position:relative; width:120px; height:120px;">
               <svg width="120" height="120" viewBox="0 0 120 120" style="transform:rotate(-90deg);">
@@ -1723,7 +1723,7 @@ async function loadFishingConditions() {
           <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px;">
 
             <!-- Water Temp -->
-            <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:14px;">
+            <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px;">
               <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
                 <span style="font-size:1.1rem;">🌡️</span> Water Temp
               </div>
@@ -1732,7 +1732,7 @@ async function loadFishingConditions() {
             </div>
 
             <!-- Wind -->
-            <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:14px;">
+            <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px;">
               <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
                 <span style="font-size:1.1rem;">💨</span> Wind
               </div>
@@ -1751,7 +1751,7 @@ async function loadFishingConditions() {
             </div>
 
             <!-- Water Level -->
-            <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:14px;">
+            <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px;">
               <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
                 <span style="display:flex; align-items:center; gap:8px;"><span style="font-size:1.1rem;">🌊</span> Water Level</span>
                 ${waterLevelTrend ? `<span style="font-size:1rem; color:${waterLevelTrend === 'rising' ? '#6cc4a1' : waterLevelTrend === 'falling' ? 'var(--accent)' : 'var(--muted)'};">${waterLevelTrend === 'rising' ? '↑' : waterLevelTrend === 'falling' ? '↓' : '→'}</span>` : ''}
@@ -1769,21 +1769,21 @@ async function loadFishingConditions() {
           <div style="display:flex; flex-direction:column; gap:8px;">
             ${tidesHtml}
           </div>
-          ${nextTideText ? `<div style="display:flex; align-items:center; justify-content:center; gap:10px; padding:14px; background:rgba(47,164,185,0.12); border:1px solid rgba(47,164,185,0.3); border-radius:10px; margin-top:14px; font-size:0.95rem; color:var(--text);">⏱️ ${nextTideText}</div>` : ''}
+          ${nextTideText ? `<div style="display:flex; align-items:center; justify-content:center; gap:10px; padding:14px; background:rgba(47,164,185,0.2); border:1px solid rgba(47,164,185,0.3); border-radius:10px; margin-top:14px; font-size:0.95rem; color:var(--text);">⏱️ ${nextTideText}</div>` : ''}
         </div>
 
         <!-- Community Section - Two Columns -->
         <div style="padding:0 20px 20px; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
 
           <!-- Hot Right Now -->
-          <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:16px;">
+          <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:16px;">
             <div style="font-size:0.9rem; font-weight:600; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px;">📈 Hot Right Now</div>
 
             <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:8px;">Top Species</div>
             <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;">
-              <span style="background:rgba(47,164,185,0.2); color:var(--accent); padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:500;">Redfish</span>
-              <span style="background:rgba(47,164,185,0.2); color:var(--accent); padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:500;">Snook</span>
-              <span style="background:rgba(47,164,185,0.2); color:var(--accent); padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:500;">Flounder</span>
+              <span style="background:rgba(47,164,185,0.3); color:var(--accent); padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:500;">Redfish</span>
+              <span style="background:rgba(47,164,185,0.3); color:var(--accent); padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:500;">Snook</span>
+              <span style="background:rgba(47,164,185,0.3); color:var(--accent); padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:500;">Flounder</span>
             </div>
 
             <div style="display:flex; gap:16px;">
@@ -1799,13 +1799,13 @@ async function loadFishingConditions() {
           </div>
 
           <!-- Recent Catches -->
-          <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:16px;">
+          <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:16px;">
             <div style="font-size:0.9rem; font-weight:600; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px;">📍 Recent Catches</div>
 
             <div style="display:flex; flex-direction:column; gap:10px;">
               <div style="display:flex; align-items:center; justify-content:space-between;">
                 <div style="display:flex; align-items:center; gap:10px;">
-                  <div style="width:36px; height:36px; background:rgba(47,164,185,0.2); border-radius:50%; display:flex; align-items:center; justify-content:center;">🐟</div>
+                  <div style="width:36px; height:36px; background:rgba(47,164,185,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center;">🐟</div>
                   <div>
                     <div style="font-weight:500; color:var(--text); font-size:0.9rem;">3x Redfish</div>
                     <div style="font-size:0.75rem; color:var(--muted);">Inlet • MikeAtTheInlet</div>
@@ -1816,7 +1816,7 @@ async function loadFishingConditions() {
 
               <div style="display:flex; align-items:center; justify-content:space-between;">
                 <div style="display:flex; align-items:center; gap:10px;">
-                  <div style="width:36px; height:36px; background:rgba(47,164,185,0.2); border-radius:50%; display:flex; align-items:center; justify-content:center;">🐟</div>
+                  <div style="width:36px; height:36px; background:rgba(47,164,185,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center;">🐟</div>
                   <div>
                     <div style="font-weight:500; color:var(--text); font-size:0.9rem;">1x Snook</div>
                     <div style="font-size:0.75rem; color:var(--muted);">North Jetty • CaptDave</div>
@@ -1827,7 +1827,7 @@ async function loadFishingConditions() {
 
               <div style="display:flex; align-items:center; justify-content:space-between;">
                 <div style="display:flex; align-items:center; gap:10px;">
-                  <div style="width:36px; height:36px; background:rgba(47,164,185,0.2); border-radius:50%; display:flex; align-items:center; justify-content:center;">🐟</div>
+                  <div style="width:36px; height:36px; background:rgba(47,164,185,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center;">🐟</div>
                   <div>
                     <div style="font-weight:500; color:var(--text); font-size:0.9rem;">2x Flounder</div>
                     <div style="font-size:0.75rem; color:var(--muted);">South Side • ReelDeal</div>
