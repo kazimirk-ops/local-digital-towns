@@ -360,6 +360,20 @@ async function selectChannel(id){
   const c=channels.list.find(x=>x.id==id);
   $("channelTitle").textContent=c ? `#${c.name}` : "Channel";
   $("channelMeta").textContent=c?.description || "";
+  const fishDash = document.getElementById("fishingDashboard");
+  if(fishDash) {
+    if(c && c.name === "fishing-report") {
+      fishDash.style.display = "block";
+      fishDash.innerHTML = `
+        <div style="padding:12px;">
+          <h4 style="margin:0 0 12px 0; color:var(--accent);">🎣 Sebastian Inlet Conditions</h4>
+          <div style="color:var(--muted);">Loading NOAA data...</div>
+        </div>
+      `;
+    } else {
+      fishDash.style.display = "none";
+    }
+  }
   await loadChannelMessages(id);
 }
 async function loadChannelMessages(id){
