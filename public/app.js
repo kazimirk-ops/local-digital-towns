@@ -1638,7 +1638,6 @@ async function loadFishingConditions() {
     }
 
     // Calculate next tide
-    const now = new Date();
     let nextTideText = "";
     if(tideData.predictions) {
       for(const p of tideData.predictions) {
