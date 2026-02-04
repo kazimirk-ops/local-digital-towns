@@ -1621,6 +1621,37 @@ async function loadFishingConditions() {
       waterLevel = parseFloat(waterLevelData.data[0].v).toFixed(2);
     }
 
+    // Calculate fishing score (0-100)
+    let fishingScore = 50; // base score
+    let scoreReasons = [];
+
+    // Pressure trend
+    if(pressureTrend === 'falling') { fishingScore += 15; scoreReasons.push('Falling pressure'); }
+    else if(pressureTrend === 'rising') { fishingScore -= 5; }
+
+    // Tide movement
+    if(waterLevelTrend === 'rising' || waterLevelTrend === 'falling') { fishingScore += 10; scoreReasons.push(waterLevelTrend === 'rising' ? 'Rising tide' : 'Falling tide'); }
+
+    // Water temp (ideal: 65-78°F for most species)
+    const waterTempNum = parseFloat(waterTemp);
+    if(waterTempNum >= 65 && waterTempNum <= 78) { fishingScore += 10; scoreReasons.push('Good water temp'); }
+    else if(waterTempNum < 60 || waterTempNum > 85) { fishingScore -= 10; }
+
+    // Wind (calm is better)
+    const windSpeedNum = parseFloat(windSpeed);
+    if(windSpeedNum < 10) { fishingScore += 10; scoreReasons.push('Light wind'); }
+    else if(windSpeedNum > 20) { fishingScore -= 15; scoreReasons.push('High wind'); }
+    else if(windSpeedNum > 15) { fishingScore -= 5; }
+
+    // Clamp score
+    fishingScore = Math.max(0, Math.min(100, fishingScore));
+
+    // Determine verdict
+    let fishingVerdict = 'Poor';
+    if(fishingScore >= 80) fishingVerdict = 'Excellent';
+    else if(fishingScore >= 65) fishingVerdict = 'Good';
+    else if(fishingScore >= 45) fishingVerdict = 'Fair';
+
     // Format tides
     let tidesHtml = "";
     if(tideData.predictions && tideData.predictions.length > 0) {
@@ -1663,6 +1694,25 @@ async function loadFishingConditions() {
             <div>
               <h4 style="margin:0; color:var(--accent); font-size:1.1rem; font-weight:600;">🎣 Water Conditions</h4>
               <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">Sebastian Inlet • Port Canaveral Station</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fishing Score -->
+        <div style="padding:16px; border-bottom:1px solid var(--border); background:linear-gradient(135deg, rgba(47,164,185,0.1), rgba(108,196,161,0.05));">
+          <div style="display:flex; align-items:center; gap:20px;">
+            <div style="position:relative; width:80px; height:80px;">
+              <svg width="80" height="80" viewBox="0 0 80 80" style="transform:rotate(-90deg);">
+                <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6"/>
+                <circle cx="40" cy="40" r="34" fill="none" stroke="${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${2 * Math.PI * 34}" stroke-dashoffset="${2 * Math.PI * 34 * (1 - fishingScore / 100)}"/>
+              </svg>
+              <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                <span style="font-size:1.5rem; font-weight:700; color:${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'};">${fishingScore}</span>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:1.1rem; font-weight:600; color:${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'};">${fishingVerdict} Conditions</div>
+              <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">${scoreReasons.length > 0 ? scoreReasons.join(', ') : 'Average conditions'}</div>
             </div>
           </div>
         </div>
