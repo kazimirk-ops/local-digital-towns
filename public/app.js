@@ -1655,48 +1655,71 @@ async function loadFishingConditions() {
 
     // Build the dashboard HTML
     fishDash.innerHTML = `
-      <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
-          <div>
-            <h4 style="margin:0; color:var(--accent); font-size:1.1rem;">🎣 Water Conditions</h4>
-            <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">Sebastian Inlet • Port Canaveral Station</div>
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:12px;">
+
+        <!-- Header -->
+        <div style="padding:16px; border-bottom:1px solid var(--border);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <h4 style="margin:0; color:var(--accent); font-size:1.1rem; font-weight:600;">🎣 Water Conditions</h4>
+              <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">Sebastian Inlet • Port Canaveral Station</div>
+            </div>
           </div>
         </div>
 
-        <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:10px;">Current Conditions</div>
+        <!-- Conditions Grid -->
+        <div style="padding:16px;">
+          <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:12px; font-weight:600;">Current Conditions</div>
+          <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;">
 
-        <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-bottom:16px;">
-          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
-            <div style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">🌡️ Water Temp</div>
-            <div><span style="font-size:1.4rem; font-weight:600; color:var(--text);">${waterTemp}</span><span style="color:var(--muted); margin-left:4px;">°F</span></div>
-            ${airTemp !== "N/A" ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">Air: ${airTemp}°F</div>` : ''}
-          </div>
-          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
-            <div style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">💨 Wind</div>
-            <div><span style="font-size:1.4rem; font-weight:600; color:var(--text);">${windSpeed}</span><span style="color:var(--muted); margin-left:4px;">mph</span></div>
-            ${windDir ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:2px;">${windDir}${windGust ? ' • Gusts ' + windGust + ' mph' : ''}</div>` : ''}
-          </div>
-          <div style="background:${pressureTrend === 'falling' ? 'rgba(47,164,185,0.1)' : 'rgba(255,255,255,0.03)'}; border:1px solid ${pressureTrend === 'falling' ? 'rgba(47,164,185,0.5)' : 'var(--border)'}; border-radius:10px; padding:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-              <span style="font-size:0.8rem; color:var(--muted);">📊 Pressure</span>
-              ${pressureTrend ? `<span style="font-size:0.75rem; color:${pressureTrend === 'falling' ? 'var(--accent)' : 'var(--muted)'};">${pressureTrend === 'falling' ? '↓' : pressureTrend === 'rising' ? '↑' : '→'}</span>` : ''}
+            <!-- Water Temp -->
+            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
+              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                <span style="font-size:1rem;">🌡️</span> Water Temp
+              </div>
+              <div style="font-size:1.5rem; font-weight:600; color:var(--text);">${waterTemp}<span style="font-size:0.85rem; color:var(--muted); margin-left:2px;">°F</span></div>
+              ${airTemp !== "N/A" ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">Air: ${airTemp}°F</div>` : ''}
             </div>
-            <div><span style="font-size:1.4rem; font-weight:600; color:var(--text);">${pressure}</span><span style="color:var(--muted); margin-left:4px;">mb</span></div>
-            ${pressureTrend === 'falling' ? `<div style="font-size:0.75rem; color:var(--accent); margin-top:4px;">Falling ↓ Good for fishing!</div>` : ''}
-          </div>
-          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-              <span style="font-size:0.8rem; color:var(--muted);">🌊 Water Level</span>
-              ${waterLevelTrend ? `<span style="font-size:0.75rem; color:${waterLevelTrend === 'rising' ? '#6cc4a1' : waterLevelTrend === 'falling' ? 'var(--accent)' : 'var(--muted)'};">${waterLevelTrend === 'rising' ? '↑' : waterLevelTrend === 'falling' ? '↓' : '→'}</span>` : ''}
+
+            <!-- Wind -->
+            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
+              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                <span style="font-size:1rem;">💨</span> Wind
+              </div>
+              <div style="font-size:1.5rem; font-weight:600; color:var(--text);">${windSpeed}<span style="font-size:0.85rem; color:var(--muted); margin-left:2px;">mph</span></div>
+              ${windDir ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">${windDir}${windGust ? ' • Gusts ' + windGust + ' mph' : ''}</div>` : ''}
             </div>
-            <div><span style="font-size:1.4rem; font-weight:600; color:var(--text);">${waterLevel}</span><span style="color:var(--muted); margin-left:4px;">ft</span></div>
-            ${waterLevelTrend ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">${waterLevelTrend === 'rising' ? 'Rising tide' : waterLevelTrend === 'falling' ? 'Falling tide' : 'Slack tide'}</div>` : ''}
+
+            <!-- Pressure -->
+            <div style="background:${pressureTrend === 'falling' ? 'rgba(47,164,185,0.15)' : 'rgba(255,255,255,0.03)'}; border:1px solid ${pressureTrend === 'falling' ? 'rgba(47,164,185,0.4)' : 'var(--border)'}; border-radius:10px; padding:12px;">
+              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+                <span style="display:flex; align-items:center; gap:6px;"><span style="font-size:1rem;">📊</span> Pressure</span>
+                ${pressureTrend ? `<span style="color:${pressureTrend === 'falling' ? 'var(--accent)' : 'var(--muted)'};">${pressureTrend === 'falling' ? '↓' : pressureTrend === 'rising' ? '↑' : '→'}</span>` : ''}
+              </div>
+              <div style="font-size:1.5rem; font-weight:600; color:var(--text);">${pressure}<span style="font-size:0.85rem; color:var(--muted); margin-left:2px;">mb</span></div>
+              ${pressureTrend === 'falling' ? `<div style="font-size:0.75rem; color:var(--accent); margin-top:4px;">Falling ↓ Good for fishing!</div>` : ''}
+            </div>
+
+            <!-- Water Level -->
+            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
+              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+                <span style="display:flex; align-items:center; gap:6px;"><span style="font-size:1rem;">🌊</span> Water Level</span>
+                ${waterLevelTrend ? `<span style="color:${waterLevelTrend === 'rising' ? '#6cc4a1' : waterLevelTrend === 'falling' ? 'var(--accent)' : 'var(--muted)'};">${waterLevelTrend === 'rising' ? '↑' : waterLevelTrend === 'falling' ? '↓' : '→'}</span>` : ''}
+              </div>
+              <div style="font-size:1.5rem; font-weight:600; color:var(--text);">${waterLevel}<span style="font-size:0.85rem; color:var(--muted); margin-left:2px;">ft</span></div>
+              ${waterLevelTrend ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">${waterLevelTrend === 'rising' ? 'Rising tide' : waterLevelTrend === 'falling' ? 'Falling tide' : 'Slack tide'}</div>` : ''}
+            </div>
+
           </div>
         </div>
 
-        <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:10px;">Today's Tides</div>
-        ${tidesHtml}
-        ${nextTideText ? `<div style="display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; background:rgba(47,164,185,0.1); border:1px solid rgba(47,164,185,0.3); border-radius:8px; margin-top:10px; font-size:0.9rem; color:var(--text);">⏱️ ${nextTideText}</div>` : ''}
+        <!-- Tides Section -->
+        <div style="padding:0 16px 16px;">
+          <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:12px; font-weight:600;">Today's Tides</div>
+          ${tidesHtml}
+          ${nextTideText ? `<div style="display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; background:rgba(47,164,185,0.1); border:1px solid rgba(47,164,185,0.3); border-radius:8px; margin-top:10px; font-size:0.9rem; color:var(--text);">⏱️ ${nextTideText}</div>` : ''}
+        </div>
+
       </div>
     `;
   } catch(err) {
