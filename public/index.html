@@ -57,6 +57,7 @@
             <button class="navItem" data-view="marketplace"><span class="navIcon">🛍️</span><span>Marketplace</span></button>
             <!-- HIDDEN: <button class="navItem" data-view="localbiz"><span class="navIcon">🏪</span><span>Sebastian Store or Service Signup</span></button> -->
             <button class="navItem" data-view="channels"><span class="navIcon">📺</span><span>Channels</span></button>
+            <button class="navItem" data-view="pulse"><span class="navIcon">📊</span><span>Sebastian Pulse</span></button>
             <button class="navItem" data-view="events"><span class="navIcon">🗓️</span><span>Events</span></button>
             <!-- HIDDEN: <button class="navItem" data-view="archive"><span class="navIcon">🗃️</span><span>Archive</span></button> -->
             <button class="navItem" data-view="support"><span class="navIcon">🐛</span><span>Support / Report Bug</span></button>
@@ -666,6 +667,64 @@
                   </div>
                 </div>
               </aside>
+            </div>
+          </section>
+
+          <section class="view" data-view="pulse">
+            <div class="panel">
+              <div class="panelHead">
+                <div>
+                  <div class="panelTitle">📊 The Sebastian Pulse</div>
+                  <div class="panelSub">Live community dashboards</div>
+                </div>
+              </div>
+              <div style="padding:12px; display:flex; flex-direction:column; gap:10px;">
+
+                <!-- Water Conditions -->
+                <div class="pulse-card" onclick="selectChannelByName('fishing-report'); setView('channels');" style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; cursor:pointer;">
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:1.8rem;">🎣</span>
+                    <div>
+                      <div style="font-size:1rem; font-weight:600; color:var(--text);">Water Conditions</div>
+                      <div style="font-size:0.8rem; color:var(--muted);">Tides, water temp, fishing score, pressure trends</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Safety Pulse -->
+                <div class="pulse-card" onclick="selectChannelByName('safety'); setView('channels');" style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; cursor:pointer;">
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:1.8rem;">🛡️</span>
+                    <div>
+                      <div style="font-size:1rem; font-weight:600; color:var(--text);">Safety Pulse</div>
+                      <div style="font-size:0.8rem; color:var(--muted);">Emergency contacts, alerts, crime stats</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Beach Pulse - Coming Soon -->
+                <div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; opacity:0.5;">
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:1.8rem;">🏖️</span>
+                    <div>
+                      <div style="font-size:1rem; font-weight:600; color:var(--text);">Beach Pulse</div>
+                      <div style="font-size:0.8rem; color:var(--muted);">Coming soon — UV, rip currents, water quality</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Events - Coming Soon -->
+                <div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; opacity:0.5;">
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:1.8rem;">📅</span>
+                    <div>
+                      <div style="font-size:1rem; font-weight:600; color:var(--text);">Events Calendar</div>
+                      <div style="font-size:0.8rem; color:var(--muted);">Coming soon — Local events and happenings</div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
             </div>
           </section>
 
