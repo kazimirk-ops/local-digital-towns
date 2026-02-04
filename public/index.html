@@ -14,6 +14,9 @@
     <link rel="stylesheet" href="/ui-kit.css?v=1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <link rel="stylesheet" href="/ui_v2.css?v=4">
+    <style>
+      .pulse-card:hover { background: rgba(47,164,185,0.1) !important; border-color: rgba(47,164,185,0.3) !important; }
+    </style>
   </head>
   <body data-town="sebastian" class="theme-light">
     <div id="welcomeBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:99999; background:linear-gradient(135deg,#0f1923,#1a2332); border-bottom:2px solid #2dd4bf; padding:16px 20px; text-align:center; font-family:system-ui,sans-serif;">
@@ -125,6 +128,60 @@
                     <img class="mapImage" src="/images/sebastian-ui-map.png" alt="Sebastian Map" />
                     <div id="map"></div>
                   </div>
+                </div>
+              </div>
+
+              <!-- Sebastian Pulse At A Glance -->
+              <div class="sidebar-section" style="margin-top:16px;">
+                <div class="section-header" onclick="togglePulseSection()" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding:8px 0;">
+                  <span style="font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); font-weight:600;">📊 The Sebastian Pulse</span>
+                  <span id="pulseToggle" style="color:var(--muted);">▼</span>
+                </div>
+                <div id="pulseSection" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+
+                  <!-- Water Conditions Card -->
+                  <div class="pulse-card" onclick="selectChannelByName('fishing-report')" style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; cursor:pointer; transition:background 0.2s;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <span style="font-size:1.5rem;">🎣</span>
+                      <div>
+                        <div style="font-size:0.9rem; font-weight:600; color:var(--text);">Water Conditions</div>
+                        <div style="font-size:0.75rem; color:var(--muted);">Tides, temp, fishing score</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Safety Pulse Card -->
+                  <div class="pulse-card" onclick="selectChannelByName('safety')" style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; cursor:pointer; transition:background 0.2s;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <span style="font-size:1.5rem;">🛡️</span>
+                      <div>
+                        <div style="font-size:0.9rem; font-weight:600; color:var(--text);">Safety Pulse</div>
+                        <div style="font-size:0.75rem; color:var(--muted);">Emergency contacts, alerts</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Coming Soon placeholders -->
+                  <div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; opacity:0.5;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <span style="font-size:1.5rem;">🏖️</span>
+                      <div>
+                        <div style="font-size:0.9rem; font-weight:600; color:var(--text);">Beach Pulse</div>
+                        <div style="font-size:0.75rem; color:var(--muted);">Coming soon</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; opacity:0.5;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <span style="font-size:1.5rem;">📅</span>
+                      <div>
+                        <div style="font-size:0.9rem; font-weight:600; color:var(--text);">Events</div>
+                        <div style="font-size:0.75rem; color:var(--muted);">Coming soon</div>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
 

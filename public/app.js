@@ -1,5 +1,24 @@
 const $ = (id) => document.getElementById(id);
 
+function togglePulseSection() {
+  const section = document.getElementById('pulseSection');
+  const toggle = document.getElementById('pulseToggle');
+  if(section.style.display === 'none') {
+    section.style.display = 'flex';
+    toggle.textContent = '▼';
+  } else {
+    section.style.display = 'none';
+    toggle.textContent = '▶';
+  }
+}
+
+function selectChannelByName(name) {
+  const channel = channels.list.find(c => c.name === name);
+  if(channel) {
+    selectChannel(channel.id);
+  }
+}
+
 let state = { districtId:null, placeId:null, place:null, conversationId:null, viewer:"buyer", trustTier:0, trustTierLabel:"Visitor" };
 let market = { listings:[], auctions:[], categories:[], districts:[], selectedCategory:null };
 let channels = { list:[], messages:[], selectedId:null, replyToId:null, pendingImageUrl:"" };
