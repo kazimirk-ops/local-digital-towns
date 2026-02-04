@@ -1670,6 +1670,28 @@ function loadSafetyPulse() {
         </div>
       </div>
 
+      <!-- Stats -->
+      <div style="padding:0 20px 20px;">
+        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:14px; font-weight:600;">Sebastian Area • Last 30 Days</div>
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px;">
+          <div style="background:#273449; border-radius:10px; padding:14px; text-align:center;">
+            <div style="font-size:1.5rem; font-weight:700; color:#e2e8f0;">12</div>
+            <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-top:4px;">Incidents</div>
+            <div style="font-size:0.75rem; color:#6cc4a1; margin-top:6px;">↓ 8% vs last month</div>
+          </div>
+          <div style="background:#273449; border-radius:10px; padding:14px; text-align:center;">
+            <div style="font-size:1.5rem; font-weight:700; color:#e2e8f0;">0</div>
+            <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-top:4px;">Violent</div>
+            <div style="font-size:0.75rem; color:#6cc4a1; margin-top:6px;">Same</div>
+          </div>
+          <div style="background:#273449; border-radius:10px; padding:14px; text-align:center;">
+            <div style="font-size:1.5rem; font-weight:700; color:#e2e8f0;">4</div>
+            <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-top:4px;">Theft</div>
+            <div style="font-size:0.75rem; color:#6cc4a1; margin-top:6px;">↓ 2</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Crime Map -->
       <div style="padding:0 20px 20px;">
         <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:14px; font-weight:600;">Crime Map</div>
