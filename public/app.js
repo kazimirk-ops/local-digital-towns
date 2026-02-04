@@ -369,6 +369,15 @@ async function selectChannel(id){
       fishDash.style.display = "none";
     }
   }
+  const safetyDash = document.getElementById("safetyDashboard");
+  if(safetyDash) {
+    if(c && c.name === "safety") {
+      safetyDash.style.display = "block";
+      loadSafetyPulse();
+    } else {
+      safetyDash.style.display = "none";
+    }
+  }
   await loadChannelMessages(id);
 }
 async function loadChannelMessages(id){
@@ -1542,6 +1551,114 @@ function getClientSessionId() {
 const clientSessionId = getClientSessionId();
 
 function debug(msg){ $("debug").textContent = msg || ""; }
+
+function loadSafetyPulse() {
+  const safetyDash = document.getElementById("safetyDashboard");
+  if(!safetyDash) return;
+
+  safetyDash.innerHTML = `
+    <div style="background:#1e293b; border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:12px;">
+
+      <!-- Header -->
+      <div style="padding:20px 20px 16px; display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <h4 style="margin:0; color:#ef4444; font-size:1.25rem; font-weight:700; display:flex; align-items:center; gap:8px;">🛡️ Safety Pulse</h4>
+          <div style="font-size:0.85rem; color:#94a3b8; margin-top:6px;">Sebastian, FL • Community Safety</div>
+        </div>
+      </div>
+
+      <!-- Emergency Contacts -->
+      <div style="padding:0 20px 20px;">
+        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:14px; font-weight:600;">Emergency Contacts</div>
+        <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px;">
+
+          <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer;" onclick="window.open('tel:911')">
+            <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.1rem;">🚨</span> Emergency
+            </div>
+            <div style="font-size:1.5rem; font-weight:700; color:#ef4444;">911</div>
+            <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">Police, Fire, Medical</div>
+          </div>
+
+          <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer;" onclick="window.open('tel:7723882068')">
+            <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.1rem;">🏛️</span> Non-Emergency
+            </div>
+            <div style="font-size:1.25rem; font-weight:700; color:#e2e8f0;">(772) 388-2068</div>
+            <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">IRC Sheriff's Office</div>
+          </div>
+
+          <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer;" onclick="window.open('tel:7725892024')">
+            <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.1rem;">🐊</span> Wildlife
+            </div>
+            <div style="font-size:1.25rem; font-weight:700; color:#e2e8f0;">(772) 589-2024</div>
+            <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">FWC • Gator/Snake</div>
+          </div>
+
+          <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer;" onclick="window.open('tel:8002271922')">
+            <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.1rem;">⚡</span> Power Outage
+            </div>
+            <div style="font-size:1.25rem; font-weight:700; color:#e2e8f0;">(800) 227-1922</div>
+            <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">FPL Outage Line</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div style="padding:0 20px 20px;">
+        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:14px; font-weight:600;">Resources</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+
+          <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:16px;">
+            <div style="font-size:0.9rem; font-weight:600; color:#e2e8f0; margin-bottom:12px; display:flex; align-items:center; gap:8px;">🌀 Hurricane Prep</div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="font-size:0.85rem; color:#2fa4b9; cursor:pointer;" onclick="window.open('https://www.ircgov.com/EmergencyServices/EmergencyManagement/', '_blank')">IRC Emergency Management →</div>
+              <div style="font-size:0.85rem; color:#2fa4b9; cursor:pointer;" onclick="window.open('https://www.weather.gov/mlb/', '_blank')">NWS Melbourne Forecast →</div>
+              <div style="font-size:0.85rem; color:#2fa4b9; cursor:pointer;" onclick="window.open('https://www.ircgov.com/EmergencyServices/EmergencyManagement/Shelters.htm', '_blank')">Shelter Locations →</div>
+            </div>
+          </div>
+
+          <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:16px;">
+            <div style="font-size:0.9rem; font-weight:600; color:#e2e8f0; margin-bottom:12px; display:flex; align-items:center; gap:8px;">🏥 Health & Support</div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="font-size:0.85rem; color:#2fa4b9; cursor:pointer;" onclick="window.open('tel:988')">988 Suicide & Crisis Lifeline →</div>
+              <div style="font-size:0.85rem; color:#2fa4b9; cursor:pointer;" onclick="window.open('https://www.211palmbeach.org/', '_blank')">211 Community Resources →</div>
+              <div style="font-size:0.85rem; color:#2fa4b9; cursor:pointer;" onclick="window.open('tel:8007991234')">Poison Control (800) 799-1234 →</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Safety Tips -->
+      <div style="padding:0 20px 20px;">
+        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:14px; font-weight:600;">Local Safety Tips</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="background:#273449; border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:12px;">
+            <span style="font-size:1.2rem;">🐊</span>
+            <div style="font-size:0.85rem; color:#e2e8f0;">Stay 15+ feet from water edges at dusk — gators are most active at twilight.</div>
+          </div>
+          <div style="background:#273449; border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:12px;">
+            <span style="font-size:1.2rem;">🌊</span>
+            <div style="font-size:0.85rem; color:#e2e8f0;">Check rip current conditions before swimming at the inlet or beach.</div>
+          </div>
+          <div style="background:#273449; border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:12px;">
+            <span style="font-size:1.2rem;">🐍</span>
+            <div style="font-size:0.85rem; color:#e2e8f0;">Watch for Eastern Diamondbacks on trails — give snakes space, don't approach.</div>
+          </div>
+          <div style="background:#273449; border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:12px;">
+            <span style="font-size:1.2rem;">⛈️</span>
+            <div style="font-size:0.85rem; color:#e2e8f0;">Lightning capital of the US — get inside when you hear thunder.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  `;
+}
 
 async function loadFishingConditions() {
   const fishDash = document.getElementById("fishingDashboard");
