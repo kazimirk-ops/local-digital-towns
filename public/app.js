@@ -1585,34 +1585,34 @@ function loadSafetyPulse() {
       <div style="padding:20px;">
         <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:14px; font-weight:600;">Emergency Contacts</div>
         <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px;">
-          <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer;" onclick="window.open('tel:911')">
+          <a href="tel:911" style="text-decoration:none; color:inherit; display:block; background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer;">
             <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
               <span style="font-size:1.1rem;">🚨</span> Emergency
             </div>
             <div style="font-size:1.5rem; font-weight:700; color:#ef4444;">911</div>
             <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">Police, Fire, Medical</div>
-          </div>
-          <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer;" onclick="window.open('tel:7725696700')">
+          </a>
+          <a href="tel:7725696700" style="text-decoration:none; color:inherit; display:block; background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer;">
             <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
               <span style="font-size:1.1rem;">🏛️</span> Non-Emergency
             </div>
             <div style="font-size:1.25rem; font-weight:700; color:#e2e8f0;">(772) 569-6700</div>
             <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">IRC Sheriff's Office</div>
-          </div>
-          <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer;" onclick="window.open('tel:8884044fwc')">
+          </a>
+          <a href="tel:8884043922" style="text-decoration:none; color:inherit; display:block; background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer;">
             <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
               <span style="font-size:1.1rem;">🐊</span> Wildlife
             </div>
             <div style="font-size:1.25rem; font-weight:700; color:#e2e8f0;">(888) 404-3922</div>
             <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">FWC • Gator/Snake</div>
-          </div>
-          <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer;" onclick="window.open('tel:8002271922')">
+          </a>
+          <a href="tel:8002271922" style="text-decoration:none; color:inherit; display:block; background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer;">
             <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
               <span style="font-size:1.1rem;">⚡</span> Power Outage
             </div>
             <div style="font-size:1.25rem; font-weight:700; color:#e2e8f0;">(800) 227-1922</div>
             <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">FPL Outage Line</div>
-          </div>
+          </a>
         </div>
       </div>
 
@@ -1658,7 +1658,7 @@ function loadSafetyPulse() {
           <div style="font-size:2rem; margin-bottom:12px;">🗺️</div>
           <div style="font-size:0.9rem; color:#e2e8f0; margin-bottom:4px;">View recent incidents in Indian River County</div>
           <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:16px;">Data from CrimeMapping.com</div>
-          <button onclick="window.open('https://www.crimemapping.com/map/fl/indianrivercounty', '_blank')" style="background:#2fa4b9; color:white; border:none; padding:12px 24px; border-radius:8px; font-size:0.9rem; font-weight:500; cursor:pointer;">Open Crime Map →</button>
+          <a href="https://www.crimemapping.com/map/fl/indianrivercounty" target="_blank" style="display:inline-block; background:#2fa4b9; color:white; border:none; padding:12px 24px; border-radius:8px; font-size:0.9rem; font-weight:500; cursor:pointer; text-decoration:none;">Open Crime Map →</a>
         </div>
       </div>
 
@@ -1669,17 +1669,17 @@ function loadSafetyPulse() {
           <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:16px;">
             <div style="font-size:0.9rem; font-weight:600; color:#e2e8f0; margin-bottom:12px; display:flex; align-items:center; gap:8px;">🌀 Hurricane Prep</div>
             <div style="display:flex; flex-direction:column; gap:8px;">
-              <div style="font-size:0.85rem; color:#2fa4b9; cursor:pointer;" onclick="window.open('https://www.ircgov.com/EmergencyServices/EmergencyManagement/', '_blank')">IRC Emergency Management →</div>
-              <div style="font-size:0.85rem; color:#2fa4b9; cursor:pointer;" onclick="window.open('https://www.weather.gov/mlb/', '_blank')">NWS Melbourne Forecast →</div>
-              <div style="font-size:0.85rem; color:#2fa4b9; cursor:pointer;" onclick="window.open('https://www.ircgov.com/EmergencyServices/EmergencyManagement/Shelters.htm', '_blank')">Shelter Locations →</div>
+              <a href="https://www.ircgov.com/EmergencyServices/EmergencyManagement/" target="_blank" style="display:block; font-size:0.85rem; color:#2fa4b9; cursor:pointer; text-decoration:none;">IRC Emergency Management →</a>
+              <a href="https://www.weather.gov/mlb/" target="_blank" style="display:block; font-size:0.85rem; color:#2fa4b9; cursor:pointer; text-decoration:none;">NWS Melbourne Forecast →</a>
+              <a href="https://www.ircgov.com/EmergencyServices/EmergencyManagement/Shelters.htm" target="_blank" style="display:block; font-size:0.85rem; color:#2fa4b9; cursor:pointer; text-decoration:none;">Shelter Locations →</a>
             </div>
           </div>
           <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:16px;">
             <div style="font-size:0.9rem; font-weight:600; color:#e2e8f0; margin-bottom:12px; display:flex; align-items:center; gap:8px;">🏥 Health & Support</div>
             <div style="display:flex; flex-direction:column; gap:8px;">
-              <div style="font-size:0.85rem; color:#2fa4b9; cursor:pointer;" onclick="window.open('tel:988')">988 Suicide & Crisis Lifeline →</div>
-              <div style="font-size:0.85rem; color:#2fa4b9; cursor:pointer;" onclick="window.open('https://www.211palmbeach.org/', '_blank')">211 Community Resources →</div>
-              <div style="font-size:0.85rem; color:#2fa4b9; cursor:pointer;" onclick="window.open('tel:8002221222')">Poison Control (800) 222-1222 →</div>
+              <a href="tel:988" style="display:block; font-size:0.85rem; color:#2fa4b9; cursor:pointer; text-decoration:none;">988 Suicide & Crisis Lifeline →</a>
+              <a href="https://www.211palmbeach.org/" target="_blank" style="display:block; font-size:0.85rem; color:#2fa4b9; cursor:pointer; text-decoration:none;">211 Community Resources →</a>
+              <a href="tel:8002221222" style="display:block; font-size:0.85rem; color:#2fa4b9; cursor:pointer; text-decoration:none;">Poison Control (800) 222-1222 →</a>
             </div>
           </div>
         </div>
