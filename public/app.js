@@ -16,49 +16,45 @@ function loadPulseDashboards() {
   const fishTarget = document.getElementById('pulseFishingDash');
   const safetyTarget = document.getElementById('pulseSafetyDash');
 
-  if(fishTarget) {
-    // Render fishing dashboard directly into pulse view
-    fishTarget.innerHTML = '';
-    const tempFish = document.createElement('div');
-    tempFish.id = 'tempFishDash';
-    fishTarget.appendChild(tempFish);
+  // Load fishing dashboard directly into pulse view
+  if(fishTarget && !fishTarget.innerHTML.trim()) {
+    // Temporarily swap the target
+    const realFishDash = document.getElementById('fishingDashboard');
+    const originalId = realFishDash ? realFishDash.id : null;
 
-    // Call the existing function but target our element
-    const originalFishDash = document.getElementById('fishingDashboard');
-    if(originalFishDash && originalFishDash.innerHTML) {
-      fishTarget.innerHTML = originalFishDash.innerHTML;
-    } else {
-      // Load fresh
-      const oldFishDash = document.getElementById('fishingDashboard');
-      const oldDisplay = oldFishDash ? oldFishDash.style.display : 'none';
-      if(oldFishDash) oldFishDash.style.display = 'block';
-      loadFishingConditions();
-      setTimeout(() => {
-        if(oldFishDash) {
-          fishTarget.innerHTML = oldFishDash.innerHTML;
-          oldFishDash.style.display = oldDisplay;
-        }
-      }, 1500);
+    if(realFishDash) {
+      fishTarget.id = 'fishingDashboard';
+      realFishDash.id = 'fishingDashboard_backup';
     }
+
+    loadFishingConditions();
+
+    // Restore IDs after a delay
+    setTimeout(() => {
+      if(realFishDash) {
+        fishTarget.id = 'pulseFishingDash';
+        realFishDash.id = 'fishingDashboard';
+      }
+    }, 2000);
   }
 
-  if(safetyTarget) {
-    // Render safety dashboard directly into pulse view
-    const originalSafetyDash = document.getElementById('safetyDashboard');
-    if(originalSafetyDash && originalSafetyDash.innerHTML) {
-      safetyTarget.innerHTML = originalSafetyDash.innerHTML;
-    } else {
-      const oldSafetyDash = document.getElementById('safetyDashboard');
-      const oldDisplay = oldSafetyDash ? oldSafetyDash.style.display : 'none';
-      if(oldSafetyDash) oldSafetyDash.style.display = 'block';
-      loadSafetyPulse();
-      setTimeout(() => {
-        if(oldSafetyDash) {
-          safetyTarget.innerHTML = oldSafetyDash.innerHTML;
-          oldSafetyDash.style.display = oldDisplay;
-        }
-      }, 100);
+  // Load safety dashboard directly into pulse view
+  if(safetyTarget && !safetyTarget.innerHTML.trim()) {
+    const realSafetyDash = document.getElementById('safetyDashboard');
+
+    if(realSafetyDash) {
+      safetyTarget.id = 'safetyDashboard';
+      realSafetyDash.id = 'safetyDashboard_backup';
     }
+
+    loadSafetyPulse();
+
+    setTimeout(() => {
+      if(realSafetyDash) {
+        safetyTarget.id = 'pulseSafetyDash';
+        realSafetyDash.id = 'safetyDashboard';
+      }
+    }, 100);
   }
 }
 
