@@ -1563,17 +1563,17 @@ async function loadFishingConditions() {
       tidesHtml = tideData.predictions.slice(0, 4).map(p => {
         const time = new Date(p.t).toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit"});
         const type = p.type === "H" ? "High" : "Low";
-        return `<div style="display:flex; justify-content:space-between; padding:4px 0;"><span>${type}</span><span>${time}</span><span>${p.v} ft</span></div>`;
+        return `<div style="display:flex; justify-content:space-between; padding:4px 0; color:var(--text);"><span>${type}</span><span>${time}</span><span>${p.v} ft</span></div>`;
       }).join("");
     } else {
       tidesHtml = "<div style='color:var(--muted);'>Tide data unavailable</div>";
     }
 
     fishDash.innerHTML = `
-      <div style="padding:12px;">
-        <h4 style="margin:0 0 12px 0; color:var(--accent);">🎣 Sebastian Inlet Conditions</h4>
-        <div style="font-size:0.85rem;">
-          <div style="font-weight:600; margin-bottom:8px;">Today's Tides (Port Canaveral)</div>
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
+        <h4 style="margin:0 0 12px 0; color:var(--accent); font-size:1rem;">🎣 Sebastian Inlet Conditions</h4>
+        <div style="font-size:0.85rem; color:var(--text);">
+          <div style="font-weight:600; margin-bottom:8px; color:var(--text);">Today's Tides (Port Canaveral)</div>
           ${tidesHtml}
         </div>
       </div>
@@ -1581,8 +1581,8 @@ async function loadFishingConditions() {
   } catch(err) {
     console.error("Failed to load fishing conditions:", err);
     fishDash.innerHTML = `
-      <div style="padding:12px;">
-        <h4 style="margin:0 0 12px 0; color:var(--accent);">🎣 Sebastian Inlet Conditions</h4>
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
+        <h4 style="margin:0 0 12px 0; color:var(--accent); font-size:1rem;">🎣 Sebastian Inlet Conditions</h4>
         <div style="color:var(--muted);">Unable to load conditions</div>
       </div>
     `;
