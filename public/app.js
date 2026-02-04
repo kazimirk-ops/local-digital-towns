@@ -1551,7 +1551,7 @@ async function loadFishingConditions() {
   fishDash.innerHTML = `
     <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;">
       <h4 style="margin:0 0 12px 0; color:var(--accent); font-size:1rem;">🎣 Water Conditions</h4>
-      <div style="color:var(--muted);">Loading NOAA data...</div>
+      <div style="color:#94a3b8;">Loading NOAA data...</div>
     </div>
   `;
 
@@ -1661,9 +1661,9 @@ async function loadFishingConditions() {
         const heightNum = parseFloat(p.v);
         const heightStr = (heightNum >= 0 ? "+" : "") + heightNum.toFixed(2) + " ft";
         return `<div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:#273449; border-radius:10px;">
-          <span style="width:50px; font-size:0.85rem; color:var(--muted); font-weight:500;">${type}</span>
-          <span style="flex:1; text-align:center; font-weight:600; color:var(--text); font-size:1rem;">${time}</span>
-          <span style="width:75px; text-align:right; font-size:0.9rem; font-weight:500; color:${heightNum >= 0 ? '#6cc4a1' : 'var(--muted)'};">${heightStr}</span>
+          <span style="width:50px; font-size:0.85rem; color:#94a3b8; font-weight:500;">${type}</span>
+          <span style="flex:1; text-align:center; font-weight:600; color:#e2e8f0; font-size:1rem;">${time}</span>
+          <span style="width:75px; text-align:right; font-size:0.9rem; font-weight:500; color:${heightNum >= 0 ? '#6cc4a1' : '#94a3b8'};">${heightStr}</span>
         </div>`;
       }).join("");
     }
@@ -1692,9 +1692,9 @@ async function loadFishingConditions() {
         <div style="padding:20px 20px 16px; display:flex; justify-content:space-between; align-items:flex-start;">
           <div>
             <h4 style="margin:0; color:var(--accent); font-size:1.25rem; font-weight:700; display:flex; align-items:center; gap:8px;">🎣 Water Conditions</h4>
-            <div style="font-size:0.85rem; color:var(--muted); margin-top:6px;">Sebastian Inlet • Port Canaveral</div>
+            <div style="font-size:0.85rem; color:#94a3b8; margin-top:6px;">Sebastian Inlet • Port Canaveral</div>
           </div>
-          <button onclick="loadFishingConditions()" style="background:transparent; border:1px solid var(--border); color:var(--muted); padding:8px; border-radius:8px; cursor:pointer; font-size:1rem;">🔄</button>
+          <button onclick="loadFishingConditions()" style="background:transparent; border:1px solid var(--border); color:#94a3b8; padding:8px; border-radius:8px; cursor:pointer; font-size:1rem;">🔄</button>
         </div>
 
         <!-- Fishing Score - Centered -->
@@ -1707,57 +1707,57 @@ async function loadFishingConditions() {
               </svg>
               <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
                 <span style="font-size:2.5rem; font-weight:700; color:${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'};">${fishingScore}</span>
-                <span style="font-size:0.75rem; color:var(--muted);">/ 100</span>
+                <span style="font-size:0.75rem; color:#94a3b8;">/ 100</span>
               </div>
             </div>
             <div style="margin-top:16px;">
               <div style="font-size:1.25rem; font-weight:600; color:${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'};">${fishingVerdict} Conditions</div>
-              <div style="font-size:0.85rem; color:var(--muted); margin-top:6px;">${scoreReasons.length > 0 ? scoreReasons.join(', ') : 'Average conditions'}</div>
+              <div style="font-size:0.85rem; color:#94a3b8; margin-top:6px;">${scoreReasons.length > 0 ? scoreReasons.join(', ') : 'Average conditions'}</div>
             </div>
           </div>
         </div>
 
         <!-- Conditions Grid -->
         <div style="padding:20px;">
-          <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:14px; font-weight:600;">Current Conditions</div>
+          <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:14px; font-weight:600;">Current Conditions</div>
           <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px;">
 
             <!-- Water Temp -->
             <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px;">
-              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+              <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
                 <span style="font-size:1.1rem;">🌡️</span> Water Temp
               </div>
-              <div style="font-size:1.75rem; font-weight:700; color:var(--text);">${waterTemp}<span style="font-size:0.9rem; color:var(--muted); font-weight:400; margin-left:2px;">°F</span></div>
-              ${airTemp !== "N/A" ? `<div style="font-size:0.8rem; color:var(--muted); margin-top:6px;">Air: ${airTemp}°F</div>` : ''}
+              <div style="font-size:1.75rem; font-weight:700; color:#e2e8f0;">${waterTemp}<span style="font-size:0.9rem; color:#94a3b8; font-weight:400; margin-left:2px;">°F</span></div>
+              ${airTemp !== "N/A" ? `<div style="font-size:0.8rem; color:#94a3b8; margin-top:6px;">Air: ${airTemp}°F</div>` : ''}
             </div>
 
             <!-- Wind -->
             <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px;">
-              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+              <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
                 <span style="font-size:1.1rem;">💨</span> Wind
               </div>
-              <div style="font-size:1.75rem; font-weight:700; color:var(--text);">${windSpeed}<span style="font-size:0.9rem; color:var(--muted); font-weight:400; margin-left:2px;">mph</span></div>
-              ${windDir ? `<div style="font-size:0.8rem; color:var(--muted); margin-top:6px;">${windDir}${windGust ? ' • Gusts ' + windGust + ' mph' : ''}</div>` : ''}
+              <div style="font-size:1.75rem; font-weight:700; color:#e2e8f0;">${windSpeed}<span style="font-size:0.9rem; color:#94a3b8; font-weight:400; margin-left:2px;">mph</span></div>
+              ${windDir ? `<div style="font-size:0.8rem; color:#94a3b8; margin-top:6px;">${windDir}${windGust ? ' • Gusts ' + windGust + ' mph' : ''}</div>` : ''}
             </div>
 
             <!-- Pressure -->
             <div style="background:${pressureTrend === 'falling' ? 'rgba(47,164,185,0.15)' : 'rgba(255,255,255,0.04)'}; border:1px solid ${pressureTrend === 'falling' ? 'rgba(47,164,185,0.4)' : 'var(--border)'}; border-radius:12px; padding:14px;">
-              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+              <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
                 <span style="display:flex; align-items:center; gap:8px;"><span style="font-size:1.1rem;">📊</span> Pressure</span>
-                ${pressureTrend ? `<span style="font-size:1rem; color:${pressureTrend === 'falling' ? 'var(--accent)' : 'var(--muted)'};">${pressureTrend === 'falling' ? '↓' : pressureTrend === 'rising' ? '↑' : '→'}</span>` : ''}
+                ${pressureTrend ? `<span style="font-size:1rem; color:${pressureTrend === 'falling' ? 'var(--accent)' : '#94a3b8'};">${pressureTrend === 'falling' ? '↓' : pressureTrend === 'rising' ? '↑' : '→'}</span>` : ''}
               </div>
-              <div style="font-size:1.75rem; font-weight:700; color:var(--text);">${pressure}<span style="font-size:0.9rem; color:var(--muted); font-weight:400; margin-left:2px;">mb</span></div>
+              <div style="font-size:1.75rem; font-weight:700; color:#e2e8f0;">${pressure}<span style="font-size:0.9rem; color:#94a3b8; font-weight:400; margin-left:2px;">mb</span></div>
               ${pressureTrend === 'falling' ? `<div style="font-size:0.8rem; color:var(--accent); margin-top:6px;">Falling ↓ Good for fishing!</div>` : ''}
             </div>
 
             <!-- Water Level -->
             <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px;">
-              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+              <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
                 <span style="display:flex; align-items:center; gap:8px;"><span style="font-size:1.1rem;">🌊</span> Water Level</span>
-                ${waterLevelTrend ? `<span style="font-size:1rem; color:${waterLevelTrend === 'rising' ? '#6cc4a1' : waterLevelTrend === 'falling' ? 'var(--accent)' : 'var(--muted)'};">${waterLevelTrend === 'rising' ? '↑' : waterLevelTrend === 'falling' ? '↓' : '→'}</span>` : ''}
+                ${waterLevelTrend ? `<span style="font-size:1rem; color:${waterLevelTrend === 'rising' ? '#6cc4a1' : waterLevelTrend === 'falling' ? 'var(--accent)' : '#94a3b8'};">${waterLevelTrend === 'rising' ? '↑' : waterLevelTrend === 'falling' ? '↓' : '→'}</span>` : ''}
               </div>
-              <div style="font-size:1.75rem; font-weight:700; color:var(--text);">${waterLevel}<span style="font-size:0.9rem; color:var(--muted); font-weight:400; margin-left:2px;">ft</span></div>
-              ${waterLevelTrend ? `<div style="font-size:0.8rem; color:var(--muted); margin-top:6px;">${waterLevelTrend === 'rising' ? 'Rising tide' : waterLevelTrend === 'falling' ? 'Falling tide' : 'Slack tide'}</div>` : ''}
+              <div style="font-size:1.75rem; font-weight:700; color:#e2e8f0;">${waterLevel}<span style="font-size:0.9rem; color:#94a3b8; font-weight:400; margin-left:2px;">ft</span></div>
+              ${waterLevelTrend ? `<div style="font-size:0.8rem; color:#94a3b8; margin-top:6px;">${waterLevelTrend === 'rising' ? 'Rising tide' : waterLevelTrend === 'falling' ? 'Falling tide' : 'Slack tide'}</div>` : ''}
             </div>
 
           </div>
@@ -1765,11 +1765,11 @@ async function loadFishingConditions() {
 
         <!-- Tides Section -->
         <div style="padding:0 20px 20px;">
-          <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:14px; font-weight:600;">Today's Tides</div>
+          <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:14px; font-weight:600;">Today's Tides</div>
           <div style="display:flex; flex-direction:column; gap:8px;">
             ${tidesHtml}
           </div>
-          ${nextTideText ? `<div style="display:flex; align-items:center; justify-content:center; gap:10px; padding:14px; background:rgba(47,164,185,0.2); border:1px solid rgba(47,164,185,0.3); border-radius:10px; margin-top:14px; font-size:0.95rem; color:var(--text);">⏱️ ${nextTideText}</div>` : ''}
+          ${nextTideText ? `<div style="display:flex; align-items:center; justify-content:center; gap:10px; padding:14px; background:rgba(47,164,185,0.2); border:1px solid rgba(47,164,185,0.3); border-radius:10px; margin-top:14px; font-size:0.95rem; color:#e2e8f0;">⏱️ ${nextTideText}</div>` : ''}
         </div>
 
         <!-- Community Section - Two Columns -->
@@ -1777,9 +1777,9 @@ async function loadFishingConditions() {
 
           <!-- Hot Right Now -->
           <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:16px;">
-            <div style="font-size:0.9rem; font-weight:600; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px;">📈 Hot Right Now</div>
+            <div style="font-size:0.9rem; font-weight:600; color:#e2e8f0; margin-bottom:14px; display:flex; align-items:center; gap:8px;">📈 Hot Right Now</div>
 
-            <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:8px;">Top Species</div>
+            <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:#94a3b8; margin-bottom:8px;">Top Species</div>
             <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;">
               <span style="background:rgba(47,164,185,0.3); color:var(--accent); padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:500;">Redfish</span>
               <span style="background:rgba(47,164,185,0.3); color:var(--accent); padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:500;">Snook</span>
@@ -1788,11 +1788,11 @@ async function loadFishingConditions() {
 
             <div style="display:flex; gap:16px;">
               <div style="flex:1;">
-                <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted);">Best Bait</div>
-                <div style="font-weight:500; color:var(--text); margin-top:4px;">Live shrimp</div>
+                <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:#94a3b8;">Best Bait</div>
+                <div style="font-weight:500; color:#e2e8f0; margin-top:4px;">Live shrimp</div>
               </div>
               <div style="flex:1;">
-                <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted);">Water Clarity</div>
+                <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:#94a3b8;">Water Clarity</div>
                 <div style="font-weight:500; color:#6cc4a1; margin-top:4px;">Clear</div>
               </div>
             </div>
@@ -1800,40 +1800,40 @@ async function loadFishingConditions() {
 
           <!-- Recent Catches -->
           <div style="background:#273449; border:1px solid var(--border); border-radius:12px; padding:16px;">
-            <div style="font-size:0.9rem; font-weight:600; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px;">📍 Recent Catches</div>
+            <div style="font-size:0.9rem; font-weight:600; color:#e2e8f0; margin-bottom:14px; display:flex; align-items:center; gap:8px;">📍 Recent Catches</div>
 
             <div style="display:flex; flex-direction:column; gap:10px;">
               <div style="display:flex; align-items:center; justify-content:space-between;">
                 <div style="display:flex; align-items:center; gap:10px;">
                   <div style="width:36px; height:36px; background:rgba(47,164,185,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center;">🐟</div>
                   <div>
-                    <div style="font-weight:500; color:var(--text); font-size:0.9rem;">3x Redfish</div>
-                    <div style="font-size:0.75rem; color:var(--muted);">Inlet • MikeAtTheInlet</div>
+                    <div style="font-weight:500; color:#e2e8f0; font-size:0.9rem;">3x Redfish</div>
+                    <div style="font-size:0.75rem; color:#94a3b8;">Inlet • MikeAtTheInlet</div>
                   </div>
                 </div>
-                <span style="font-size:0.7rem; color:var(--muted);">2h ago</span>
+                <span style="font-size:0.7rem; color:#94a3b8;">2h ago</span>
               </div>
 
               <div style="display:flex; align-items:center; justify-content:space-between;">
                 <div style="display:flex; align-items:center; gap:10px;">
                   <div style="width:36px; height:36px; background:rgba(47,164,185,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center;">🐟</div>
                   <div>
-                    <div style="font-weight:500; color:var(--text); font-size:0.9rem;">1x Snook</div>
-                    <div style="font-size:0.75rem; color:var(--muted);">North Jetty • CaptDave</div>
+                    <div style="font-weight:500; color:#e2e8f0; font-size:0.9rem;">1x Snook</div>
+                    <div style="font-size:0.75rem; color:#94a3b8;">North Jetty • CaptDave</div>
                   </div>
                 </div>
-                <span style="font-size:0.7rem; color:var(--muted);">4h ago</span>
+                <span style="font-size:0.7rem; color:#94a3b8;">4h ago</span>
               </div>
 
               <div style="display:flex; align-items:center; justify-content:space-between;">
                 <div style="display:flex; align-items:center; gap:10px;">
                   <div style="width:36px; height:36px; background:rgba(47,164,185,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center;">🐟</div>
                   <div>
-                    <div style="font-weight:500; color:var(--text); font-size:0.9rem;">2x Flounder</div>
-                    <div style="font-size:0.75rem; color:var(--muted);">South Side • ReelDeal</div>
+                    <div style="font-weight:500; color:#e2e8f0; font-size:0.9rem;">2x Flounder</div>
+                    <div style="font-size:0.75rem; color:#94a3b8;">South Side • ReelDeal</div>
                   </div>
                 </div>
-                <span style="font-size:0.7rem; color:var(--muted);">5h ago</span>
+                <span style="font-size:0.7rem; color:#94a3b8;">5h ago</span>
               </div>
             </div>
 
@@ -1847,9 +1847,9 @@ async function loadFishingConditions() {
   } catch(err) {
     console.error("Failed to load fishing conditions:", err);
     fishDash.innerHTML = `
-      <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;">
+      <div style="background:#1e293b; border:1px solid var(--border); border-radius:12px; padding:16px;">
         <h4 style="margin:0 0 12px 0; color:var(--accent); font-size:1rem;">🎣 Water Conditions</h4>
-        <div style="color:var(--muted);">Unable to load conditions</div>
+        <div style="color:#94a3b8;">Unable to load conditions</div>
       </div>
     `;
   }
