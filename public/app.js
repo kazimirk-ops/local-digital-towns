@@ -1660,10 +1660,10 @@ async function loadFishingConditions() {
         const type = p.type === "H" ? "High" : "Low";
         const heightNum = parseFloat(p.v);
         const heightStr = (heightNum >= 0 ? "+" : "") + heightNum.toFixed(2) + " ft";
-        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:rgba(255,255,255,0.03); border-radius:8px; margin-bottom:6px;">
-          <span style="width:50px; font-size:0.85rem; color:var(--muted);">${type}</span>
-          <span style="flex:1; text-align:center; font-weight:500; color:var(--text);">${time}</span>
-          <span style="width:70px; text-align:right; font-size:0.85rem; color:${heightNum >= 0 ? 'var(--accent)' : 'var(--muted)'};">${heightStr}</span>
+        return `<div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:rgba(255,255,255,0.04); border-radius:10px;">
+          <span style="width:50px; font-size:0.85rem; color:var(--muted); font-weight:500;">${type}</span>
+          <span style="flex:1; text-align:center; font-weight:600; color:var(--text); font-size:1rem;">${time}</span>
+          <span style="width:75px; text-align:right; font-size:0.9rem; font-weight:500; color:${heightNum >= 0 ? '#6cc4a1' : 'var(--muted)'};">${heightStr}</span>
         </div>`;
       }).join("");
     }
@@ -1686,88 +1686,90 @@ async function loadFishingConditions() {
 
     // Build the dashboard HTML
     fishDash.innerHTML = `
-      <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:12px;">
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:12px;">
 
         <!-- Header -->
-        <div style="padding:16px; border-bottom:1px solid var(--border);">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-            <div>
-              <h4 style="margin:0; color:var(--accent); font-size:1.1rem; font-weight:600;">🎣 Water Conditions</h4>
-              <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">Sebastian Inlet • Port Canaveral Station</div>
-            </div>
+        <div style="padding:20px 20px 16px; display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <h4 style="margin:0; color:var(--accent); font-size:1.25rem; font-weight:700; display:flex; align-items:center; gap:8px;">🎣 Water Conditions</h4>
+            <div style="font-size:0.85rem; color:var(--muted); margin-top:6px;">Sebastian Inlet • Port Canaveral</div>
           </div>
+          <button onclick="loadFishingConditions()" style="background:transparent; border:1px solid var(--border); color:var(--muted); padding:8px; border-radius:8px; cursor:pointer; font-size:1rem;">🔄</button>
         </div>
 
         <!-- Fishing Score -->
-        <div style="padding:16px; border-bottom:1px solid var(--border); background:linear-gradient(135deg, rgba(47,164,185,0.1), rgba(108,196,161,0.05));">
-          <div style="display:flex; align-items:center; gap:20px;">
-            <div style="position:relative; width:80px; height:80px;">
-              <svg width="80" height="80" viewBox="0 0 80 80" style="transform:rotate(-90deg);">
-                <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6"/>
-                <circle cx="40" cy="40" r="34" fill="none" stroke="${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${2 * Math.PI * 34}" stroke-dashoffset="${2 * Math.PI * 34 * (1 - fishingScore / 100)}"/>
+        <div style="padding:20px; background:linear-gradient(135deg, rgba(47,164,185,0.12), rgba(108,196,161,0.08)); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:24px;">
+            <div style="position:relative; width:100px; height:100px; flex-shrink:0;">
+              <svg width="100" height="100" viewBox="0 0 100 100" style="transform:rotate(-90deg);">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${2 * Math.PI * 42}" stroke-dashoffset="${2 * Math.PI * 42 * (1 - fishingScore / 100)}" style="transition:stroke-dashoffset 0.5s ease;"/>
               </svg>
               <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-                <span style="font-size:1.5rem; font-weight:700; color:${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'};">${fishingScore}</span>
+                <span style="font-size:2rem; font-weight:700; color:${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'};">${fishingScore}</span>
+                <span style="font-size:0.7rem; color:var(--muted);">/ 100</span>
               </div>
             </div>
             <div>
-              <div style="font-size:1.1rem; font-weight:600; color:${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'};">${fishingVerdict} Conditions</div>
-              <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">${scoreReasons.length > 0 ? scoreReasons.join(', ') : 'Average conditions'}</div>
+              <div style="font-size:1.2rem; font-weight:600; color:${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'};">${fishingVerdict} Conditions</div>
+              <div style="font-size:0.85rem; color:var(--muted); margin-top:6px; line-height:1.4;">${scoreReasons.length > 0 ? scoreReasons.join(', ') : 'Average conditions'}</div>
             </div>
           </div>
         </div>
 
         <!-- Conditions Grid -->
-        <div style="padding:16px;">
-          <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:12px; font-weight:600;">Current Conditions</div>
-          <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;">
+        <div style="padding:20px;">
+          <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:14px; font-weight:600;">Current Conditions</div>
+          <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px;">
 
             <!-- Water Temp -->
-            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
-              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                <span style="font-size:1rem;">🌡️</span> Water Temp
+            <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:14px;">
+              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:1.1rem;">🌡️</span> Water Temp
               </div>
-              <div style="font-size:1.5rem; font-weight:600; color:var(--text);">${waterTemp}<span style="font-size:0.85rem; color:var(--muted); margin-left:2px;">°F</span></div>
-              ${airTemp !== "N/A" ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">Air: ${airTemp}°F</div>` : ''}
+              <div style="font-size:1.75rem; font-weight:700; color:var(--text);">${waterTemp}<span style="font-size:0.9rem; color:var(--muted); font-weight:400; margin-left:2px;">°F</span></div>
+              ${airTemp !== "N/A" ? `<div style="font-size:0.8rem; color:var(--muted); margin-top:6px;">Air: ${airTemp}°F</div>` : ''}
             </div>
 
             <!-- Wind -->
-            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
-              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                <span style="font-size:1rem;">💨</span> Wind
+            <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:14px;">
+              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:1.1rem;">💨</span> Wind
               </div>
-              <div style="font-size:1.5rem; font-weight:600; color:var(--text);">${windSpeed}<span style="font-size:0.85rem; color:var(--muted); margin-left:2px;">mph</span></div>
-              ${windDir ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">${windDir}${windGust ? ' • Gusts ' + windGust + ' mph' : ''}</div>` : ''}
+              <div style="font-size:1.75rem; font-weight:700; color:var(--text);">${windSpeed}<span style="font-size:0.9rem; color:var(--muted); font-weight:400; margin-left:2px;">mph</span></div>
+              ${windDir ? `<div style="font-size:0.8rem; color:var(--muted); margin-top:6px;">${windDir}${windGust ? ' • Gusts ' + windGust + ' mph' : ''}</div>` : ''}
             </div>
 
             <!-- Pressure -->
-            <div style="background:${pressureTrend === 'falling' ? 'rgba(47,164,185,0.15)' : 'rgba(255,255,255,0.03)'}; border:1px solid ${pressureTrend === 'falling' ? 'rgba(47,164,185,0.4)' : 'var(--border)'}; border-radius:10px; padding:12px;">
-              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
-                <span style="display:flex; align-items:center; gap:6px;"><span style="font-size:1rem;">📊</span> Pressure</span>
-                ${pressureTrend ? `<span style="color:${pressureTrend === 'falling' ? 'var(--accent)' : 'var(--muted)'};">${pressureTrend === 'falling' ? '↓' : pressureTrend === 'rising' ? '↑' : '→'}</span>` : ''}
+            <div style="background:${pressureTrend === 'falling' ? 'rgba(47,164,185,0.15)' : 'rgba(255,255,255,0.04)'}; border:1px solid ${pressureTrend === 'falling' ? 'rgba(47,164,185,0.4)' : 'var(--border)'}; border-radius:12px; padding:14px;">
+              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+                <span style="display:flex; align-items:center; gap:8px;"><span style="font-size:1.1rem;">📊</span> Pressure</span>
+                ${pressureTrend ? `<span style="font-size:1rem; color:${pressureTrend === 'falling' ? 'var(--accent)' : 'var(--muted)'};">${pressureTrend === 'falling' ? '↓' : pressureTrend === 'rising' ? '↑' : '→'}</span>` : ''}
               </div>
-              <div style="font-size:1.5rem; font-weight:600; color:var(--text);">${pressure}<span style="font-size:0.85rem; color:var(--muted); margin-left:2px;">mb</span></div>
-              ${pressureTrend === 'falling' ? `<div style="font-size:0.75rem; color:var(--accent); margin-top:4px;">Falling ↓ Good for fishing!</div>` : ''}
+              <div style="font-size:1.75rem; font-weight:700; color:var(--text);">${pressure}<span style="font-size:0.9rem; color:var(--muted); font-weight:400; margin-left:2px;">mb</span></div>
+              ${pressureTrend === 'falling' ? `<div style="font-size:0.8rem; color:var(--accent); margin-top:6px;">Falling ↓ Good for fishing!</div>` : ''}
             </div>
 
             <!-- Water Level -->
-            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
-              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
-                <span style="display:flex; align-items:center; gap:6px;"><span style="font-size:1rem;">🌊</span> Water Level</span>
-                ${waterLevelTrend ? `<span style="color:${waterLevelTrend === 'rising' ? '#6cc4a1' : waterLevelTrend === 'falling' ? 'var(--accent)' : 'var(--muted)'};">${waterLevelTrend === 'rising' ? '↑' : waterLevelTrend === 'falling' ? '↓' : '→'}</span>` : ''}
+            <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:14px;">
+              <div style="font-size:0.75rem; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+                <span style="display:flex; align-items:center; gap:8px;"><span style="font-size:1.1rem;">🌊</span> Water Level</span>
+                ${waterLevelTrend ? `<span style="font-size:1rem; color:${waterLevelTrend === 'rising' ? '#6cc4a1' : waterLevelTrend === 'falling' ? 'var(--accent)' : 'var(--muted)'};">${waterLevelTrend === 'rising' ? '↑' : waterLevelTrend === 'falling' ? '↓' : '→'}</span>` : ''}
               </div>
-              <div style="font-size:1.5rem; font-weight:600; color:var(--text);">${waterLevel}<span style="font-size:0.85rem; color:var(--muted); margin-left:2px;">ft</span></div>
-              ${waterLevelTrend ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">${waterLevelTrend === 'rising' ? 'Rising tide' : waterLevelTrend === 'falling' ? 'Falling tide' : 'Slack tide'}</div>` : ''}
+              <div style="font-size:1.75rem; font-weight:700; color:var(--text);">${waterLevel}<span style="font-size:0.9rem; color:var(--muted); font-weight:400; margin-left:2px;">ft</span></div>
+              ${waterLevelTrend ? `<div style="font-size:0.8rem; color:var(--muted); margin-top:6px;">${waterLevelTrend === 'rising' ? 'Rising tide' : waterLevelTrend === 'falling' ? 'Falling tide' : 'Slack tide'}</div>` : ''}
             </div>
 
           </div>
         </div>
 
         <!-- Tides Section -->
-        <div style="padding:0 16px 16px;">
-          <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:12px; font-weight:600;">Today's Tides</div>
-          ${tidesHtml}
-          ${nextTideText ? `<div style="display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; background:rgba(47,164,185,0.1); border:1px solid rgba(47,164,185,0.3); border-radius:8px; margin-top:10px; font-size:0.9rem; color:var(--text);">⏱️ ${nextTideText}</div>` : ''}
+        <div style="padding:0 20px 20px;">
+          <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:14px; font-weight:600;">Today's Tides</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${tidesHtml}
+          </div>
+          ${nextTideText ? `<div style="display:flex; align-items:center; justify-content:center; gap:10px; padding:14px; background:rgba(47,164,185,0.12); border:1px solid rgba(47,164,185,0.3); border-radius:10px; margin-top:14px; font-size:0.95rem; color:var(--text);">⏱️ ${nextTideText}</div>` : ''}
         </div>
 
       </div>
