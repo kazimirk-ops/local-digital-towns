@@ -617,59 +617,14 @@
           </section>
 
           <section class="view" data-view="pulse">
-            <div class="panel">
-              <div class="panelHead">
-                <div>
-                  <div class="panelTitle">📊 The Sebastian Pulse</div>
-                  <div class="panelSub">Live community dashboards</div>
-                </div>
+            <div style="padding:20px; max-height:calc(100vh - 80px); overflow-y:auto;">
+              <div style="margin-bottom:16px;">
+                <h2 style="margin:0; font-size:1.5rem; font-weight:700; color:var(--text);">📊 The Sebastian Pulse</h2>
+                <p style="margin:4px 0 0; font-size:0.9rem; color:var(--muted);">Live community dashboards at a glance</p>
               </div>
-              <div style="padding:12px; display:flex; flex-direction:column; gap:10px;">
-
-                <!-- Water Conditions -->
-                <div class="pulse-card" onclick="selectChannelByName('fishing-report'); setView('channels');" style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; cursor:pointer;">
-                  <div style="display:flex; align-items:center; gap:12px;">
-                    <span style="font-size:1.8rem;">🎣</span>
-                    <div>
-                      <div style="font-size:1rem; font-weight:600; color:var(--text);">Water Conditions</div>
-                      <div style="font-size:0.8rem; color:var(--muted);">Tides, water temp, fishing score, pressure trends</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Safety Pulse -->
-                <div class="pulse-card" onclick="selectChannelByName('safety'); setView('channels');" style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; cursor:pointer;">
-                  <div style="display:flex; align-items:center; gap:12px;">
-                    <span style="font-size:1.8rem;">🛡️</span>
-                    <div>
-                      <div style="font-size:1rem; font-weight:600; color:var(--text);">Safety Pulse</div>
-                      <div style="font-size:0.8rem; color:var(--muted);">Emergency contacts, alerts, crime stats</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Beach Pulse - Coming Soon -->
-                <div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; opacity:0.5;">
-                  <div style="display:flex; align-items:center; gap:12px;">
-                    <span style="font-size:1.8rem;">🏖️</span>
-                    <div>
-                      <div style="font-size:1rem; font-weight:600; color:var(--text);">Beach Pulse</div>
-                      <div style="font-size:0.8rem; color:var(--muted);">Coming soon — UV, rip currents, water quality</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Events - Coming Soon -->
-                <div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; opacity:0.5;">
-                  <div style="display:flex; align-items:center; gap:12px;">
-                    <span style="font-size:1.8rem;">📅</span>
-                    <div>
-                      <div style="font-size:1rem; font-weight:600; color:var(--text);">Events Calendar</div>
-                      <div style="font-size:0.8rem; color:var(--muted);">Coming soon — Local events and happenings</div>
-                    </div>
-                  </div>
-                </div>
-
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 1fr)); gap:20px;">
+                <div id="pulseFishingDash"></div>
+                <div id="pulseSafetyDash"></div>
               </div>
             </div>
           </section>

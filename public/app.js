@@ -12,6 +12,56 @@ function togglePulseSection() {
   }
 }
 
+function loadPulseDashboards() {
+  const fishTarget = document.getElementById('pulseFishingDash');
+  const safetyTarget = document.getElementById('pulseSafetyDash');
+
+  if(fishTarget) {
+    // Render fishing dashboard directly into pulse view
+    fishTarget.innerHTML = '';
+    const tempFish = document.createElement('div');
+    tempFish.id = 'tempFishDash';
+    fishTarget.appendChild(tempFish);
+
+    // Call the existing function but target our element
+    const originalFishDash = document.getElementById('fishingDashboard');
+    if(originalFishDash && originalFishDash.innerHTML) {
+      fishTarget.innerHTML = originalFishDash.innerHTML;
+    } else {
+      // Load fresh
+      const oldFishDash = document.getElementById('fishingDashboard');
+      const oldDisplay = oldFishDash ? oldFishDash.style.display : 'none';
+      if(oldFishDash) oldFishDash.style.display = 'block';
+      loadFishingConditions();
+      setTimeout(() => {
+        if(oldFishDash) {
+          fishTarget.innerHTML = oldFishDash.innerHTML;
+          oldFishDash.style.display = oldDisplay;
+        }
+      }, 1500);
+    }
+  }
+
+  if(safetyTarget) {
+    // Render safety dashboard directly into pulse view
+    const originalSafetyDash = document.getElementById('safetyDashboard');
+    if(originalSafetyDash && originalSafetyDash.innerHTML) {
+      safetyTarget.innerHTML = originalSafetyDash.innerHTML;
+    } else {
+      const oldSafetyDash = document.getElementById('safetyDashboard');
+      const oldDisplay = oldSafetyDash ? oldSafetyDash.style.display : 'none';
+      if(oldSafetyDash) oldSafetyDash.style.display = 'block';
+      loadSafetyPulse();
+      setTimeout(() => {
+        if(oldSafetyDash) {
+          safetyTarget.innerHTML = oldSafetyDash.innerHTML;
+          oldSafetyDash.style.display = oldDisplay;
+        }
+      }, 100);
+    }
+  }
+}
+
 function selectChannelByName(name) {
   const channel = channels.list.find(c => c.name === name);
   if(channel) {
@@ -313,6 +363,7 @@ function bindRouter(){
       const view=btn.getAttribute("data-view")||"map";
       location.hash=view;
       setView(view);
+      if(btn.dataset.view === 'pulse') setTimeout(loadPulseDashboards, 50);
     };
   });
   window.addEventListener("hashchange",()=>setView(getRouteView()));
