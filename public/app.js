@@ -1547,42 +1547,121 @@ async function loadFishingConditions() {
   const fishDash = document.getElementById("fishingDashboard");
   if(!fishDash) return;
 
+  // Show loading state
+  fishDash.innerHTML = `
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;">
+      <h4 style="margin:0 0 12px 0; color:var(--accent); font-size:1rem;">🎣 Water Conditions</h4>
+      <div style="color:var(--muted);">Loading NOAA data...</div>
+    </div>
+  `;
+
   try {
-    // NOAA Station 8721604 = Trident Pier, Port Canaveral (closest to Sebastian Inlet)
     const stationId = "8721604";
     const baseUrl = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter";
 
-    // Fetch today's tide predictions
-    const tideUrl = `${baseUrl}?date=today&station=${stationId}&product=predictions&datum=MLLW&time_zone=lst_ldt&units=english&interval=hilo&format=json`;
-    const tideRes = await fetch(tideUrl);
-    const tideData = await tideRes.json();
+    // Fetch multiple products in parallel
+    const [tideRes, waterTempRes, airTempRes, windRes, pressureRes, waterLevelRes] = await Promise.all([
+      fetch(`${baseUrl}?date=today&station=${stationId}&product=predictions&datum=MLLW&time_zone=lst_ldt&units=english&interval=hilo&format=json`),
+      fetch(`${baseUrl}?date=latest&station=${stationId}&product=water_temperature&units=english&time_zone=lst_ldt&format=json`),
+      fetch(`${baseUrl}?date=latest&station=${stationId}&product=air_temperature&units=english&time_zone=lst_ldt&format=json`),
+      fetch(`${baseUrl}?date=latest&station=${stationId}&product=wind&units=english&time_zone=lst_ldt&format=json`),
+      fetch(`${baseUrl}?date=latest&station=${stationId}&product=air_pressure&units=english&time_zone=lst_ldt&format=json`),
+      fetch(`${baseUrl}?date=latest&station=${stationId}&product=water_level&datum=MLLW&units=english&time_zone=lst_ldt&format=json`)
+    ]);
 
-    // Format tide predictions
+    const [tideData, waterTempData, airTempData, windData, pressureData, waterLevelData] = await Promise.all([
+      tideRes.json(),
+      waterTempRes.json(),
+      airTempRes.json(),
+      windRes.json(),
+      pressureRes.json(),
+      waterLevelRes.json()
+    ]);
+
+    // Extract values (with fallbacks)
+    const waterTemp = waterTempData?.data?.[0]?.v || "N/A";
+    const airTemp = airTempData?.data?.[0]?.v || "N/A";
+    const windSpeed = windData?.data?.[0]?.s || "N/A";
+    const windDir = windData?.data?.[0]?.dr || "";
+    const windGust = windData?.data?.[0]?.g || "";
+    const pressure = pressureData?.data?.[0]?.v || "N/A";
+    const waterLevel = waterLevelData?.data?.[0]?.v || "N/A";
+
+    // Format tides
     let tidesHtml = "";
     if(tideData.predictions && tideData.predictions.length > 0) {
       tidesHtml = tideData.predictions.slice(0, 4).map(p => {
         const time = new Date(p.t).toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit"});
         const type = p.type === "H" ? "High" : "Low";
-        return `<div style="display:flex; justify-content:space-between; padding:4px 0; color:var(--text);"><span>${type}</span><span>${time}</span><span>${p.v} ft</span></div>`;
+        const heightNum = parseFloat(p.v);
+        const heightStr = (heightNum >= 0 ? "+" : "") + heightNum.toFixed(2) + " ft";
+        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:rgba(255,255,255,0.03); border-radius:8px; margin-bottom:6px;">
+          <span style="width:50px; font-size:0.85rem; color:var(--muted);">${type}</span>
+          <span style="flex:1; text-align:center; font-weight:500; color:var(--text);">${time}</span>
+          <span style="width:70px; text-align:right; font-size:0.85rem; color:${heightNum >= 0 ? 'var(--accent)' : 'var(--muted)'};">${heightStr}</span>
+        </div>`;
       }).join("");
-    } else {
-      tidesHtml = "<div style='color:var(--muted);'>Tide data unavailable</div>";
     }
 
+    // Calculate next tide
+    const now = new Date();
+    let nextTideText = "";
+    if(tideData.predictions) {
+      for(const p of tideData.predictions) {
+        const tideTime = new Date(p.t);
+        if(tideTime > now) {
+          const diffMs = tideTime - now;
+          const diffHrs = Math.floor(diffMs / 3600000);
+          const diffMins = Math.floor((diffMs % 3600000) / 60000);
+          const type = p.type === "H" ? "High" : "Low";
+          nextTideText = `Next: <strong>${type} tide</strong> in <strong style="color:var(--accent);">${diffHrs}h ${diffMins}m</strong>`;
+          break;
+        }
+      }
+    }
+
+    // Build the dashboard HTML
     fishDash.innerHTML = `
-      <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
-        <h4 style="margin:0 0 12px 0; color:var(--accent); font-size:1rem;">🎣 Sebastian Inlet Conditions</h4>
-        <div style="font-size:0.85rem; color:var(--text);">
-          <div style="font-weight:600; margin-bottom:8px; color:var(--text);">Today's Tides (Port Canaveral)</div>
-          ${tidesHtml}
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+          <div>
+            <h4 style="margin:0; color:var(--accent); font-size:1.1rem;">🎣 Water Conditions</h4>
+            <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">Sebastian Inlet • Port Canaveral Station</div>
+          </div>
         </div>
+
+        <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:10px;">Current Conditions</div>
+
+        <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-bottom:16px;">
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
+            <div style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">🌡️ Water Temp</div>
+            <div><span style="font-size:1.4rem; font-weight:600; color:var(--text);">${waterTemp}</span><span style="color:var(--muted); margin-left:4px;">°F</span></div>
+          </div>
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
+            <div style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">💨 Wind</div>
+            <div><span style="font-size:1.4rem; font-weight:600; color:var(--text);">${windSpeed}</span><span style="color:var(--muted); margin-left:4px;">mph</span></div>
+            ${windDir ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:2px;">${windDir}${windGust ? ' • Gusts ' + windGust + ' mph' : ''}</div>` : ''}
+          </div>
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
+            <div style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">📊 Pressure</div>
+            <div><span style="font-size:1.4rem; font-weight:600; color:var(--text);">${pressure}</span><span style="color:var(--muted); margin-left:4px;">mb</span></div>
+          </div>
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
+            <div style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">🌊 Water Level</div>
+            <div><span style="font-size:1.4rem; font-weight:600; color:var(--text);">${waterLevel}</span><span style="color:var(--muted); margin-left:4px;">ft</span></div>
+          </div>
+        </div>
+
+        <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:10px;">Today's Tides</div>
+        ${tidesHtml}
+        ${nextTideText ? `<div style="display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; background:rgba(47,164,185,0.1); border:1px solid rgba(47,164,185,0.3); border-radius:8px; margin-top:10px; font-size:0.9rem; color:var(--text);">⏱️ ${nextTideText}</div>` : ''}
       </div>
     `;
   } catch(err) {
     console.error("Failed to load fishing conditions:", err);
     fishDash.innerHTML = `
-      <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
-        <h4 style="margin:0 0 12px 0; color:var(--accent); font-size:1rem;">🎣 Sebastian Inlet Conditions</h4>
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;">
+        <h4 style="margin:0 0 12px 0; color:var(--accent); font-size:1rem;">🎣 Water Conditions</h4>
         <div style="color:var(--muted);">Unable to load conditions</div>
       </div>
     `;
