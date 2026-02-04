@@ -4286,12 +4286,12 @@ app.post("/places/:id/listings", async (req, res) =>{
   const ctx=await data.getTownContext(1, u);
   const user=await data.getUserById(u);
   const listingGate = trust.can(user, ctx, "listing_create");
-  if(!listingGate.ok) return res.status(403).json({error:"Listing creation requires Sebastian Resident trust"});
+  if(!listingGate.ok) return res.status(403).json({error:"Listing creation requires tier 1+"});
   const pid=Number(req.params.id);
   const listingType=(req.body?.listingType||"item").toString();
   if(listingType === "auction"){
     const auctionGate = trust.can(user, ctx, "auction_host");
-    if(!auctionGate.ok) return res.status(403).json({error:"Auction hosting requires Local Business trust"});
+    if(!auctionGate.ok) return res.status(403).json({error:"Auction hosting requires tier 1+"});
   }
   const exchangeType=(req.body?.exchangeType||"money").toString();
   const offerCategory=(req.body?.offerCategory||"").toString().trim().toLowerCase();
@@ -4301,7 +4301,7 @@ app.post("/places/:id/listings", async (req, res) =>{
     if(!place) return res.status(404).json({error:"Place not found"});
     if(Number(place.ownerUserId ?? place.owneruserid)!==Number(u)) return res.status(403).json({error:"Only store owner can post offers/requests"});
     const tier = trust.resolveTier(user, ctx);
-    if(tier < 2) return res.status(403).json({error:"Sebastian Resident required for offers/requests"});
+    if(tier < 1) return res.status(403).json({error:"Posting requires tier 1+"});
   }
   if(!req.body?.title) return res.status(400).json({error:"title required"});
   if(req.body.listingType === "auction"){
