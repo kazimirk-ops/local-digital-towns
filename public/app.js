@@ -364,12 +364,7 @@ async function selectChannel(id){
   if(fishDash) {
     if(c && c.name === "fishing-report") {
       fishDash.style.display = "block";
-      fishDash.innerHTML = `
-        <div style="padding:12px;">
-          <h4 style="margin:0 0 12px 0; color:var(--accent);">🎣 Sebastian Inlet Conditions</h4>
-          <div style="color:var(--muted);">Loading NOAA data...</div>
-        </div>
-      `;
+      loadFishingConditions();
     } else {
       fishDash.style.display = "none";
     }
@@ -1547,6 +1542,52 @@ function getClientSessionId() {
 const clientSessionId = getClientSessionId();
 
 function debug(msg){ $("debug").textContent = msg || ""; }
+
+async function loadFishingConditions() {
+  const fishDash = document.getElementById("fishingDashboard");
+  if(!fishDash) return;
+
+  try {
+    // NOAA Station 8721604 = Trident Pier, Port Canaveral (closest to Sebastian Inlet)
+    const stationId = "8721604";
+    const baseUrl = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter";
+
+    // Fetch today's tide predictions
+    const tideUrl = `${baseUrl}?date=today&station=${stationId}&product=predictions&datum=MLLW&time_zone=lst_ldt&units=english&interval=hilo&format=json`;
+    const tideRes = await fetch(tideUrl);
+    const tideData = await tideRes.json();
+
+    // Format tide predictions
+    let tidesHtml = "";
+    if(tideData.predictions && tideData.predictions.length > 0) {
+      tidesHtml = tideData.predictions.slice(0, 4).map(p => {
+        const time = new Date(p.t).toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit"});
+        const type = p.type === "H" ? "High" : "Low";
+        return `<div style="display:flex; justify-content:space-between; padding:4px 0;"><span>${type}</span><span>${time}</span><span>${p.v} ft</span></div>`;
+      }).join("");
+    } else {
+      tidesHtml = "<div style='color:var(--muted);'>Tide data unavailable</div>";
+    }
+
+    fishDash.innerHTML = `
+      <div style="padding:12px;">
+        <h4 style="margin:0 0 12px 0; color:var(--accent);">🎣 Sebastian Inlet Conditions</h4>
+        <div style="font-size:0.85rem;">
+          <div style="font-weight:600; margin-bottom:8px;">Today's Tides (Port Canaveral)</div>
+          ${tidesHtml}
+        </div>
+      </div>
+    `;
+  } catch(err) {
+    console.error("Failed to load fishing conditions:", err);
+    fishDash.innerHTML = `
+      <div style="padding:12px;">
+        <h4 style="margin:0 0 12px 0; color:var(--accent);">🎣 Sebastian Inlet Conditions</h4>
+        <div style="color:var(--muted);">Unable to load conditions</div>
+      </div>
+    `;
+  }
+}
 
 // Show subscription prompt modal
 function showSubscriptionPrompt(message) {
