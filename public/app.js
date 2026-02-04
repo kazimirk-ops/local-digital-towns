@@ -1669,6 +1669,7 @@ async function loadFishingConditions() {
           <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
             <div style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">🌡️ Water Temp</div>
             <div><span style="font-size:1.4rem; font-weight:600; color:var(--text);">${waterTemp}</span><span style="color:var(--muted); margin-left:4px;">°F</span></div>
+            ${airTemp !== "N/A" ? `<div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">Air: ${airTemp}°F</div>` : ''}
           </div>
           <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:12px;">
             <div style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">💨 Wind</div>
