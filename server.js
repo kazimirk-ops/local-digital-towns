@@ -1012,7 +1012,9 @@ async function sendAuthCodeEmail(toEmail, code){
   const apiKey = (process.env.RESEND_API_KEY || "").trim();
   const from = (process.env.EMAIL_FROM || "").trim() || "onboarding@resend.dev";
 
-  console.log("AUTH_CODE_EMAIL_ATTEMPT", { to: toEmail, from });
+  // Redirect house/seed account emails to support inbox
+  const deliverTo = toEmail.endsWith("@sebastian-florida.com") ? "support@sebastian-florida.com" : toEmail;
+  console.log("AUTH_CODE_EMAIL_ATTEMPT", { to: deliverTo, forAccount: toEmail, from });
 
   if(!apiKey){
     console.warn("Auth code email not configured (missing RESEND_API_KEY)");
@@ -1027,7 +1029,7 @@ async function sendAuthCodeEmail(toEmail, code){
 </head>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
   <h2 style="color: #333;">Your Login Code</h2>
-  <p>Use this code to log in to Sebastian Digital Town:</p>
+  <p>Login code for <strong>${toEmail}</strong>:</p>
   <div style="background-color: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
     <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #333;">${code}</span>
   </div>
@@ -1038,9 +1040,9 @@ async function sendAuthCodeEmail(toEmail, code){
 
   const payload = {
     from,
-    to: [toEmail],
+    to: [deliverTo],
     subject: "Your Sebastian Digital Town login code",
-    text: `Your login code is: ${code}\n\nThis code expires in 10 minutes.`,
+    text: `Login code for ${toEmail}: ${code}\n\nThis code expires in 10 minutes.`,
     html
   };
 
