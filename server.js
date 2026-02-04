@@ -4009,18 +4009,18 @@ app.post("/channels/:id/messages", async (req, res) =>{
     if(!imageGate.ok) return res.status(403).json({error:"Chat images require tier 1+"});
   }
   const tier = trust.resolveTier(user, ctx);
-  if(tier < 2) return res.status(403).json({error:"Posting requires tier 2+"});
-  const canPost = tier >= 2;
-  const canCreateThread = tier >= 2;
+  if(tier < 1) return res.status(403).json({error:"Posting requires tier 1+"});
+  const canPost = tier >= 1;
+  const canCreateThread = tier >= 1;
   const replyToId=req.body?.replyToId ? Number(req.body.replyToId) : null;
   let threadId=null;
   if(replyToId){
-    if(!canPost) return res.status(403).json({error:"Posting requires tier 2+"});
+    if(!canPost) return res.status(403).json({error:"Posting requires tier 1+"});
     const parent=await data.getChannelMessageById(replyToId);
     if(!parent || Number(parent.channelId)!==Number(channel.id)) return res.status(400).json({error:"Invalid replyToId"});
     threadId=parent.threadId;
   }else{
-    if(!canCreateThread) return res.status(403).json({error:"Thread creation requires tier 2+"});
+    if(!canCreateThread) return res.status(403).json({error:"Thread creation requires tier 1+"});
     threadId=await data.createChannelThread(channel.id, u);
   }
   const created=await data.addChannelMessage(channel.id, u, text, imageUrl, replyToId, threadId);
