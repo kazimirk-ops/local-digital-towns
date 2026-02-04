@@ -1697,22 +1697,22 @@ async function loadFishingConditions() {
           <button onclick="loadFishingConditions()" style="background:transparent; border:1px solid var(--border); color:var(--muted); padding:8px; border-radius:8px; cursor:pointer; font-size:1rem;">🔄</button>
         </div>
 
-        <!-- Fishing Score -->
-        <div style="padding:20px; background:linear-gradient(135deg, rgba(47,164,185,0.12), rgba(108,196,161,0.08)); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
-          <div style="display:flex; align-items:center; gap:24px;">
-            <div style="position:relative; width:100px; height:100px; flex-shrink:0;">
-              <svg width="100" height="100" viewBox="0 0 100 100" style="transform:rotate(-90deg);">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
-                <circle cx="50" cy="50" r="42" fill="none" stroke="${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${2 * Math.PI * 42}" stroke-dashoffset="${2 * Math.PI * 42 * (1 - fishingScore / 100)}" style="transition:stroke-dashoffset 0.5s ease;"/>
+        <!-- Fishing Score - Centered -->
+        <div style="padding:24px 20px; background:linear-gradient(135deg, rgba(47,164,185,0.12), rgba(108,196,161,0.08)); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+          <div style="display:flex; flex-direction:column; align-items:center; text-align:center;">
+            <div style="position:relative; width:120px; height:120px;">
+              <svg width="120" height="120" viewBox="0 0 120 120" style="transform:rotate(-90deg);">
+                <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="10"/>
+                <circle cx="60" cy="60" r="52" fill="none" stroke="${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${2 * Math.PI * 52}" stroke-dashoffset="${2 * Math.PI * 52 * (1 - fishingScore / 100)}" style="transition:stroke-dashoffset 0.5s ease;"/>
               </svg>
               <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-                <span style="font-size:2rem; font-weight:700; color:${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'};">${fishingScore}</span>
-                <span style="font-size:0.7rem; color:var(--muted);">/ 100</span>
+                <span style="font-size:2.5rem; font-weight:700; color:${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'};">${fishingScore}</span>
+                <span style="font-size:0.75rem; color:var(--muted);">/ 100</span>
               </div>
             </div>
-            <div>
-              <div style="font-size:1.2rem; font-weight:600; color:${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'};">${fishingVerdict} Conditions</div>
-              <div style="font-size:0.85rem; color:var(--muted); margin-top:6px; line-height:1.4;">${scoreReasons.length > 0 ? scoreReasons.join(', ') : 'Average conditions'}</div>
+            <div style="margin-top:16px;">
+              <div style="font-size:1.25rem; font-weight:600; color:${fishingScore >= 80 ? '#6cc4a1' : fishingScore >= 65 ? '#2fa4b9' : fishingScore >= 45 ? '#eab308' : '#ef4444'};">${fishingVerdict} Conditions</div>
+              <div style="font-size:0.85rem; color:var(--muted); margin-top:6px;">${scoreReasons.length > 0 ? scoreReasons.join(', ') : 'Average conditions'}</div>
             </div>
           </div>
         </div>
@@ -1770,6 +1770,76 @@ async function loadFishingConditions() {
             ${tidesHtml}
           </div>
           ${nextTideText ? `<div style="display:flex; align-items:center; justify-content:center; gap:10px; padding:14px; background:rgba(47,164,185,0.12); border:1px solid rgba(47,164,185,0.3); border-radius:10px; margin-top:14px; font-size:0.95rem; color:var(--text);">⏱️ ${nextTideText}</div>` : ''}
+        </div>
+
+        <!-- Community Section - Two Columns -->
+        <div style="padding:0 20px 20px; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+
+          <!-- Hot Right Now -->
+          <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:16px;">
+            <div style="font-size:0.9rem; font-weight:600; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px;">📈 Hot Right Now</div>
+
+            <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:8px;">Top Species</div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;">
+              <span style="background:rgba(47,164,185,0.2); color:var(--accent); padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:500;">Redfish</span>
+              <span style="background:rgba(47,164,185,0.2); color:var(--accent); padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:500;">Snook</span>
+              <span style="background:rgba(47,164,185,0.2); color:var(--accent); padding:5px 10px; border-radius:20px; font-size:0.8rem; font-weight:500;">Flounder</span>
+            </div>
+
+            <div style="display:flex; gap:16px;">
+              <div style="flex:1;">
+                <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted);">Best Bait</div>
+                <div style="font-weight:500; color:var(--text); margin-top:4px;">Live shrimp</div>
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted);">Water Clarity</div>
+                <div style="font-weight:500; color:#6cc4a1; margin-top:4px;">Clear</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Catches -->
+          <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:12px; padding:16px;">
+            <div style="font-size:0.9rem; font-weight:600; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px;">📍 Recent Catches</div>
+
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:36px; height:36px; background:rgba(47,164,185,0.2); border-radius:50%; display:flex; align-items:center; justify-content:center;">🐟</div>
+                  <div>
+                    <div style="font-weight:500; color:var(--text); font-size:0.9rem;">3x Redfish</div>
+                    <div style="font-size:0.75rem; color:var(--muted);">Inlet • MikeAtTheInlet</div>
+                  </div>
+                </div>
+                <span style="font-size:0.7rem; color:var(--muted);">2h ago</span>
+              </div>
+
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:36px; height:36px; background:rgba(47,164,185,0.2); border-radius:50%; display:flex; align-items:center; justify-content:center;">🐟</div>
+                  <div>
+                    <div style="font-weight:500; color:var(--text); font-size:0.9rem;">1x Snook</div>
+                    <div style="font-size:0.75rem; color:var(--muted);">North Jetty • CaptDave</div>
+                  </div>
+                </div>
+                <span style="font-size:0.7rem; color:var(--muted);">4h ago</span>
+              </div>
+
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:36px; height:36px; background:rgba(47,164,185,0.2); border-radius:50%; display:flex; align-items:center; justify-content:center;">🐟</div>
+                  <div>
+                    <div style="font-weight:500; color:var(--text); font-size:0.9rem;">2x Flounder</div>
+                    <div style="font-size:0.75rem; color:var(--muted);">South Side • ReelDeal</div>
+                  </div>
+                </div>
+                <span style="font-size:0.7rem; color:var(--muted);">5h ago</span>
+              </div>
+            </div>
+
+            <button style="width:100%; background:transparent; border:none; color:var(--accent); padding:12px; font-size:0.85rem; cursor:pointer; margin-top:12px; border-radius:8px;" onmouseover="this.style.background='rgba(47,164,185,0.1)'" onmouseout="this.style.background='transparent'">See all reports →</button>
+          </div>
+
         </div>
 
       </div>
