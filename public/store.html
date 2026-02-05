@@ -125,6 +125,8 @@
     .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
     .tabBtn { padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); cursor: pointer; font-weight: 700; font-size: 12px; color: #e2e8f0; }
     .tabBtn.active { border-color: rgba(34, 211, 238, 0.4); box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15); }
+    .catBtn { padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); cursor: pointer; font-weight: 600; font-size: 11px; color: #94a3b8; }
+    .catBtn.active { background: rgba(34, 211, 238, 0.15); border-color: rgba(34, 211, 238, 0.4); color: #22d3ee; }
     .productImg { width: 100%; height: 180px; border-radius: 12px; object-fit: cover; background: #151d2e; }
     .thumbRow { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
     .thumb { width: 78px; height: 78px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); object-fit: cover; background: #151d2e; }
@@ -182,6 +184,8 @@
         <button class="tabBtn" id="tabOffers">Offers</button>
         <button class="tabBtn" id="tabRequests">Requests</button>
       </div>
+
+      <div id="categoryFilters" style="display:flex; flex-wrap:wrap; gap:8px; margin:12px 0;"></div>
 
       <!-- Owner Controls - HIDDEN
       <div class="item" id="ownerControls" style="margin-top:12px; display:none; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(34, 211, 238, 0.1));">

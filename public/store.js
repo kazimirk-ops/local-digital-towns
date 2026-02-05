@@ -27,7 +27,7 @@ async function api(u,o){
 }
 function pid(){return Number(location.pathname.split("/")[2]);}
 
-let LIST=[],TAB="item",AUCTIONS={};
+let LIST=[],TAB="item",AUCTIONS={},CAT_FILTER="All";
 let LIVE_SHOW=null;
 let CART={ items:[] };
 let CART_ORDER_ID=null;
@@ -279,18 +279,58 @@ async function createTestAuction(){
 
 function setTab(t){
   TAB=t;
+  CAT_FILTER="All";
   ["tabItems","tabOffers","tabRequests"].forEach(x=>$(x).classList.remove("active"));
   if(t==="item")$("tabItems").classList.add("active");
   if(t==="offer")$("tabOffers").classList.add("active");
   if(t==="request")$("tabRequests").classList.add("active");
+  renderCategoryFilters();
   render();
+}
+
+function renderCategoryFilters(){
+  const container = $("categoryFilters");
+  if(!container) return;
+  // Hide filters when not on Shop tab
+  if(TAB !== "item"){
+    container.style.display = "none";
+    return;
+  }
+  container.style.display = "flex";
+  // Get unique categories from item listings
+  const cats = [...new Set(LIST.filter(l => (l.listingType||"item")==="item" || (l.listingType||"item")==="auction")
+    .map(l => l.offerCategory || l.offercategory || "")
+    .filter(c => c))];
+  cats.sort();
+  container.innerHTML = "";
+  // "All" button
+  const allBtn = document.createElement("button");
+  allBtn.className = "catBtn" + (CAT_FILTER === "All" ? " active" : "");
+  allBtn.textContent = "All";
+  allBtn.onclick = () => { CAT_FILTER = "All"; renderCategoryFilters(); render(); };
+  container.appendChild(allBtn);
+  // Category buttons
+  cats.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.className = "catBtn" + (CAT_FILTER === cat ? " active" : "");
+    btn.textContent = cat;
+    btn.onclick = () => { CAT_FILTER = cat; renderCategoryFilters(); render(); };
+    container.appendChild(btn);
+  });
 }
 
 function render(){
   const g=$("listingGrid"); g.innerHTML="";
   LIST.filter(l=>{
     const type = (l.listingType||"item");
-    if(TAB==="item") return type==="item" || type==="auction";
+    if(TAB==="item"){
+      if(type!=="item" && type!=="auction") return false;
+      if(CAT_FILTER !== "All"){
+        const cat = l.offerCategory || l.offercategory || "";
+        if(cat !== CAT_FILTER) return false;
+      }
+      return true;
+    }
     return type===TAB;
   }).forEach(l=>{
     const d=document.createElement("div");
@@ -325,11 +365,13 @@ function render(){
     const auctionMeta = type==="auction"
       ? `Auction ID: ${l.id}${l.auctionStatus ? ` • Status: ${l.auctionStatus}` : ""}`
       : "";
+    const priceDisplay = (l.price && Number(l.price) > 0) ? `<div style="font-weight:700; color:#22c55e; font-size:1.1em;">$${Number(l.price).toFixed(2)}</div>` : "";
     d.innerHTML=`
       ${img}
       <div class="muted">${baseMeta}</div>
       ${type==="auction" ? `<div class="muted">${auctionMeta}</div>` : ""}
       <div style="font-weight:900">${l.title}</div>
+      ${priceDisplay}
       <div class="muted">${l.description}</div>
       ${qtyMeta}
       ${offerMeta}
