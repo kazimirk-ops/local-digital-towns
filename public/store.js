@@ -361,7 +361,7 @@ function render(){
         ${closeBtn}
       </div>
     ` : "";
-    const baseMeta = `ID: ${l.id} • Type: ${type}`;
+    const baseMeta = l.offerCategory || l.offercategory || "";
     const auctionMeta = type==="auction"
       ? `Auction ID: ${l.id}${l.auctionStatus ? ` • Status: ${l.auctionStatus}` : ""}`
       : "";
