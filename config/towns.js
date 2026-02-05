@@ -47,7 +47,7 @@ const defaultTownConfig = {
   payments: {
     currency: "usd",
     stripeEnabled: true,
-    userSubscriptionPriceCents: 500,     // $5/mo User tier
+    userSubscriptionPriceCents: 0,       // Free Individual tier
     businessSubscriptionPriceCents: 1000, // $10/mo Business tier
     trialDays: 30,
     referralCommissionPercent: 25  // 25% commission on referrals

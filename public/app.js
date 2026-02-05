@@ -2145,7 +2145,7 @@ async function loadFishingConditions() {
 
 // Show subscription prompt modal
 function showSubscriptionPrompt(message) {
-  const msg = message || "Create a free account to buy items, or subscribe for $5/month to also sell and enter giveaways.";
+  const msg = message || "Create a free account to buy, sell, and enter giveaways.";
   const choice = confirm(`${msg}\n\nClick OK to create a free account, or Cancel to go back.`);
   if(choice){
     window.location.href = "/verify";
