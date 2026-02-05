@@ -296,7 +296,7 @@ async function getPlaceById(id){
     SELECT id, townId, districtId, name, category, status,
            description, website, yearsInTown, bannerUrl, avatarUrl,
            sellerType, visibilityLevel, pickupZone, addressPublic, addressPrivate,
-           meetupInstructions, hours, verifiedStatus, ownerUserId
+           meetupInstructions, hours, verifiedStatus, ownerUserId, storeType
     FROM places WHERE id=$1
   `).get(Number(id)) || null;
 }
