@@ -4903,17 +4903,33 @@ app.post("/api/subscribe/checkout", async (req, res) => {
     }
   }
 
+  // Individual plan is FREE - create user directly, skip Stripe
+  if (plan === "individual") {
+    try {
+      const userReferralCode = (displayName.slice(0,3) + Math.random().toString(36).slice(2,7)).toUpperCase();
+      const createResult = await data.query(
+        `INSERT INTO users (email, displayName, phone, trustTier, referralCode, referredByUserId, createdAt)
+         VALUES ($1, $2, $3, 1, $4, $5, $6) RETURNING id`,
+        [email, displayName, phone || null, userReferralCode, referredById, new Date().toISOString()]
+      );
+      const newUserId = createResult.rows[0]?.id;
+      console.log("SUBSCRIBE_FREE_INDIVIDUAL", { userId: newUserId, email });
+      return res.json({ url: `/login?signup=success&email=${encodeURIComponent(email)}` });
+    } catch (e) {
+      console.error("Free individual signup error:", e);
+      return res.status(500).json({ error: "Failed to create account: " + e.message });
+    }
+  }
+
+  // Business plan - use Stripe checkout
   const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
   if (!stripeKey || !stripe) {
     return res.status(400).json({ error: "Stripe not configured" });
   }
 
-  const priceId = plan === "business"
-    ? (process.env.STRIPE_BUSINESS_PRICE_ID || "").trim()
-    : (process.env.STRIPE_USER_PRICE_ID || "").trim();
-
+  const priceId = (process.env.STRIPE_BUSINESS_PRICE_ID || "").trim();
   if (!priceId) {
-    return res.status(400).json({ error: `Stripe price not configured for ${plan} plan` });
+    return res.status(400).json({ error: "Stripe price not configured for business plan" });
   }
 
   try {
@@ -4926,7 +4942,6 @@ app.post("/api/subscribe/checkout", async (req, res) => {
       payment_method_types: ['card'],
       customer_email: email,
       line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: { trial_period_days: 7 },
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: {
