@@ -98,7 +98,7 @@
       if (!resp.ok) {
         showError(result.error || "Something went wrong");
         $("submitBtn").disabled = false;
-        $("submitBtn").textContent = "Start 7-Day Free Trial";
+        $("submitBtn").textContent = "Create Free Account";
         return;
       }
 
@@ -108,7 +108,7 @@
     } catch (err) {
       showError("Network error. Please try again.");
       $("submitBtn").disabled = false;
-      $("submitBtn").textContent = "Start 7-Day Free Trial";
+      $("submitBtn").textContent = "Create Free Account";
     }
   }
 
