@@ -4942,6 +4942,7 @@ app.post("/api/subscribe/checkout", async (req, res) => {
       payment_method_types: ['card'],
       customer_email: email,
       line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: { trial_period_days: 7 },
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: {
