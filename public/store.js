@@ -79,6 +79,16 @@ function renderCart(){
   const list = $("cartList");
   const totals = $("cartTotals");
   if(!list || !totals) return;
+  const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
+  // Update cart messaging based on store type
+  const msgEl = document.querySelector("#cartPanel > div:nth-child(4) .muted");
+  if(msgEl){
+    msgEl.innerHTML = isManaged
+      ? `<strong>Delivery Info:</strong> Orders close Thursday midnight. Your items ship Friday and deliver to your door the following week. Free delivery in Sebastian.`
+      : `<strong>How it works:</strong> Place your order, then contact the seller to arrange pickup and payment (cash, Venmo, etc.).`;
+  }
+  const checkoutBtn = $("cartCheckoutBtn");
+  if(checkoutBtn) checkoutBtn.textContent = isManaged ? "Proceed to Checkout" : "Place Order";
   list.innerHTML = "";
   if(!CART.items.length){
     list.innerHTML = `<div class="muted">Cart is empty.</div>`;
@@ -138,12 +148,12 @@ function renderCart(){
     });
   });
 }
-async function addToCart(listingId){
+async function addToCart(listingId, qty=1){
   openCartModal();
   try{
-    await api("/api/cart/add",{method:"POST",body:JSON.stringify({listingId, quantity:1})});
+    await api("/api/cart/add",{method:"POST",body:JSON.stringify({listingId, quantity:qty})});
     await loadCart();
-    setCartMsg("Added to cart.");
+    setCartMsg(qty > 1 ? `Added ${qty} items to cart.` : "Added to cart.");
   }catch(e){
     if(String(e.message || "").includes("Login required")) return setCartMsg("login_required", true);
     if(String(e.message || "").includes("verified access")) return setCartMsg("tier_required", true);
@@ -366,6 +376,15 @@ function render(){
       ? `Auction ID: ${l.id}${l.auctionStatus ? ` • Status: ${l.auctionStatus}` : ""}`
       : "";
     const priceDisplay = (l.price && Number(l.price) > 0) ? `<div style="font-weight:700; color:#22c55e; font-size:1.1em;">$${Number(l.price).toFixed(2)}</div>` : "";
+    const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
+    const cartBlock = type==="item" ? (isManaged
+      ? `<div class="row" style="gap:6px; align-items:center; margin-top:8px;">
+           <button data-qty-dec="${l.id}" style="width:28px;height:28px;padding:0;">−</button>
+           <span data-qty-val="${l.id}" style="min-width:24px;text-align:center;">1</span>
+           <button data-qty-inc="${l.id}" style="width:28px;height:28px;padding:0;">+</button>
+           <button data-cart="${l.id}" style="flex:1;">Add to Cart</button>
+         </div>`
+      : `<button data-cart="${l.id}">Add to Cart</button>`) : "";
     d.innerHTML=`
       ${img}
       <div class="muted">${baseMeta}</div>
@@ -375,12 +394,20 @@ function render(){
       <div class="muted">${l.description}</div>
       ${qtyMeta}
       ${offerMeta}
-      ${type==="auction" ? auctionBlock : (type!=="item" ? `<button data-id="${l.id}">Apply / Message</button>` : `<button data-cart="${l.id}">Add to Cart</button>`)}
+      ${type==="auction" ? auctionBlock : (type!=="item" ? `<button data-id="${l.id}">Apply / Message</button>` : cartBlock)}
     `;
     const b=d.querySelector("button[data-id]");
     if(b) b.addEventListener("click", ()=>apply(l.id));
+    // Quantity controls for managed stores
+    const qtyDecBtn = d.querySelector(`button[data-qty-dec="${l.id}"]`);
+    const qtyIncBtn = d.querySelector(`button[data-qty-inc="${l.id}"]`);
+    const qtyValEl = d.querySelector(`span[data-qty-val="${l.id}"]`);
+    if(qtyDecBtn && qtyIncBtn && qtyValEl){
+      qtyDecBtn.addEventListener("click", (e)=>{ e.stopPropagation(); let v=Number(qtyValEl.textContent)||1; if(v>1) qtyValEl.textContent=v-1; });
+      qtyIncBtn.addEventListener("click", (e)=>{ e.stopPropagation(); let v=Number(qtyValEl.textContent)||1; if(v<50) qtyValEl.textContent=v+1; });
+    }
     const cartBtn=d.querySelector("button[data-cart]");
-    if(cartBtn) cartBtn.addEventListener("click", ()=>addToCart(l.id));
+    if(cartBtn) cartBtn.addEventListener("click", (e)=>{ e.stopPropagation(); const qty=qtyValEl?Number(qtyValEl.textContent)||1:1; addToCart(l.id, qty); });
     const bidBtn=d.querySelector("button[data-bid]");
     if(bidBtn) bidBtn.addEventListener("click", ()=>placeBid(l.id));
     const closeBtnEl = d.querySelector("button[data-close]");
@@ -409,12 +436,36 @@ function openListingModal(l, photos){
   const modal = $("listingModal");
   const panel = $("listingModalPanel");
   if(!modal || !panel) return;
+  const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
   $("listingModalTitle").textContent = l.title || "Listing";
-  $("listingModalMeta").textContent = `ID: ${l.id} • ${(l.listingType||"item").toUpperCase()} • ${(l.exchangeType || "money")}`;
+  // For managed stores, show category; for peer stores, show legacy meta
+  const category = l.offerCategory || l.offercategory || "";
+  $("listingModalMeta").textContent = isManaged ? category : `ID: ${l.id} • ${(l.listingType||"item").toUpperCase()} • ${(l.exchangeType || "money")}`;
   $("listingModalDesc").textContent = l.description || "";
-  $("listingModalDetails").textContent = l.listingType === "auction"
-    ? `Start bid: $${((l.startBidCents||0)/100).toFixed(2)} • Min increment: $${((l.minIncrementCents||0)/100).toFixed(2)}`
-    : "";
+  // Extract size/weight from title (e.g., "1 lb", "5 lb", "1/4 lb")
+  const sizeMatch = (l.title || "").match(/(\d+\/?\d*\s*lb|\d+\.\d+\s*lb)/i);
+  const sizeText = sizeMatch ? sizeMatch[0] : "";
+  const detailsEl = $("listingModalDetails");
+  if(l.listingType === "auction"){
+    detailsEl.innerHTML = `Start bid: $${((l.startBidCents||0)/100).toFixed(2)} • Min increment: $${((l.minIncrementCents||0)/100).toFixed(2)}`;
+  } else if(isManaged && l.listingType === "item"){
+    const price = (l.price && Number(l.price) > 0) ? `$${Number(l.price).toFixed(2)}` : "";
+    detailsEl.innerHTML = `
+      ${price ? `<div style="font-size:1.5em; font-weight:700; color:#22c55e; margin:12px 0;">${price}</div>` : ""}
+      ${sizeText ? `<div class="muted" style="margin-bottom:12px;">Size: ${sizeText}</div>` : ""}
+      <div class="row" style="gap:8px; align-items:center; margin-top:12px;">
+        <button id="modalQtyDec" style="width:32px;height:32px;padding:0;font-size:18px;">−</button>
+        <span id="modalQtyVal" style="min-width:32px;text-align:center;font-size:16px;font-weight:600;">1</span>
+        <button id="modalQtyInc" style="width:32px;height:32px;padding:0;font-size:18px;">+</button>
+        <button id="modalAddCart" style="flex:1;padding:10px 16px;">Add to Cart</button>
+      </div>
+    `;
+    $("modalQtyDec")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v>1) $("modalQtyVal").textContent=v-1; });
+    $("modalQtyInc")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v<50) $("modalQtyVal").textContent=v+1; });
+    $("modalAddCart")?.addEventListener("click", ()=>{ const qty=Number($("modalQtyVal").textContent)||1; addToCart(l.id, qty); modal.style.display="none"; });
+  } else {
+    detailsEl.textContent = "";
+  }
   const main = $("listingModalMainImg");
   const thumbs = $("listingModalThumbs");
   const urls = (photos && photos.length) ? photos : [];
