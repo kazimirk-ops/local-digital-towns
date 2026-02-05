@@ -2409,7 +2409,6 @@ app.post("/api/checkout/stripe", async (req,res)=>{
   if(!["pending_payment","requires_payment"].includes(String(order.status||""))) return res.status(400).json({error:"Order not payable"});
   const items = await data.getOrderItems(order.id);
   if(!items.length) return res.status(400).json({error:"Order has no items"});
-  console.log("STRIPE_CHECKOUT_ITEMS", JSON.stringify(items.map(i=>({title:i.titleSnapshot||i.titlesnapshot,price:i.priceCentsSnapshot||i.pricecentssnapshot,keys:Object.keys(i)}))));
   const lineItems = items.map((item)=>({
     price_data: {
       currency: "usd",
