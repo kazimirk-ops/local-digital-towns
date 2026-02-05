@@ -247,11 +247,10 @@ function selectPlan(plan) {
       <li>Featured storefront listing</li>
       <li>Post events to community calendar</li>
       <li>Business analytics dashboard</li>
-      <li>7-day free trial</li>
     `;
     $('startTrialBtn').textContent = currentUser?.trialUsedAt
       ? 'Subscribe Now - $10/month'
-      : 'Start 7-Day Free Trial';
+      : 'Start Business Subscription';
   } else {
     featuresList.innerHTML = `
       <li>Sell on marketplace and auctions</li>
