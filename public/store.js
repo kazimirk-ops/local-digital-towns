@@ -164,8 +164,15 @@ async function checkoutCart(){
   try{
     const res = await api("/api/checkout/create",{method:"POST",body:JSON.stringify({})});
     CART_ORDER_ID = res.orderId;
-    // Redirect to order confirmation page
-    window.location.href = `/order-confirmed?orderId=${res.orderId}`;
+    const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
+    if(isManaged){
+      // Managed store: redirect to Stripe checkout
+      const stripeRes = await api("/api/checkout/stripe",{method:"POST",body:JSON.stringify({orderId: res.orderId})});
+      window.location.href = stripeRes.checkoutUrl;
+    }else{
+      // Peer-to-peer: redirect to order confirmation
+      window.location.href = `/order-confirmed?orderId=${res.orderId}`;
+    }
   }catch(e){
     setCartMsg(`ERROR: ${e.message}`, true);
   }
