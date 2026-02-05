@@ -2414,7 +2414,7 @@ app.post("/api/checkout/stripe", async (req,res)=>{
     price_data: {
       currency: "usd",
       product_data: { name: item.titleSnapshot || item.titlesnapshot || `Item ${item.listingId}` },
-        unit_amount: Math.max(0, parseInt(String(item.priceCentsSnapshot ?? item.pricecentssnapshot ?? "0"), 10) || 0)
+        unit_amount: Math.max(0, parseInt(String(item.priceCentsSnapshot ?? item.priceCentssnapshot ?? item.pricecentssnapshot ?? "0"), 10) || 0)
     },
     quantity: Number(item.quantity || 1)
   }));
