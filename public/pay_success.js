@@ -30,6 +30,12 @@ async function main(){
 
     const totalCents = order.totalCents ?? order.totalcents ?? order.amountCents ?? order.amountcents ?? 0;
     $("paySuccessTotal").textContent = `Total: ${fmtCents(totalCents)}`;
+    const storeType = res.storeType || 'peer';
+    if(storeType === 'managed'){
+      $("nextStepsManaged").style.display = "block";
+    }else{
+      $("nextStepsPeer").style.display = "block";
+    }
   }catch(e){
     statusEl.textContent = `ERROR: ${e.message}`;
   }

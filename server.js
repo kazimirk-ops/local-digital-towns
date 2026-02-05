@@ -2525,7 +2525,8 @@ app.get("/api/orders/:id", async (req, res) =>{
   const items = await data.getOrderItems(order.id);
   const listingId = items[0]?.listingId || order.listingId;
   const listing = listingId ? await data.getListingById(listingId) : null;
-  res.json({ order, items, listing });
+  const place = order.sellerPlaceId ? await data.getPlaceById(order.sellerPlaceId) : null;
+  res.json({ order, items, listing, storeType: place?.storeType || place?.storetype || 'peer' });
 });
 app.post("/api/orders/:id/pay", async (req, res) =>{
   const u=await requireLogin(req,res); if(!u) return;
