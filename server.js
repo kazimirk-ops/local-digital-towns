@@ -2412,8 +2412,8 @@ app.post("/api/checkout/stripe", async (req,res)=>{
   const lineItems = items.map((item)=>({
     price_data: {
       currency: "usd",
-      product_data: { name: item.titleSnapshot || `Item ${item.listingId}` },
-        unit_amount: Math.max(0, parseInt(String(item.priceCentsSnapshot ?? "0"), 10) || 0)
+      product_data: { name: item.titleSnapshot || item.titlesnapshot || `Item ${item.listingId}` },
+        unit_amount: Math.max(0, parseInt(String(item.priceCentsSnapshot ?? item.pricecentssnapshot ?? "0"), 10) || 0)
     },
     quantity: Number(item.quantity || 1)
   }));
