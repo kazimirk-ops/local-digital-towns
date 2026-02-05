@@ -1173,10 +1173,6 @@ function requireStripeConfig(res){
     res.status(500).json({error:"Stripe not configured"});
     return null;
   }
-  if(!process.env.STRIPE_SUCCESS_URL || !process.env.STRIPE_CANCEL_URL){
-    res.status(500).json({error:"Stripe URLs not configured"});
-    return null;
-  }
   return stripe;
 }
 
@@ -2431,8 +2427,9 @@ app.post("/api/checkout/stripe", async (req,res)=>{
       quantity: 1
     });
   }
-  const successUrl = String(process.env.STRIPE_SUCCESS_URL || "").replace("{ORDER_ID}", String(order.id));
-  const cancelUrl = String(process.env.STRIPE_CANCEL_URL || "").replace("{ORDER_ID}", String(order.id));
+  const baseUrl = process.env.BASE_URL || 'https://sebastian-florida.com';
+  const successUrl = `${baseUrl}/pay/success?orderId=${order.id}`;
+  const cancelUrl = `${baseUrl}/pay/cancel?orderId=${order.id}`;
   try{
     const session = await s.checkout.sessions.create({
       mode: "payment",
