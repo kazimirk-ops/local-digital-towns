@@ -4722,31 +4722,9 @@ app.post("/api/subscription/reactivate", async (req, res) => {
   const u = await requireLogin(req, res); if(!u) return;
   const user = await data.getUserById(u);
   if(!user) return res.status(404).json({ error: "User not found" });
-  const trialUsedAt = user.trialUsedAt ?? user.trialusedat;
-  const stripeKey = (process.env.STRIPE_SECRET_KEY || "").trim();
-  // If trial was used, require payment
-  if(trialUsedAt && stripeKey) {
-    try {
-      const stripe = require('stripe')(stripeKey);
-      const priceId = process.env.STRIPE_INDIVIDUAL_PRICE_ID;
-      if(!priceId) return res.status(400).json({ error: "Individual subscription not configured yet" });
-      const session = await stripe.checkout.sessions.create({
-        mode: 'subscription',
-        payment_method_types: ['card'],
-        line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${req.protocol}://${req.get('host')}/my-subscription?success=true`,
-        cancel_url: `${req.protocol}://${req.get('host')}/my-subscription?canceled=true`,
-        metadata: { userId: String(u), plan: 'individual' }
-      });
-      return res.json({ url: session.url });
-    } catch(e) {
-      console.error("Stripe checkout error:", e);
-      return res.status(500).json({ error: "Payment setup failed" });
-    }
-  }
-  // No trial used yet - shouldn't happen but allow reactivation
+  // Individual tier is free - just reactivate directly
   await data.query(
-    'UPDATE users SET trustTier = 1, trialUsedAt = NOW(), updatedAt = NOW() WHERE id = $1',
+    'UPDATE users SET trustTier = 1, updatedAt = NOW() WHERE id = $1',
     [u]
   );
   res.json({ ok: true });
