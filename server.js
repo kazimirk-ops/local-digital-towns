@@ -326,12 +326,14 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
       try {
         const paidOrder = await data.getOrderById(orderId);
         console.log("UBER_DISPATCH_CHECK", { orderId, hasOrder: !!paidOrder, uberQuoteId: paidOrder?.uber_quote_id, deliveryAddr: !!paidOrder?.delivery_address, keys: paidOrder ? Object.keys(paidOrder).filter(k => k.includes('uber') || k.includes('delivery')) : [] });
-        if (paidOrder && paidOrder.uber_quote_id && paidOrder.delivery_address) {
+        const uberQuoteId = paidOrder.uber_quote_id || paidOrder.uberQuoteId || paidOrder.uberquoteid;
+        const deliveryAddr = paidOrder.delivery_address || paidOrder.deliveryAddress || paidOrder.deliveryaddress;
+        if (paidOrder && uberQuoteId && deliveryAddr) {
           const uberToken = await getUberDirectToken();
           const customerId = process.env.UBER_DIRECT_CUSTOMER_ID;
-          const deliveryAddr = typeof paidOrder.delivery_address === 'string' ? JSON.parse(paidOrder.delivery_address) : paidOrder.delivery_address;
+          const parsedAddr = typeof deliveryAddr === 'string' ? JSON.parse(deliveryAddr) : deliveryAddr;
 
-          const placeResult = await db.query("SELECT name, pickup_address_full FROM places WHERE id=$1", [paidOrder.sellerplaceid]);
+          const placeResult = await db.query("SELECT name, pickup_address_full FROM places WHERE id=$1", [paidOrder.sellerplaceid || paidOrder.sellerPlaceId]);
           const place = placeResult.rows[0];
 
           const deliveryRes = await fetch(`https://api.uber.com/v1/customers/${customerId}/deliveries`, {
@@ -341,13 +343,13 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              quote_id: paidOrder.uber_quote_id,
+              quote_id: uberQuoteId,
               pickup_name: place?.name || 'Store',
               pickup_address: JSON.stringify({ street_address: [place?.pickup_address_full || ''] }),
               pickup_phone_number: '+13215551234',
-              dropoff_name: deliveryAddr.name || 'Customer',
-              dropoff_address: JSON.stringify({ street_address: [deliveryAddr.street || ''] }),
-              dropoff_phone_number: deliveryAddr.phone || '+13215551234',
+              dropoff_name: parsedAddr.name || 'Customer',
+              dropoff_address: JSON.stringify({ street_address: [parsedAddr.street || ''] }),
+              dropoff_phone_number: parsedAddr.phone || '+13215551234',
               manifest_items: [{ name: 'Order #' + orderId, quantity: 1 }]
             })
           });
