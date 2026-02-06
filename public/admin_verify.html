@@ -64,13 +64,20 @@ async function loadPending(){
       const addr=typeof u.addressjson==='string'?JSON.parse(u.addressjson):(u.addressjson||{});
       return `<div class="row" style="margin:8px 0;padding:8px;background:var(--panel2);border-radius:8px">
         <span><b>#${u.id}</b> ${u.displayname||u.email} - ${addr.city||'?'}</span>
+        <select id="tier-${u.id}"><option value="1">Tier 1 - Local</option><option value="0">Tier 0 - Visitor</option><option value="2">Tier 2 - Verified</option></select>
         <button onclick="approveBuyer(${u.id})">Approve</button>
+        <button onclick="rejectBuyer(${u.id})" style="background:#ef4444;">Reject</button>
       </div>`;
     }).join("");
   }catch(e){pendingList.textContent=e.message}
 }
 async function approveBuyer(id){
-  try{ await api("/admin/verify/buyer",{userId:id}); loadPending(); }catch(e){alert(e.message)}
+  const tier = Number(document.getElementById('tier-'+id)?.value || 1);
+  try{ await api("/admin/verify/buyer",{userId:id, trustTier:tier}); loadPending(); }catch(e){alert(e.message)}
+}
+async function rejectBuyer(id){
+  if(!confirm('Delete this user? This cannot be undone.')) return;
+  try{ await api("/api/admin/reject-buyer",{userId:id}); loadPending(); }catch(e){alert(e.message)}
 }
 async function verifyBuyer(){
   try{

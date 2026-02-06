@@ -4758,8 +4758,9 @@ app.post("/admin/verify/buyer", async (req, res) =>{
   const admin=await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
   const id = Number(req.body?.userId);
   if(!id) return res.status(400).json({error:"userId required"});
-  const r = await data.verifyBuyer(id, "verified", "admin");
-  res.json(r);
+  const tier = Number(req.body?.trustTier ?? 1);
+  await db.query("UPDATE users SET isBuyerVerified=1, trustTier=$1 WHERE id=$2", [tier, id]);
+  res.json({ ok: true, userId: id, trustTier: tier });
 });
 
 app.get("/api/admin/pending-buyers", async (req, res) => {
@@ -4772,7 +4773,7 @@ app.post("/api/admin/reject-buyer", async (req, res) => {
   const admin = await requireAdmin(req, res, { message: "Admin only" }); if (!admin) return;
   const userId = Number(req.body?.userId);
   if (!userId) return res.status(400).json({ error: "userId required" });
-  await db.query("DELETE FROM users WHERE id = $1 AND trustTier = 0 AND (isAdmin IS NULL OR isAdmin != 1)", [userId]);
+  await db.query("DELETE FROM users WHERE id = $1 AND isBuyerVerified = 0 AND (isAdmin IS NULL OR isAdmin != 1)", [userId]);
   res.json({ ok: true, deleted: userId });
 });
 
