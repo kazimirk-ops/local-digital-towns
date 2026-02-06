@@ -70,7 +70,7 @@ try {
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https:", "blob:"],
-        connectSrc: ["'self'", "https://api.stripe.com", "https://graph.facebook.com", "https://api.tidesandcurrents.noaa.gov", "wss:"],
+        connectSrc: ["'self'", "https://api.stripe.com", "https://graph.facebook.com", "https://api.tidesandcurrents.noaa.gov", "wss:", "https://accounts.google.com", "https://oauth2.googleapis.com", "https://www.googleapis.com"],
         frameSrc: ["'self'", "https://js.stripe.com", "https://www.facebook.com"],
       }
     },
@@ -179,6 +179,8 @@ app.use(async (req,res,next)=>{
     if(pathName === "/api/public/apply/resident") return next();
     if(pathName === "/api/auth/request-code") return next();
     if(pathName === "/api/auth/verify-code") return next();
+    if(pathName === "/api/auth/google") return next();
+    if(pathName === "/api/auth/google/callback") return next();
     if(pathName.startsWith("/api/sweep/claim/")) return next();
     if(pathName === "/api/admin/test-email") return next();
   }
@@ -1308,6 +1310,65 @@ app.post("/api/auth/request-code", async (req, res) =>{
     res.json({ ok: true, message: "If this email is valid, a code has been sent" });
   }
 });
+
+// Google OAuth
+app.get("/api/auth/google", (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if(!clientId) return res.status(500).json({ error: "Google OAuth not configured" });
+  const redirectUri = encodeURIComponent((process.env.BASE_URL || "https://sebastian-florida.com") + "/api/auth/google/callback");
+  const scope = encodeURIComponent("openid email profile");
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&prompt=select_account`;
+  res.redirect(url);
+});
+
+app.get("/api/auth/google/callback", async (req, res) => {
+  try {
+    const code = req.query.code;
+    if(!code) return res.redirect("/login?error=no_code");
+    const baseUrl = process.env.BASE_URL || "https://sebastian-florida.com";
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: baseUrl + "/api/auth/google/callback",
+        grant_type: "authorization_code"
+      })
+    });
+    const tokenData = await tokenRes.json();
+    if(!tokenData.access_token) {
+      console.error("GOOGLE_AUTH_TOKEN_ERROR", tokenData);
+      return res.redirect("/login?error=token_failed");
+    }
+    const userRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` }
+    });
+    const profile = await userRes.json();
+    if(!profile.email) return res.redirect("/login?error=no_email");
+    const email = profile.email.toLowerCase();
+    const displayName = profile.name || email.split("@")[0];
+    let userRow = await data.getUserByEmail(email);
+    if(!userRow) {
+      const referralCode = (displayName.slice(0,3) + Math.random().toString(36).slice(2,7)).toUpperCase();
+      await data.query(
+        `INSERT INTO users (email, displayname, trusttier, referralcode, createdat) VALUES ($1, $2, $3, $4, $5)`,
+        [email, displayName, 1, referralCode, new Date().toISOString()]
+      );
+      userRow = await data.getUserByEmail(email);
+      console.log("GOOGLE_AUTH_NEW_USER", { userId: userRow.id, email, displayName });
+    }
+    const s = await data.createSession(userRow.id);
+    const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
+    res.setHeader("Set-Cookie", `sid=${s.sid}; HttpOnly; Path=/; Max-Age=${60*60*24*30}; SameSite=Lax${isSecure ? "; Secure" : ""}`);
+    res.redirect("/");
+  } catch(err) {
+    console.error("GOOGLE_AUTH_ERROR", err?.message);
+    res.redirect("/login?error=auth_failed");
+  }
+});
+
 app.post("/api/auth/verify-code", async (req, res) =>{
   const email = (req.body?.email || "").toString().trim().toLowerCase();
   const code = (req.body?.code || "").toString().trim();
