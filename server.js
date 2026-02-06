@@ -5690,7 +5690,7 @@ app.use((err, req, res, next) => {
 // --- Weekly Batch Order Email for Managed Stores ---
 async function generateBatchOrderEmail(){
   try{
-    const rows = await db.any(`
+    const result1 = await db.query(`
       SELECT oi.titlesnapshot AS title, SUM(oi.quantity) AS total_qty, oi.pricecentssnapshot AS price_cents
       FROM order_items oi
       JOIN orders o ON o.id = oi.orderid
@@ -5701,6 +5701,7 @@ async function generateBatchOrderEmail(){
       GROUP BY oi.titlesnapshot, oi.pricecentssnapshot
       ORDER BY oi.titlesnapshot
     `);
+    const rows = result1.rows;
     if(!rows.length){
       console.log("BATCH_ORDER: No paid managed store orders this week");
       return { ok: true, skipped: true, reason: "no orders" };
@@ -5712,7 +5713,7 @@ async function generateBatchOrderEmail(){
       totalCost += cost;
       return `${r.title} — Qty: ${qty} — ${(cost/100).toFixed(2)}`;
     });
-    const orderCount = await db.one(`
+    const result2 = await db.query(`
       SELECT COUNT(DISTINCT o.id) AS c
       FROM orders o
       JOIN places p ON p.id = o.sellerplaceid
@@ -5720,6 +5721,7 @@ async function generateBatchOrderEmail(){
         AND (p.storetype = 'managed' OR p."storeType" = 'managed')
         AND o.createdat >= NOW() - INTERVAL '7 days'
     `);
+    const orderCount = result2.rows[0];
     const subject = `Weekly Batch Order — ${new Date().toLocaleDateString("en-US")} — ${rows.length} products, ${orderCount.c} orders`;
     const text = `Weekly Batch Order Summary\n` +
       `Generated: ${new Date().toISOString()}\n` +
