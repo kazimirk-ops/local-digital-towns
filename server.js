@@ -5696,7 +5696,7 @@ async function generateBatchOrderEmail(){
       JOIN orders o ON o.id = oi.orderid
       JOIN places p ON p.id = o.sellerplaceid
       WHERE o.status = 'paid'
-        AND (p.storetype = 'managed' OR p."storeType" = 'managed')
+        AND p.storetype = 'managed'
         AND o.createdat >= NOW() - INTERVAL '7 days'
       GROUP BY oi.titlesnapshot, oi.pricecentssnapshot
       ORDER BY oi.titlesnapshot
@@ -5718,7 +5718,7 @@ async function generateBatchOrderEmail(){
       FROM orders o
       JOIN places p ON p.id = o.sellerplaceid
       WHERE o.status = 'paid'
-        AND (p.storetype = 'managed' OR p."storeType" = 'managed')
+        AND p.storetype = 'managed'
         AND o.createdat >= NOW() - INTERVAL '7 days'
     `);
     const orderCount = result2.rows[0];
