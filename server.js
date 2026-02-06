@@ -2559,6 +2559,7 @@ app.post("/api/checkout/stripe", async (req,res)=>{
       quantity: 1
     });
   }
+  console.log("STRIPE_ORDER_DEBUG", { orderId: order.id, delivery_fee_cents: order.delivery_fee_cents, keys: Object.keys(order).filter(k => k.includes('delivery')) });
   const deliveryFee = Number(order.delivery_fee_cents || 0);
   if (deliveryFee > 0) {
     lineItems.push({
