@@ -152,8 +152,12 @@ function renderCart(){
   });
 }
 async function getDeliveryQuote() {
-  const addr = document.getElementById('deliveryAddressInput').value.trim();
-  if (!addr) return alert('Please enter your delivery address');
+  const street = document.getElementById('deliveryStreetInput').value.trim();
+  const city = document.getElementById('deliveryCityInput').value.trim();
+  const state = document.getElementById('deliveryStateInput').value.trim();
+  const zip = document.getElementById('deliveryZipInput').value.trim();
+  if (!street || !zip) return alert('Please enter your street address and zip code');
+  const addr = street + ', ' + city + ', ' + state + ' ' + zip;
   const btn = document.getElementById('getDeliveryQuoteBtn');
   btn.textContent = 'Getting quote...';
   btn.disabled = true;
@@ -191,7 +195,11 @@ async function checkoutCart(){
   const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
   let body = {};
   if (isManaged && DELIVERY_QUOTE) {
-    const addr = document.getElementById('deliveryAddressInput').value.trim();
+    const street = document.getElementById('deliveryStreetInput').value.trim();
+    const city = document.getElementById('deliveryCityInput').value.trim();
+    const state = document.getElementById('deliveryStateInput').value.trim();
+    const zip = document.getElementById('deliveryZipInput').value.trim();
+    const addr = street + ', ' + city + ', ' + state + ' ' + zip;
     const name = document.getElementById('deliveryNameInput').value.trim();
     const phone = document.getElementById('deliveryPhoneInput').value.trim();
     if (!addr) return alert('Please enter your delivery address and get a quote first');
