@@ -1404,8 +1404,8 @@ async function createOrderFromCart(payload, items){
   const updatedAt = createdAt;
   const info = await stmt(`
     INSERT INTO orders
-      (townId, listingId, buyerUserId, sellerUserId, sellerPlaceId, quantity, amountCents, status, createdAt, updatedAt, completedAt, paymentProvider, paymentIntentId, subtotalCents, serviceGratuityCents, totalCents, fulfillmentType, fulfillmentNotes)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+      (townId, listingId, buyerUserId, sellerUserId, sellerPlaceId, quantity, amountCents, status, createdAt, updatedAt, completedAt, paymentProvider, paymentIntentId, subtotalCents, serviceGratuityCents, totalCents, fulfillmentType, fulfillmentNotes, delivery_address, delivery_fee_cents, uber_quote_id)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
     RETURNING id
   `).run(
     Number(payload.townId || 1),
@@ -1425,7 +1425,10 @@ async function createOrderFromCart(payload, items){
     Number(payload.serviceGratuityCents || 0),
     Number(payload.totalCents || 0),
     String(payload.fulfillmentType || ""),
-    String(payload.fulfillmentNotes || "")
+    String(payload.fulfillmentNotes || ""),
+    payload.deliveryAddress || null,
+    Number(payload.deliveryFeeCents || 0),
+    String(payload.uberQuoteId || "")
   );
   const orderId = info.rows?.[0]?.id;
   for(const item of items){

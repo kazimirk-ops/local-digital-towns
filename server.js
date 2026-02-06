@@ -56,6 +56,30 @@ let nextSweepRuleId = 1;
 let nextSweepstakeId = 1;
 const chatImageUploadRate = new Map();
 
+// --- Uber Direct OAuth ---
+let uberToken = null;
+let uberTokenExpiry = 0;
+
+async function getUberDirectToken() {
+  if (uberToken && Date.now() < uberTokenExpiry) return uberToken;
+  const res = await fetch('https://auth.uber.com/oauth/v2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: process.env.UBER_DIRECT_CLIENT_ID,
+      client_secret: process.env.UBER_DIRECT_CLIENT_SECRET,
+      grant_type: 'client_credentials',
+      scope: 'eats.deliveries'
+    })
+  });
+  const data = await res.json();
+  if (!data.access_token) throw new Error('Uber auth failed: ' + JSON.stringify(data));
+  uberToken = data.access_token;
+  uberTokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
+  console.log('UBER_TOKEN_REFRESHED');
+  return uberToken;
+}
+
 // ============ SECURITY MIDDLEWARE ============
 
 // Helmet - Security headers
@@ -295,6 +319,46 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
         const existingPayment = await data.getPaymentForOrder(order.id);
         if(!existingPayment) await data.createPaymentForOrder(order.id, Number(order.totalCents || 0), "stripe");
         await finalizeOrderPayment(order);
+      }
+
+      // --- Dispatch Uber Direct delivery if applicable ---
+      try {
+        const paidOrder = await data.getOrderById(orderId);
+        if (paidOrder && paidOrder.uber_quote_id && paidOrder.delivery_address) {
+          const uberToken = await getUberDirectToken();
+          const customerId = process.env.UBER_DIRECT_CUSTOMER_ID;
+          const deliveryAddr = typeof paidOrder.delivery_address === 'string' ? JSON.parse(paidOrder.delivery_address) : paidOrder.delivery_address;
+
+          const placeResult = await db.query("SELECT name, pickup_address_full FROM places WHERE id=$1", [paidOrder.sellerplaceid]);
+          const place = placeResult.rows[0];
+
+          const deliveryRes = await fetch(`https://api.uber.com/v1/customers/${customerId}/deliveries`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${uberToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              quote_id: paidOrder.uber_quote_id,
+              pickup_name: place?.name || 'Store',
+              pickup_address: JSON.stringify({ street_address: [place?.pickup_address_full || ''] }),
+              pickup_phone_number: '+13215551234',
+              dropoff_name: deliveryAddr.name || 'Customer',
+              dropoff_address: JSON.stringify({ street_address: [deliveryAddr.street || ''] }),
+              dropoff_phone_number: deliveryAddr.phone || '+13215551234',
+              manifest_items: [{ name: 'Order #' + orderId, quantity: 1 }]
+            })
+          });
+          const deliveryData = await deliveryRes.json();
+          if (deliveryRes.ok) {
+            await db.query("UPDATE orders SET uber_delivery_id=$1, delivery_status=$2 WHERE id=$3", [deliveryData.id, deliveryData.status || 'pending', orderId]);
+            console.log("UBER_DELIVERY_CREATED", { orderId, deliveryId: deliveryData.id });
+          } else {
+            console.error("UBER_DELIVERY_FAILED", { orderId, error: deliveryData });
+          }
+        }
+      } catch (uberErr) {
+        console.error("UBER_DISPATCH_ERROR", { orderId, error: uberErr.message });
       }
     }
 
@@ -2406,8 +2470,11 @@ app.post("/api/checkout/create", async (req, res) =>{
       quantity: Number(item.quantity || 0)
     });
   }
+  const deliveryAddress = req.body?.deliveryAddress || null;
+  const deliveryFeeCents = Number(req.body?.deliveryFeeCents || 0);
+  const uberQuoteId = (req.body?.uberQuoteId || "").toString();
   const serviceGratuityCents = 0; // Subscription model - no commission
-  const totalCents = subtotalCents + serviceGratuityCents;
+  const totalCents = subtotalCents + serviceGratuityCents + (deliveryFeeCents || 0);
   const order = await data.createOrderFromCart({
     townId: 1,
     listingId: items[0].listingId,
@@ -2423,7 +2490,10 @@ app.post("/api/checkout/create", async (req, res) =>{
     serviceGratuityCents,
     totalCents,
     fulfillmentType: (req.body?.fulfillmentType || "").toString(),
-    fulfillmentNotes: (req.body?.fulfillmentNotes || "").toString()
+    fulfillmentNotes: (req.body?.fulfillmentNotes || "").toString(),
+    deliveryAddress: deliveryAddress ? JSON.stringify(deliveryAddress) : null,
+    deliveryFeeCents,
+    uberQuoteId
   }, items);
   await data.createPaymentForOrder(order.id, totalCents, "stripe");
   await data.clearCart(u);
@@ -2489,6 +2559,17 @@ app.post("/api/checkout/stripe", async (req,res)=>{
       quantity: 1
     });
   }
+  const deliveryFee = Number(order.delivery_fee_cents || 0);
+  if (deliveryFee > 0) {
+    lineItems.push({
+      price_data: {
+        currency: 'usd',
+        product_data: { name: 'Delivery Fee' },
+        unit_amount: deliveryFee
+      },
+      quantity: 1
+    });
+  }
   const baseUrl = process.env.BASE_URL || 'https://sebastian-florida.com';
   const successUrl = `${baseUrl}/pay/success?orderId=${order.id}`;
   const cancelUrl = `${baseUrl}/pay/cancel?orderId=${order.id}`;
@@ -2511,6 +2592,54 @@ app.post("/api/checkout/stripe", async (req,res)=>{
     res.json({ checkoutUrl: session.url });
   }catch(e){
     res.status(500).json({error:"Stripe checkout failed"});
+  }
+});
+
+// --- Uber Direct: Get Delivery Quote ---
+app.post("/api/delivery/quote", async (req, res) => {
+  try {
+    const userId = await requireLogin(req, res);
+    if (!userId) return;
+    const { placeId, dropoffAddress, dropoffName, dropoffPhone } = req.body;
+    if (!placeId || !dropoffAddress) return res.status(400).json({ error: "placeId and dropoffAddress required" });
+
+    const placeResult = await db.query("SELECT id, name, pickup_address_full, storetype FROM places WHERE id=$1", [placeId]);
+    const place = placeResult.rows[0];
+    if (!place) return res.status(404).json({ error: "Store not found" });
+    if (place.storetype !== 'managed') return res.status(400).json({ error: "Delivery only available for managed stores" });
+    if (!place.pickup_address_full) return res.status(400).json({ error: "Store pickup address not configured" });
+
+    const token = await getUberDirectToken();
+    const customerId = process.env.UBER_DIRECT_CUSTOMER_ID;
+    const quoteRes = await fetch(`https://api.uber.com/v1/customers/${customerId}/delivery_quotes`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        pickup_address: JSON.stringify({ street_address: [place.pickup_address_full] }),
+        dropoff_address: JSON.stringify({ street_address: [dropoffAddress] })
+      })
+    });
+    const quoteData = await quoteRes.json();
+    if (!quoteRes.ok) {
+      console.error("UBER_QUOTE_ERROR", quoteData);
+      return res.status(400).json({ error: "Could not get delivery quote", details: quoteData });
+    }
+    console.log("UBER_QUOTE_SUCCESS", { placeId, fee: quoteData.fee, duration: quoteData.duration });
+    res.json({
+      quoteId: quoteData.id,
+      feeCents: quoteData.fee,
+      currency: quoteData.currency,
+      estimatedMinutes: quoteData.duration,
+      pickupEta: quoteData.pickup_duration,
+      dropoffEta: quoteData.dropoff_eta,
+      expires: quoteData.expires
+    });
+  } catch (err) {
+    console.error("DELIVERY_QUOTE_ERROR", err.message);
+    res.status(500).json({ error: "Failed to get delivery quote" });
   }
 });
 
