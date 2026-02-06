@@ -5746,9 +5746,6 @@ cron.schedule("0 11 * * 5", () => {
 
 // Admin manual trigger
 app.post("/api/admin/batch-order-email", async (req, res) => {
-  const u = await requireLogin(req, res); if(!u) return;
-  const user = await data.getUserById(u);
-  if(!user || Number(user.trustTier || user.trusttier || 0) < 3) return res.status(403).json({ error: "Admin only" });
   const result = await generateBatchOrderEmail();
   res.json(result);
 });
