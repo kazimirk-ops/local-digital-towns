@@ -1882,7 +1882,7 @@ app.post("/api/verify/buyer", async (req, res) => {
   const addressJson = JSON.stringify({ fullName, address, city, phone: phone || null });
   const passwordHash = require("crypto").createHash("sha256").update(password).digest("hex");
   const result = await db.query(
-    "INSERT INTO users (email, displayName, addressJson, isBuyerVerified, trustTier, createdAt, passwordHash) VALUES ($1,$2,$3,0,0,NOW(),$4) RETURNING id",
+    "INSERT INTO users (email, displayName, addressJson, isBuyerVerified, trustTier, createdAt, passwordHash) VALUES ($1,$2,$3,0,1,NOW(),$4) RETURNING id",
     [email.toLowerCase(), fullName, addressJson, passwordHash]
   );
   res.json({ ok: true, message: "Account created - pending admin approval", userId: result.rows[0].id });

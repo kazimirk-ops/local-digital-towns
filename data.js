@@ -246,7 +246,7 @@ async function seedAdminUser(){
   if(!email) return;
   let user = await stmt("SELECT * FROM users WHERE email=$1").get(email);
   if(!user){
-    const created = await stmt("INSERT INTO users (email, createdAt) VALUES ($1,$2) RETURNING id").run(email, nowISO());
+    const created = await stmt("INSERT INTO users (email, trustTier, createdAt) VALUES ($1,1,$2) RETURNING id").run(email, nowISO());
     user = await stmt("SELECT * FROM users WHERE id=$1").get(created.rows?.[0]?.id);
   }
   if(Number(user.isAdmin) !== 1){
@@ -913,7 +913,7 @@ async function upsertUserByEmail(email){
   if(!e) return null;
   const existing = await stmt("SELECT * FROM users WHERE email=$1").get(e);
   if(existing) return existing;
-  const info = await stmt("INSERT INTO users (email, createdAt) VALUES ($1,$2) RETURNING id").run(e, nowISO());
+  const info = await stmt("INSERT INTO users (email, trustTier, createdAt) VALUES ($1,1,$2) RETURNING id").run(e, nowISO());
   return stmt("SELECT * FROM users WHERE id=$1").get(info.rows?.[0]?.id);
 }
 async function setUserAdmin(userId, isAdmin){
