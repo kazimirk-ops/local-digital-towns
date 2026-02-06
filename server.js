@@ -549,9 +549,9 @@ app.get("/me/seller/orders", async (req, res) =>{
   res.sendFile(path.join(__dirname,"public","seller_orders.html"));
 });
 app.get("/me/hub", async (req, res) =>res.redirect("/me/store"));
-app.get("/pay/:id", async (req, res) =>res.sendFile(path.join(__dirname,"public","pay.html")));
 app.get("/pay/success", async (req, res) =>res.sendFile(path.join(__dirname,"public","pay_success.html")));
 app.get("/pay/cancel", async (req, res) =>res.sendFile(path.join(__dirname,"public","pay_cancel.html")));
+app.get("/pay/:id", async (req, res) =>res.sendFile(path.join(__dirname,"public","pay.html")));
 app.get("/debug/context", async (req, res) =>{
   const admin=await requireAdminOrDev(req,res); if(!admin) return;
   const u = await getUserId(req);
