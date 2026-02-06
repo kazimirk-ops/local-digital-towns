@@ -83,6 +83,12 @@ function renderCart(){
   const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
   const deliverySection = document.getElementById('cartDeliverySection');
   if (deliverySection) deliverySection.style.display = isManaged ? 'block' : 'none';
+  const howItWorks = document.getElementById('cartHowItWorks');
+  if (howItWorks) {
+    howItWorks.innerHTML = isManaged
+      ? '<div class="muted" style="color:#93c5fd;"><strong>How it works:</strong> Enter your delivery address, get a quote, then proceed to checkout. We\'ll deliver to your door!</div>'
+      : '<div class="muted" style="color:#93c5fd;"><strong>How it works:</strong> Place your order, then contact the seller to arrange pickup and payment (cash, Venmo, etc.).</div>';
+  }
   // Update cart messaging based on store type
   const msgEl = document.querySelector("#cartPanel > div:nth-child(4) .muted");
   if(msgEl){
