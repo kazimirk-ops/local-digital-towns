@@ -182,6 +182,7 @@ const jsonParser = express.json({ limit: "5mb" });
 const urlencodedParser = express.urlencoded({ extended: false });
 app.use(async (req,res,next)=>{
   if(req.path === "/api/stripe/webhook") return next();
+  if(req.path === "/api/webhooks/uber") return next();
   return jsonParser(req,res,next);
 });
 const LOCKDOWN = (process.env.LOCKDOWN_MODE || "").toLowerCase() === "true";
@@ -565,6 +566,34 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
 
   res.json({ received:true });
 });
+
+// --- Uber Direct Delivery Webhook ---
+app.post("/api/webhooks/uber", express.json(), async (req, res) => {
+  try {
+    const event = req.body;
+    console.log("UBER_WEBHOOK", JSON.stringify(event));
+    const deliveryId = event.id || event.delivery_id;
+    const status = event.status || event.data?.status;
+    if (!deliveryId || !status) {
+      console.log("UBER_WEBHOOK_SKIP", { deliveryId, status });
+      return res.status(200).json({ ok: true });
+    }
+    const result = await db.query(
+      "UPDATE orders SET delivery_status=$1 WHERE uber_delivery_id=$2 RETURNING id, buyeruserid",
+      [status, deliveryId]
+    );
+    if (result.rows.length > 0) {
+      console.log("UBER_WEBHOOK_UPDATED", { orderId: result.rows[0].id, status, deliveryId });
+    } else {
+      console.log("UBER_WEBHOOK_NO_MATCH", { deliveryId, status });
+    }
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error("UBER_WEBHOOK_ERROR", err.message);
+    res.status(200).json({ ok: true });
+  }
+});
+
 app.get("/debug/routes", async (req, res) =>{
   const admin=await requireAdminOrDev(req,res); if(!admin) return;
   const routes = [];
