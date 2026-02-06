@@ -584,6 +584,39 @@ app.post("/api/webhooks/uber", express.json(), async (req, res) => {
     );
     if (result.rows.length > 0) {
       console.log("UBER_WEBHOOK_UPDATED", { orderId: result.rows[0].id, status, deliveryId });
+      // Send delivery status email to customer
+      try {
+        const buyerId = result.rows[0].buyeruserid;
+        const userResult = await db.query("SELECT email, displayname FROM users WHERE id=$1", [buyerId]);
+        const buyer = userResult.rows[0];
+        if (buyer && buyer.email) {
+          const orderId = result.rows[0].id;
+          const statusMessages = {
+            'pickup': '🏪 A courier is heading to pick up your order!',
+            'pickup_complete': '📦 Your order has been picked up and is on the way!',
+            'dropoff': '🚗 Your delivery is arriving soon!',
+            'delivered': '✅ Your order has been delivered! Enjoy!',
+            'canceled': '❌ Your delivery has been canceled. Please contact us.',
+            'returned': '↩️ Your delivery could not be completed.'
+          };
+          const msg = statusMessages[status] || `Your delivery status updated to: ${status}`;
+          const trackUrl = 'https://sebastian-florida.com/delivery-tracking?orderId=' + orderId;
+
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              from: 'Sebastian Express <noreply@sebastian-florida.com>',
+              to: buyer.email,
+              subject: 'Sebastian Express - ' + (status === 'delivered' ? 'Order Delivered!' : 'Delivery Update'),
+              html: `<div style="font-family:sans-serif;max-width:500px;margin:0 auto;"><h2 style="color:#2dd4bf;">🚀 Sebastian Express</h2><p>Hi ${buyer.displayname || 'there'},</p><p style="font-size:18px;">${msg}</p><p><a href="${trackUrl}" style="display:inline-block;padding:10px 20px;background:#2dd4bf;color:#0f172a;border-radius:8px;text-decoration:none;font-weight:bold;">Track Your Delivery</a></p><p style="color:#888;font-size:12px;">Order #${orderId}</p></div>`
+            })
+          });
+          console.log("DELIVERY_EMAIL_SENT", { orderId, status, email: buyer.email });
+        }
+      } catch (emailErr) {
+        console.error("DELIVERY_EMAIL_ERROR", emailErr.message);
+      }
     } else {
       console.log("UBER_WEBHOOK_NO_MATCH", { deliveryId, status });
     }
