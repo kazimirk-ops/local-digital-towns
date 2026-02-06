@@ -2672,6 +2672,34 @@ app.post("/api/delivery/quote", async (req, res) => {
   }
 });
 
+// --- Delivery tracking for customers ---
+app.get("/api/orders/:id/delivery", async (req, res) => {
+  try {
+    const userId = await requireLogin(req, res);
+    if (!userId) return;
+    const orderId = Number(req.params.id);
+    const result = await db.query(
+      "SELECT id, buyeruserid, delivery_status, delivery_address, delivery_fee_cents, uber_delivery_id FROM orders WHERE id=$1",
+      [orderId]
+    );
+    const order = result.rows[0];
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    if (Number(order.buyeruserid) !== userId) return res.status(403).json({ error: "Not your order" });
+    const addr = order.delivery_address;
+    const street = typeof addr === 'object' && addr ? addr.street : (typeof addr === 'string' ? JSON.parse(addr).street : '');
+    res.json({
+      orderId: order.id,
+      deliveryStatus: order.delivery_status || 'pending',
+      deliveryAddress: street,
+      deliveryFeeCents: Number(order.delivery_fee_cents || order.deliveryfeecents || 0),
+      uberDeliveryId: order.uber_delivery_id || ''
+    });
+  } catch (err) {
+    console.error("DELIVERY_TRACKING_ERROR", err.message);
+    res.status(500).json({ error: "Failed to load tracking" });
+  }
+});
+
 app.get("/api/orders", async (req, res) =>{
   const u=await requireLogin(req,res); if(!u) return;
   res.json(await data.getOrdersForBuyer(u));
