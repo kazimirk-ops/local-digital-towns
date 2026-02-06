@@ -150,6 +150,8 @@ function renderCart(){
       }
     });
   });
+  const quoteBtn = document.getElementById('getDeliveryQuoteBtn');
+  if (quoteBtn) quoteBtn.onclick = getDeliveryQuote;
 }
 async function getDeliveryQuote() {
   const street = document.getElementById('deliveryStreetInput').value.trim();
