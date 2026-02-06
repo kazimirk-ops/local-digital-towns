@@ -325,6 +325,7 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
       // --- Dispatch Uber Direct delivery if applicable ---
       try {
         const paidOrder = await data.getOrderById(orderId);
+        console.log("UBER_DISPATCH_CHECK", { orderId, hasOrder: !!paidOrder, uberQuoteId: paidOrder?.uber_quote_id, deliveryAddr: !!paidOrder?.delivery_address, keys: paidOrder ? Object.keys(paidOrder).filter(k => k.includes('uber') || k.includes('delivery')) : [] });
         if (paidOrder && paidOrder.uber_quote_id && paidOrder.delivery_address) {
           const uberToken = await getUberDirectToken();
           const customerId = process.env.UBER_DIRECT_CUSTOMER_ID;
