@@ -24,6 +24,7 @@ const trust = require("./lib/trust");
 const { canBuyAsVerifiedVisitor } = require("./lib/trust");
 const { sendAdminEmail, sendEmail } = require("./lib/notify");
 const db = require("./lib/db");
+const cron = require("node-cron");
 const TRUST_TIER_LABELS = trust.TRUST_TIER_LABELS;
 async function getTrustBadgeForUser(userId){
   if (!userId || isNaN(Number(userId))) return null;
@@ -5694,6 +5695,72 @@ app.use((req, res) => {
 const PORT = Number(process.env.PORT || 3000);
 async function start(){
   await data.initDb();
+// --- Weekly Batch Order Email for Managed Stores ---
+async function generateBatchOrderEmail(){
+  try{
+    const rows = await db.any(`
+      SELECT oi.titlesnapshot AS title, SUM(oi.quantity) AS total_qty, oi.pricecentssnapshot AS price_cents
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.orderid
+      JOIN places p ON p.id = o.sellerplaceid
+      WHERE o.status = 'paid'
+        AND (p.storetype = 'managed' OR p."storeType" = 'managed')
+        AND o.createdat >= NOW() - INTERVAL '7 days'
+      GROUP BY oi.titlesnapshot, oi.pricecentssnapshot
+      ORDER BY oi.titlesnapshot
+    `);
+    if(!rows.length){
+      console.log("BATCH_ORDER: No paid managed store orders this week");
+      return { ok: true, skipped: true, reason: "no orders" };
+    }
+    let totalCost = 0;
+    const lines = rows.map(r => {
+      const qty = Number(r.total_qty || 0);
+      const cost = qty * Number(r.price_cents || 0);
+      totalCost += cost;
+      return `${r.title} — Qty: ${qty} — ${(cost/100).toFixed(2)}`;
+    });
+    const orderCount = await db.one(`
+      SELECT COUNT(DISTINCT o.id) AS c
+      FROM orders o
+      JOIN places p ON p.id = o.sellerplaceid
+      WHERE o.status = 'paid'
+        AND (p.storetype = 'managed' OR p."storeType" = 'managed')
+        AND o.createdat >= NOW() - INTERVAL '7 days'
+    `);
+    const subject = `Weekly Batch Order — ${new Date().toLocaleDateString("en-US")} — ${rows.length} products, ${orderCount.c} orders`;
+    const text = `Weekly Batch Order Summary\n` +
+      `Generated: ${new Date().toISOString()}\n` +
+      `Orders this week: ${orderCount.c}\n` +
+      `Products to order: ${rows.length}\n` +
+      `Total revenue: ${(totalCost/100).toFixed(2)}\n\n` +
+      `--- Shopping List ---\n` +
+      lines.join("\n") +
+      `\n\nThis is your master order list to send to the supplier.`;
+    const result = await sendAdminEmail(subject, text);
+    console.log("BATCH_ORDER_EMAIL_SENT", { items: rows.length, orders: orderCount.c, result: result.ok });
+    return { ok: true, items: rows.length, orders: Number(orderCount.c) };
+  }catch(err){
+    console.error("BATCH_ORDER_EMAIL_ERROR", err?.message);
+    return { ok: false, error: err?.message };
+  }
+}
+
+// Friday 6am ET (11:00 UTC)
+cron.schedule("0 11 * * 5", () => {
+  console.log("CRON: Running weekly batch order email");
+  generateBatchOrderEmail();
+});
+
+// Admin manual trigger
+app.post("/api/admin/batch-order-email", async (req, res) => {
+  const u = await requireLogin(req, res); if(!u) return;
+  const user = await data.getUserById(u);
+  if(!user || Number(user.trustTier || user.trusttier || 0) < 3) return res.status(403).json({ error: "Admin only" });
+  const result = await generateBatchOrderEmail();
+  res.json(result);
+});
+
   app.listen(PORT, "0.0.0.0", () => console.log(`Server running on http://localhost:${PORT}`));
 }
 start().catch((err)=>{
