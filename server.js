@@ -4834,6 +4834,27 @@ app.post("/api/admin/reject-buyer", async (req, res) => {
   res.json({ ok: true, deleted: userId });
 });
 
+// --- Admin: Active Deliveries ---
+app.get("/api/admin/deliveries", async (req, res) => {
+  const admin = await requireAdmin(req, res); if (!admin) return;
+  const result = await db.query(`
+    SELECT o.id, o.delivery_status, o.delivery_address, o.delivery_fee_cents, o.uber_delivery_id, o.status,
+           u.email as buyeremail, p.name as storename
+    FROM orders o
+    LEFT JOIN users u ON o.buyeruserid = u.id
+    LEFT JOIN places p ON o.sellerplaceid = p.id
+    WHERE o.uber_quote_id IS NOT NULL AND o.uber_quote_id != ''
+    ORDER BY o.id DESC
+    LIMIT 50
+  `);
+  const rows = result.rows.map(r => {
+    const addr = r.delivery_address;
+    const street = typeof addr === 'object' && addr ? addr.street : '';
+    return { ...r, street, delivery_address: undefined };
+  });
+  res.json(rows);
+});
+
 app.post("/admin/verify/store", async (req, res) =>{
   const admin=await requireAdmin(req,res,{ message: "Admin access required" }); if(!admin) return;
   const id = Number(req.body?.placeId);
