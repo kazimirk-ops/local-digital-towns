@@ -98,27 +98,6 @@ try {
   console.log("Security: CORS not installed (npm install cors)");
 }
 
-// Google Analytics injection
-app.use((req, res, next) => {
-  const originalSend = res.send;
-  res.send = function(body) {
-    if (typeof body === 'string' && body.includes('<head>')) {
-      const gaSnippet = `
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-WLN50NC7RV');
-</script>`;
-      body = body.replace('<head>', '<head>' + gaSnippet);
-    }
-    originalSend.call(this, body);
-  };
-  next();
-});
-
 // Rate Limiting
 let rateLimit;
 try {
@@ -163,6 +142,30 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
     town: process.env.TOWN_NAME || "Sebastian"
   });
+});
+
+// Google Analytics injection for static HTML files
+app.use((req, res, next) => {
+  if (req.path.endsWith('.html') || req.path === '/' || (!req.path.includes('.') && req.method === 'GET')) {
+    const filePath = require('path').join(__dirname, 'public', req.path === '/' ? 'index.html' : req.path.endsWith('.html') ? req.path : req.path + '.html');
+    const fs = require('fs');
+    fs.readFile(filePath, 'utf8', (err, html) => {
+      if (err) return next();
+      const gaSnippet = `<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>`;
+      html = html.replace('<head>', '<head>' + gaSnippet);
+      res.set('Content-Type', 'text/html');
+      res.send(html);
+    });
+  } else {
+    next();
+  }
 });
 
 app.use(express.static(path.join(__dirname, "public")));
