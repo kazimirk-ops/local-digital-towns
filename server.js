@@ -66,11 +66,11 @@ try {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://js.stripe.com", "https://connect.facebook.net", "https://unpkg.com"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://js.stripe.com", "https://connect.facebook.net", "https://unpkg.com", "https://www.googletagmanager.com"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https:", "blob:"],
-        connectSrc: ["'self'", "https://api.stripe.com", "https://graph.facebook.com", "https://api.tidesandcurrents.noaa.gov", "wss:", "https://accounts.google.com", "https://oauth2.googleapis.com", "https://www.googleapis.com"],
+        connectSrc: ["'self'", "https://api.stripe.com", "https://graph.facebook.com", "https://api.tidesandcurrents.noaa.gov", "wss:", "https://accounts.google.com", "https://oauth2.googleapis.com", "https://www.googleapis.com", "https://www.googletagmanager.com", "https://www.google-analytics.com"],
         frameSrc: ["'self'", "https://js.stripe.com", "https://www.facebook.com"],
       }
     },
@@ -97,6 +97,27 @@ try {
 } catch(e) {
   console.log("Security: CORS not installed (npm install cors)");
 }
+
+// Google Analytics injection
+app.use((req, res, next) => {
+  const originalSend = res.send;
+  res.send = function(body) {
+    if (typeof body === 'string' && body.includes('<head>')) {
+      const gaSnippet = `
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>`;
+      body = body.replace('<head>', '<head>' + gaSnippet);
+    }
+    originalSend.call(this, body);
+  };
+  next();
+});
 
 // Rate Limiting
 let rateLimit;
