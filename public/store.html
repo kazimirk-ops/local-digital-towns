@@ -313,6 +313,19 @@
     </div>
     <div class="list" id="cartList" style="margin-top:10px;"></div>
     <div class="muted" id="cartTotals" style="margin-top:10px;"></div>
+    <div id="cartDeliverySection" style="display:none; margin:12px 0; padding:12px; background:#f0f9ff; border-radius:8px;">
+      <label style="font-weight:600; font-size:14px; display:block; margin-bottom:6px;">Delivery Address</label>
+      <input type="text" id="deliveryAddressInput" placeholder="Enter your full address" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:14px; box-sizing:border-box;" />
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="deliveryNameInput" placeholder="Your name" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:13px;" />
+        <input type="text" id="deliveryPhoneInput" placeholder="Phone number" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:13px;" />
+      </div>
+      <button id="getDeliveryQuoteBtn" onclick="getDeliveryQuote()" style="margin-top:10px; width:100%; padding:10px; background:#2dd4bf; color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer;">Get Delivery Quote</button>
+      <div id="deliveryQuoteResult" style="display:none; margin-top:10px; padding:10px; background:#fff; border-radius:6px; border:1px solid #e0e0e0;">
+        <div style="display:flex; justify-content:space-between;"><span>Delivery Fee:</span><strong id="deliveryFeeDisplay">$0.00</strong></div>
+        <div style="display:flex; justify-content:space-between; margin-top:4px;"><span>Estimated Time:</span><span id="deliveryEtaDisplay">--</span></div>
+      </div>
+    </div>
     <div style="margin-top:10px; padding:10px; background:rgba(59,130,246,0.1); border-radius:10px; border:1px solid rgba(59,130,246,0.2);">
       <div class="muted" style="color:#93c5fd;"><strong>How it works:</strong> Place your order, then contact the seller to arrange pickup and payment (cash, Venmo, etc.).</div>
     </div>

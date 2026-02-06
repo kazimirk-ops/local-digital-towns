@@ -31,6 +31,7 @@ let LIST=[],TAB="item",AUCTIONS={},CAT_FILTER="All";
 let LIVE_SHOW=null;
 let CART={ items:[] };
 let CART_ORDER_ID=null;
+let DELIVERY_QUOTE = null;
 
 function fmtCents(c){
   if(!Number.isFinite(Number(c))) return "—";
@@ -80,6 +81,8 @@ function renderCart(){
   const totals = $("cartTotals");
   if(!list || !totals) return;
   const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
+  const deliverySection = document.getElementById('cartDeliverySection');
+  if (deliverySection) deliverySection.style.display = isManaged ? 'block' : 'none';
   // Update cart messaging based on store type
   const msgEl = document.querySelector("#cartPanel > div:nth-child(4) .muted");
   if(msgEl){
@@ -148,6 +151,30 @@ function renderCart(){
     });
   });
 }
+async function getDeliveryQuote() {
+  const addr = document.getElementById('deliveryAddressInput').value.trim();
+  if (!addr) return alert('Please enter your delivery address');
+  const btn = document.getElementById('getDeliveryQuoteBtn');
+  btn.textContent = 'Getting quote...';
+  btn.disabled = true;
+  try {
+    const res = await api('/api/delivery/quote', {
+      method: 'POST',
+      body: JSON.stringify({ placeId: PLACE.id, dropoffAddress: addr })
+    });
+    DELIVERY_QUOTE = res;
+    document.getElementById('deliveryFeeDisplay').textContent = '$' + (res.feeCents / 100).toFixed(2);
+    document.getElementById('deliveryEtaDisplay').textContent = res.estimatedMinutes + ' min';
+    document.getElementById('deliveryQuoteResult').style.display = 'block';
+    const subtotal = CART.items.reduce((s, i) => s + i.priceCents * i.quantity, 0);
+    document.getElementById('cartTotals').innerHTML = '<div style="display:flex;justify-content:space-between;"><span>Subtotal:</span><span>$' + (subtotal/100).toFixed(2) + '</span></div><div style="display:flex;justify-content:space-between;"><span>Delivery:</span><span>$' + (res.feeCents/100).toFixed(2) + '</span></div><div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #ccc;padding-top:6px;margin-top:6px;"><span>Total:</span><span>$' + ((subtotal+res.feeCents)/100).toFixed(2) + '</span></div>';
+  } catch (err) {
+    alert('Could not get delivery quote: ' + (err.message || 'Try again'));
+  } finally {
+    btn.textContent = 'Get Delivery Quote';
+    btn.disabled = false;
+  }
+}
 async function addToCart(listingId, qty=1){
   openCartModal();
   try{
@@ -161,20 +188,27 @@ async function addToCart(listingId, qty=1){
   }
 }
 async function checkoutCart(){
-  try{
-    const res = await api("/api/checkout/create",{method:"POST",body:JSON.stringify({})});
-    CART_ORDER_ID = res.orderId;
-    const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
-    if(isManaged){
-      // Managed store: redirect to Stripe checkout
-      const stripeRes = await api("/api/checkout/stripe",{method:"POST",body:JSON.stringify({orderId: res.orderId})});
-      window.location.href = stripeRes.checkoutUrl;
-    }else{
-      // Peer-to-peer: redirect to order confirmation
-      window.location.href = `/order-confirmed?orderId=${res.orderId}`;
-    }
-  }catch(e){
-    setCartMsg(`ERROR: ${e.message}`, true);
+  const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
+  let body = {};
+  if (isManaged && DELIVERY_QUOTE) {
+    const addr = document.getElementById('deliveryAddressInput').value.trim();
+    const name = document.getElementById('deliveryNameInput').value.trim();
+    const phone = document.getElementById('deliveryPhoneInput').value.trim();
+    if (!addr) return alert('Please enter your delivery address and get a quote first');
+    body = {
+      deliveryAddress: { street: addr, name: name, phone: phone },
+      deliveryFeeCents: DELIVERY_QUOTE.feeCents,
+      uberQuoteId: DELIVERY_QUOTE.quoteId,
+      fulfillmentType: 'delivery'
+    };
+  }
+  const res = await api("/api/checkout/create", {method:"POST", body:JSON.stringify(body)});
+  CART_ORDER_ID = res.orderId;
+  if(isManaged){
+    const stripeRes = await api("/api/checkout/stripe", {method:"POST", body:JSON.stringify({orderId: res.orderId})});
+    window.location.href = stripeRes.checkoutUrl;
+  } else {
+    window.location.href = `/order-confirmed?orderId=${res.orderId}`;
   }
 }
 function formatCountdown(endAt){
