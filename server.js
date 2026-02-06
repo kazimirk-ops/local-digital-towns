@@ -5687,14 +5687,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Handle 404 for undefined routes
-app.use((req, res) => {
-  res.status(404).json({ error: 'Not found' });
-});
-
-const PORT = Number(process.env.PORT || 3000);
-async function start(){
-  await data.initDb();
 // --- Weekly Batch Order Email for Managed Stores ---
 async function generateBatchOrderEmail(){
   try{
@@ -5761,6 +5753,14 @@ app.post("/api/admin/batch-order-email", async (req, res) => {
   res.json(result);
 });
 
+// Handle 404 for undefined routes
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+const PORT = Number(process.env.PORT || 3000);
+async function start(){
+  await data.initDb();
   app.listen(PORT, "0.0.0.0", () => console.log(`Server running on http://localhost:${PORT}`));
 }
 start().catch((err)=>{
