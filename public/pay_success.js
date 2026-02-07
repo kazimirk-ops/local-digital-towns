@@ -33,7 +33,7 @@ async function main(){
     const storeType = res.storeType || 'peer';
     if(storeType === 'managed'){
       $("nextStepsManaged").style.display = "block";
-      const hasDelivery = order.delivery_address || order.deliveryaddress || order.uber_quote_id || order.uberquoteid || order.delivery_status || order.deliverystatus;
+      const hasDelivery = order.delivery_address || order.deliveryAddress || order.deliveryaddress || order.uber_quote_id || order.uberQuoteId || order.uberquoteid;
       if(hasDelivery){
         const trackLink = $("trackDeliveryLink");
         trackLink.href = `/delivery-tracking?orderId=${orderId}`;
