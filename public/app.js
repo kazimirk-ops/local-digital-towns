@@ -74,6 +74,7 @@ let scheduledState = { list:[], selectedId:null, thumbnailUrl:"" };
 let pulseState = { latest:null };
 let access = { loggedIn:false, eligible:false, email:null, reason:null, isAdmin:false };
 window.access = access;
+window.state = state;
 let currentUser = { id:null, displayName:"" };
 let auctionsTabsBound = false;
 let map, markersLayer, boundaryLayer;
@@ -2531,6 +2532,7 @@ async function loadMe() {
   if (!me.user) {
     access = { loggedIn:false, eligible:false, email:null, reason:null, isAdmin:false };
     window.access = access;
+    window.state = state;
     currentUser = { id:null, displayName:"" };
     setControlsEnabled();
     await refreshSweep();
@@ -2545,6 +2547,7 @@ async function loadMe() {
   const isAdmin = Number(me.user.isAdmin) === 1;
   access = { loggedIn:true, eligible: status==="eligible", email, reason, isAdmin };
   window.access = access;
+  window.state = state;
   currentUser = { id: me.user.id, displayName };
   setControlsEnabled();
   await refreshSweep();
