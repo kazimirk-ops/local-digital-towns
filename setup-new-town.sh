@@ -36,23 +36,29 @@ echo "============================================================"
 echo ""
 
 prompt() {
-  local var_name="$1" label="$2" default="${3:-}"
-  local current="${!var_name:-}"
-  if [ -n "$current" ]; then
-    echo "  $label: $current (from env)"
+  local var_name="$1" label="$2" default="${3:-}" required="${4:-true}"
+  # If the variable is already declared (even empty), use it without prompting
+  if declare -p "$var_name" &>/dev/null; then
+    local current="${!var_name:-}"
+    if [ -n "$current" ]; then
+      echo "  $label: $current (from env)"
+    else
+      echo "  $label: (empty, from env)"
+    fi
     return
   fi
+  local val=""
   if [ -n "$default" ]; then
     read -rp "  $label [$default]: " val
     val="${val:-$default}"
   else
     read -rp "  $label: " val
   fi
-  if [ -z "$val" ]; then
+  if [ -z "$val" ] && [ "$required" = "true" ]; then
     echo "  ERROR: $label is required." >&2
     exit 1
   fi
-  eval "$var_name=\"\$val\""
+  eval "$var_name=\"\${val:-}\""
 }
 
 prompt TOWN_NAME "Town name (e.g. Vero Beach)"
@@ -63,7 +69,7 @@ prompt TOWN_DOMAIN "Domain (e.g. digitalverobeach.com)"
 prompt TOWN_LAT "Latitude (e.g. 27.6386)"
 prompt TOWN_LNG "Longitude (e.g. -80.3973)"
 prompt TOWN_RADIUS_KM "Geofence radius in km" "15"
-prompt TOWN_ZIP "Primary zip code"
+prompt TOWN_ZIP "Primary zip code (optional, press Enter to skip)" "" "false"
 prompt TOWN_COUNTY "County (e.g. Indian River County)"
 prompt TOWN_STATE "State (2-letter code, e.g. FL)"
 
@@ -73,7 +79,13 @@ echo ""
 echo "  State full name: $TOWN_STATE_FULL"
 
 # ── Compute derived values ────────────────────────────────────
-TOWN_ID=$(jq '[.[].id] | max + 1' "$CONFIG_FILE")
+# Preserve existing ID on re-run, otherwise assign next available
+EXISTING_ID=$(jq -r --arg slug "$TOWN_SLUG" '.[$slug].id // empty' "$CONFIG_FILE")
+if [ -n "$EXISTING_ID" ]; then
+  TOWN_ID="$EXISTING_ID"
+else
+  TOWN_ID=$(jq '[.[].id] | max + 1' "$CONFIG_FILE")
+fi
 TOWN_RADIUS_METERS=$(awk "BEGIN { printf \"%d\", $TOWN_RADIUS_KM * 1000 }")
 
 # Bounding box: ~111 km per degree latitude, ~111*cos(lat) km per degree longitude
@@ -263,7 +275,7 @@ jq --arg slug "$TOWN_SLUG" \
         { "name": "Fun Activities & Events", "firstPost": "First post: Share upcoming events and weekend ideas." },
         { "name": ($name + " Lifestyle & Wellness"), "firstPost": "First post: Morning walks, yoga, and wellness tips here." },
         { "name": "Local Meetups & Walking Groups", "firstPost": "First post: Who wants to start a sunrise walk group?" },
-        { "name": ($name + " Culture & Memories"), "firstPost": "First post: Post old photos or stories from " + $name + "\u0027s past." },
+        { "name": ($name + " Culture & Memories"), "firstPost": ("First post: Post old photos or stories from " + $name + "\u0027s past.") },
         { "name": "County Events & Happenings", "firstPost": "First post: County fairs, markets, and regional updates." },
         { "name": "Ladies Social Club", "firstPost": "First post: Ladies\u0027 night ideas and meetups." }
       ],
@@ -356,8 +368,15 @@ jq --arg slug "$TOWN_SLUG" \
         "defaultLevel": "visitor"
       }
     }
-  }' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
+  }' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp"
 
+if [ ! -s "${CONFIG_FILE}.tmp" ]; then
+  rm -f "${CONFIG_FILE}.tmp"
+  echo "  ERROR: jq failed to generate config. Original file preserved." >&2
+  exit 1
+fi
+
+mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
 echo "  Updated: $CONFIG_FILE"
 
 # ── Phase 3: Create theme file ────────────────────────────────

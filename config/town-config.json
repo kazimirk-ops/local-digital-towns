@@ -10,11 +10,13 @@
     "region": "Treasure Coast",
     "country": "US",
     "timezone": "America/New_York",
-
-    "domains": ["digitalsebastian.com", "sebastian.digitaltowns.com", "localhost"],
+    "domains": [
+      "digitalsebastian.com",
+      "sebastian.digitaltowns.com",
+      "localhost"
+    ],
     "productionUrl": "https://sebastian-florida.com",
     "localFallbackUrl": "https://sebastian.local",
-
     "location": {
       "lat": 27.8164,
       "lng": -80.4706,
@@ -27,7 +29,6 @@
         "maxLng": -80.39
       }
     },
-
     "address": {
       "city": "Sebastian",
       "state": "FL",
@@ -37,7 +38,6 @@
       "placeholder": "123 Main St, Sebastian, FL",
       "streetPlaceholder": "Street address (e.g. 1234 Indian River Dr)"
     },
-
     "branding": {
       "primaryColor": "#3b82f6",
       "secondaryColor": "#22d3ee",
@@ -49,7 +49,6 @@
       "heroImage": "/images/sebastian-main-map.png",
       "themeFile": "sebastian.json"
     },
-
     "theme": {
       "accent": "#00ffae",
       "bg": "#070b10",
@@ -57,7 +56,6 @@
       "text": "#e8eef6",
       "muted": "#9fb0c3"
     },
-
     "contact": {
       "supportEmail": "support@sebastian-florida.com",
       "supportEmailAlt": "support@digitalsebastian.com",
@@ -66,13 +64,11 @@
       "nonEmergencyPhoneTel": "7725696700",
       "nonEmergencyLabel": "IRC Sheriff's Office"
     },
-
     "legal": {
       "jurisdictionText": "Any legal action shall be brought in the courts of Indian River County, Florida",
       "governingLawText": "These Terms are governed by the laws of the State of Florida",
       "contactAddress": "Sebastian, Florida"
     },
-
     "features": {
       "marketplace": true,
       "auctions": true,
@@ -84,7 +80,6 @@
       "businessSubscriptions": true,
       "reviews": true
     },
-
     "payments": {
       "currency": "usd",
       "stripeEnabled": true,
@@ -93,13 +88,11 @@
       "trialDays": 30,
       "referralCommissionPercent": 25
     },
-
     "social": {
       "facebook": null,
       "instagram": null,
       "twitter": null
     },
-
     "content": {
       "welcomeMessage": "Welcome to Digital Sebastian!",
       "aboutUrl": "/about",
@@ -110,7 +103,6 @@
       "applyResidentLabel": "Apply as a Sebastian Resident",
       "deleteAccountText": "To request deletion of your Sebastian Florida account and all associated data, please email us at:"
     },
-
     "pageTitles": {
       "main": "Sebastian Digital Town",
       "login": "Login - Digital Sebastian",
@@ -119,55 +111,74 @@
       "subscription": "Subscribe - Digital Sebastian",
       "mySubscription": "My Subscription - Digital Sebastian",
       "businessSubscription": "Business Subscription - Digital Sebastian",
-      "store": "Storefront \u2022 Sebastian Digital Town",
-      "sellerOrders": "Seller Orders \u2013 Sebastian",
-      "myOrders": "My Orders \u2013 Sebastian",
+      "store": "Storefront • Sebastian Digital Town",
+      "sellerOrders": "Seller Orders – Sebastian",
+      "myOrders": "My Orders – Sebastian",
       "referrals": "Referral Program - Digital Sebastian",
       "giveawayOffer": "Submit Giveaway Offer - Digital Sebastian",
       "deliveryTracking": "Delivery Tracking - Sebastian Express",
       "deleteAccount": "Delete Account - Sebastian Florida",
-      "comingSoon": "Sebastian Digital Town \u2014 Private Beta",
-      "admin": "Admin Metrics \u2013 Sebastian",
-      "adminMedia": "Admin Media \u2013 Sebastian",
-      "adminPulse": "Daily Pulse Export \u2013 Sebastian",
-      "adminAnalytics": "Platform Analytics \u2013 Sebastian"
+      "comingSoon": "Sebastian Digital Town — Private Beta",
+      "admin": "Admin Metrics – Sebastian",
+      "adminMedia": "Admin Media – Sebastian",
+      "adminPulse": "Daily Pulse Export – Sebastian",
+      "adminAnalytics": "Platform Analytics – Sebastian"
     },
-
     "meta": {
-      "ogTitle": "Sebastian, Florida \u2014 Local Community Platform",
+      "ogTitle": "Sebastian, Florida — Local Community Platform",
       "ogDescription": "Buy, sell, chat, enter giveaways, discover local businesses. Free to join.",
       "description": "Sebastian, Florida's local community platform. Marketplace, giveaways, events, local business directory. Free to join."
     },
-
     "channels": [
-      { "name": "Sebastian Neighbors & Friends", "firstPost": "First post: Welcome neighbors! Introduce yourself and your street." },
-      { "name": "Sebastian Community Chat", "firstPost": "First post: What's your favorite local spot this week?" },
-      { "name": "Fun Activities & Events", "firstPost": "First post: Share upcoming events and weekend ideas." },
-      { "name": "Sebastian Lifestyle & Wellness", "firstPost": "First post: Morning walks, yoga, and wellness tips here." },
-      { "name": "Local Meetups & Walking Groups", "firstPost": "First post: Who wants to start a sunrise walk group?" },
-      { "name": "Sebastian Culture & Memories", "firstPost": "First post: Post old photos or stories from Sebastian's past." },
-      { "name": "County Events & Happenings", "firstPost": "First post: County fairs, markets, and regional updates." },
-      { "name": "Ladies Social Club", "firstPost": "First post: Ladies' night ideas and meetups." }
+      {
+        "name": "Sebastian Neighbors & Friends",
+        "firstPost": "First post: Welcome neighbors! Introduce yourself and your street."
+      },
+      {
+        "name": "Sebastian Community Chat",
+        "firstPost": "First post: What's your favorite local spot this week?"
+      },
+      {
+        "name": "Fun Activities & Events",
+        "firstPost": "First post: Share upcoming events and weekend ideas."
+      },
+      {
+        "name": "Sebastian Lifestyle & Wellness",
+        "firstPost": "First post: Morning walks, yoga, and wellness tips here."
+      },
+      {
+        "name": "Local Meetups & Walking Groups",
+        "firstPost": "First post: Who wants to start a sunrise walk group?"
+      },
+      {
+        "name": "Sebastian Culture & Memories",
+        "firstPost": "First post: Post old photos or stories from Sebastian's past."
+      },
+      {
+        "name": "County Events & Happenings",
+        "firstPost": "First post: County fairs, markets, and regional updates."
+      },
+      {
+        "name": "Ladies Social Club",
+        "firstPost": "First post: Ladies' night ideas and meetups."
+      }
     ],
-
     "delivery": {
       "serviceName": "Sebastian Express",
       "defaultCity": "Sebastian",
       "defaultState": "FL",
       "freeDeliveryText": "Free delivery in Sebastian."
     },
-
     "emails": {
       "loginCodeSubject": "Your Sebastian Digital Town login code",
       "approvalSubject": "Your Sebastian Digital Town Application is Approved!",
       "approvalBody": "Your {{applicationType}} application for Sebastian Digital Town has been approved.",
       "deliveryFromName": "Sebastian Express",
       "deliverySubjectPrefix": "Sebastian Express - ",
-      "deliveryHtmlHeading": "\ud83d\ude80 Sebastian Express",
+      "deliveryHtmlHeading": "🚀 Sebastian Express",
       "testEmailSubject": "[Sebastian Beta] Test Email",
       "adminDisplayName": "Digital Sebastian"
     },
-
     "shareText": {
       "purchase": "Just bought {{itemName}} from {{storeName}} on Digital Sebastian! Support local businesses in Sebastian, FL.",
       "giveawayWin": "I won {{prizeName}} in the Sebastian Giveaway! Join Digital Sebastian and enter to win amazing local prizes.",
@@ -179,27 +190,24 @@
       "storeShare": "Check out {{storeName}} on Digital Sebastian! {{description}}",
       "giveawayOffer": "I'm giving away \"{{title}}\" on Digital Sebastian! Check out local giveaways and support Sebastian businesses.",
       "verification": "I just got verified as a {{tierName}} on Digital Sebastian! Join our local community and support Sebastian businesses.",
-      "purchaseModal": "Just made a purchase in Sebastian! \ud83d\udecd\ufe0f",
-      "giveawayWinModal": "\ud83c\udfc6 I just won in the Sebastian Town Giveaway!",
+      "purchaseModal": "Just made a purchase in Sebastian! 🛍️",
+      "giveawayWinModal": "🏆 I just won in the Sebastian Town Giveaway!",
       "reviewModal": "Just left a review on Sebastian Digital Town!",
-      "verificationModal": "You're officially a verified Sebastian local! \ud83c\udfe0",
+      "verificationModal": "You're officially a verified Sebastian local! 🏠",
       "storeListed": "Get your store listed on Digital Sebastian"
     },
-
     "pulse": {
-      "titleTemplate": "Daily Pulse \u2014 Sebastian \u2014 {{date}}",
-      "facebookIntro": "\ud83c\udf34 Today in Sebastian:",
+      "titleTemplate": "Daily Pulse — Sebastian — {{date}}",
+      "facebookIntro": "🌴 Today in Sebastian:",
       "facebookHashtags": "#SebastianFL #SupportLocal #ShopLocal #DigitalSebastian"
     },
-
     "safety": {
-      "headerLabel": "Sebastian, FL \u2022 Community Safety",
-      "areaLabel": "Sebastian Area \u2022 Last 30 Days",
+      "headerLabel": "Sebastian, FL • Community Safety",
+      "areaLabel": "Sebastian Area • Last 30 Days",
       "countyStatText": "Indian River County is safer than 99% of US counties",
       "incidentsLabel": "View recent incidents in Indian River County",
-      "marineLabel": "Sebastian Inlet \u2022 Port Canaveral"
+      "marineLabel": "Sebastian Inlet • Port Canaveral"
     },
-
     "verification": {
       "locationVerifiedMessage": "Location verified in Sebastian.",
       "outsideBoxMessage": "Not inside Sebastian verification box.",
@@ -216,24 +224,263 @@
       "eligibleReason": "Address matches Sebastian pilot.",
       "waitlistReason": "Outside Sebastian/32958; added to waitlist."
     },
-
     "localBiz": {
       "directoryTitle": "Local Sebastian Businesses",
       "directoryDescription": "This is a curated directory of businesses physically located in Sebastian. Apply below.",
       "serviceProvidersDescription": "Find trusted service providers in Sebastian.",
       "storeSetupLabel": "Set up a new store in Sebastian"
     },
-
     "mobileApp": {
       "appId": "com.sebastianflorida.app",
       "appName": "Sebastian Florida",
       "namespace": "com.sebastianflorida.app"
     },
-
     "storage": {
       "r2Bucket": "sebastian-assets"
     },
-
+    "trustDefaults": {
+      "defaultLevel": "visitor"
+    }
+  },
+  "tampa-bay": {
+    "id": 2,
+    "slug": "tampa-bay",
+    "name": "Tampa Bay",
+    "fullName": "Digital Tampa Bay",
+    "tagline": "Local businesses, events, and community in Tampa Bay",
+    "state": "FL",
+    "stateFullName": "Florida",
+    "region": "Hillsborough County",
+    "country": "US",
+    "timezone": "America/New_York",
+    "domains": [
+      "tampa-bay-florida.com",
+      "tampa-bay.digitaltowns.com",
+      "localhost"
+    ],
+    "productionUrl": "https://tampa-bay-florida.com",
+    "localFallbackUrl": "https://tampa-bay.local",
+    "location": {
+      "lat": 27.9506,
+      "lng": -82.4572,
+      "zoom": 13,
+      "radiusMeters": 25000,
+      "boundingBox": {
+        "minLat": 27.73,
+        "maxLat": 28.18,
+        "minLng": -82.71,
+        "maxLng": -82.20
+      }
+    },
+    "address": {
+      "city": "Tampa Bay",
+      "state": "FL",
+      "zip": "33602",
+      "county": "Hillsborough County",
+      "countyShort": "H",
+      "placeholder": "123 Main St, Tampa Bay, FL",
+      "streetPlaceholder": "Street address (e.g. 1234 Main St)"
+    },
+    "branding": {
+      "primaryColor": "#3b82f6",
+      "secondaryColor": "#22d3ee",
+      "logoUrl": "/images/logo.png",
+      "faviconUrl": "/favicon.ico",
+      "ogImage": "/images/og-image.png",
+      "ogImageAbsolute": "https://tampa-bay-florida.com/og-image.jpg",
+      "mapImage": "/images/tampa-bay-ui-map.png",
+      "heroImage": "/images/tampa-bay-main-map.png",
+      "themeFile": "tampa-bay.json"
+    },
+    "theme": {
+      "accent": "#00ffae",
+      "bg": "#070b10",
+      "panel": "#0f1722",
+      "text": "#e8eef6",
+      "muted": "#9fb0c3"
+    },
+    "contact": {
+      "supportEmail": "support@tampa-bay-florida.com",
+      "supportEmailAlt": "support@tampa-bay-florida.com",
+      "noReplyEmail": "noreply@tampa-bay-florida.com",
+      "nonEmergencyPhone": "",
+      "nonEmergencyPhoneTel": "",
+      "nonEmergencyLabel": "H Sheriff's Office"
+    },
+    "legal": {
+      "jurisdictionText": "Any legal action shall be brought in the courts of Hillsborough County, Florida",
+      "governingLawText": "These Terms are governed by the laws of the State of Florida",
+      "contactAddress": "Tampa Bay, Florida"
+    },
+    "features": {
+      "marketplace": true,
+      "auctions": true,
+      "giveaways": true,
+      "sweepstakes": true,
+      "liveStreaming": true,
+      "channels": true,
+      "directMessages": true,
+      "businessSubscriptions": true,
+      "reviews": true
+    },
+    "payments": {
+      "currency": "usd",
+      "stripeEnabled": true,
+      "userSubscriptionPriceCents": 0,
+      "businessSubscriptionPriceCents": 1000,
+      "trialDays": 30,
+      "referralCommissionPercent": 25
+    },
+    "social": {
+      "facebook": null,
+      "instagram": null,
+      "twitter": null
+    },
+    "content": {
+      "welcomeMessage": "Welcome to Digital Tampa Bay!",
+      "aboutUrl": "/about",
+      "termsUrl": "/terms",
+      "privacyUrl": "/privacy",
+      "betaNotice": "Thank you for being an early adopter! Contact support@tampa-bay-florida.com if you need assistance.",
+      "comingSoonTitle": "Tampa Bay Digital Town is in private beta.",
+      "applyResidentLabel": "Apply as a Tampa Bay Resident",
+      "deleteAccountText": "To request deletion of your Digital Tampa Bay account and all associated data, please email us at:"
+    },
+    "pageTitles": {
+      "main": "Tampa Bay Digital Town",
+      "login": "Login - Digital Tampa Bay",
+      "subscribe": "Join Digital Tampa Bay",
+      "subscribeSuccess": "Welcome to Digital Tampa Bay!",
+      "subscription": "Subscribe - Digital Tampa Bay",
+      "mySubscription": "My Subscription - Digital Tampa Bay",
+      "businessSubscription": "Business Subscription - Digital Tampa Bay",
+      "store": "Storefront • Tampa Bay Digital Town",
+      "sellerOrders": "Seller Orders – Tampa Bay",
+      "myOrders": "My Orders – Tampa Bay",
+      "referrals": "Referral Program - Digital Tampa Bay",
+      "giveawayOffer": "Submit Giveaway Offer - Digital Tampa Bay",
+      "deliveryTracking": "Delivery Tracking - Tampa Bay Express",
+      "deleteAccount": "Delete Account - Tampa Bay Florida",
+      "comingSoon": "Tampa Bay Digital Town — Private Beta",
+      "admin": "Admin Metrics – Tampa Bay",
+      "adminMedia": "Admin Media – Tampa Bay",
+      "adminPulse": "Daily Pulse Export – Tampa Bay",
+      "adminAnalytics": "Platform Analytics – Tampa Bay"
+    },
+    "meta": {
+      "ogTitle": "Tampa Bay, Florida — Local Community Platform",
+      "ogDescription": "Buy, sell, chat, enter giveaways, discover local businesses. Free to join.",
+      "description": "Tampa Bay, Florida's local community platform. Marketplace, giveaways, events, local business directory. Free to join."
+    },
+    "channels": [
+      {
+        "name": "Tampa Bay Neighbors & Friends",
+        "firstPost": "First post: Welcome neighbors! Introduce yourself and your street."
+      },
+      {
+        "name": "Tampa Bay Community Chat",
+        "firstPost": "First post: What's your favorite local spot this week?"
+      },
+      {
+        "name": "Fun Activities & Events",
+        "firstPost": "First post: Share upcoming events and weekend ideas."
+      },
+      {
+        "name": "Tampa Bay Lifestyle & Wellness",
+        "firstPost": "First post: Morning walks, yoga, and wellness tips here."
+      },
+      {
+        "name": "Local Meetups & Walking Groups",
+        "firstPost": "First post: Who wants to start a sunrise walk group?"
+      },
+      {
+        "name": "Tampa Bay Culture & Memories",
+        "firstPost": "First post: Post old photos or stories from Tampa Bay's past."
+      },
+      {
+        "name": "County Events & Happenings",
+        "firstPost": "First post: County fairs, markets, and regional updates."
+      },
+      {
+        "name": "Ladies Social Club",
+        "firstPost": "First post: Ladies' night ideas and meetups."
+      }
+    ],
+    "delivery": {
+      "serviceName": "Tampa Bay Express",
+      "defaultCity": "Tampa Bay",
+      "defaultState": "FL",
+      "freeDeliveryText": "Free delivery in Tampa Bay."
+    },
+    "emails": {
+      "loginCodeSubject": "Your Tampa Bay Digital Town login code",
+      "approvalSubject": "Your Tampa Bay Digital Town Application is Approved!",
+      "approvalBody": "Your {{applicationType}} application for Tampa Bay Digital Town has been approved.",
+      "deliveryFromName": "Tampa Bay Express",
+      "deliverySubjectPrefix": "Tampa Bay Express - ",
+      "deliveryHtmlHeading": "🚀 Tampa Bay Express",
+      "testEmailSubject": "[Tampa Bay Beta] Test Email",
+      "adminDisplayName": "Digital Tampa Bay"
+    },
+    "shareText": {
+      "purchase": "Just bought {{itemName}} from {{storeName}} on Digital Tampa Bay! Support local businesses in Tampa Bay, FL.",
+      "giveawayWin": "I won {{prizeName}} in the Tampa Bay Giveaway! Join Digital Tampa Bay and enter to win amazing local prizes.",
+      "sweepstakesWin": "I won {{prizeName}} in the Tampa Bay Sweepstakes! Join Digital Tampa Bay and enter to win amazing local prizes.",
+      "reviewPositive": "I loved {{storeName}} on Digital Tampa Bay! Highly recommend checking them out.",
+      "reviewNeutral": "I found {{storeName}} on Digital Tampa Bay! Support local businesses in Tampa Bay, FL.",
+      "newListing": "Check out my new listing: {{title}} on Digital Tampa Bay!",
+      "newAuction": "Check out my new auction: {{title}} on Digital Tampa Bay! Bidding starts now.",
+      "storeShare": "Check out {{storeName}} on Digital Tampa Bay! {{description}}",
+      "giveawayOffer": "I'm giving away \"{{title}}\" on Digital Tampa Bay! Check out local giveaways and support Tampa Bay businesses.",
+      "verification": "I just got verified as a {{tierName}} on Digital Tampa Bay! Join our local community and support Tampa Bay businesses.",
+      "purchaseModal": "Just made a purchase in Tampa Bay! 🛍️",
+      "giveawayWinModal": "🏆 I just won in the Tampa Bay Town Giveaway!",
+      "reviewModal": "Just left a review on Tampa Bay Digital Town!",
+      "verificationModal": "You're officially a verified Tampa Bay local! 🏠",
+      "storeListed": "Get your store listed on Digital Tampa Bay"
+    },
+    "pulse": {
+      "titleTemplate": "Daily Pulse — Tampa Bay — {{date}}",
+      "facebookIntro": "🌴 Today in Tampa Bay:",
+      "facebookHashtags": "#Tampa BayFL #SupportLocal #ShopLocal #Digital Tampa Bay"
+    },
+    "safety": {
+      "headerLabel": "Tampa Bay, FL • Community Safety",
+      "areaLabel": "Tampa Bay Area • Last 30 Days",
+      "countyStatText": "Hillsborough County community safety overview",
+      "incidentsLabel": "View recent incidents in Hillsborough County",
+      "marineLabel": "Tampa Bay • Marine"
+    },
+    "verification": {
+      "locationVerifiedMessage": "Location verified in Tampa Bay.",
+      "outsideBoxMessage": "Not inside Tampa Bay verification box.",
+      "outsideZoneMessage": "Not inside Tampa Bay verification zone.",
+      "locationRequiredMessage": "Verify location in Tampa Bay before submitting Tier 1.",
+      "locationRequiredError": "Location verified in Tampa Bay required.",
+      "residentLabel": "Tampa Bay Resident+ required to submit prizes.",
+      "defaultTierName": "Tampa Bay local",
+      "confirmBusinessLabel": "I confirm this business is physically located in Tampa Bay, FL",
+      "locatedInLabel": "Located in Tampa Bay?",
+      "yearsInLabel": "How long in Tampa Bay?",
+      "cityMatchValue": "tampa-bay",
+      "eligibleZip": "33602",
+      "eligibleReason": "Address matches Tampa Bay pilot.",
+      "waitlistReason": "Outside Tampa Bay/33602; added to waitlist."
+    },
+    "localBiz": {
+      "directoryTitle": "Local Tampa Bay Businesses",
+      "directoryDescription": "This is a curated directory of businesses physically located in Tampa Bay. Apply below.",
+      "serviceProvidersDescription": "Find trusted service providers in Tampa Bay.",
+      "storeSetupLabel": "Set up a new store in Tampa Bay"
+    },
+    "mobileApp": {
+      "appId": "com.tampa-bay.app",
+      "appName": "Tampa Bay Florida",
+      "namespace": "com.tampa-bay.app"
+    },
+    "storage": {
+      "r2Bucket": "tampa-bay-assets"
+    },
     "trustDefaults": {
       "defaultLevel": "visitor"
     }
