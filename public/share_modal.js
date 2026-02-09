@@ -2,6 +2,7 @@
 // Usage: ShareModal.show({ type, title, shareText, shareUrl, imageUrl })
 
 window.ShareModal = (function() {
+  const tc = window.__TOWN_CONFIG__ || {};
   const MODAL_ID = 'share-modal-overlay';
 
   function injectStyles() {
@@ -330,7 +331,7 @@ window.ShareModal = (function() {
       show({
         type: 'purchase',
         title: 'Share your purchase and support local!',
-        shareText: data.text || `Just made a purchase in Sebastian! 🛍️`,
+        shareText: data.text || (tc.shareText?.purchaseModal || `Just made a purchase in Sebastian! 🛍️`),
         shareUrl: data.url || window.location.origin,
         imageUrl: data.imageUrl || '',
         itemId: orderId
@@ -348,7 +349,7 @@ window.ShareModal = (function() {
       show({
         type: 'giveaway_win',
         title: 'Tell your friends about your win!',
-        shareText: data.text || `🏆 I just won in the Sebastian Town Giveaway!`,
+        shareText: data.text || (tc.shareText?.giveawayWinModal || `🏆 I just won in the Sebastian Town Giveaway!`),
         shareUrl: data.url || window.location.origin,
         imageUrl: data.imageUrl || '',
         itemId: drawId
@@ -366,7 +367,7 @@ window.ShareModal = (function() {
       show({
         type: 'review',
         title: 'Share your review!',
-        shareText: data.text || `Just left a review on Sebastian Digital Town!`,
+        shareText: data.text || (tc.shareText?.reviewModal || `Just left a review on Sebastian Digital Town!`),
         shareUrl: data.url || window.location.origin,
         imageUrl: data.imageUrl || '',
         itemId: reviewId
@@ -380,8 +381,8 @@ window.ShareModal = (function() {
     const baseUrl = window.location.origin;
     show({
       type: 'verified',
-      title: "You're officially a verified Sebastian local! 🏠",
-      shareText: `I just got verified as a ${tierName || 'Sebastian resident'} on Digital Sebastian! Join our local community and support Sebastian businesses.`,
+      title: tc.shareText?.verificationModal || "You're officially a verified Sebastian local! 🏠",
+      shareText: tc.shareText?.verification || `I just got verified as a ${tierName || 'Sebastian resident'} on Digital Sebastian! Join our local community and support Sebastian businesses.`,
       shareUrl: `${baseUrl}/apply/resident`,
       imageUrl: ''
     });

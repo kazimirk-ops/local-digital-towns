@@ -12,6 +12,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My Subscription - Digital Sebastian</title>
+  <script>(function(){var t=window.__TOWN_CONFIG__?.pageTitles?.mySubscription;if(t)document.title=t;})();</script>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
   <link rel="stylesheet" href="/ui-kit.css?v=1">
   <style>
@@ -379,5 +380,6 @@
 
   <script src="/theme.js?v=1"></script>
   <script src="/my_subscription.js?v=1"></script>
+  <script>(function(){var tc=window.__TOWN_CONFIG__;if(!tc)return;var fn=tc.fullName||tc.name;document.querySelectorAll('.hero-subtitle').forEach(function(el){if(el.textContent.includes('Digital Sebastian'))el.textContent=el.textContent.replace('Digital Sebastian',fn);});})();</script>
 </body>
 </html>

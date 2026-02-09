@@ -1,3 +1,12 @@
+/**
+ * Legacy town config — now backed by config/town-config.json.
+ *
+ * This file preserves the original TRUST / CAPABILITIES / getTownConfig API
+ * so that existing require("./town_config") calls keep working.
+ */
+
+const townConfigs = require("./config/town-config.json");
+
 const TRUST = {
   VISITOR: "visitor",
   VERIFIED_VISITOR: "verified_visitor",
@@ -72,27 +81,23 @@ const CAPABILITIES = {
   },
 };
 
-const TOWNS = {
-  1: {
-    id: 1,
-    slug: "sebastian",
-    name: "Sebastian",
-    state: "FL",
-    region: "Treasure Coast",
-    theme: {
-      accent: "#00ffae",
-      bg: "#070b10",
-      panel: "#0f1722",
-      text: "#e8eef6",
-      muted: "#9fb0c3",
-    },
-    trustDefaults: { defaultLevel: TRUST.VISITOR },
+// Build the TOWNS map from the JSON config
+const TOWNS = {};
+for (const [slug, cfg] of Object.entries(townConfigs)) {
+  TOWNS[cfg.id] = {
+    id: cfg.id,
+    slug: cfg.slug,
+    name: cfg.name,
+    state: cfg.state,
+    region: cfg.region,
+    theme: cfg.theme,
+    trustDefaults: { defaultLevel: cfg.trustDefaults?.defaultLevel || TRUST.VISITOR },
     capabilitiesByTrust: CAPABILITIES,
-  },
-};
+  };
+}
 
 function getTownConfig(townId = 1) {
-  return TOWNS[Number(townId)] || TOWNS[1];
+  return TOWNS[Number(townId)] || TOWNS[Object.keys(TOWNS)[0]];
 }
 
 module.exports = { TRUST, getTownConfig };

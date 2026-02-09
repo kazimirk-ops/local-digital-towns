@@ -1,4 +1,5 @@
 const $ = (id) => document.getElementById(id);
+const tc = window.__TOWN_CONFIG__ || {};
 let presenceOk = false;
 let pendingEmail = "";
 
@@ -85,8 +86,8 @@ $("verifyPresenceBtn").onclick = async () => {
       const res = await postJSON("/api/verify/location", payload);
       presenceOk = !!res.ok;
       $("presenceStatus").textContent = res.ok
-        ? "Location verified in Sebastian."
-        : "Not inside Sebastian verification box.";
+        ? (tc.verification?.locationVerifiedMessage || "Location verified in Sebastian.")
+        : (tc.verification?.outsideBoxMessage || "Not inside Sebastian verification box.");
     }catch(e){
       $("presenceStatus").textContent = `Location verify failed: ${e.message}`;
     }
@@ -112,7 +113,7 @@ $("submitTrust").onclick = async () => {
       identityMethod: $("identityMethod").value
     };
     if(payload.requestedTier === 1 && !presenceOk){
-      return showSignup(`<div class="warn"><strong>Location required</strong><div class="muted">Verify location in Sebastian before submitting Tier 1.</div></div>`);
+      return showSignup(`<div class="warn"><strong>Location required</strong><div class="muted">${tc.verification?.locationRequiredMessage || "Verify location in Sebastian before submitting Tier 1."}</div></div>`);
     }
     const data = await postJSON("/api/trust/apply", payload);
     const statusText = data.status === "approved"
@@ -127,7 +128,7 @@ $("submitTrust").onclick = async () => {
     // Prompt to share verification if approved
     if(data.status === "approved" && window.ShareModal){
       const tierNames = { 0: "Visitor", 1: "Individual", 2: "Moderator", 3: "Local Business", 4: "Admin" };
-      const tierName = tierNames[payload.requestedTier] || "Sebastian local";
+      const tierName = tierNames[payload.requestedTier] || (tc.verification?.defaultTierName || "Sebastian local");
       setTimeout(() => ShareModal.promptVerificationShare(tierName), 1000);
     }
   } catch (e) {

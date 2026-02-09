@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Delivery Tracking - Sebastian Express</title>
+  <script>(function(){var t=window.__TOWN_CONFIG__?.pageTitles?.deliveryTracking;if(t)document.title=t;})();</script>
   <link rel="stylesheet" href="/style.css">
   <style>
     .track-container { max-width:500px; margin:40px auto; padding:20px; }
@@ -73,5 +74,6 @@
     loadTracking();
     setInterval(loadTracking, 15000);
   </script>
+  <script>(function(){var tc=window.__TOWN_CONFIG__;if(tc&&tc.delivery){document.querySelectorAll('h1').forEach(function(el){if(el.textContent.includes('Sebastian Express'))el.textContent=tc.delivery.serviceName||el.textContent;});}})();</script>
 </body>
 </html>

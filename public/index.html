@@ -11,13 +11,16 @@
 </script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- OG tags: values should match town config -->
     <meta property="og:title" content="Sebastian, Florida — Local Community Platform">
     <meta property="og:description" content="Buy, sell, chat, enter giveaways, discover local businesses. Free to join.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://sebastian-florida.com">
     <meta property="og:image" content="https://sebastian-florida.com/og-image.jpg">
+    <!-- TODO: OG tags should be server-rendered from town config -->
     <meta name="description" content="Sebastian, Florida's local community platform. Marketplace, giveaways, events, local business directory. Free to join.">
     <title>Sebastian Digital Town</title>
+    <script>(function(){var t=window.__TOWN_CONFIG__?.pageTitles?.main;if(t)document.title=t;})();</script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
     <link rel="stylesheet" href="/ui-kit.css?v=1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
@@ -919,5 +922,6 @@
     <script src="/app.js?v=events_v0"></script>
     <script src="/ui_v2.js?v=1"></script>
     <script src="/js/beta-banner.js?v=1"></script>
+    <script>(function(){var tc=window.__TOWN_CONFIG__;if(!tc)return;var n=tc.name,fn=tc.fullName,lb=tc.localBiz||{},v=tc.verification||{};document.querySelectorAll('.brandTitle').forEach(function(el){if(el.innerHTML.includes('Sebastian'))el.innerHTML=n+' <span class="beta-badge">BETA</span>';});document.querySelectorAll('.navItem span').forEach(function(el){if(el.textContent==='Sebastian Pulse')el.textContent=n+' Pulse';});document.querySelectorAll('.map-hero-title').forEach(function(el){if(el.textContent.includes('Sebastian'))el.textContent=n+' Map';});document.querySelectorAll('.mapImage').forEach(function(el){if(el.alt&&el.alt.includes('Sebastian'))el.alt=n+' Map';});document.querySelectorAll('.muted').forEach(function(el){if(el.textContent==='Find trusted service providers in Sebastian.'&&lb.serviceProvidersDescription)el.textContent=lb.serviceProvidersDescription;if(el.textContent.includes('physically located in Sebastian')&&lb.directoryDescription)el.textContent=lb.directoryDescription;if(el.textContent==='Help us improve Sebastian Digital Town')el.textContent='Help us improve '+fn;});document.querySelectorAll('strong').forEach(function(el){if(el.textContent==='Local Sebastian Businesses'&&lb.directoryTitle)el.textContent=lb.directoryTitle;});document.querySelectorAll('span.muted').forEach(function(el){if(el.textContent.includes('physically located in Sebastian')&&v.confirmBusinessLabel)el.textContent=v.confirmBusinessLabel;});var h2s=document.querySelectorAll('h2');h2s.forEach(function(el){if(el.textContent.includes('The Sebastian Pulse'))el.innerHTML=el.innerHTML.replace('The Sebastian Pulse','The '+n+' Pulse');});var hero=document.querySelector('[style*="font-size:18px"]');if(hero&&hero.textContent.includes('Welcome to Sebastian'))hero.textContent='Welcome to '+n+', '+(tc.address?.state||'FL');})();</script>
   </body>
 </html>

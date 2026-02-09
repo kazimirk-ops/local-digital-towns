@@ -1,3 +1,5 @@
+const tc = window.__TOWN_CONFIG__ || {};
+
 async function api(url, opts) {
   const res = await fetch(url, opts);
   const text = await res.text();
@@ -476,7 +478,7 @@ async function createListing() {
         ShareModal.show({
           type: 'listing',
           title: 'Share your new listing!',
-          shareText: `Check out my new listing: ${created.title || 'New item'} on Digital Sebastian!`,
+          shareText: tc.shareText?.newListing || `Check out my new listing: ${created.title || 'New item'} on Digital Sebastian!`,
           shareUrl: `${window.location.origin}/store/${placeId}`,
           imageUrl: created.photoUrls?.[0] || ''
         });
@@ -649,7 +651,7 @@ async function createAuctionListing() {
         ShareModal.show({
           type: 'auction',
           title: 'Share your new auction!',
-          shareText: `Check out my new auction: ${created.title || 'New auction'} on Digital Sebastian! Bidding starts now.`,
+          shareText: tc.shareText?.newAuction || `Check out my new auction: ${created.title || 'New auction'} on Digital Sebastian! Bidding starts now.`,
           shareUrl: `${window.location.origin}/store/${placeId}`,
           imageUrl: created.photoUrls?.[0] || ''
         });
@@ -810,7 +812,7 @@ async function loadSubscriptionStatus() {
       badge.classList.add("none");
       badge.textContent = "No Subscription";
       icon.textContent = "📋";
-      message.textContent = "Get your store listed on Digital Sebastian";
+      message.textContent = tc.shareText?.storeListed || "Get your store listed on Digital Sebastian";
       btn.textContent = "Upgrade to Business - $10/mo";
       btn.classList.add("secondary");
       return;
@@ -850,7 +852,7 @@ async function loadSubscriptionStatus() {
     badge.classList.add("none");
     badge.textContent = "No Subscription";
     icon.textContent = "📋";
-    message.textContent = "Get your store listed on Digital Sebastian";
+    message.textContent = tc.shareText?.storeListed || "Get your store listed on Digital Sebastian";
     btn.textContent = "Upgrade to Business - $10/mo";
     btn.classList.add("secondary");
   }

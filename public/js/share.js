@@ -1,6 +1,7 @@
 // Social Sharing Helper Functions
 
 window.SocialShare = (function() {
+  const tc = window.__TOWN_CONFIG__ || {};
   function shareToFacebook(text, url) {
     const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`;
     window.open(shareUrl, 'facebook-share', 'width=580,height=400,menubar=no,toolbar=no');
@@ -146,7 +147,7 @@ window.SocialShare = (function() {
   function promptVerificationShare() {
     const baseUrl = window.location.origin;
     const data = {
-      text: "I just got verified as a Sebastian resident on Digital Sebastian! Join our local community and support Sebastian businesses.",
+      text: tc.shareText?.verification || "I just got verified as a Sebastian resident on Digital Sebastian! Join our local community and support Sebastian businesses.",
       url: `${baseUrl}/apply/resident`,
       imageUrl: `${baseUrl}/images/verified-share.png`
     };

@@ -2,6 +2,7 @@
 // Creates a dismissible banner that persists across pages via localStorage
 
 (function() {
+  const tc = window.__TOWN_CONFIG__ || {};
   const STORAGE_KEY = 'dt_beta_banner_dismissed';
   const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -32,7 +33,7 @@
         <span class="beta-banner-text">
           <span class="beta-banner-icon">🚧</span>
           <strong>BETA</strong> - You're an early adopter! Report issues to
-          <a href="mailto:support@sebastian-florida.com">support@sebastian-florida.com</a>
+          <a href="mailto:${tc.contact?.supportEmail || 'support@sebastian-florida.com'}">${tc.contact?.supportEmail || 'support@sebastian-florida.com'}</a>
         </span>
         <button class="beta-banner-close" aria-label="Dismiss">&times;</button>
       </div>

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Sebastian Florida</string>
+    <string name="title_activity_main">Sebastian Florida</string>
+    <string name="package_name">com.sebastianflorida.app</string>
+    <string name="custom_url_scheme">com.sebastianflorida.app</string>
+</resources>

@@ -19,6 +19,7 @@ try {
 }
 const express = require("express");
 const path = require("path");
+const fs = require("fs");
 const multer = require("multer");
 const trust = require("./lib/trust");
 const { canBuyAsVerifiedVisitor } = require("./lib/trust");
@@ -26,6 +27,8 @@ const { sendAdminEmail, sendEmail } = require("./lib/notify");
 const db = require("./lib/db");
 const cron = require("node-cron");
 const TRUST_TIER_LABELS = trust.TRUST_TIER_LABELS;
+const { getCurrentTown } = require("./config/towns");
+const townCfg = getCurrentTown();
 async function getTrustBadgeForUser(userId){
   if (!userId || isNaN(Number(userId))) return null;
   const user = await data.getUserById(userId);
@@ -35,7 +38,7 @@ async function getTrustBadgeForUser(userId){
   const isAdmin = !!(user.isAdmin ?? user.isadmin);
   return {
     userId: user.id,
-    displayName: isAdmin ? "Digital Sebastian" : await data.getDisplayNameForUser(user),
+    displayName: isAdmin ? (townCfg.emails?.adminDisplayName || townCfg.fullName) : await data.getDisplayNameForUser(user),
     trustTier: tier,
     trustTierLabel: TRUST_TIER_LABELS[tier] || "Visitor"
   };
@@ -164,7 +167,41 @@ app.get("/health", (req, res) => {
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
-    town: process.env.TOWN_NAME || "Sebastian"
+    town: process.env.TOWN_NAME || townCfg.name
+  });
+});
+
+// --- Town config injection for HTML files ---
+// Builds a safe subset of town config for frontend use and injects it into HTML responses.
+const townPublicConfig = {
+  slug: townCfg.slug, name: townCfg.name, fullName: townCfg.fullName,
+  state: townCfg.state, stateFullName: townCfg.stateFullName, region: townCfg.region,
+  productionUrl: townCfg.productionUrl,
+  location: townCfg.location, address: townCfg.address,
+  branding: townCfg.branding, theme: townCfg.theme,
+  contact: townCfg.contact, legal: townCfg.legal,
+  features: townCfg.features, content: townCfg.content,
+  pageTitles: townCfg.pageTitles, meta: townCfg.meta,
+  channels: townCfg.channels, delivery: townCfg.delivery,
+  emails: { adminDisplayName: townCfg.emails?.adminDisplayName, deliveryFromName: townCfg.emails?.deliveryFromName, deliveryHtmlHeading: townCfg.emails?.deliveryHtmlHeading },
+  shareText: townCfg.shareText, pulse: townCfg.pulse,
+  safety: townCfg.safety, verification: townCfg.verification,
+  localBiz: townCfg.localBiz
+};
+const townConfigScript = `<script>window.__TOWN_CONFIG__=${JSON.stringify(townPublicConfig)};</script>`;
+
+app.use((req, res, next) => {
+  // Only intercept .html requests (or bare paths that resolve to .html)
+  let filePath = req.path;
+  if (filePath.endsWith("/")) filePath += "index.html";
+  if (!filePath.endsWith(".html")) return next();
+
+  const fullPath = path.join(__dirname, "public", filePath);
+  fs.readFile(fullPath, "utf8", (err, html) => {
+    if (err) return next(); // fall through to static or 404
+    // Inject config script before </head>
+    const injected = html.replace("</head>", townConfigScript + "\n</head>");
+    res.type("html").send(injected);
   });
 });
 
@@ -248,6 +285,9 @@ app.use("/api/admin", async (req, res, next) =>{
   if(isAdminUser(user)) return next();
   return res.status(403).json({ error: "Admin access required" });
 });
+
+// Public town config endpoint for frontend
+app.get("/api/town", (_req, res) => res.json(townPublicConfig));
 
 // Health
 app.get("/health", async (req, res) =>res.json({status:"ok"}));
@@ -602,16 +642,16 @@ app.post("/api/webhooks/uber", express.json(), async (req, res) => {
             'returned': '↩️ Your delivery could not be completed.'
           };
           const msg = statusMessages[status] || `Your delivery status updated to: ${status}`;
-          const trackUrl = 'https://sebastian-florida.com/delivery-tracking?orderId=' + orderId;
+          const trackUrl = (process.env.BASE_URL || townCfg.productionUrl) + '/delivery-tracking?orderId=' + orderId;
 
           await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              from: 'Sebastian Express <noreply@sebastian-florida.com>',
+              from: townCfg.delivery.serviceName + ' <' + townCfg.contact.noReplyEmail + '>',
               to: buyer.email,
-              subject: 'Sebastian Express - ' + (status === 'delivered' ? 'Order Delivered!' : 'Delivery Update'),
-              html: `<div style="font-family:sans-serif;max-width:500px;margin:0 auto;"><h2 style="color:#2dd4bf;">🚀 Sebastian Express</h2><p>Hi ${buyer.displayname || 'there'},</p><p style="font-size:18px;">${msg}</p><p><a href="${trackUrl}" style="display:inline-block;padding:10px 20px;background:#2dd4bf;color:#0f172a;border-radius:8px;text-decoration:none;font-weight:bold;">Track Your Delivery</a></p><p style="color:#888;font-size:12px;">Order #${orderId}</p></div>`
+              subject: townCfg.emails.deliverySubjectPrefix + (status === 'delivered' ? 'Order Delivered!' : 'Delivery Update'),
+              html: `<div style="font-family:sans-serif;max-width:500px;margin:0 auto;"><h2 style="color:#2dd4bf;">${townCfg.emails.deliveryHtmlHeading}</h2><p>Hi ${buyer.displayname || 'there'},</p><p style="font-size:18px;">${msg}</p><p><a href="${trackUrl}" style="display:inline-block;padding:10px 20px;background:#2dd4bf;color:#0f172a;border-radius:8px;text-decoration:none;font-weight:bold;">Track Your Delivery</a></p><p style="color:#888;font-size:12px;">Order #${orderId}</p></div>`
             })
           });
           console.log("DELIVERY_EMAIL_SENT", { orderId, status, email: buyer.email });
@@ -1144,7 +1184,8 @@ async function sendAuthCodeEmail(toEmail, code){
   const from = (process.env.EMAIL_FROM || "").trim() || "onboarding@resend.dev";
 
   // Redirect house/seed account emails to support inbox
-  const deliverTo = toEmail.endsWith("@sebastian-florida.com") ? "support@sebastian-florida.com" : toEmail;
+  const supportDomain = townCfg.contact.supportEmail.split("@")[1];
+  const deliverTo = toEmail.endsWith("@" + supportDomain) ? townCfg.contact.supportEmail : toEmail;
   console.log("AUTH_CODE_EMAIL_ATTEMPT", { to: deliverTo, forAccount: toEmail, from });
 
   if(!apiKey){
@@ -1172,7 +1213,7 @@ async function sendAuthCodeEmail(toEmail, code){
   const payload = {
     from,
     to: [deliverTo],
-    subject: "Your Sebastian Digital Town login code",
+    subject: townCfg.emails.loginCodeSubject,
     text: `Login code for ${toEmail}: ${code}\n\nThis code expires in 10 minutes.`,
     html
   };
@@ -1220,7 +1261,7 @@ async function sendApprovalEmail(toEmail, applicationType, tierName){
 <head><meta charset="utf-8"></head>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
   <h2 style="color: #333;">Your Application Has Been Approved!</h2>
-  <p>Great news! Your <strong>${applicationType}</strong> application for Sebastian Digital Town has been approved.</p>
+  <p>Great news! ${townCfg.emails.approvalBody.replace("{{applicationType}}", '<strong>' + applicationType + '</strong>')}</p>
   <p>You have been granted <strong>${tierName}</strong> access.</p>
   <div style="background-color: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
     <a href="${loginUrl}" style="background: linear-gradient(90deg, #22d3ee, #3b82f6); color: #0b1120; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">Log In Now</a>
@@ -1232,7 +1273,7 @@ async function sendApprovalEmail(toEmail, applicationType, tierName){
   const payload = {
     from,
     to: [toEmail],
-    subject: "Your Sebastian Digital Town Application is Approved!",
+    subject: townCfg.emails.approvalSubject,
     text: `Your ${applicationType} application has been approved! You now have ${tierName} access. Log in at: ${loginUrl}`,
     html
   };
@@ -1443,7 +1484,7 @@ app.post("/api/auth/request-code", async (req, res) =>{
 app.get("/api/auth/google", (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if(!clientId) return res.status(500).json({ error: "Google OAuth not configured" });
-  const redirectUri = encodeURIComponent((process.env.BASE_URL || "https://sebastian-florida.com") + "/api/auth/google/callback");
+  const redirectUri = encodeURIComponent((process.env.BASE_URL || townCfg.productionUrl) + "/api/auth/google/callback");
   const scope = encodeURIComponent("openid email profile");
   const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&prompt=select_account`;
   res.redirect(url);
@@ -1453,7 +1494,7 @@ app.get("/api/auth/google/callback", async (req, res) => {
   try {
     const code = req.query.code;
     if(!code) return res.redirect("/login?error=no_code");
-    const baseUrl = process.env.BASE_URL || "https://sebastian-florida.com";
+    const baseUrl = process.env.BASE_URL || townCfg.productionUrl;
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -1852,14 +1893,14 @@ app.get("/town/context", async (req, res) =>{
   res.json({ ...ctx, userId: u, trustTier: tier, trustTierLabel: tierName, tierName, permissions, limits });
 });
 
-function isInsideSebastian(lat, lng, accuracyMeters){
+function isInsideTown(lat, lng, accuracyMeters){
   const maxAccuracy = 200;
   if(!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok:false, error:"Invalid coordinates" };
   if(!Number.isFinite(accuracyMeters) || accuracyMeters > maxAccuracy){
     return { ok:false, error:"Accuracy must be <= 200 meters" };
   }
-  const center = { lat: 27.816, lng: -80.470 };
-  const radiusMeters = 15000;
+  const center = { lat: townCfg.location.lat, lng: townCfg.location.lng };
+  const radiusMeters = townCfg.location.radiusMeters;
   const toRad = (d)=>d * Math.PI / 180;
   const dLat = toRad(lat - center.lat);
   const dLng = toRad(lng - center.lng);
@@ -1868,22 +1909,17 @@ function isInsideSebastian(lat, lng, accuracyMeters){
             Math.sin(dLng/2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = 6371000 * c;
-  if(distance > radiusMeters) return { ok:false, error:"Not inside Sebastian verification zone." };
+  if(distance > radiusMeters) return { ok:false, error: townCfg.verification.outsideZoneMessage };
   return { ok:true };
 }
 
-function isInsideSebastianBox(lat, lng){
+function isInsideTownBox(lat, lng){
   if(!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok:false, error:"Invalid coordinates" };
-  const bounds = {
-    minLat: 27.72,
-    maxLat: 27.88,
-    minLng: -80.56,
-    maxLng: -80.39
-  };
+  const bounds = townCfg.location.boundingBox;
   if(lat < bounds.minLat || lat > bounds.maxLat || lng < bounds.minLng || lng > bounds.maxLng){
-    return { ok:false, error:"Not inside Sebastian verification box." };
+    return { ok:false, error: townCfg.verification.outsideBoxMessage };
   }
-  // TODO: Replace with a precise geofence/polygon for Sebastian.
+  // Geofence bounds loaded from town config
   return { ok:true };
 }
 
@@ -1892,7 +1928,7 @@ app.post("/api/presence/verify", async (req, res) =>{
   const lat = Number(req.body?.lat);
   const lng = Number(req.body?.lng);
   const accuracyMeters = Number(req.body?.accuracyMeters);
-  const check = isInsideSebastian(lat, lng, accuracyMeters);
+  const check = isInsideTown(lat, lng, accuracyMeters);
   if(!check.ok) return res.status(400).json({ ok:false, inside:false, error: check.error });
   const updated = await data.updateUserPresence(u, { lat, lng, accuracyMeters });
   res.json({ ok:true, inside:true, presenceVerifiedAt: updated.presenceVerifiedAt });
@@ -1902,7 +1938,7 @@ app.post("/api/verify/location", async (req, res) =>{
   const u=await requireLogin(req,res); if(!u) return;
   const lat = Number(req.body?.lat);
   const lng = Number(req.body?.lng);
-  const check = isInsideSebastianBox(lat, lng);
+  const check = isInsideTownBox(lat, lng);
   if(!check.ok) return res.status(400).json({ ok:false, inside:false, error: check.error });
   await data.setUserLocationVerifiedSebastian(u, true);
   res.json({ ok:true, inside:true });
@@ -1972,7 +2008,7 @@ app.post("/api/trust/apply", async (req, res) =>{
   const user = await data.getUserById(u);
   if(requestedTier === 1){
     if(Number(user?.locationVerifiedSebastian || 0) !== 1){
-      return res.status(400).json({error:"Location verified in Sebastian required."});
+      return res.status(400).json({error: townCfg.verification.locationRequiredError});
     }
   }
   if(requestedTier === 2){
@@ -2634,7 +2670,7 @@ app.post("/api/checkout/stripe", async (req,res)=>{
       quantity: 1
     });
   }
-  const baseUrl = process.env.BASE_URL || 'https://sebastian-florida.com';
+  const baseUrl = process.env.BASE_URL || townCfg.productionUrl;
   const successUrl = `${baseUrl}/pay/success?orderId=${order.id}`;
   const cancelUrl = `${baseUrl}/pay/cancel?orderId=${order.id}`;
   try{
@@ -3253,7 +3289,7 @@ app.post("/api/admin/test-email", async (req,res)=>{
   });
   let result;
   try{
-    result = await sendAdminEmail("[Sebastian Beta] Test Email", "If you received this, Postmark is working.");
+    result = await sendAdminEmail(townCfg.emails.testEmailSubject, "If you received this, Postmark is working.");
   }catch(err){
     result = { ok:false, error: err?.message || String(err) };
   }
@@ -4967,8 +5003,8 @@ app.post("/api/subscription/start", async (req, res) => {
         mode: 'subscription',
         payment_method_types: ['card'],
         line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${process.env.BASE_URL || 'https://sebastian-florida.com'}/me/subscription?upgraded=true`,
-        cancel_url: `${process.env.BASE_URL || 'https://sebastian-florida.com'}/me/subscription?canceled=true`,
+        success_url: `${process.env.BASE_URL || townCfg.productionUrl}/me/subscription?upgraded=true`,
+        cancel_url: `${process.env.BASE_URL || townCfg.productionUrl}/me/subscription?canceled=true`,
         client_reference_id: String(user.id),
         customer_email: user.email,
         metadata: { userId: String(user.id), plan: 'business' },
@@ -5821,7 +5857,7 @@ app.get("/api/users/:id/ghosting", async (req, res) => {
 
 // ---------- Social Sharing ----------
 function getPublicBaseUrl() {
-  return (process.env.PUBLIC_BASE_URL || process.env.SITE_URL || process.env.APP_URL || "").toString().trim().replace(/\/$/, "") || "https://sebastian.local";
+  return (process.env.PUBLIC_BASE_URL || process.env.SITE_URL || process.env.APP_URL || "").toString().trim().replace(/\/$/, "") || townCfg.localFallbackUrl;
 }
 
 app.get("/api/share/purchase/:orderId", async (req, res) => {
@@ -5836,7 +5872,7 @@ app.get("/api/share/purchase/:orderId", async (req, res) => {
   const itemName = listing?.title || order.titleSnapshot || "something special";
   const storeName = place?.name || "a local business";
   const baseUrl = getPublicBaseUrl();
-  const text = `Just bought ${itemName} from ${storeName} on Digital Sebastian! Support local businesses in Sebastian, FL.`;
+  const text = townCfg.shareText.purchase.replace("{{itemName}}", itemName).replace("{{storeName}}", storeName);
   const url = place ? `${baseUrl}/places/${place.id}` : baseUrl;
   const imageUrl = listing?.photoUrls?.[0] || place?.avatarUrl || `${baseUrl}/images/share-default.png`;
   res.json({ text, url, imageUrl, orderId, itemName, storeName });
@@ -5851,7 +5887,7 @@ app.get("/api/share/giveaway-win/:awardId", async (req, res) => {
   if(Number(award.userId) !== Number(u)) return res.status(403).json({ error: "Only winner can share" });
   const prizeName = award.prizeTitle || award.prizeName || "an amazing prize";
   const baseUrl = getPublicBaseUrl();
-  const text = `I won ${prizeName} in the Sebastian Giveaway! Join Digital Sebastian and enter to win amazing local prizes.`;
+  const text = townCfg.shareText.giveawayWin.replace("{{prizeName}}", prizeName);
   const url = `${baseUrl}/giveaway`;
   const imageUrl = award.prizeImageUrl || `${baseUrl}/images/giveaway-share.png`;
   res.json({ text, url, imageUrl, awardId, prizeName });
@@ -5868,7 +5904,7 @@ app.get("/api/share/sweep-win/:drawId", async (req, res) => {
   const snapshot = draw.snapshotJson ? (typeof draw.snapshotJson === "string" ? JSON.parse(draw.snapshotJson) : draw.snapshotJson) : {};
   const prizeName = snapshot.prize?.title || sweep?.prize || sweep?.title || "an amazing prize";
   const baseUrl = getPublicBaseUrl();
-  const text = `I won ${prizeName} in the Sebastian Sweepstakes! Join Digital Sebastian and enter to win amazing local prizes.`;
+  const text = townCfg.shareText.sweepstakesWin.replace("{{prizeName}}", prizeName);
   const url = `${baseUrl}/giveaway`;
   const imageUrl = snapshot.prize?.imageUrl || draw.claimedPhotoUrl || `${baseUrl}/images/giveaway-share.png`;
   res.json({ text, url, imageUrl, drawId, prizeName });
@@ -5889,7 +5925,7 @@ app.get("/api/share/review/:reviewId", async (req, res) => {
   const rating = Number(review.rating || 0);
   const stars = rating >= 4 ? "loved" : "found";
   const baseUrl = getPublicBaseUrl();
-  const text = `I ${stars} ${storeName} on Digital Sebastian! ${rating >= 4 ? "Highly recommend checking them out." : "Support local businesses in Sebastian, FL."}`;
+  const text = (rating >= 4 ? townCfg.shareText.reviewPositive : townCfg.shareText.reviewNeutral).replace("{{storeName}}", storeName);
   const url = place ? `${baseUrl}/places/${place.id}` : baseUrl;
   const imageUrl = place?.avatarUrl || `${baseUrl}/images/share-default.png`;
   res.json({ text, url, imageUrl, reviewId, storeName, rating });

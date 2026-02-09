@@ -4,6 +4,8 @@ const path = require("path");
 const db = require("./lib/db");
 const { runMigrations } = require("./db/migrate");
 const { getTownConfig } = require("./town_config");
+const townConfigs = require("./config/town-config.json");
+const townCfg = townConfigs[Object.keys(townConfigs)[0]];
 const trust = require("./lib/trust");
 
 function nowISO() { return new Date().toISOString(); }
@@ -223,7 +225,7 @@ This archive will grow with:
 
 The archive belongs to the place — and to the people who live here now.
 
-This archive will grow with the Daily Digital Sebastian Pulse.`;
+This archive will grow with the Daily ${townCfg.fullName} Pulse.`;
   await stmt(`
     INSERT INTO archive_entries
       (townId, status, title, slug, bodyMarkdown, createdAt, createdByUserId, pinned, tagsJson)
@@ -641,7 +643,7 @@ async function updateUserPresence(userId, payload){
   return { ok:true, presenceVerifiedAt: now };
 }
 
-async function setUserLocationVerifiedSebastian(userId, verified){
+async function setUserLocationVerified(userId, verified){
   const uid = Number(userId);
   if(!uid) return { error:"Invalid userId" };
   await stmt("UPDATE users SET locationVerifiedSebastian=$1 WHERE id=$2")
@@ -1728,12 +1730,12 @@ async function addSignup(payload){
   if(!name||!email||!address1||!city||!state||!zip){
     return {error:"Missing required fields"};
   }
-  const cityMatch=city.toLowerCase().includes("sebastian");
-  const zipMatch=zip==="32958";
+  const cityMatch=city.toLowerCase().includes(townCfg.verification.cityMatchValue);
+  const zipMatch=zip===townCfg.verification.eligibleZip;
   const status=(cityMatch||zipMatch) ? "eligible" : "waitlist";
   const reason=(status==="eligible")
-    ? "Address matches Sebastian pilot."
-    : "Outside Sebastian/32958; added to waitlist.";
+    ? townCfg.verification.eligibleReason
+    : townCfg.verification.waitlistReason;
 
   await stmt("INSERT INTO signups (name,email,address1,address2,city,state,zip,status,reason,createdAt) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)")
     .run(name,email,address1,address2,city,state,zip,status,reason,nowISO());
@@ -2664,7 +2666,7 @@ async function generateDailyPulse(townId = 1, dayKey){
   };
 
   const lines = [];
-  lines.push(`# Daily Pulse — Sebastian — ${key}`);
+  lines.push(townCfg.pulse.titleTemplate.replace("{{date}}", key));
   lines.push("");
   lines.push("## Marketplace");
   const items = listingTypeCounts.item || 0;
@@ -2720,7 +2722,7 @@ async function generateDailyPulse(townId = 1, dayKey){
       UPDATE archive_entries
       SET title=$1, bodyMarkdown=$2, createdAt=$3
       WHERE slug=$4
-    `).run(`Daily Pulse — Sebastian — ${key}`, markdownBody, nowISO(), slug);
+    `).run(townCfg.pulse.titleTemplate.replace("{{date}}", key), markdownBody, nowISO(), slug);
   }else{
     await stmt(`
       INSERT INTO archive_entries
@@ -2729,7 +2731,7 @@ async function generateDailyPulse(townId = 1, dayKey){
     `).run(
       Number(townId),
       "published",
-      `Daily Pulse — Sebastian — ${key}`,
+      townCfg.pulse.titleTemplate.replace("{{date}}", key),
       slug,
       markdownBody,
       nowISO(),
@@ -2854,10 +2856,10 @@ async function getDailyPulseSummary(townId = 1) {
 
 async function formatPulseForFacebook(townId = 1) {
   const pulse = await getDailyPulseSummary(townId);
-  const baseUrl = (process.env.PUBLIC_BASE_URL || process.env.SITE_URL || '').replace(/\/$/, '') || 'https://sebastian.local';
+  const baseUrl = (process.env.PUBLIC_BASE_URL || process.env.SITE_URL || '').replace(/\/$/, '') || townCfg.localFallbackUrl;
 
   const lines = [];
-  lines.push("🌴 Today in Sebastian:");
+  lines.push(townCfg.pulse.facebookIntro);
   lines.push("");
 
   if (pulse.newListingsCount > 0) {
@@ -2894,7 +2896,7 @@ async function formatPulseForFacebook(townId = 1) {
   lines.push("");
   lines.push(`See what's happening → ${baseUrl}`);
   lines.push("");
-  lines.push("#SebastianFL #SupportLocal #ShopLocal #DigitalSebastian");
+  lines.push(townCfg.pulse.facebookHashtags);
 
   return {
     text: lines.join("\n"),
@@ -3112,7 +3114,7 @@ async function addLocalBizApplication(payload, userId){
   const ownerName = (payload.ownerName || "").toString().trim();
   const email = normalizeEmail(payload.email);
   const address = (payload.address || "").toString().trim();
-  const city = (payload.city || "Sebastian").toString().trim();
+  const city = (payload.city || townCfg.address.city).toString().trim();
   const state = (payload.state || "FL").toString().trim();
   const zip = (payload.zip || "").toString().trim();
   const category = (payload.category || "").toString().trim();
@@ -4012,7 +4014,8 @@ module.exports = {
   setUserTermsAcceptedAt,
   getTownContext,
   updateUserPresence,
-  setUserLocationVerifiedSebastian,
+  setUserLocationVerified,
+  setUserLocationVerifiedSebastian: setUserLocationVerified,
   setUserFacebookVerified,
   setUserResidentVerified,
   setUserAdmin,

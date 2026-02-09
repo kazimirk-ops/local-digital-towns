@@ -1,0 +1,9 @@
+{
+  "appId": "com.sebastianflorida.app",
+  "appName": "Sebastian Florida",
+  "webDir": "dist",
+  "server": {
+    "url": "https://sebastian-florida.com",
+    "cleartext": false
+  }
+}

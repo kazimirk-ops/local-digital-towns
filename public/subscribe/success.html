@@ -12,6 +12,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Welcome to Digital Sebastian!</title>
+    <script>(function(){var t=window.__TOWN_CONFIG__?.pageTitles?.subscribeSuccess;if(t)document.title=t;})();</script>
     <link rel="stylesheet" href="/ui-kit.css?v=1">
     <style>
       :root {
@@ -108,5 +109,6 @@
       <a href="/" class="btn hidden" id="loginBtn">Get Started</a>
     </div>
     <script src="/subscribe/success.js?v=1"></script>
+    <script>(function(){var tc=window.__TOWN_CONFIG__;if(!tc)return;var fn=tc.fullName||tc.name;document.querySelectorAll('h1').forEach(function(el){if(el.textContent.includes('Digital Sebastian'))el.textContent='Welcome to '+fn+'!';});document.querySelectorAll('.subtitle').forEach(function(el){if(el.textContent.includes('being set up'))el.textContent='Your account is being set up...';});})();</script>
   </body>
 </html>

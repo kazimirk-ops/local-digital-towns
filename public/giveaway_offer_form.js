@@ -1,4 +1,5 @@
 const $ = (id) => document.getElementById(id);
+const tc = window.__TOWN_CONFIG__ || {};
 
 let currentPlaceId = null;
 let myStores = [];
@@ -201,7 +202,7 @@ async function handleSubmit(event) {
         ShareModal.show({
           type: 'giveaway_offer',
           title: 'Share your giveaway offer!',
-          shareText: `I'm giving away "${title}" on Digital Sebastian! Check out local giveaways and support Sebastian businesses.`,
+          shareText: tc.shareText?.giveawayOffer || `I'm giving away "${title}" on Digital Sebastian! Check out local giveaways and support Sebastian businesses.`,
           shareUrl: window.location.origin,
           imageUrl: imageUrl || ''
         });

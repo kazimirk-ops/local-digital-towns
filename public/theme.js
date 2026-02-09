@@ -1,14 +1,14 @@
 (() => {
   const STORAGE_PREFIX = "themeMode:";
   const state = {
-    town: "sebastian",
+    town: (window.__TOWN_CONFIG__?.slug || "sebastian"),
     theme: null,
     mode: "dark",
     loading: null
   };
 
   function getTownSlug(){
-    return (document.body?.dataset?.town || "sebastian").toLowerCase();
+    return (document.body?.dataset?.town || window.__TOWN_CONFIG__?.slug || "sebastian").toLowerCase();
   }
 
   function normalizeTheme(raw){

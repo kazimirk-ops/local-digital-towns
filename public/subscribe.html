@@ -12,6 +12,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Join Digital Sebastian</title>
+    <script>(function(){var t=window.__TOWN_CONFIG__?.pageTitles?.subscribe;if(t)document.title=t;})();</script>
     <link rel="stylesheet" href="/ui-kit.css?v=1">
     <style>
       :root {
@@ -258,5 +259,6 @@
       </div>
     </div>
     <script src="/subscribe.js?v=1"></script>
+    <script>(function(){var tc=window.__TOWN_CONFIG__;if(!tc)return;var fn=tc.fullName||tc.name;document.querySelectorAll('.hero-title').forEach(function(el){if(el.textContent.includes('Digital Sebastian'))el.textContent='Join '+fn;});document.querySelectorAll('.hero-subtitle').forEach(function(el){if(el.textContent.includes('Sebastian'))el.textContent='Buy, sell, and connect with your local '+tc.name+' community';});var addrInput=document.getElementById('businessAddress');if(addrInput&&tc.address&&tc.address.streetPlaceholder)addrInput.placeholder=tc.address.streetPlaceholder;})();</script>
   </body>
 </html>

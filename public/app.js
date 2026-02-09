@@ -1,4 +1,5 @@
 const $ = (id) => document.getElementById(id);
+const tc = window.__TOWN_CONFIG__ || {};
 
 function togglePulseSection() {
   const section = document.getElementById('pulseSection');
@@ -179,12 +180,12 @@ function setView(view){
 
 function initChannelsPlaceholder(){
   const map = [
-    { name: "Sebastian Neighbors & Friends", first: "First post: Welcome neighbors! Introduce yourself and your street." },
-    { name: "Sebastian Community Chat", first: "First post: What’s your favorite local spot this week?" },
-    { name: "Fun Activities & Events", first: "First post: Share upcoming events and weekend ideas." },
-    { name: "Sebastian Lifestyle & Wellness", first: "First post: Morning walks, yoga, and wellness tips here." },
-    { name: "Local Meetups & Walking Groups", first: "First post: Who wants to start a sunrise walk group?" },
-    { name: "Sebastian Culture & Memories", first: "First post: Post old photos or stories from Sebastian’s past." },
+    { name: (tc.channels?.[0]?.name || "Sebastian Neighbors & Friends"), first: (tc.channels?.[0]?.firstPost || "First post: Welcome neighbors! Introduce yourself and your street.") },
+    { name: (tc.channels?.[1]?.name || "Sebastian Community Chat"), first: (tc.channels?.[1]?.firstPost || "First post: What's your favorite local spot this week?") },
+    { name: (tc.channels?.[2]?.name || "Fun Activities & Events"), first: (tc.channels?.[2]?.firstPost || "First post: Share upcoming events and weekend ideas.") },
+    { name: (tc.channels?.[3]?.name || "Sebastian Lifestyle & Wellness"), first: (tc.channels?.[3]?.firstPost || "First post: Morning walks, yoga, and wellness tips here.") },
+    { name: (tc.channels?.[4]?.name || "Local Meetups & Walking Groups"), first: (tc.channels?.[4]?.firstPost || "First post: Who wants to start a sunrise walk group?") },
+    { name: (tc.channels?.[5]?.name || "Sebastian Culture & Memories"), first: (tc.channels?.[5]?.firstPost || "First post: Post old photos or stories from Sebastian's past.") },
     { name: "County Events & Happenings", first: "First post: County fairs, markets, and regional updates." },
     { name: "Ladies Social Club", first: "First post: Ladies’ night ideas and meetups." },
     { name: "Reflections on the River", first: "First post: Best spots to watch the river at sunset?" }
@@ -1298,8 +1299,8 @@ async function initLocalBiz(){
           msg.textContent="Submitted for review.";
           status.textContent=`Status: ${created.status || "pending"}`;
           form.reset();
-          $("localBizCity").value="Sebastian";
-          $("localBizState").value="FL";
+          $("localBizCity").value=tc.address?.city || "Sebastian";
+          $("localBizState").value=tc.state || "FL";
           if(access.loggedIn){
             const apps = await api("/api/localbiz/my");
             renderLocalBizMy(apps);
@@ -1630,7 +1631,7 @@ function loadSafetyPulse() {
       <div style="padding:20px 20px 16px; display:flex; justify-content:space-between; align-items:flex-start;">
         <div>
           <h4 style="margin:0; color:#ef4444; font-size:1.25rem; font-weight:700; display:flex; align-items:center; gap:8px;">🛡️ Safety Pulse</h4>
-          <div style="font-size:0.85rem; color:#94a3b8; margin-top:6px;">Sebastian, FL • Community Safety</div>
+          <div style="font-size:0.85rem; color:#94a3b8; margin-top:6px;">${tc.safety?.headerLabel || "Sebastian, FL • Community Safety"}</div>
         </div>
       </div>
 
@@ -1642,7 +1643,7 @@ function loadSafetyPulse() {
           </div>
           <div>
             <div style="font-size:1.1rem; font-weight:600; color:#6cc4a1;">Safety Grade: Excellent</div>
-            <div style="font-size:0.85rem; color:#94a3b8; margin-top:4px;">Indian River County is safer than 99% of US counties</div>
+            <div style="font-size:0.85rem; color:#94a3b8; margin-top:4px;">${tc.safety?.countyStatText || "Indian River County is safer than 99% of US counties"}</div>
             <div style="font-size:0.75rem; color:#64748b; margin-top:4px;">Source: CrimeGrade.org 2025</div>
           </div>
         </div>
@@ -1663,8 +1664,8 @@ function loadSafetyPulse() {
             <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
               <span style="font-size:1.1rem;">🏛️</span> Non-Emergency
             </div>
-            <div style="font-size:1.25rem; font-weight:700; color:#e2e8f0;">(772) 569-6700</div>
-            <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">IRC Sheriff's Office</div>
+            <div style="font-size:1.25rem; font-weight:700; color:#e2e8f0;">${tc.contact?.nonEmergencyPhone || "(772) 569-6700"}</div>
+            <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">${tc.contact?.nonEmergencyLabel || "IRC Sheriff's Office"}</div>
           </a>
           <a href="tel:8884043922" style="text-decoration:none; color:inherit; display:block; background:#273449; border:1px solid var(--border); border-radius:12px; padding:14px; cursor:pointer;">
             <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
@@ -1720,7 +1721,7 @@ function loadSafetyPulse() {
 
       <!-- Stats -->
       <div style="padding:0 20px 20px;">
-        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:14px; font-weight:600;">Sebastian Area • Last 30 Days</div>
+        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:14px; font-weight:600;">${tc.safety?.areaLabel || "Sebastian Area • Last 30 Days"}</div>
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px;">
           <div style="background:#273449; border-radius:10px; padding:14px; text-align:center;">
             <div style="font-size:1.5rem; font-weight:700; color:#e2e8f0;">12</div>
@@ -1745,7 +1746,7 @@ function loadSafetyPulse() {
         <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:14px; font-weight:600;">Crime Map</div>
         <div style="background:#273449; border:1px dashed var(--border); border-radius:12px; padding:24px; text-align:center;">
           <div style="font-size:2rem; margin-bottom:12px;">🗺️</div>
-          <div style="font-size:0.9rem; color:#e2e8f0; margin-bottom:4px;">View recent incidents in Indian River County</div>
+          <div style="font-size:0.9rem; color:#e2e8f0; margin-bottom:4px;">${tc.safety?.incidentsLabel || "View recent incidents in Indian River County"}</div>
           <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:16px;">Data from CrimeMapping.com</div>
           <a href="https://www.crimemapping.com/map/fl/indianrivercounty" target="_blank" style="display:inline-block; background:#2fa4b9; color:white; border:none; padding:12px 24px; border-radius:8px; font-size:0.9rem; font-weight:500; cursor:pointer; text-decoration:none;">Open Crime Map →</a>
         </div>
@@ -1814,7 +1815,7 @@ function loadSafetyPulse() {
               <span style="display:flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#2fa4b9;">🚔 Arrest</span>
               <span style="font-size:0.7rem; color:#64748b;">3 days ago</span>
             </div>
-            <div style="font-size:0.85rem; color:#e2e8f0; line-height:1.4;">Suspect arrested in connection with vehicle burglaries in Sebastian area.</div>
+            <div style="font-size:0.85rem; color:#e2e8f0; line-height:1.4;">Suspect arrested in connection with vehicle burglaries in ${tc.name || "Sebastian"} area.</div>
             <div style="font-size:0.75rem; color:#64748b; margin-top:8px;">Source: IRCSO Press Release</div>
           </div>
           <div style="background:#273449; border-radius:10px; padding:14px;">
@@ -1981,7 +1982,7 @@ async function loadFishingConditions() {
         <div style="padding:20px 20px 16px; display:flex; justify-content:space-between; align-items:flex-start;">
           <div>
             <h4 style="margin:0; color:var(--accent); font-size:1.25rem; font-weight:700; display:flex; align-items:center; gap:8px;">🎣 Water Conditions</h4>
-            <div style="font-size:0.85rem; color:#94a3b8; margin-top:6px;">Sebastian Inlet • Port Canaveral</div>
+            <div style="font-size:0.85rem; color:#94a3b8; margin-top:6px;">${tc.safety?.marineLabel || "Sebastian Inlet • Port Canaveral"}</div>
           </div>
           <button onclick="loadFishingConditions()" style="background:transparent; border:1px solid var(--border); color:#94a3b8; padding:8px; border-radius:8px; cursor:pointer; font-size:1rem;">🔄</button>
         </div>
@@ -2275,7 +2276,7 @@ function updatePrizeOfferCta(){
     }
   }else{
     btn.style.display="none";
-    if(hint) hint.textContent="Sebastian Resident+ required to submit prizes.";
+    if(hint) hint.textContent=tc.verification?.residentLabel || "Sebastian Resident+ required to submit prizes.";
   }
 }
 async function loadPrizeOffers(){
@@ -2299,7 +2300,7 @@ async function loadPrizeOffers(){
 }
 async function submitPrizeOffer(){
   if(state.trustTier < 2) {
-    console.warn("Sebastian Resident+ required for prize offers");
+    console.warn(tc.verification?.residentLabel || "Sebastian Resident+ required for prize offers");
     return;
   }
   const msg=$("prizeSubmitMsg");
@@ -2752,7 +2753,7 @@ async function markRead(){
 function initMap(){
   const accent=getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#00ffae";
   const accent2=getComputedStyle(document.documentElement).getPropertyValue("--accent-2").trim() || "#2e93ff";
-  const center=[27.816,-80.470];
+  const center=[tc.location?.lat || 27.816, tc.location?.lng || -80.470];
   map=L.map("map",{
     zoomControl:false,
     dragging:false,

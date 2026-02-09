@@ -1,0 +1,249 @@
+{
+  "sebastian": {
+    "id": 1,
+    "slug": "sebastian",
+    "name": "Sebastian",
+    "fullName": "Digital Sebastian",
+    "tagline": "Your Local Digital Town Square",
+    "state": "FL",
+    "stateFullName": "Florida",
+    "region": "Treasure Coast",
+    "country": "US",
+    "timezone": "America/New_York",
+
+    "domains": ["digitalsebastian.com", "sebastian.digitaltowns.com", "localhost"],
+    "productionUrl": "https://sebastian-florida.com",
+    "localFallbackUrl": "https://sebastian.local",
+
+    "location": {
+      "lat": 27.8164,
+      "lng": -80.4706,
+      "zoom": 13,
+      "radiusMeters": 15000,
+      "boundingBox": {
+        "minLat": 27.72,
+        "maxLat": 27.88,
+        "minLng": -80.56,
+        "maxLng": -80.39
+      }
+    },
+
+    "address": {
+      "city": "Sebastian",
+      "state": "FL",
+      "zip": "32958",
+      "county": "Indian River County",
+      "countyShort": "IRC",
+      "placeholder": "123 Main St, Sebastian, FL",
+      "streetPlaceholder": "Street address (e.g. 1234 Indian River Dr)"
+    },
+
+    "branding": {
+      "primaryColor": "#3b82f6",
+      "secondaryColor": "#22d3ee",
+      "logoUrl": "/images/logo.png",
+      "faviconUrl": "/favicon.ico",
+      "ogImage": "/images/og-image.png",
+      "ogImageAbsolute": "https://sebastian-florida.com/og-image.jpg",
+      "mapImage": "/images/sebastian-ui-map.png",
+      "heroImage": "/images/sebastian-main-map.png",
+      "themeFile": "sebastian.json"
+    },
+
+    "theme": {
+      "accent": "#00ffae",
+      "bg": "#070b10",
+      "panel": "#0f1722",
+      "text": "#e8eef6",
+      "muted": "#9fb0c3"
+    },
+
+    "contact": {
+      "supportEmail": "support@sebastian-florida.com",
+      "supportEmailAlt": "support@digitalsebastian.com",
+      "noReplyEmail": "noreply@sebastian-florida.com",
+      "nonEmergencyPhone": "(772) 569-6700",
+      "nonEmergencyPhoneTel": "7725696700",
+      "nonEmergencyLabel": "IRC Sheriff's Office"
+    },
+
+    "legal": {
+      "jurisdictionText": "Any legal action shall be brought in the courts of Indian River County, Florida",
+      "governingLawText": "These Terms are governed by the laws of the State of Florida",
+      "contactAddress": "Sebastian, Florida"
+    },
+
+    "features": {
+      "marketplace": true,
+      "auctions": true,
+      "giveaways": true,
+      "sweepstakes": true,
+      "liveStreaming": true,
+      "channels": true,
+      "directMessages": true,
+      "businessSubscriptions": true,
+      "reviews": true
+    },
+
+    "payments": {
+      "currency": "usd",
+      "stripeEnabled": true,
+      "userSubscriptionPriceCents": 0,
+      "businessSubscriptionPriceCents": 1000,
+      "trialDays": 30,
+      "referralCommissionPercent": 25
+    },
+
+    "social": {
+      "facebook": null,
+      "instagram": null,
+      "twitter": null
+    },
+
+    "content": {
+      "welcomeMessage": "Welcome to Digital Sebastian!",
+      "aboutUrl": "/about",
+      "termsUrl": "/terms",
+      "privacyUrl": "/privacy",
+      "betaNotice": "Thank you for being an early adopter! Contact support@sebastian-florida.com if you need assistance.",
+      "comingSoonTitle": "Sebastian Digital Town is in private beta.",
+      "applyResidentLabel": "Apply as a Sebastian Resident",
+      "deleteAccountText": "To request deletion of your Sebastian Florida account and all associated data, please email us at:"
+    },
+
+    "pageTitles": {
+      "main": "Sebastian Digital Town",
+      "login": "Login - Digital Sebastian",
+      "subscribe": "Join Digital Sebastian",
+      "subscribeSuccess": "Welcome to Digital Sebastian!",
+      "subscription": "Subscribe - Digital Sebastian",
+      "mySubscription": "My Subscription - Digital Sebastian",
+      "businessSubscription": "Business Subscription - Digital Sebastian",
+      "store": "Storefront \u2022 Sebastian Digital Town",
+      "sellerOrders": "Seller Orders \u2013 Sebastian",
+      "myOrders": "My Orders \u2013 Sebastian",
+      "referrals": "Referral Program - Digital Sebastian",
+      "giveawayOffer": "Submit Giveaway Offer - Digital Sebastian",
+      "deliveryTracking": "Delivery Tracking - Sebastian Express",
+      "deleteAccount": "Delete Account - Sebastian Florida",
+      "comingSoon": "Sebastian Digital Town \u2014 Private Beta",
+      "admin": "Admin Metrics \u2013 Sebastian",
+      "adminMedia": "Admin Media \u2013 Sebastian",
+      "adminPulse": "Daily Pulse Export \u2013 Sebastian",
+      "adminAnalytics": "Platform Analytics \u2013 Sebastian"
+    },
+
+    "meta": {
+      "ogTitle": "Sebastian, Florida \u2014 Local Community Platform",
+      "ogDescription": "Buy, sell, chat, enter giveaways, discover local businesses. Free to join.",
+      "description": "Sebastian, Florida's local community platform. Marketplace, giveaways, events, local business directory. Free to join."
+    },
+
+    "channels": [
+      { "name": "Sebastian Neighbors & Friends", "firstPost": "First post: Welcome neighbors! Introduce yourself and your street." },
+      { "name": "Sebastian Community Chat", "firstPost": "First post: What's your favorite local spot this week?" },
+      { "name": "Fun Activities & Events", "firstPost": "First post: Share upcoming events and weekend ideas." },
+      { "name": "Sebastian Lifestyle & Wellness", "firstPost": "First post: Morning walks, yoga, and wellness tips here." },
+      { "name": "Local Meetups & Walking Groups", "firstPost": "First post: Who wants to start a sunrise walk group?" },
+      { "name": "Sebastian Culture & Memories", "firstPost": "First post: Post old photos or stories from Sebastian's past." },
+      { "name": "County Events & Happenings", "firstPost": "First post: County fairs, markets, and regional updates." },
+      { "name": "Ladies Social Club", "firstPost": "First post: Ladies' night ideas and meetups." }
+    ],
+
+    "delivery": {
+      "serviceName": "Sebastian Express",
+      "defaultCity": "Sebastian",
+      "defaultState": "FL",
+      "freeDeliveryText": "Free delivery in Sebastian."
+    },
+
+    "emails": {
+      "loginCodeSubject": "Your Sebastian Digital Town login code",
+      "approvalSubject": "Your Sebastian Digital Town Application is Approved!",
+      "approvalBody": "Your {{applicationType}} application for Sebastian Digital Town has been approved.",
+      "deliveryFromName": "Sebastian Express",
+      "deliverySubjectPrefix": "Sebastian Express - ",
+      "deliveryHtmlHeading": "\ud83d\ude80 Sebastian Express",
+      "testEmailSubject": "[Sebastian Beta] Test Email",
+      "adminDisplayName": "Digital Sebastian"
+    },
+
+    "shareText": {
+      "purchase": "Just bought {{itemName}} from {{storeName}} on Digital Sebastian! Support local businesses in Sebastian, FL.",
+      "giveawayWin": "I won {{prizeName}} in the Sebastian Giveaway! Join Digital Sebastian and enter to win amazing local prizes.",
+      "sweepstakesWin": "I won {{prizeName}} in the Sebastian Sweepstakes! Join Digital Sebastian and enter to win amazing local prizes.",
+      "reviewPositive": "I loved {{storeName}} on Digital Sebastian! Highly recommend checking them out.",
+      "reviewNeutral": "I found {{storeName}} on Digital Sebastian! Support local businesses in Sebastian, FL.",
+      "newListing": "Check out my new listing: {{title}} on Digital Sebastian!",
+      "newAuction": "Check out my new auction: {{title}} on Digital Sebastian! Bidding starts now.",
+      "storeShare": "Check out {{storeName}} on Digital Sebastian! {{description}}",
+      "giveawayOffer": "I'm giving away \"{{title}}\" on Digital Sebastian! Check out local giveaways and support Sebastian businesses.",
+      "verification": "I just got verified as a {{tierName}} on Digital Sebastian! Join our local community and support Sebastian businesses.",
+      "purchaseModal": "Just made a purchase in Sebastian! \ud83d\udecd\ufe0f",
+      "giveawayWinModal": "\ud83c\udfc6 I just won in the Sebastian Town Giveaway!",
+      "reviewModal": "Just left a review on Sebastian Digital Town!",
+      "verificationModal": "You're officially a verified Sebastian local! \ud83c\udfe0",
+      "storeListed": "Get your store listed on Digital Sebastian"
+    },
+
+    "pulse": {
+      "titleTemplate": "Daily Pulse \u2014 Sebastian \u2014 {{date}}",
+      "facebookIntro": "\ud83c\udf34 Today in Sebastian:",
+      "facebookHashtags": "#SebastianFL #SupportLocal #ShopLocal #DigitalSebastian"
+    },
+
+    "safety": {
+      "headerLabel": "Sebastian, FL \u2022 Community Safety",
+      "areaLabel": "Sebastian Area \u2022 Last 30 Days",
+      "countyStatText": "Indian River County is safer than 99% of US counties",
+      "incidentsLabel": "View recent incidents in Indian River County",
+      "marineLabel": "Sebastian Inlet \u2022 Port Canaveral"
+    },
+
+    "verification": {
+      "locationVerifiedMessage": "Location verified in Sebastian.",
+      "outsideBoxMessage": "Not inside Sebastian verification box.",
+      "outsideZoneMessage": "Not inside Sebastian verification zone.",
+      "locationRequiredMessage": "Verify location in Sebastian before submitting Tier 1.",
+      "locationRequiredError": "Location verified in Sebastian required.",
+      "residentLabel": "Sebastian Resident+ required to submit prizes.",
+      "defaultTierName": "Sebastian local",
+      "confirmBusinessLabel": "I confirm this business is physically located in Sebastian, FL",
+      "locatedInLabel": "Located in Sebastian?",
+      "yearsInLabel": "How long in Sebastian?",
+      "cityMatchValue": "sebastian",
+      "eligibleZip": "32958",
+      "eligibleReason": "Address matches Sebastian pilot.",
+      "waitlistReason": "Outside Sebastian/32958; added to waitlist."
+    },
+
+    "localBiz": {
+      "directoryTitle": "Local Sebastian Businesses",
+      "directoryDescription": "This is a curated directory of businesses physically located in Sebastian. Apply below.",
+      "serviceProvidersDescription": "Find trusted service providers in Sebastian.",
+      "storeSetupLabel": "Set up a new store in Sebastian"
+    },
+
+    "mobileApp": {
+      "appId": "com.sebastianflorida.app",
+      "appName": "Sebastian Florida",
+      "namespace": "com.sebastianflorida.app"
+    },
+
+    "storage": {
+      "r2Bucket": "sebastian-assets"
+    },
+
+    "dbColumnMappings": {
+      "_comment": "Maps Sebastian-specific DB column names to their semantic meaning. Use for reference during migration.",
+      "locationVerifiedSebastian": "locationVerified",
+      "confirmSebastian": "confirmLocalBusiness",
+      "inSebastian": "inTown",
+      "yearsInSebastian": "yearsInTown"
+    },
+
+    "trustDefaults": {
+      "defaultLevel": "visitor"
+    }
+  }
+}

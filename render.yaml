@@ -66,8 +66,10 @@ services:
       # Multi-town config
       - key: TOWN_ID
         value: "1"
+      - key: TOWN_SLUG
+        value: "sebastian"
       - key: TOWN_NAME
-        value: "Sebastian"
+        sync: false
       - key: PUBLIC_BASE_URL
         sync: false
 

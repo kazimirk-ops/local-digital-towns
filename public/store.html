@@ -12,6 +12,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Storefront • Sebastian Digital Town</title>
+  <script>(function(){var t=window.__TOWN_CONFIG__?.pageTitles?.store;if(t)document.title=t;})();</script>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
   <link rel="stylesheet" href="/ui-kit.css?v=1">
   <style>
@@ -366,5 +367,6 @@
 <script src="/store.js?v=offers_ui_1"></script>
 <script src="/share_modal.js?v=1"></script>
 <script src="/js/beta-banner.js?v=1"></script>
+<script>(function(){var tc=window.__TOWN_CONFIG__;if(!tc)return;var d=tc.delivery||{};var a=tc.address||{};var city=document.getElementById('deliveryCityInput');var state=document.getElementById('deliveryStateInput');var street=document.getElementById('deliveryStreetInput');if(city&&d.defaultCity)city.value=d.defaultCity;if(state&&d.defaultState)state.value=d.defaultState;if(street&&a.streetPlaceholder)street.placeholder=a.streetPlaceholder;})();</script>
 </body>
 </html>
