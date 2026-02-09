@@ -86,11 +86,24 @@ function getCurrentTown() {
 }
 
 /**
- * Middleware to attach town config to request
+ * Middleware to attach town config to request.
+ * Tries domain match first, falls back to TOWN_SLUG env var.
  */
 function townMiddleware(req, res, next) {
   const host = req.get("host") || "localhost";
-  req.town = getTownByDomain(host);
+  const normalizedHost = host.toLowerCase().replace(/^www\./, "").split(":")[0];
+
+  // Try exact domain match first
+  let matched = null;
+  for (const config of Object.values(towns)) {
+    if (config.domains?.includes(normalizedHost)) {
+      matched = config;
+      break;
+    }
+  }
+
+  // Fall back to TOWN_SLUG env var (not the first key in the JSON)
+  req.town = matched || getCurrentTown();
   res.locals.town = req.town;
   next();
 }

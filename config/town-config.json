@@ -255,6 +255,7 @@
     "timezone": "America/New_York",
     "domains": [
       "tampa-bay-florida.com",
+      "tampa-bay-florida.onrender.com",
       "tampa-bay.digitaltowns.com",
       "localhost"
     ],
