@@ -234,14 +234,6 @@
       "r2Bucket": "sebastian-assets"
     },
 
-    "dbColumnMappings": {
-      "_comment": "Maps Sebastian-specific DB column names to their semantic meaning. Use for reference during migration.",
-      "locationVerifiedSebastian": "locationVerified",
-      "confirmSebastian": "confirmLocalBusiness",
-      "inSebastian": "inTown",
-      "yearsInSebastian": "yearsInTown"
-    },
-
     "trustDefaults": {
       "defaultLevel": "visitor"
     }

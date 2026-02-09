@@ -1288,7 +1288,7 @@ async function initLocalBiz(){
           instagram: $("localBizInstagram").value.trim(),
           description: $("localBizDescription").value.trim(),
           sustainabilityNotes: $("localBizSustainability").value.trim(),
-          confirmSebastian: $("localBizConfirm").checked ? 1 : 0
+          confirmLocalBusiness: $("localBizConfirm").checked ? 1 : 0
         };
         try{
           const created = await api("/api/localbiz/apply",{

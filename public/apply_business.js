@@ -18,7 +18,7 @@ if(form){
       type: document.getElementById("businessType").value.trim(),
       category: document.getElementById("businessCategory").value.trim(),
       website: document.getElementById("businessWebsite").value.trim(),
-      inSebastian: document.getElementById("businessInSebastian").value.trim(),
+      inTown: document.getElementById("businessInTown").value.trim(),
       address: document.getElementById("businessAddress").value.trim(),
       notes: document.getElementById("businessNotes").value.trim(),
       termsAcceptedAt: new Date().toISOString()

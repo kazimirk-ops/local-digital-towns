@@ -18,7 +18,7 @@ if(form){
       city: document.getElementById("residentCity").value.trim(),
       state: document.getElementById("residentState").value.trim(),
       zip: document.getElementById("residentZip").value.trim(),
-      yearsInSebastian: document.getElementById("residentYears").value.trim(),
+      yearsInTown: document.getElementById("residentYears").value.trim(),
       notes: document.getElementById("residentNotes").value.trim(),
       termsAcceptedAt: new Date().toISOString()
     };

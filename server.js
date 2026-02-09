@@ -1644,7 +1644,7 @@ app.post("/api/public/apply/business", async (req, res) =>{
     type: (req.body?.type || "").toString().trim(),
     category: (req.body?.category || "").toString().trim(),
     website: (req.body?.website || "").toString().trim(),
-    inSebastian: (req.body?.inSebastian || "").toString().trim(),
+    inTown: (req.body?.inTown || req.body?.inSebastian || "").toString().trim(),
     address: (req.body?.address || "").toString().trim(),
     notes: (req.body?.notes || "").toString().trim(),
     status: "pending"
@@ -1671,7 +1671,7 @@ app.post("/api/public/apply/resident", async (req, res) =>{
     city: (req.body?.city || "").toString().trim(),
     state: (req.body?.state || "").toString().trim(),
     zip: (req.body?.zip || "").toString().trim(),
-    yearsInSebastian: (req.body?.yearsInSebastian || "").toString().trim(),
+    yearsInTown: (req.body?.yearsInTown || req.body?.yearsInSebastian || "").toString().trim(),
     notes: (req.body?.notes || "").toString().trim(),
     status: "pending"
   };
@@ -1940,7 +1940,7 @@ app.post("/api/verify/location", async (req, res) =>{
   const lng = Number(req.body?.lng);
   const check = isInsideTownBox(lat, lng);
   if(!check.ok) return res.status(400).json({ ok:false, inside:false, error: check.error });
-  await data.setUserLocationVerifiedSebastian(u, true);
+  await data.setUserLocationVerified(u, true);
   res.json({ ok:true, inside:true });
 });
 
@@ -2007,7 +2007,7 @@ app.post("/api/trust/apply", async (req, res) =>{
   }
   const user = await data.getUserById(u);
   if(requestedTier === 1){
-    if(Number(user?.locationVerifiedSebastian || 0) !== 1){
+    if(Number(user?.locationVerified || user?.locationverified || 0) !== 1){
       return res.status(400).json({error: townCfg.verification.locationRequiredError});
     }
   }

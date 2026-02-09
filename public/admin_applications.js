@@ -126,7 +126,7 @@ async function loadBusiness(){
       tr.appendChild(td(row.businessName));
       tr.appendChild(td(row.type));
       tr.appendChild(td(row.category));
-      tr.appendChild(td(row.inSebastian));
+      tr.appendChild(td(row.inTown));
       tr.appendChild(td(row.status + (row.approvedTier ? ` (Tier ${row.approvedTier})` : "")));
       tr.appendChild(actionsCell(row.id, "business", row.approvedtier || 4,
         async (tier)=>{ await postStatusWithTier(`/api/admin/applications/business/${row.id}/status`, "approved", tier); loadBusiness(); },
@@ -158,7 +158,7 @@ async function loadResident(){
       tr.appendChild(td(row.name));
       tr.appendChild(td(row.email));
       tr.appendChild(td(`${row.city}, ${row.state}`));
-      tr.appendChild(td(row.yearsInSebastian || ""));
+      tr.appendChild(td(row.yearsInTown || ""));
       tr.appendChild(td(row.status + (row.approvedTier ? ` (Tier ${row.approvedTier})` : "")));
       tr.appendChild(actionsCell(row.id, "resident", row.approvedtier || 2,
         async (tier)=>{ await postStatusWithTier(`/api/admin/applications/resident/${row.id}/status`, "approved", tier); loadResident(); },

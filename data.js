@@ -646,7 +646,7 @@ async function updateUserPresence(userId, payload){
 async function setUserLocationVerified(userId, verified){
   const uid = Number(userId);
   if(!uid) return { error:"Invalid userId" };
-  await stmt("UPDATE users SET locationVerifiedSebastian=$1 WHERE id=$2")
+  await stmt("UPDATE users SET locationVerified=$1 WHERE id=$2")
     .run(verified ? 1 : 0, uid);
   return { ok:true };
 }
@@ -1114,7 +1114,7 @@ async function getUserProfilePrivate(userId){
     showAgeRange: Number(user.showAgeRange || 0),
     isBuyerVerified: Number(user.isBuyerVerified || 0),
     isSellerVerified: Number(user.isSellerVerified || 0),
-    locationVerifiedSebastian: Number(user.locationVerifiedSebastian || 0),
+    locationVerified: Number(user.locationVerified || user.locationverified || 0),
     residentVerified: Number(user.residentVerified || 0),
     facebookVerified: Number(user.facebookVerified || 0)
   };
@@ -2988,14 +2988,14 @@ async function addBusinessApplication(payload){
   const businessName = (payload?.businessName || "").toString().trim();
   const type = (payload?.type || "").toString().trim();
   const category = (payload?.category || "").toString().trim();
-  const inSebastian = (payload?.inSebastian || "").toString().trim();
+  const inTown = (payload?.inTown || payload?.inSebastian || "").toString().trim();
   const termsAcceptedAt = (payload?.termsAcceptedAt || "").toString().trim() || null;
-  if(!contactName || !email || !businessName || !type || !category || !inSebastian){
-    return { error: "contactName, email, businessName, type, category, inSebastian required" };
+  if(!contactName || !email || !businessName || !type || !category || !inTown){
+    return { error: "contactName, email, businessName, type, category, inTown required" };
   }
   const info = await stmt(`
     INSERT INTO business_applications
-      (createdAt, contactName, email, phone, businessName, type, category, website, inSebastian, address, notes, status, termsAcceptedAt)
+      (createdAt, contactName, email, phone, businessName, type, category, website, inTown, address, notes, status, termsAcceptedAt)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
     RETURNING id
   `).run(
@@ -3007,7 +3007,7 @@ async function addBusinessApplication(payload){
     type,
     category,
     (payload?.website || "").toString().trim(),
-    inSebastian,
+    inTown,
     (payload?.address || "").toString().trim(),
     (payload?.notes || "").toString().trim(),
     "pending",
@@ -3047,7 +3047,7 @@ async function addResidentApplication(payload){
   }
   const info = await stmt(`
     INSERT INTO resident_applications
-      (createdAt, name, email, phone, addressLine1, city, state, zip, yearsInSebastian, notes, status, termsAcceptedAt)
+      (createdAt, name, email, phone, addressLine1, city, state, zip, yearsInTown, notes, status, termsAcceptedAt)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
     RETURNING id
   `).run(
@@ -3059,7 +3059,7 @@ async function addResidentApplication(payload){
     city,
     state,
     zip,
-    (payload?.yearsInSebastian || "").toString().trim(),
+    (payload?.yearsInTown || payload?.yearsInSebastian || "").toString().trim(),
     (payload?.notes || "").toString().trim(),
     "pending",
     termsAcceptedAt
@@ -3119,15 +3119,16 @@ async function addLocalBizApplication(payload, userId){
   const zip = (payload.zip || "").toString().trim();
   const category = (payload.category || "").toString().trim();
   const description = (payload.description || "").toString().trim();
-  const confirm = payload.confirmSebastian === true || payload.confirmSebastian === 1 || payload.confirmSebastian === "1" || payload.confirmSebastian === "true";
+  const confirm = payload.confirmLocalBusiness === true || payload.confirmLocalBusiness === 1 || payload.confirmLocalBusiness === "1" || payload.confirmLocalBusiness === "true"
+    || payload.confirmSebastian === true || payload.confirmSebastian === 1 || payload.confirmSebastian === "1" || payload.confirmSebastian === "true";
   if(!businessName || !ownerName || !email || !address || !city || !state || !zip || !category || !description){
     return { error: "businessName, ownerName, email, address, city, state, zip, category, description required" };
   }
-  if(!confirm) return { error: "confirmSebastian required" };
+  if(!confirm) return { error: "confirmLocalBusiness required" };
   const info = await stmt(`
     INSERT INTO local_business_applications
       (townId, status, businessName, ownerName, email, phone, address, city, state, zip, category,
-       website, instagram, description, sustainabilityNotes, confirmSebastian, createdAt, reviewedAt,
+       website, instagram, description, sustainabilityNotes, confirmLocalBusiness, createdAt, reviewedAt,
        reviewedByUserId, decisionReason, userId)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
     RETURNING id
@@ -4015,7 +4016,6 @@ module.exports = {
   getTownContext,
   updateUserPresence,
   setUserLocationVerified,
-  setUserLocationVerifiedSebastian: setUserLocationVerified,
   setUserFacebookVerified,
   setUserResidentVerified,
   setUserAdmin,
