@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+  <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pay for Auction</title>
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <style>
+      body{ font-family: var(--font-sans, ui-sans-serif, system-ui); margin:0; background:var(--bg); color:var(--text); }
+      .wrap{ max-width:900px; margin:0 auto; padding:16px; }
+      .card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; }
+      .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+      .muted{ color:var(--muted); font-size:12px; }
+      .pill{ display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--panel2); font-size:12px; }
+      button{ padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--panel2); color:var(--text); cursor:pointer; }
+    </style>
+  </head>
+  <body data-town="sebastian">
+    <div class="wrap">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <h2 style="margin:0;">Auction Won</h2>
+          <div class="muted">Arrange payment with the seller.</div>
+        </div>
+        <a href="/ui" class="pill">Back to Town</a>
+      </div>
+
+      <div class="card">
+        <div class="muted" id="payStatus">Loading...</div>
+        <div style="margin-top:8px;">
+          <div><strong>Order</strong> <span class="muted" id="orderId"></span></div>
+          <div class="muted" id="orderListing"></div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <span class="pill" id="orderTotal">Total: —</span>
+        </div>
+        <div style="margin-top:10px; padding:10px; background:rgba(59,130,246,0.1); border-radius:10px; border:1px solid rgba(59,130,246,0.2);">
+          <div class="muted" style="color:#93c5fd;"><strong>Payment:</strong> Contact the seller to arrange payment directly (cash, Venmo, etc.).</div>
+        </div>
+        <div class="muted" style="margin-top:8px;">Payment due: <span id="paymentDue">—</span></div>
+        <div class="muted">Countdown: <span id="paymentCountdown">—</span></div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <button id="markPaidBtn" style="display:none;">Mark Paid (DEV)</button>
+          <span class="muted" id="payMsg"></span>
+        </div>
+      </div>
+
+      <div class="beta-notice">
+        <span class="beta-notice-icon">🎉</span>
+        <span><strong>Beta Notice:</strong> Thank you for being an early adopter! Contact <a href="mailto:support@sebastian-florida.com">support@sebastian-florida.com</a> if you need assistance.</span>
+      </div>
+
+      <footer style="text-align:center; padding:20px; font-size:12px; color:var(--muted); margin-top:20px;">
+        Digital Towns Beta v0.1 - Built with &#10084; for local communities
+      </footer>
+    </div>
+    <script src="/theme.js?v=1"></script>
+    <script src="/pay.js"></script>
+    <script src="/js/beta-banner.js?v=1"></script>
+    <script>(function(){var tc=window.__TOWN_CONFIG__;if(!tc)return;var email=tc.contact&&tc.contact.supportEmail;if(email){document.querySelectorAll('a[href*="sebastian-florida.com"]').forEach(function(el){el.href='mailto:'+email;el.textContent=email;});}})();</script>
+  </body>
+</html>

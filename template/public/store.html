@@ -1,0 +1,372 @@
+<!doctype html>
+<html>
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Storefront • Sebastian Digital Town</title>
+  <script>(function(){var t=window.__TOWN_CONFIG__?.pageTitles?.store;if(t)document.title=t;})();</script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
+  <link rel="stylesheet" href="/ui-kit.css?v=1">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-sans, ui-sans-serif, system-ui);
+      background: #0a0f1a;
+      color: #e2e8f0;
+    }
+    a { color: #7dd3fc; text-decoration: none; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(13, 20, 36, 0.92);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+    }
+    .topbar-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      color: #94a3b8;
+      transition: all 0.2s ease;
+      font-size: 13px;
+    }
+    .nav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+    .btn-outline {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: transparent;
+      color: #e2e8f0;
+      border-radius: 12px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .btn-outline:disabled { opacity: 0.6; cursor: not-allowed; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 18px 64px; }
+    .card {
+      background: #0d1424;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 24px 50px rgba(3, 7, 15, 0.35);
+    }
+    .card-header {
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .title { font-size: 22px; font-weight: 800; color: #fff; }
+    .muted { color: #94a3b8; font-size: 12px; }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      font-size: 12px;
+      color: #cbd5f5;
+    }
+    .cover {
+      height: 200px;
+      background: #151d2e;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background-size: cover;
+      background-position: center;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 16px;
+      padding: 18px;
+    }
+    .avatar {
+      width: 96px;
+      height: 96px;
+      border-radius: 14px;
+      background: #151d2e;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      object-fit: cover;
+    }
+    .stats { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: #94a3b8; }
+    .body { padding: 18px; }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #151d2e;
+      color: #fff;
+      font-size: 14px;
+    }
+    textarea { min-height: 70px; resize: vertical; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 16px; }
+    .item { border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 14px; background: #0d1424; }
+    .price { font-weight: 800; margin-top: 6px; }
+    .hr { height: 1px; background: rgba(255, 255, 255, 0.08); margin: 16px 0; }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .tabBtn { padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); cursor: pointer; font-weight: 700; font-size: 12px; color: #e2e8f0; }
+    .tabBtn.active { border-color: rgba(34, 211, 238, 0.4); box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15); }
+    .catBtn { padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); cursor: pointer; font-weight: 600; font-size: 11px; color: #94a3b8; }
+    .catBtn.active { background: rgba(34, 211, 238, 0.15); border-color: rgba(34, 211, 238, 0.4); color: #22d3ee; }
+    .productImg { width: 100%; height: 180px; border-radius: 12px; object-fit: cover; background: #151d2e; }
+    .thumbRow { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .thumb { width: 78px; height: 78px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); object-fit: cover; background: #151d2e; }
+    .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; white-space: pre-wrap; }
+    .twoCol { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 900px){
+      .hero { grid-template-columns: 1fr; }
+      .twoCol { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body data-town="sebastian">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="nav-btn" href="/ui">← Back to Town</a>
+    <div class="row">
+      <button id="messageBtn" class="btn-outline">Message</button>
+      <button id="followBtn" class="btn-outline">Follow</button>
+      <button id="cartBtn" class="btn-outline">Cart (<span id="cartCount">0</span>)</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <div class="cover" id="storeBanner"></div>
+    <div class="hero">
+      <img id="storeAvatar" class="avatar" alt="store" />
+      <div>
+        <div class="title" id="storeName">Loading…</div>
+        <div class="muted" id="storeMeta">—</div>
+        <div class="muted" id="storeOwnerTrust" style="margin-top:4px;"></div>
+        <div class="stats">
+          <span id="storeRating">★ 0.0 (0 Reviews)</span>
+          <span id="storeShipping">Free / 1–4 day ship</span>
+          <span id="storeFollowers">0 Followers</span>
+          <button id="shareStoreBtn" class="btn-small" style="margin-left:8px;">Share</button>
+        </div>
+        <div class="muted" id="storeReviewRoles">Buyer reviews: 0 • Seller reviews: 0</div>
+        <div class="muted" id="storeDesc">—</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="card-header" style="padding:0 0 16px; border:none;">
+        <div style="flex:1; min-width:220px;">
+          <input id="searchBox" placeholder="Search in this store…" />
+        </div>
+        <span class="pill">Products: <span id="countLbl">0</span></span>
+      </div>
+
+      <div class="tabs">
+        <button class="tabBtn active" id="tabItems">Shop</button>
+        <button class="tabBtn" id="tabOffers">Offers</button>
+        <button class="tabBtn" id="tabRequests">Requests</button>
+      </div>
+
+      <div id="categoryFilters" style="display:flex; flex-wrap:wrap; gap:8px; margin:12px 0;"></div>
+
+      <!-- Owner Controls - HIDDEN
+      <div class="item" id="ownerControls" style="margin-top:12px; display:none; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(34, 211, 238, 0.1));">
+        <div style="font-weight:800; margin-bottom:8px;">Store Owner Tools</div>
+        <div class="row" style="gap:8px;">
+          <a id="subscriptionLink" href="/me/store" class="pill" style="text-decoration:none;">Subscription</a>
+          <a id="giveawayOfferLink" href="/giveaway-offer" class="pill" style="text-decoration:none;">Submit Giveaway</a>
+          <a id="storeSettingsLink" href="/store/settings" class="pill" style="text-decoration:none;">Settings</a>
+        </div>
+        <div id="subscriptionStatus" class="muted" style="margin-top:8px;"></div>
+      </div>
+      -->
+
+      <div class="item" id="storeLiveShows" style="margin-top:12px; display:none;">
+        <div style="font-weight:800;">Upcoming Live Show</div>
+        <div class="muted" id="storeLiveShowMeta"></div>
+        <div class="muted" id="storeLiveShowDesc" style="margin-top:6px;"></div>
+        <div class="row" style="margin-top:8px;">
+          <a class="pill" id="storeLiveShowJoin" href="#" style="display:none;">Join Live</a>
+        </div>
+      </div>
+
+      <div class="grid" id="listingGrid"></div>
+
+      <div class="hr"></div>
+
+      <!-- Create Offer/Request (owner only; server enforces too) -->
+      <div class="item" id="createBox" style="display:none;">
+        <div style="font-weight:800;">Create Offer / Request</div>
+        <div class="muted">This posts under this store. Server will enforce verification/trust.</div>
+
+        <div class="twoCol" style="margin-top:10px;">
+          <div>
+            <div class="muted">Type</div>
+            <select id="newType">
+              <option value="offer">offer</option>
+              <option value="request">request</option>
+            </select>
+          </div>
+          <div>
+            <div class="muted">Exchange</div>
+            <select id="newExchange">
+              <option value="money">money</option>
+              <option value="education">education</option>
+              <option value="volunteer">volunteer</option>
+              <option value="barter">barter</option>
+              <option value="hybrid">hybrid</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div class="muted">Title</div>
+          <input id="newTitle" placeholder="Dog sitting this weekend…" />
+        </div>
+
+        <div style="margin-top:10px;">
+          <div class="muted">Description</div>
+          <textarea id="newDesc" placeholder="Details, expectations, what’s offered in return…"></textarea>
+        </div>
+
+        <div class="twoCol" style="margin-top:10px;">
+          <div>
+            <div class="muted">Offer Category</div>
+            <input id="newOfferCategory" placeholder="e.g. lodging, childcare, repair" />
+          </div>
+          <div>
+            <div class="muted">Availability Window</div>
+            <input id="newAvailability" placeholder="Weeknights, 9–5, weekends" />
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="muted">Compensation Type</div>
+          <input id="newCompensation" placeholder="money, barter, volunteer, hybrid" />
+        </div>
+
+        <div class="twoCol" style="margin-top:10px;">
+          <div>
+            <div class="muted">Start (optional ISO or date)</div>
+            <input id="newStartAt" placeholder="2026-01-20T15:00:00Z" />
+          </div>
+          <div>
+            <div class="muted">End (optional ISO or date)</div>
+            <input id="newEndAt" placeholder="2026-01-21T15:00:00Z" />
+          </div>
+        </div>
+
+        <div class="twoCol" style="margin-top:10px;">
+          <div>
+            <div class="muted">Price (0 if none)</div>
+            <input id="newPrice" value="0" />
+          </div>
+          <div>
+            <div class="muted">Quantity (usually 1)</div>
+            <input id="newQty" value="1" />
+          </div>
+        </div>
+
+        <div class="row" style="justify-content:flex-end; margin-top:10px;">
+          <button id="publishBtn" class="btn-outline">Publish</button>
+        </div>
+      </div>
+
+      <details class="debugBox debugToggle" style="display:none">
+        <summary>Show debug</summary>
+        <div class="mono" id="debug"></div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<div id="cartModal" style="display:none; position:fixed; inset:0; background:rgba(2, 6, 23, 0.65); z-index:40;">
+  <div id="cartPanel" style="max-width:720px; margin:6vh auto; background:#0d1424; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px; color:#e2e8f0;">
+    <div class="row" style="justify-content:space-between;">
+      <strong>Cart</strong>
+      <button id="cartClose" class="btn-outline">Close</button>
+    </div>
+    <div class="list" id="cartList" style="margin-top:10px;"></div>
+    <div class="muted" id="cartTotals" style="margin-top:10px;"></div>
+    <div id="cartDeliverySection" style="display:none; margin:12px 0; padding:14px; background:#1e293b; border-radius:8px; border:1px solid #334155;">
+      <label style="font-weight:600; font-size:14px; display:block; margin-bottom:8px; color:#e2e8f0;">📍 Delivery Details</label>
+      <input type="text" id="deliveryStreetInput" placeholder="Street address (e.g. 1234 Indian River Dr)" style="width:100%; padding:10px; border:1px solid #475569; border-radius:6px; font-size:14px; box-sizing:border-box; background:#0f172a; color:#f1f5f9;" />
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="deliveryCityInput" value="Sebastian" placeholder="City" style="flex:2; padding:8px; border:1px solid #475569; border-radius:6px; font-size:13px; background:#0f172a; color:#f1f5f9;" />
+        <input type="text" id="deliveryStateInput" value="FL" placeholder="State" style="flex:1; padding:8px; border:1px solid #475569; border-radius:6px; font-size:13px; background:#0f172a; color:#f1f5f9;" />
+        <input type="text" id="deliveryZipInput" placeholder="Zip" style="flex:1; padding:8px; border:1px solid #475569; border-radius:6px; font-size:13px; background:#0f172a; color:#f1f5f9;" />
+      </div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="deliveryNameInput" placeholder="Your name" style="flex:1; padding:8px; border:1px solid #475569; border-radius:6px; font-size:13px; background:#0f172a; color:#f1f5f9;" />
+        <input type="tel" id="deliveryPhoneInput" placeholder="Phone number" style="flex:1; padding:8px; border:1px solid #475569; border-radius:6px; font-size:13px; background:#0f172a; color:#f1f5f9;" />
+      </div>
+      <button id="getDeliveryQuoteBtn" style="margin-top:10px; width:100%; padding:10px; background:#2dd4bf; color:#0f172a; border:none; border-radius:6px; font-weight:700; cursor:pointer; font-size:14px;">Get Delivery Quote</button>
+      <div id="deliveryQuoteResult" style="display:none; margin-top:10px; padding:10px; background:#0f172a; border-radius:6px; border:1px solid #334155;">
+        <div style="display:flex; justify-content:space-between; color:#e2e8f0;"><span>Delivery Fee:</span><strong id="deliveryFeeDisplay" style="color:#2dd4bf;">$0.00</strong></div>
+        <div style="display:flex; justify-content:space-between; margin-top:4px; color:#94a3b8;"><span>Estimated Time:</span><span id="deliveryEtaDisplay">--</span></div>
+      </div>
+    </div>
+    <div id="cartHowItWorks" style="margin-top:10px; padding:10px; background:rgba(59,130,246,0.1); border-radius:10px; border:1px solid rgba(59,130,246,0.2);">
+      <div class="muted" style="color:#93c5fd;"><strong>How it works:</strong> Place your order, then contact the seller to arrange pickup and payment (cash, Venmo, etc.).</div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <button id="cartCheckoutBtn" class="btn-outline">Place Order</button>
+      <button id="cartClearBtn" class="btn-outline" style="opacity:0.7;">Clear Cart</button>
+    </div>
+    <div class="muted" id="cartMsg" style="margin-top:8px;"></div>
+  </div>
+</div>
+
+<div id="listingModal" style="display:none; position:fixed; inset:0; background:rgba(2, 6, 23, 0.65); z-index:40;">
+  <div id="listingModalPanel" style="max-width:900px; margin:6vh auto; background:#0d1424; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px; color:#e2e8f0;">
+    <div class="row" style="justify-content:space-between;">
+      <div class="contextTitle" id="listingModalTitle">Listing</div>
+      <button id="listingModalClose" class="btn-outline">Close</button>
+    </div>
+    <div class="row" style="margin-top:12px; gap:12px;">
+      <div style="flex:2;">
+        <img id="listingModalMainImg" src="" alt="" style="width:100%; border-radius:12px; object-fit:cover; max-height:420px;" />
+        <div class="row" id="listingModalThumbs" style="margin-top:10px; gap:8px; flex-wrap:wrap;"></div>
+      </div>
+      <div style="flex:1;">
+        <div class="muted" id="listingModalMeta">—</div>
+        <div style="margin-top:8px;" id="listingModalDesc"></div>
+        <div style="margin-top:8px;" id="listingModalDetails"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/theme.js?v=1"></script>
+<script src="/store.js?v=offers_ui_1"></script>
+<script src="/share_modal.js?v=1"></script>
+<script src="/js/beta-banner.js?v=1"></script>
+<script>(function(){var tc=window.__TOWN_CONFIG__;if(!tc)return;var d=tc.delivery||{};var a=tc.address||{};var city=document.getElementById('deliveryCityInput');var state=document.getElementById('deliveryStateInput');var street=document.getElementById('deliveryStreetInput');if(city&&d.defaultCity)city.value=d.defaultCity;if(state&&d.defaultState)state.value=d.defaultState;if(street&&a.streetPlaceholder)street.placeholder=a.streetPlaceholder;})();</script>
+</body>
+</html>

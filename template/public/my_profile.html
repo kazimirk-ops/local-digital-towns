@@ -1,0 +1,191 @@
+<!doctype html>
+<html>
+  <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>My Profile</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <link rel="stylesheet" href="/my_profile_v2.css?v=1">
+  </head>
+  <body data-town="sebastian">
+    <header class="profile-header">
+      <div class="profile-header-inner">
+        <a class="nav-btn" href="/ui">
+          <span class="nav-icon">←</span>
+          <span class="nav-text">Back to Town</span>
+        </a>
+        <div class="nav-actions">
+          <a class="nav-btn nav-outline" href="/me/orders">
+            <span class="nav-icon">📦</span>
+            <span class="nav-text">My Orders</span>
+          </a>
+          <a class="nav-btn nav-outline" href="/me/store">
+            <span class="nav-icon">🏪</span>
+            <span class="nav-text">Store Profile</span>
+          </a>
+          <span class="trust-badge" id="trustBadge">Tier 0: Visitor</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="profile-shell">
+      <div class="profile-grid">
+        <section class="profile-left">
+          <div class="card profile-hero">
+            <div class="hero-banner">
+              <div class="hero-gradient"></div>
+            </div>
+            <div class="hero-content">
+              <div class="avatar-wrap">
+                <div class="avatar-ring">
+                  <img class="avatar-img" id="avatarImg" alt="Profile avatar" />
+                  <div class="avatar-fallback">👤</div>
+                  <label class="avatar-overlay" for="avatarFile">
+                    <span class="avatar-overlay-text">Change</span>
+                  </label>
+                </div>
+              </div>
+              <div class="hero-text">
+                <div class="hero-title-row">
+                  <h1 class="hero-title">Your Name</h1>
+                </div>
+                <p class="hero-subtitle" id="profileLoginNote"></p>
+                <p class="hero-bio" id="heroBio">Add a bio to tell others about yourself...</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card profile-settings">
+            <div class="card-header">
+              <div class="card-icon">👤</div>
+              <h2 class="card-title">Profile Settings</h2>
+            </div>
+            <div class="card-body">
+              <div class="field-grid">
+                <div class="field">
+                  <label class="label" for="displayName">Display Name</label>
+                  <input id="displayName" placeholder="Enter your display name" />
+                </div>
+                <div class="field">
+                  <label class="label" for="ageRange">Age Range <span class="label-muted">(optional)</span></label>
+                  <input id="ageRange" placeholder="e.g., 25-34" />
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="label" for="bio">Bio</label>
+                <textarea id="bio" placeholder="Tell us about yourself..."></textarea>
+              </div>
+
+              <div class="field">
+                <label class="label" for="avatarUrl">Avatar</label>
+                <div class="avatar-row">
+                  <input id="avatarUrl" placeholder="Paste image URL..." />
+                  <button id="uploadAvatarBtn" type="button" class="btn-outline">
+                    <span class="btn-icon">⬆</span> Upload
+                  </button>
+                </div>
+                <input id="avatarFile" type="file" accept="image/*" class="file-input" />
+              </div>
+
+              <div class="field">
+                <label class="label" for="interests">Interests</label>
+                <input id="interests" placeholder="Gaming, Art, Music, Trading..." />
+                <p class="hint">Separate interests with commas</p>
+              </div>
+
+              <div class="divider"></div>
+
+              <div class="privacy-header">
+                <div class="card-icon">👁</div>
+                <h3 class="card-subtitle">Privacy Settings</h3>
+              </div>
+              <div class="privacy-grid">
+                <label class="toggle">
+                  <div>
+                    <span class="toggle-title">Show Avatar</span>
+                    <span class="toggle-desc">Display your profile picture</span>
+                  </div>
+                  <input type="checkbox" id="showAvatar" />
+                </label>
+                <label class="toggle">
+                  <div>
+                    <span class="toggle-title">Show Bio</span>
+                    <span class="toggle-desc">Display your biography</span>
+                  </div>
+                  <input type="checkbox" id="showBio" />
+                </label>
+                <label class="toggle">
+                  <div>
+                    <span class="toggle-title">Show Interests</span>
+                    <span class="toggle-desc">Display your interests</span>
+                  </div>
+                  <input type="checkbox" id="showInterests" />
+                </label>
+                <label class="toggle">
+                  <div>
+                    <span class="toggle-title">Show Age Range</span>
+                    <span class="toggle-desc">Display your age range</span>
+                  </div>
+                  <input type="checkbox" id="showAgeRange" />
+                </label>
+              </div>
+
+              <button id="saveProfileBtn" class="btn-primary">Save Profile</button>
+              <p class="status" id="profileMsg"></p>
+            </div>
+          </div>
+        </section>
+
+        <aside class="profile-right">
+          <div class="card" id="dmCard">
+            <div class="card-header">
+              <div class="card-icon">💬</div>
+              <h2 class="card-title">Direct Messages</h2>
+            </div>
+            <div class="card-body">
+              <div class="dm-grid">
+                <div class="dm-list">
+                  <div class="panel-title">Inbox</div>
+                  <div class="list" id="dmList"></div>
+                </div>
+                <div class="dm-thread">
+                  <div class="panel-title">Messages</div>
+                  <div class="list dm-messages" id="dmMessages"></div>
+                  <textarea id="dmInput" placeholder="Write a message..."></textarea>
+                  <div class="dm-actions">
+                    <button id="dmSendBtn" class="btn-primary btn-small">Send</button>
+                    <span class="status" id="dmMsg"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-icon">🎁</div>
+              <h2 class="card-title">Prize Claims</h2>
+            </div>
+            <div class="card-body prize-body">
+              <div class="list" id="profilePrizeClaims"></div>
+              <div class="status" id="profilePrizeMsg"></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </main>
+    <script src="/theme.js?v=1"></script>
+    <script src="/my_profile.js?v=4"></script>
+    <script src="/js/beta-banner.js?v=1"></script>
+  </body>
+</html>

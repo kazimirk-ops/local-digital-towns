@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+  <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Order Complete</title>
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <style>
+      body{ font-family: var(--font-sans, ui-sans-serif, system-ui); margin:0; background:var(--bg); color:var(--text); }
+      .wrap{ max-width:900px; margin:0 auto; padding:16px; }
+      .card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; }
+      .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+      .muted{ color:var(--muted); font-size:12px; }
+      .pill{ display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--panel2); font-size:12px; }
+      a{ color:var(--accent); }
+    </style>
+  </head>
+  <body data-town="sebastian">
+    <div class="wrap">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <h2 style="margin:0;">Order Complete</h2>
+          <div class="muted">Thanks for your order!</div>
+        </div>
+        <a href="/ui" class="pill">Back to Town</a>
+      </div>
+
+      <div class="card">
+        <div class="muted" id="paySuccessStatus">Loading...</div>
+        <div style="margin-top:8px;">
+          <div><strong>Order</strong> <span class="muted" id="paySuccessOrderId"></span></div>
+          <div class="muted" id="paySuccessListing"></div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <span class="pill" id="paySuccessTotal">Total: —</span>
+        </div>
+        <div id="nextStepsPeer" style="display:none; margin-top:16px; padding:12px; background:rgba(34,197,94,0.1); border-radius:10px; border:1px solid rgba(34,197,94,0.2);">
+          <div style="font-weight:600; color:#86efac;">Next Steps</div>
+          <div class="muted" style="margin-top:4px;">
+            <strong>1.</strong> Contact the seller to arrange pickup or delivery.<br>
+            <strong>2.</strong> Pay the seller directly when you meet (cash, Venmo, etc.).<br>
+            <strong>3.</strong> Enjoy your purchase!
+          </div>
+        </div>
+        <div id="nextStepsManaged" style="display:none; margin-top:16px; padding:12px; background:rgba(34,197,94,0.1); border-radius:10px; border:1px solid rgba(34,197,94,0.2);">
+          <div style="font-weight:600; color:#86efac;">🎉 Payment Complete!</div>
+          <div class="muted" style="margin-top:4px;">
+            Your order is being prepared and a courier will deliver it to your door shortly. You can track your delivery below.
+          </div>
+          <a id="trackDeliveryLink" href="#" style="display:none; margin-top:10px; padding:10px 16px; background:#2dd4bf; color:#0f172a; border-radius:8px; font-weight:700; font-size:14px; text-decoration:none; text-align:center;">🚀 Track Your Delivery</a>
+        </div>
+      </div>
+    </div>
+    <script src="/theme.js?v=1"></script>
+    <script src="/pay_success.js?v=2"></script>
+    <script src="/js/beta-banner.js?v=1"></script>
+  </body>
+</html>

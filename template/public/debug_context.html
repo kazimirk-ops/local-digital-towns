@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Debug Context</title>
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <style>
+      body { font-family: var(--font-sans, ui-sans-serif, system-ui); padding: 16px; background:var(--bg); color:var(--text); }
+      pre { background:var(--panel2); color:var(--text); padding:12px; border-radius:10px; overflow:auto; border:1px solid var(--border); }
+    </style>
+  </head>
+  <body data-town="sebastian">
+    <h3>/town/context</h3>
+    <pre id="ctx">Loading…</pre>
+    <script src="/theme.js?v=1"></script>
+    <script>
+      fetch("/debug/context").then(r=>r.json()).then(d=>{
+        document.getElementById("ctx").textContent = JSON.stringify(d, null, 2);
+      }).catch(err=>{
+        document.getElementById("ctx").textContent = err.toString();
+      });
+    </script>
+  </body>
+</html>

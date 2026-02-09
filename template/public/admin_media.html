@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+  <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Media – Sebastian</title>
+    <script>(function(){var t=window.__TOWN_CONFIG__?.pageTitles?.adminMedia;if(t)document.title=t;})();</script>
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <style>
+      body{ font-family: var(--font-sans, ui-sans-serif, system-ui); margin:0; background:var(--bg); color:var(--text); }
+      .wrap{ max-width:1200px; margin:0 auto; padding:16px; }
+      .card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; }
+      .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+      .muted{ color:var(--muted); font-size:12px; }
+      table{ width:100%; border-collapse:collapse; }
+      th,td{ padding:8px; border-bottom:1px solid var(--border); text-align:left; font-size:13px; }
+      .pill{ display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:var(--panel2); font-size:12px; }
+      a{ color:var(--accent2); }
+      img{ width:36px; height:36px; object-fit:cover; border-radius:8px; border:1px solid var(--border); }
+      input, select { background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 8px; }
+      button{ padding:6px 10px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); cursor:pointer; }
+    </style>
+  </head>
+  <body data-town="sebastian">
+    <div class="wrap">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <h2 style="margin:0;">Admin Media – Sebastian</h2>
+          <div class="muted">Recent uploads + orphan detection.</div>
+        </div>
+        <div class="row">
+          <a href="/ui" class="pill">Back to Town</a>
+          <a href="/admin" class="pill">Admin Home</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <label class="muted">Town</label>
+          <input id="mediaTownId" value="1" style="width:80px;" />
+          <label class="muted">Kind</label>
+          <select id="mediaKind">
+            <option value="">(all)</option>
+            <option value="listing_photo">listing_photo</option>
+            <option value="profile_avatar">profile_avatar</option>
+            <option value="store_banner">store_banner</option>
+            <option value="store_avatar">store_avatar</option>
+            <option value="event_image">event_image</option>
+            <option value="archive_image">archive_image</option>
+            <option value="other">other</option>
+          </select>
+          <button id="mediaReload">Reload</button>
+          <a class="pill" href="/api/admin/media/orphans" target="_blank" rel="noopener">Orphans JSON</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>Recent Uploads</strong>
+        <div class="muted">Shows latest media objects.</div>
+        <div style="margin-top:10px; overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Preview</th>
+                <th>Kind</th>
+                <th>Owner</th>
+                <th>Place</th>
+                <th>Bytes</th>
+                <th>Mime</th>
+                <th>Storage</th>
+                <th>URL</th>
+              </tr>
+            </thead>
+            <tbody id="mediaRows"></tbody>
+          </table>
+        </div>
+        <div class="muted" id="mediaMsg" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card">
+        <strong>Orphans + Missing (local)</strong>
+        <div class="muted">Orphans are media URLs not referenced by active records.</div>
+        <div class="row" style="margin-top:8px;">
+          <button id="loadOrphans">Load Orphans</button>
+          <span class="muted" id="orphansMeta">—</span>
+        </div>
+        <div style="margin-top:10px; overflow:auto;">
+          <table>
+            <thead>
+              <tr><th>Type</th><th>Kind</th><th>Owner</th><th>URL</th></tr>
+            </thead>
+            <tbody id="orphansRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <script src="/theme.js?v=1"></script>
+    <script src="/admin_media.js"></script>
+    <script>(function(){var tc=window.__TOWN_CONFIG__;if(!tc)return;var t=tc.pageTitles?.adminMedia;document.querySelectorAll('h2').forEach(function(el){if(el.textContent.includes('Sebastian')&&t)el.textContent=t;});})();</script>
+  </body>
+</html>

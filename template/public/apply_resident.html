@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+  <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Resident Application</title>
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <link rel="stylesheet" href="/apply_resident.css?v=1">
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <h1>Apply as a Resident</h1>
+        <p class="muted">Resident access is reviewed manually during private beta.</p>
+      </header>
+
+      <form id="residentForm" class="card">
+        <label>Name (required)</label>
+        <input id="residentName" type="text" required />
+
+        <label>Email (required)</label>
+        <input id="residentEmail" type="email" required />
+
+        <label>Phone (optional)</label>
+        <input id="residentPhone" type="tel" />
+
+        <label>Address Line 1 (required)</label>
+        <input id="residentAddress" type="text" required />
+
+        <div class="row two-col">
+          <div>
+            <label>City (required)</label>
+            <input id="residentCity" type="text" required />
+          </div>
+          <div>
+            <label>State (required)</label>
+            <input id="residentState" type="text" required />
+          </div>
+        </div>
+
+        <label>ZIP (required)</label>
+        <input id="residentZip" type="text" required />
+
+        <label>How long in Sebastian? (optional)</label>
+        <input id="residentYears" type="text" placeholder="e.g., 5 years" />
+
+        <label>Notes to Admin (optional)</label>
+        <textarea id="residentNotes" rows="4"></textarea>
+
+        <div class="terms-checkbox">
+          <label class="checkbox-label">
+            <input type="checkbox" id="residentTermsAccepted" required />
+            <span>I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a></span>
+          </label>
+        </div>
+
+        <div class="row">
+          <button type="submit">Submit Application</button>
+          <span class="muted" id="residentMsg"></span>
+        </div>
+      </form>
+    </main>
+
+    <script src="/apply_resident.js?v=1"></script>
+    <script src="/js/beta-banner.js?v=1"></script>
+    <script>(function(){var tc=window.__TOWN_CONFIG__;if(!tc)return;var v=tc.verification||{};document.querySelectorAll('label').forEach(function(el){if(el.textContent.includes('How long in Sebastian')&&v.yearsInLabel)el.textContent=v.yearsInLabel;});})();</script>
+  </body>
+</html>

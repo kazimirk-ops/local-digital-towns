@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sweep Prize Claim</title>
+  <link rel="stylesheet" href="/ui-kit.css?v=1" />
+  <link rel="stylesheet" href="/sweep_claim.css?v=1" />
+</head>
+<body data-town="sebastian">
+  <main class="claim-wrap">
+    <div class="claim-card">
+      <div class="claim-header">
+        <h2>Sweep Prize Claim</h2>
+        <div class="muted" id="claimStatus">Loading...</div>
+      </div>
+
+      <div class="claim-details">
+        <div><strong>Prize:</strong> <span id="claimPrize">—</span></div>
+        <div><strong>Donor:</strong> <span id="claimDonor">—</span></div>
+        <div><strong>Draw ID:</strong> <span id="claimDrawId">—</span></div>
+      </div>
+
+      <form id="claimForm" class="claim-form">
+        <label for="claimMessage">Message to donor/admin (optional)</label>
+        <textarea id="claimMessage" rows="3" placeholder="Share pickup notes or a thank-you..."></textarea>
+
+        <label for="claimPhoto">Photo (optional)</label>
+        <input id="claimPhoto" type="file" accept="image/*" />
+        <div class="muted" id="claimPhotoHint">Photos are shared with donor + public shoutout.</div>
+
+        <button id="claimSubmitBtn" type="submit">Confirm Received</button>
+        <div class="muted" id="claimResult"></div>
+      </form>
+    </div>
+  </main>
+
+  <script src="/share_modal.js?v=1"></script>
+  <script src="/sweep_claim.js?v=share1"></script>
+</body>
+</html>

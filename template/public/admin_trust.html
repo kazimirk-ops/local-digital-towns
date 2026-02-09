@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trust Moderation</title>
+  <link rel="stylesheet" href="/ui-kit.css?v=1">
+  <style>
+    body{font-family:var(--font-sans, ui-sans-serif, system-ui);background:var(--bg);color:var(--text);margin:0}
+    .wrap{max-width:960px;margin:0 auto;padding:16px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px}
+    .muted{color:var(--muted);font-size:12px}
+    .item{border:1px solid var(--border);border-radius:10px;padding:10px;margin-top:8px;background:var(--panel2)}
+    a{color:var(--accent2);text-decoration:none}
+  </style>
+</head>
+<body data-town="sebastian">
+  <div class="wrap">
+    <div class="card">
+      <div><strong>Trust Moderation</strong></div>
+      <div class="muted">Reviews and disputes (admin only).</div>
+      <div class="muted" style="margin-top:6px;"><a href="/ui">Back to Town</a></div>
+    </div>
+    <div class="card">
+      <div><strong>Disputes</strong></div>
+      <div id="disputes"></div>
+    </div>
+    <div class="card">
+      <div><strong>Trust Applications</strong></div>
+      <div class="muted">Pending requests (auto-approved tiers still logged).</div>
+      <div id="trustApps"></div>
+    </div>
+    <div class="card">
+      <div><strong>Reviews</strong></div>
+      <div id="reviews"></div>
+    </div>
+  </div>
+  <script src="/theme.js?v=1"></script>
+  <script src="/admin_trust.js?v=1"></script>
+</body>
+</html>

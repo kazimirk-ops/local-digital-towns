@@ -1,0 +1,91 @@
+body {
+  background: #f6f3ef;
+  color: #1f1f1f;
+  font-family: "Sora", "Space Grotesk", system-ui, sans-serif;
+}
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 20px 60px;
+}
+.hero {
+  margin-bottom: 24px;
+}
+.card {
+  background: #fff;
+  border: 1px solid #e3dfda;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(20, 20, 20, 0.08);
+}
+label {
+  display: block;
+  margin-top: 14px;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+input, textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #d9d3cc;
+}
+.checkboxes {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #e3dfda;
+  border-radius: 12px;
+}
+.checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  font-weight: 500;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  background: #1f6f52;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.muted {
+  color: #6b6460;
+  font-size: 0.95rem;
+}
+.terms-checkbox {
+  margin-top: 18px;
+  padding: 14px;
+  background: #faf8f5;
+  border: 1px solid #e3dfda;
+  border-radius: 10px;
+}
+.terms-checkbox .checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+.terms-checkbox input[type="checkbox"] {
+  width: auto;
+  margin-top: 3px;
+  cursor: pointer;
+}
+.terms-checkbox a {
+  color: #1f6f52;
+  text-decoration: underline;
+}
+.terms-checkbox a:hover {
+  color: #175840;
+}

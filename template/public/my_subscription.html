@@ -1,0 +1,385 @@
+<!doctype html>
+<html>
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Subscription - Digital Sebastian</title>
+  <script>(function(){var t=window.__TOWN_CONFIG__?.pageTitles?.mySubscription;if(t)document.title=t;})();</script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
+  <link rel="stylesheet" href="/ui-kit.css?v=1">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-sans, ui-sans-serif, system-ui);
+      background: #0a0f1a;
+      color: #e2e8f0;
+    }
+    a { color: #7dd3fc; text-decoration: none; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(13, 20, 36, 0.92);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+    }
+    .topbar-inner {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: #94a3b8;
+      transition: all 0.2s ease;
+      font-size: 13px;
+    }
+    .nav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+    .wrap { max-width: 600px; margin: 0 auto; padding: 24px 18px 64px; }
+    .hero { text-align: center; margin-bottom: 24px; }
+    .hero-title { font-size: 28px; font-weight: 800; color: #fff; margin: 0 0 8px 0; }
+    .hero-subtitle { color: #94a3b8; font-size: 15px; margin: 0; }
+    .card {
+      background: #0d1424;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title { font-size: 18px; font-weight: 700; color: #fff; margin: 0 0 16px 0; }
+    .muted { color: #94a3b8; font-size: 13px; }
+    .loading { text-align: center; padding: 40px; color: #94a3b8; }
+    .error-msg {
+      background: #ef444420;
+      color: #ef4444;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .success-msg {
+      background: #22c55e20;
+      color: #22c55e;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .status-card {
+      text-align: center;
+      padding: 32px 24px;
+    }
+    .status-icon { font-size: 48px; margin-bottom: 12px; }
+    .status-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .status-badge.free { background: #64748b30; color: #94a3b8; }
+    .status-badge.trial { background: #eab30830; color: #eab308; }
+    .status-badge.active { background: #22c55e20; color: #22c55e; }
+    .status-badge.expired { background: #ef444420; color: #ef4444; }
+    .status-title { font-size: 22px; font-weight: 700; color: #fff; margin: 0 0 8px 0; }
+    .status-subtitle { color: #94a3b8; font-size: 14px; margin: 0; }
+    .status-details {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      text-align: left;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 14px;
+    }
+    .detail-label { color: #94a3b8; }
+    .detail-value { color: #fff; font-weight: 500; }
+    .tier-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+    .tier-badge {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+    .tier-badge.free { background: #64748b30; }
+    .tier-badge.individual { background: #3b82f630; }
+    .tier-badge.business { background: #8b5cf630; }
+    .tier-details h4 { margin: 0; color: #fff; font-size: 16px; }
+    .tier-details p { margin: 4px 0 0; color: #94a3b8; font-size: 13px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 24px;
+      border-radius: 12px;
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary {
+      background: linear-gradient(135deg, #22d3ee, #3b82f6);
+      color: #0b1120;
+    }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3); }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .btn-secondary:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
+    .btn-group { display: flex; flex-direction: column; gap: 12px; }
+    .plans-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 500px) { .plans-grid { grid-template-columns: 1fr; } }
+    .plan-option {
+      padding: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .plan-option:hover { border-color: rgba(255, 255, 255, 0.2); }
+    .plan-option.selected { border-color: #22d3ee; background: rgba(34, 211, 238, 0.08); }
+    .plan-option h4 { margin: 0 0 4px 0; color: #fff; font-size: 15px; }
+    .plan-option .price { color: #22d3ee; font-size: 20px; font-weight: 700; }
+    .plan-option .price span { font-size: 13px; color: #94a3b8; font-weight: 400; }
+    .plan-option .desc { font-size: 12px; color: #94a3b8; margin-top: 8px; }
+    .features-list {
+      list-style: none;
+      padding: 0;
+      margin: 16px 0;
+    }
+    .features-list li {
+      padding: 8px 0;
+      padding-left: 28px;
+      position: relative;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+    .features-list li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #4ade80;
+      font-weight: 600;
+    }
+    .cancel-link {
+      display: block;
+      text-align: center;
+      margin-top: 16px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .cancel-link:hover { color: #ef4444; }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal {
+      background: #0d1424;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+    }
+    .modal-title { margin: 0 0 12px 0; font-size: 18px; color: #fff; }
+    .modal-body { color: #94a3b8; font-size: 14px; margin-bottom: 20px; }
+    .modal-actions { display: flex; gap: 12px; }
+    .modal-actions .btn { flex: 1; }
+    .btn-danger { background: #ef4444; color: #fff; }
+  </style>
+</head>
+<body data-town="sebastian">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="nav-btn" href="/ui">← Back to Town</a>
+      <a class="nav-btn" href="/me/profile">My Profile</a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="hero">
+      <h1 class="hero-title">My Subscription</h1>
+      <p class="hero-subtitle">Manage your Digital Sebastian membership</p>
+    </div>
+
+    <div id="loadingState" class="loading">Loading...</div>
+
+    <div id="mainContent" style="display:none;">
+      <div id="errorMsg" class="error-msg"></div>
+      <div id="successMsg" class="success-msg"></div>
+
+      <!-- Current Status -->
+      <div class="card status-card" id="statusCard">
+        <div class="status-icon" id="statusIcon">👤</div>
+        <span class="status-badge free" id="statusBadge">Free Account</span>
+        <h2 class="status-title" id="statusTitle">Free Buyer Account</h2>
+        <p class="status-subtitle" id="statusSubtitle">Browse and buy from local businesses</p>
+        <div class="status-details" id="statusDetails" style="display:none;">
+          <div class="detail-row">
+            <span class="detail-label">Member since</span>
+            <span class="detail-value" id="detailMemberSince">—</span>
+          </div>
+          <div class="detail-row" id="trialEndsRow" style="display:none;">
+            <span class="detail-label">Trial ends</span>
+            <span class="detail-value" id="detailTrialEnds">—</span>
+          </div>
+          <div class="detail-row" id="renewsRow" style="display:none;">
+            <span class="detail-label">Next billing</span>
+            <span class="detail-value" id="detailRenews">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upgrade Section (for free users) -->
+      <div class="card" id="upgradeSection" style="display:none;">
+        <h3 class="card-title">Upgrade Your Account</h3>
+        <p class="muted">Unlock selling, giveaways, and more features</p>
+
+        <div class="plans-grid">
+          <div class="plan-option selected" data-plan="individual" id="planIndividual">
+            <h4>Individual</h4>
+            <div class="price">Free</div>
+            <div class="desc">Sell items, enter giveaways</div>
+          </div>
+          <div class="plan-option" data-plan="business" id="planBusiness">
+            <h4>Business</h4>
+            <div class="price">$10<span>/month</span></div>
+            <div class="desc">Storefront + events + all features</div>
+          </div>
+        </div>
+
+        <ul class="features-list" id="featuresList">
+          <li>Sell on marketplace and auctions</li>
+          <li>Enter town giveaways</li>
+          <li>Direct messaging with buyers</li>
+          <li>Free forever</li>
+        </ul>
+
+        <div class="btn-group">
+          <button id="startTrialBtn" class="btn btn-primary">Upgrade to Seller - Free</button>
+        </div>
+        <p class="muted" style="text-align:center; margin-top:12px;">Individual accounts are free. Sell items and enter giveaways.</p>
+      </div>
+
+      <!-- Active Subscription Section -->
+      <div class="card" id="activeSection" style="display:none;">
+        <h3 class="card-title">Subscription Details</h3>
+
+        <div class="tier-info" id="tierInfo">
+          <div class="tier-badge individual" id="tierBadge">📦</div>
+          <div class="tier-details">
+            <h4 id="tierName">Individual Plan</h4>
+            <p id="tierPrice">Free</p>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button id="manageBtn" class="btn btn-secondary">Manage Payment Method</button>
+          <a href="/me/store" class="btn btn-secondary">Go to Store Dashboard</a>
+        </div>
+
+        <a href="#" id="cancelLink" class="cancel-link">Cancel subscription</a>
+      </div>
+
+      <!-- Upgrade from Individual to Business -->
+      <div class="card" id="upgradeToBusinessSection" style="display:none;">
+        <h3 class="card-title">Upgrade to Business</h3>
+        <p class="muted">Get a featured storefront, post events, and reach more customers</p>
+
+        <div class="tier-info">
+          <div class="tier-badge business">🏪</div>
+          <div class="tier-details">
+            <h4>Business Plan</h4>
+            <p>$10/month</p>
+          </div>
+        </div>
+
+        <ul class="features-list">
+          <li>Featured storefront listing</li>
+          <li>Post events to community calendar</li>
+          <li>Business analytics dashboard</li>
+          <li>Priority customer support</li>
+        </ul>
+
+        <button id="upgradeToBusinessBtn" class="btn btn-primary">Upgrade to Business</button>
+      </div>
+
+      <!-- Expired Section -->
+      <div class="card" id="expiredSection" style="display:none;">
+        <h3 class="card-title">Subscription Expired</h3>
+        <p class="muted">Your subscription has ended. Reactivate to continue selling and entering giveaways.</p>
+
+        <div class="btn-group">
+          <button id="reactivateBtn" class="btn btn-primary">Reactivate Subscription</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Cancel Modal -->
+  <div id="cancelModal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <h3 class="modal-title">Cancel Subscription?</h3>
+      <p class="modal-body">
+        You'll continue to have access until the end of your current billing period. You can reactivate anytime.
+      </p>
+      <div class="modal-actions">
+        <button id="keepSubBtn" class="btn btn-secondary">Keep Subscription</button>
+        <button id="confirmCancelBtn" class="btn btn-danger">Yes, Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/theme.js?v=1"></script>
+  <script src="/my_subscription.js?v=1"></script>
+  <script>(function(){var tc=window.__TOWN_CONFIG__;if(!tc)return;var fn=tc.fullName||tc.name;document.querySelectorAll('.hero-subtitle').forEach(function(el){if(el.textContent.includes('Digital Sebastian'))el.textContent=el.textContent.replace('Digital Sebastian',fn);});})();</script>
+</body>
+</html>

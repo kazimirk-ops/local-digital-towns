@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+  <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Live Host</title>
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <style>
+      body { margin:0; font-family:var(--font-sans, ui-sans-serif, system-ui); background:var(--bg); color:var(--text); }
+      .wrap { max-width:1100px; margin:0 auto; padding:16px; display:grid; gap:12px; }
+      .card { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:12px; }
+      .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+      .muted { color:var(--muted); font-size:12px; }
+      .pill { display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; border:1px solid var(--border); color:var(--text); text-decoration:none; background:var(--panel2); }
+      input, textarea, select { width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); color:var(--text); }
+      video { width:100%; border-radius:14px; background:var(--panel2); }
+      button { padding:8px 12px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); color:var(--text); cursor:pointer; }
+    </style>
+  </head>
+  <body data-town="sebastian">
+    <div class="wrap">
+      <div class="row">
+        <a class="pill" href="/ui">Back to Town</a>
+        <span class="pill" id="hostTier">Tier</span>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;">Create Live Room</div>
+        <label class="muted">Host Type</label>
+        <select id="hostType">
+          <option value="individual">Individual</option>
+          <option value="place">Store/Place</option>
+          <option value="event">Event</option>
+        </select>
+        <input id="liveTitle" placeholder="Title" />
+        <textarea id="liveDesc" placeholder="Description"></textarea>
+        <div id="hostPlaceWrap">
+          <label class="muted">Host Store</label>
+          <select id="hostPlace"></select>
+        </div>
+        <div id="hostEventWrap" style="display:none;">
+          <label class="muted">Host Event</label>
+          <select id="hostEvent"></select>
+        </div>
+        <button id="createRoomBtn">Create Room</button>
+        <div class="muted" id="createMsg"></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;">Schedule a Live Show</div>
+        <input id="schedTitle" placeholder="Title" />
+        <textarea id="schedDesc" placeholder="Description"></textarea>
+        <label class="muted">Start Time</label>
+        <input id="schedStartAt" type="datetime-local" />
+        <label class="muted">Host Type</label>
+        <select id="schedHostType">
+          <option value="individual">Individual</option>
+          <option value="place">Store/Place</option>
+          <option value="event">Event</option>
+        </select>
+        <div id="schedPlaceWrap">
+          <label class="muted">Host Store</label>
+          <select id="schedHostPlace"></select>
+        </div>
+        <div id="schedEventWrap" style="display:none;">
+          <label class="muted">Host Event</label>
+          <select id="schedHostEvent"></select>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <input id="schedThumbInput" type="file" accept="image/png,image/jpeg,image/webp" style="display:none;" />
+          <button id="schedThumbUploadBtn" type="button">Upload Thumbnail</button>
+          <span class="muted" id="schedThumbMsg"></span>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button id="schedCreateBtn">Schedule Show</button>
+          <span class="muted" id="schedCreateMsg"></span>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;">Broadcast Controls</div>
+        <div class="row">
+          <button id="startRoomBtn">Go Live</button>
+          <button id="endRoomBtn">End</button>
+          <a class="pill" id="openRoomLink" href="#" style="display:none;">Open Viewer</a>
+        </div>
+        <video id="previewVideo" autoplay playsinline muted></video>
+        <div class="muted" id="broadcastNote"></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;">Pin Listing</div>
+        <label class="muted">Store</label>
+        <select id="pinStore"></select>
+        <label class="muted">Listing</label>
+        <select id="pinListing"></select>
+        <button id="pinListingBtn">Pin Listing</button>
+        <div class="muted" id="pinMsg"></div>
+      </div>
+    </div>
+    <script src="/theme.js?v=1"></script>
+    <script src="/live_host.js"></script>
+  </body>
+</html>

@@ -1,0 +1,147 @@
+<!doctype html>
+<html>
+  <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Profile</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
+    <link rel="stylesheet" href="/ui-kit.css?v=1">
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: var(--font-sans);
+        background: #0a0f1a;
+        color: #e2e8f0;
+      }
+      a { color: inherit; text-decoration: none; }
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(13, 20, 36, 0.92);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(12px);
+      }
+      .topbar-inner {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        color: #94a3b8;
+        transition: all 0.2s ease;
+        font-size: 13px;
+      }
+      .nav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+      .btn-outline {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: transparent;
+        color: #e2e8f0;
+        border-radius: 12px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .btn-outline:disabled { opacity: 0.6; cursor: not-allowed; }
+      .profile-shell {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 28px 18px 64px;
+      }
+      .card {
+        background: #0d1424;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 24px 50px rgba(3, 7, 15, 0.35);
+      }
+      .hero-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .avatar {
+        width: 96px;
+        height: 96px;
+        border-radius: 16px;
+        background: #151d2e;
+        object-fit: cover;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .title {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 24px;
+        color: #fff;
+      }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      .muted { color: #94a3b8; font-size: 12px; }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.04);
+        font-size: 12px;
+        color: #cbd5f5;
+      }
+      .divider {
+        height: 1px;
+        background: rgba(255, 255, 255, 0.08);
+        margin: 16px 0;
+      }
+      #profileError { color: #f87171; }
+    </style>
+  </head>
+  <body data-town="sebastian">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="nav-btn" href="/ui">← Back to Town</a>
+        <button id="messageBtn" class="btn-outline" disabled>Message</button>
+      </div>
+    </header>
+
+    <main class="profile-shell">
+      <div class="card">
+        <div class="hero-row">
+          <img id="avatarImg" class="avatar" alt="avatar" />
+          <div>
+            <div class="title" id="profileName">Profile</div>
+            <div class="row" id="profileBadges"></div>
+            <div class="muted" id="profileTrustTier" style="margin-top:6px;"></div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div id="profileBio"></div>
+        <div id="profileAgeRange" class="muted" style="margin-top:6px;"></div>
+        <div id="profileInterests" class="row" style="margin-top:10px;"></div>
+        <div id="profileReviews" class="muted" style="margin-top:10px;"></div>
+        <div id="profileGhosting" class="muted" style="margin-top:10px; display:none;"></div>
+        <div id="profileError" style="margin-top:10px;"></div>
+      </div>
+    </main>
+    <script src="/theme.js?v=1"></script>
+    <script src="/profile.js"></script>
+  </body>
+</html>

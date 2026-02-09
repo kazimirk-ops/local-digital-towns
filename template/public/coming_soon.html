@@ -1,0 +1,148 @@
+<!doctype html>
+<html>
+  <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sebastian Digital Town — Private Beta</title>
+    <script>(function(){var t=window.__TOWN_CONFIG__?.pageTitles?.comingSoon;if(t)document.title=t;})();</script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Sora", system-ui, -apple-system, sans-serif;
+        background: radial-gradient(circle at top, rgba(20, 40, 80, 0.45), #0a0f1a 55%);
+        color: #e2e8f0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+      }
+      .shell {
+        width: min(720px, 100%);
+        background: rgba(13, 20, 36, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 40px 80px rgba(5, 10, 20, 0.6);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(56, 189, 248, 0.12);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        color: #7dd3fc;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      h1 {
+        font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
+        margin: 18px 0 8px;
+        font-size: 32px;
+        color: #ffffff;
+      }
+      p {
+        margin: 8px 0;
+        color: #94a3b8;
+        font-size: 15px;
+        line-height: 1.6;
+      }
+      .note {
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: rgba(148, 163, 184, 0.12);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        color: #cbd5f5;
+        display: none;
+      }
+      .intake {
+        margin-top: 22px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .intake h2 {
+        font-size: 18px;
+        margin: 12px 0 6px;
+        color: #e2e8f0;
+      }
+      .actions {
+        margin-top: 22px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 16px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #e2e8f0;
+        text-decoration: none;
+        font-size: 13px;
+        transition: all 0.2s ease;
+      }
+      .link:hover {
+        border-color: rgba(56, 189, 248, 0.6);
+        color: #7dd3fc;
+      }
+      .footer {
+        margin-top: 20px;
+        font-size: 12px;
+        color: #64748b;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <span class="badge">Private Beta</span>
+      <h1>Sebastian Digital Town is in private beta.</h1>
+      <p>Check back soon. We are preparing the town for live access.</p>
+      <div class="note" id="restrictedNote">Access is currently restricted.</div>
+      <div class="intake">
+        <h2>Join the Private Beta</h2>
+        <p>No access is granted automatically. Applications are reviewed by admin.</p>
+        <div class="actions">
+          <a class="link" href="/waitlist">Join the Waitlist</a>
+          <a class="link" href="/apply/business">Apply as a Business / Service / Seller</a>
+          <a class="link" href="/apply/resident">Apply as a Sebastian Resident</a>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="link" href="/admin/login">Admin Login</a>
+      </div>
+      <div class="footer">Thank you for supporting the local town experiment.</div>
+    </main>
+
+    <script>
+      (function(){
+        const match = document.cookie.match(/(?:^|; )lockdown_logged_in=([^;]+)/);
+        if(match && match[1] === "1"){
+          const note = document.getElementById("restrictedNote");
+          if(note) note.style.display = "block";
+        }
+      })();
+    </script>
+    <script>(function(){var tc=window.__TOWN_CONFIG__;if(!tc)return;var c=tc.content||{};document.querySelectorAll('h1').forEach(function(el){if(el.textContent.includes('Sebastian Digital Town')&&c.comingSoonTitle)el.textContent=c.comingSoonTitle;});document.querySelectorAll('a.link').forEach(function(el){if(el.textContent.includes('Sebastian Resident')&&c.applyResidentLabel)el.textContent=c.applyResidentLabel;});})();</script>
+  </body>
+</html>

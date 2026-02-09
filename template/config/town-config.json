@@ -1,0 +1,243 @@
+{
+  "_README": "Replace 'your-town' with your town's slug. Run ./setup-new-town.sh to auto-generate, or edit manually.",
+
+  "your-town": {
+    "id": 1,
+    "slug": "your-town",
+    "name": "Your Town Name",
+    "fullName": "Digital Your Town Name",
+    "tagline": "Your Local Digital Town Square",
+    "state": "FL",
+    "stateFullName": "Florida",
+    "region": "Your County",
+    "country": "US",
+    "timezone": "America/New_York",
+
+    "domains": ["yourtowndomain.com", "your-town.digitaltowns.com", "localhost"],
+    "productionUrl": "https://yourtowndomain.com",
+    "localFallbackUrl": "https://your-town.local",
+
+    "location": {
+      "lat": 0.0,
+      "lng": 0.0,
+      "zoom": 13,
+      "radiusMeters": 15000,
+      "boundingBox": {
+        "minLat": -0.14,
+        "maxLat": 0.14,
+        "minLng": -0.14,
+        "maxLng": 0.14
+      }
+    },
+
+    "address": {
+      "city": "Your Town Name",
+      "state": "FL",
+      "zip": "00000",
+      "county": "Your County",
+      "countyShort": "YC",
+      "placeholder": "123 Main St, Your Town, FL",
+      "streetPlaceholder": "Street address (e.g. 1234 Main St)"
+    },
+
+    "branding": {
+      "primaryColor": "#3b82f6",
+      "secondaryColor": "#22d3ee",
+      "logoUrl": "/images/logo.png",
+      "faviconUrl": "/favicon.ico",
+      "ogImage": "/images/og-image.png",
+      "ogImageAbsolute": "https://yourtowndomain.com/og-image.jpg",
+      "mapImage": "/images/your-town-ui-map.png",
+      "heroImage": "/images/your-town-main-map.png",
+      "themeFile": "default.json"
+    },
+
+    "theme": {
+      "accent": "#00ffae",
+      "bg": "#070b10",
+      "panel": "#0f1722",
+      "text": "#e8eef6",
+      "muted": "#9fb0c3"
+    },
+
+    "contact": {
+      "supportEmail": "support@yourtowndomain.com",
+      "supportEmailAlt": "support@yourtowndomain.com",
+      "noReplyEmail": "noreply@yourtowndomain.com",
+      "nonEmergencyPhone": "",
+      "nonEmergencyPhoneTel": "",
+      "nonEmergencyLabel": "Local Sheriff's Office"
+    },
+
+    "legal": {
+      "jurisdictionText": "Any legal action shall be brought in the courts of Your County, Florida",
+      "governingLawText": "These Terms are governed by the laws of the State of Florida",
+      "contactAddress": "Your Town Name, Florida"
+    },
+
+    "features": {
+      "marketplace": true,
+      "auctions": true,
+      "giveaways": true,
+      "sweepstakes": true,
+      "liveStreaming": true,
+      "channels": true,
+      "directMessages": true,
+      "businessSubscriptions": true,
+      "reviews": true
+    },
+
+    "payments": {
+      "currency": "usd",
+      "stripeEnabled": true,
+      "userSubscriptionPriceCents": 0,
+      "businessSubscriptionPriceCents": 1000,
+      "trialDays": 30,
+      "referralCommissionPercent": 25
+    },
+
+    "social": {
+      "facebook": null,
+      "instagram": null,
+      "twitter": null
+    },
+
+    "content": {
+      "welcomeMessage": "Welcome to Digital Your Town Name!",
+      "aboutUrl": "/about",
+      "termsUrl": "/terms",
+      "privacyUrl": "/privacy",
+      "betaNotice": "Thank you for being an early adopter! Contact support@yourtowndomain.com if you need assistance.",
+      "comingSoonTitle": "Your Town Name Digital Town is in private beta.",
+      "applyResidentLabel": "Apply as a Your Town Name Resident",
+      "deleteAccountText": "To request deletion of your Digital Your Town Name account and all associated data, please email us at:"
+    },
+
+    "pageTitles": {
+      "main": "Your Town Name Digital Town",
+      "login": "Login - Digital Your Town Name",
+      "subscribe": "Join Digital Your Town Name",
+      "subscribeSuccess": "Welcome to Digital Your Town Name!",
+      "subscription": "Subscribe - Digital Your Town Name",
+      "mySubscription": "My Subscription - Digital Your Town Name",
+      "businessSubscription": "Business Subscription - Digital Your Town Name",
+      "store": "Storefront \u2022 Your Town Name Digital Town",
+      "sellerOrders": "Seller Orders \u2013 Your Town Name",
+      "myOrders": "My Orders \u2013 Your Town Name",
+      "referrals": "Referral Program - Digital Your Town Name",
+      "giveawayOffer": "Submit Giveaway Offer - Digital Your Town Name",
+      "deliveryTracking": "Delivery Tracking - Your Town Name Express",
+      "deleteAccount": "Delete Account - Your Town Name",
+      "comingSoon": "Your Town Name Digital Town \u2014 Private Beta",
+      "admin": "Admin Metrics \u2013 Your Town Name",
+      "adminMedia": "Admin Media \u2013 Your Town Name",
+      "adminPulse": "Daily Pulse Export \u2013 Your Town Name",
+      "adminAnalytics": "Platform Analytics \u2013 Your Town Name"
+    },
+
+    "meta": {
+      "ogTitle": "Your Town Name \u2014 Local Community Platform",
+      "ogDescription": "Buy, sell, chat, enter giveaways, discover local businesses. Free to join.",
+      "description": "Your Town Name's local community platform. Marketplace, giveaways, events, local business directory. Free to join."
+    },
+
+    "channels": [
+      { "name": "Neighbors & Friends", "firstPost": "First post: Welcome neighbors! Introduce yourself and your street." },
+      { "name": "Community Chat", "firstPost": "First post: What's your favorite local spot this week?" },
+      { "name": "Fun Activities & Events", "firstPost": "First post: Share upcoming events and weekend ideas." },
+      { "name": "Lifestyle & Wellness", "firstPost": "First post: Morning walks, yoga, and wellness tips here." },
+      { "name": "Local Meetups & Walking Groups", "firstPost": "First post: Who wants to start a sunrise walk group?" },
+      { "name": "Culture & Memories", "firstPost": "First post: Post old photos or stories from town." },
+      { "name": "County Events & Happenings", "firstPost": "First post: County fairs, markets, and regional updates." },
+      { "name": "Ladies Social Club", "firstPost": "First post: Ladies' night ideas and meetups." }
+    ],
+
+    "delivery": {
+      "serviceName": "Your Town Name Express",
+      "defaultCity": "Your Town Name",
+      "defaultState": "FL",
+      "freeDeliveryText": "Free delivery in Your Town Name."
+    },
+
+    "emails": {
+      "loginCodeSubject": "Your Digital Town login code",
+      "approvalSubject": "Your Digital Town Application is Approved!",
+      "approvalBody": "Your {{applicationType}} application has been approved.",
+      "deliveryFromName": "Your Town Name Express",
+      "deliverySubjectPrefix": "Your Town Name Express - ",
+      "deliveryHtmlHeading": "\ud83d\ude80 Your Town Name Express",
+      "testEmailSubject": "[Your Town Name] Test Email",
+      "adminDisplayName": "Digital Your Town Name"
+    },
+
+    "shareText": {
+      "purchase": "Just bought {{itemName}} from {{storeName}} on Digital Your Town Name! Support local businesses.",
+      "giveawayWin": "I won {{prizeName}} in a local giveaway! Join Digital Your Town Name and enter to win amazing local prizes.",
+      "sweepstakesWin": "I won {{prizeName}} in a local sweepstakes! Join Digital Your Town Name and enter to win amazing local prizes.",
+      "reviewPositive": "I loved {{storeName}} on Digital Your Town Name! Highly recommend checking them out.",
+      "reviewNeutral": "I found {{storeName}} on Digital Your Town Name! Support local businesses.",
+      "newListing": "Check out my new listing: {{title}} on Digital Your Town Name!",
+      "newAuction": "Check out my new auction: {{title}} on Digital Your Town Name! Bidding starts now.",
+      "storeShare": "Check out {{storeName}} on Digital Your Town Name! {{description}}",
+      "giveawayOffer": "I'm giving away \"{{title}}\" on Digital Your Town Name! Check out local giveaways.",
+      "verification": "I just got verified as a {{tierName}} on Digital Your Town Name! Join our local community.",
+      "purchaseModal": "Just made a local purchase! \ud83d\udecd\ufe0f",
+      "giveawayWinModal": "\ud83c\udfc6 I just won in a local giveaway!",
+      "reviewModal": "Just left a review on Digital Your Town Name!",
+      "verificationModal": "You're officially a verified local! \ud83c\udfe0",
+      "storeListed": "Get your store listed on Digital Your Town Name"
+    },
+
+    "pulse": {
+      "titleTemplate": "Daily Pulse \u2014 Your Town Name \u2014 {{date}}",
+      "facebookIntro": "\ud83c\udf34 Today in Your Town Name:",
+      "facebookHashtags": "#YourTown #SupportLocal #ShopLocal"
+    },
+
+    "safety": {
+      "headerLabel": "Your Town Name \u2022 Community Safety",
+      "areaLabel": "Your Town Name Area \u2022 Last 30 Days",
+      "countyStatText": "Your County community safety overview",
+      "incidentsLabel": "View recent incidents in Your County",
+      "marineLabel": "Your Town Name \u2022 Marine"
+    },
+
+    "verification": {
+      "locationVerifiedMessage": "Location verified in Your Town Name.",
+      "outsideBoxMessage": "Not inside Your Town Name verification box.",
+      "outsideZoneMessage": "Not inside Your Town Name verification zone.",
+      "locationRequiredMessage": "Verify location in Your Town Name before submitting Tier 1.",
+      "locationRequiredError": "Location verified in Your Town Name required.",
+      "residentLabel": "Your Town Name Resident+ required to submit prizes.",
+      "defaultTierName": "Your Town Name local",
+      "confirmBusinessLabel": "I confirm this business is physically located in Your Town Name",
+      "locatedInLabel": "Located in Your Town Name?",
+      "yearsInLabel": "How long in Your Town Name?",
+      "cityMatchValue": "your-town",
+      "eligibleZip": "00000",
+      "eligibleReason": "Address matches pilot area.",
+      "waitlistReason": "Outside pilot area; added to waitlist."
+    },
+
+    "localBiz": {
+      "directoryTitle": "Local Businesses",
+      "directoryDescription": "This is a curated directory of businesses physically located in Your Town Name. Apply below.",
+      "serviceProvidersDescription": "Find trusted service providers in Your Town Name.",
+      "storeSetupLabel": "Set up a new store in Your Town Name"
+    },
+
+    "mobileApp": {
+      "appId": "com.your-town.app",
+      "appName": "Your Town Name",
+      "namespace": "com.your-town.app"
+    },
+
+    "storage": {
+      "r2Bucket": "your-town-assets"
+    },
+
+    "trustDefaults": {
+      "defaultLevel": "visitor"
+    }
+  }
+}

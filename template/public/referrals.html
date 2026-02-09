@@ -1,0 +1,172 @@
+<!doctype html>
+<html>
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WLN50NC7RV');
+</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Referral Program - Digital Sebastian</title>
+  <script>(function(){var t=window.__TOWN_CONFIG__?.pageTitles?.referrals;if(t)document.title=t;})();</script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
+  <link rel="stylesheet" href="/ui-kit.css?v=1">
+  <style>
+    body { font-family: var(--font-sans, ui-sans-serif, system-ui); margin:0; background:var(--bg); color:var(--text); }
+    .topbar { position: sticky; top: 0; z-index: 10; background: rgba(13, 20, 36, 0.92); border-bottom: 1px solid rgba(255, 255, 255, 0.08); backdrop-filter: blur(12px); }
+    .topbar-inner { max-width: 1100px; margin: 0 auto; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .nav-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; border: 1px solid transparent; color: #94a3b8; transition: all 0.2s ease; font-size: 13px; text-decoration: none; }
+    .nav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+    .wrap { max-width: 800px; margin: 0 auto; padding: 32px 18px; }
+    .hero { text-align: center; margin-bottom: 32px; }
+    .hero-title { font-size: 32px; font-weight: 800; margin: 0 0 8px; color: #fff; }
+    .hero-subtitle { color: #94a3b8; font-size: 16px; margin: 0; }
+    .card { background: #0d1424; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+    .card-title { font-size: 18px; font-weight: 700; margin: 0 0 16px; color: #fff; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .stat-item { background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 16px; text-align: center; }
+    .stat-value { font-size: 28px; font-weight: 800; color: #22d3ee; margin-bottom: 4px; }
+    .stat-label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+    .referral-code-box { background: linear-gradient(135deg, rgba(34, 211, 238, 0.1), rgba(59, 130, 246, 0.1)); border: 2px dashed rgba(34, 211, 238, 0.4); border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 20px; }
+    .referral-code { font-size: 32px; font-weight: 800; color: #22d3ee; letter-spacing: 4px; margin: 12px 0; font-family: monospace; }
+    .referral-link { font-size: 13px; color: #94a3b8; word-break: break-all; margin-bottom: 16px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; }
+    .btn-primary { background: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%); color: #fff; }
+    .btn-primary:hover { opacity: 0.9; transform: scale(1.02); }
+    .btn-secondary { background: rgba(255, 255, 255, 0.08); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, 0.12); }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.12); }
+    .btn-success { background: #22c55e; color: #fff; }
+    .btn-success:hover { background: #16a34a; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-group { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .muted { color: #94a3b8; font-size: 13px; }
+    .highlight { background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 12px; padding: 16px; margin: 16px 0; }
+    .highlight strong { color: #22d3ee; }
+    .table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+    .table th { color: #94a3b8; font-weight: 600; font-size: 12px; text-transform: uppercase; }
+    .table td { color: #e2e8f0; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .badge-success { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+    .badge-pending { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+    .badge-none { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+    #loadingState { text-align: center; padding: 40px; color: #94a3b8; }
+    #mainContent { display: none; }
+    .success-msg { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); color: #22c55e; padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; display: none; }
+    .error-msg { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; display: none; }
+    .share-buttons { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+    .share-btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; }
+    .copy-feedback { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(34, 197, 94, 0.95); color: #fff; padding: 16px 24px; border-radius: 12px; font-weight: 600; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .copy-feedback.show { opacity: 1; }
+  </style>
+</head>
+<body data-town="sebastian">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="nav-btn" href="/ui">&larr; Back to Town</a>
+      <a class="nav-btn" href="/subscription">My Subscription</a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="hero">
+      <h1 class="hero-title">Referral Program</h1>
+      <p class="hero-subtitle">Earn 25% commission on every subscription from people you refer</p>
+    </div>
+
+    <div id="loadingState">Loading...</div>
+
+    <div id="successMsg" class="success-msg"></div>
+    <div id="errorMsg" class="error-msg"></div>
+
+    <div id="mainContent">
+      <!-- Referral Code Card -->
+      <div class="referral-code-box">
+        <div class="muted">Your Referral Code</div>
+        <div id="referralCode" class="referral-code">--------</div>
+        <div id="referralLink" class="referral-link"></div>
+        <div class="btn-group">
+          <button id="copyCodeBtn" class="btn btn-primary">Copy Code</button>
+          <button id="copyLinkBtn" class="btn btn-secondary">Copy Link</button>
+        </div>
+      </div>
+
+      <!-- Stats Card -->
+      <div class="card">
+        <h2 class="card-title">Your Earnings</h2>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div id="statBalance" class="stat-value">$0.00</div>
+            <div class="stat-label">Current Balance</div>
+          </div>
+          <div class="stat-item">
+            <div id="statEarnings" class="stat-value">$0.00</div>
+            <div class="stat-label">Total Earned</div>
+          </div>
+          <div class="stat-item">
+            <div id="statReferred" class="stat-value">0</div>
+            <div class="stat-label">People Referred</div>
+          </div>
+          <div class="stat-item">
+            <div id="statActive" class="stat-value">0</div>
+            <div class="stat-label">Active Subscribers</div>
+          </div>
+        </div>
+
+        <div class="highlight">
+          <strong>How it works:</strong> When someone signs up using your referral code and subscribes, you earn 25% of their subscription fee each month. Credits are applied to your next subscription payment first, then accumulate as balance. Cash out when you reach $25+.
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+          <button id="cashoutBtn" class="btn btn-success" disabled>Request Cashout ($25 min)</button>
+        </div>
+      </div>
+
+      <!-- Referral History Card -->
+      <div class="card" id="historyCard" style="display: none;">
+        <h2 class="card-title">Recent Activity</h2>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Referred Users Card -->
+      <div class="card" id="usersCard" style="display: none;">
+        <h2 class="card-title">People You Referred</h2>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Joined</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <div id="copyFeedback" class="copy-feedback">Copied!</div>
+
+  <footer style="text-align:center; padding:20px; font-size:12px; color:#6b7280; margin-top:40px;">
+    Digital Towns Beta v0.1 - Built with &#10084; for local communities
+  </footer>
+
+  <script src="/theme.js?v=1"></script>
+  <script src="/referrals.js?v=1"></script>
+  <script src="/js/beta-banner.js?v=1"></script>
+</body>
+</html>
