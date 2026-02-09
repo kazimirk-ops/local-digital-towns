@@ -289,8 +289,8 @@
       "faviconUrl": "/favicon.ico",
       "ogImage": "/images/og-image.png",
       "ogImageAbsolute": "https://tampa-bay-florida.com/og-image.jpg",
-      "mapImage": "/images/tampa-bay-ui-map.png",
-      "heroImage": "/images/tampa-bay-main-map.png",
+      "mapImage": "/images/tampa-bay-main-map.webp",
+      "heroImage": "/images/tampa-bay-main-map.webp",
       "themeFile": "tampa-bay.json"
     },
     "theme": {

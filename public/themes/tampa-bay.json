@@ -22,7 +22,7 @@
   },
   "background": {
     "style": "gradient",
-    "heroImageUrl": "/images/tampa-bay-main-map.png"
+    "heroImageUrl": "/images/tampa-bay-main-map.webp"
   },
   "modes": {
     "dark": {
