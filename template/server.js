@@ -243,6 +243,7 @@ app.use(async (req,res,next)=>{
     if(pathName === "/api/auth/verify-code") return next();
     if(pathName === "/api/auth/google") return next();
     if(pathName === "/api/auth/google/callback") return next();
+    if(pathName === "/api/auth/guest") return next();
     if(pathName.startsWith("/api/sweep/claim/")) return next();
     if(pathName === "/api/admin/test-email") return next();
   }
@@ -1594,6 +1595,31 @@ app.post("/api/auth/verify-code", async (req, res) =>{
   setCookie(res,"sid",s.sid,{httpOnly:true,maxAge:60*60*24*30,secure:isHttpsRequest(req)});
   res.json({ ok: true, userId: result.userId });
 });
+
+// Guest auth for managed store checkout (no password/verification required)
+app.post("/api/auth/guest", async (req, res) => {
+  try {
+    const { email, placeId } = req.body || {};
+    if (!email || !placeId) {
+      return res.status(400).json({ error: "email and placeId are required" });
+    }
+    const place = await data.getPlaceById(Number(placeId));
+    if (!place || (place.storeType || place.storetype) !== "managed") {
+      return res.status(403).json({ error: "Guest checkout not available" });
+    }
+    const user = await data.upsertUserByEmail(email);
+    if (!user) {
+      return res.status(400).json({ error: "Invalid email" });
+    }
+    const s = await data.createSession(user.id);
+    setCookie(res, "sid", s.sid, { httpOnly: true, maxAge: 60 * 60 * 24 * 30, secure: isHttpsRequest(req) });
+    res.json({ success: true, userId: user.id });
+  } catch (err) {
+    console.error("GUEST_AUTH_ERROR", err?.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 app.post("/auth/request-link", async (_req, res) =>{
   res.status(410).json({ error: "deprecated" });
 });
