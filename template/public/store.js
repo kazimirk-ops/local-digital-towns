@@ -94,7 +94,7 @@ function renderCart(){
   const msgEl = document.querySelector("#cartPanel > div:nth-child(4) .muted");
   if(msgEl){
     msgEl.innerHTML = isManaged
-      ? `<strong>Delivery Info:</strong> Orders close Thursday midnight. Your items ship Friday and deliver to your door the following week. ${tc.delivery?.freeDeliveryText || "Free delivery in Sebastian."}`
+      ? `<strong>Delivery Info:</strong> Orders close Thursday midnight. Your items ship Friday and deliver to your door the following week. ${tc.delivery?.freeDeliveryText || "$15 flat rate shipping."}`
       : `<strong>How it works:</strong> Place your order, then contact the seller to arrange pickup and payment (cash, Venmo, etc.).`;
   }
   const checkoutBtn = $("cartCheckoutBtn");
