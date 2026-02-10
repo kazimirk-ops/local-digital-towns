@@ -4,8 +4,8 @@ const path = require("path");
 const db = require("./lib/db");
 const { runMigrations } = require("./db/migrate");
 const { getTownConfig } = require("./town_config");
-const townConfigs = require("./config/town-config.json");
-const townCfg = townConfigs[Object.keys(townConfigs)[0]];
+const { getCurrentTown } = require("./config/towns");
+const townCfg = getCurrentTown();
 const trust = require("./lib/trust");
 
 function nowISO() { return new Date().toISOString(); }
