@@ -4101,6 +4101,7 @@ app.get("/market/listings", async (req, res) =>{
       description: l.description,
       price: l.price,
       listingType,
+      offerCategory: l.offerCategory || l.offercategory || "",
       auctionEndAt: auctionEndAt || "",
       startBidCents: startBidCents || 0,
       placeName: p.name || "Store",

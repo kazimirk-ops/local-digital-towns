@@ -391,6 +391,10 @@
           </section>
 
           <section class="view" data-view="marketplace">
+            <style>
+              .catBtn { padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); cursor: pointer; font-weight: 600; font-size: 11px; color: #94a3b8; }
+              .catBtn.active { background: rgba(34, 211, 238, 0.15); border-color: rgba(34, 211, 238, 0.4); color: #22d3ee; }
+            </style>
             <div class="panel">
               <div class="panelHead">
                 <div>
@@ -399,8 +403,12 @@
                 </div>
               </div>
               <div class="panelBody">
+                <div id="marketCategories" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
                 <div class="muted" id="marketEmpty" style="display:none;">No buy-it-now listings yet.</div>
                 <div class="grid" id="marketItems" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:10px;"></div>
+                <div id="marketShowMore" style="text-align:center;margin-top:12px;display:none;">
+                  <button class="btn" id="marketShowMoreBtn">Show More</button>
+                </div>
               </div>
             </div>
           </section>

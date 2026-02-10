@@ -1446,6 +1446,10 @@ function getDistrictOptions(){
   ];
 }
 
+const MARKET_PAGE_SIZE = 24;
+let marketFilter = "All";
+let marketVisible = MARKET_PAGE_SIZE;
+
 async function loadMarketplaceData(){
   const districts=getDistrictOptions();
   market.districts=districts;
@@ -1453,7 +1457,7 @@ async function loadMarketplaceData(){
   market.listings=listings;
   const cats=new Set();
   listings.forEach(l=>{
-    const c = l.category || l.placeCategory || "";
+    const c = l.offerCategory || "";
     if(c) cats.add(c);
   });
   market.categories=[...cats].sort();
@@ -1463,23 +1467,37 @@ async function loadAuctionData(){
   const listings=await api("/market/auctions?townId=1");
   market.auctions=listings;
 }
-function setMarketplaceFilters(){
-  const districtSel=$("marketDistrict");
-  const categorySel=$("marketCategory");
-  districtSel.innerHTML=`<option value="all">all</option>` + market.districts.map(d=>`<option value="${d.id}">${d.name}</option>`).join("");
-  categorySel.innerHTML=`<option value="all">all</option>` + market.categories.map(c=>`<option value="${c}">${c}</option>`).join("");
-}
 
 function renderMarketplaceCategories(){
   const wrap=$("marketCategories");
+  if(!wrap) return;
   wrap.innerHTML="";
-  market.categories.slice(0,6).forEach(c=>{
+  // "All" button
+  const allBtn=document.createElement("button");
+  allBtn.className="catBtn"+(marketFilter==="All"?" active":"");
+  allBtn.textContent="All";
+  allBtn.onclick=()=>{ marketFilter="All"; marketVisible=MARKET_PAGE_SIZE; renderMarketplaceCategories(); renderMarketplace(); };
+  wrap.appendChild(allBtn);
+  // "Organic Food Ingredients" master category
+  const organicBtn=document.createElement("button");
+  organicBtn.className="catBtn"+(marketFilter==="__organic__"?" active":"");
+  organicBtn.textContent="Organic Food Ingredients";
+  organicBtn.onclick=()=>{ marketFilter="__organic__"; marketVisible=MARKET_PAGE_SIZE; renderMarketplaceCategories(); renderMarketplace(); };
+  wrap.appendChild(organicBtn);
+  // Individual category buttons
+  market.categories.forEach(c=>{
     const btn=document.createElement("button");
-    btn.className="pill";
+    btn.className="catBtn"+(marketFilter===c?" active":"");
     btn.textContent=c;
-    btn.onclick=()=>{ $("marketCategory").value=c; renderMarketplace(); };
+    btn.onclick=()=>{ marketFilter=c; marketVisible=MARKET_PAGE_SIZE; renderMarketplaceCategories(); renderMarketplace(); };
     wrap.appendChild(btn);
   });
+}
+
+function getFilteredMarketListings(){
+  if(marketFilter==="All") return market.listings;
+  if(marketFilter==="__organic__") return market.listings.filter(l=>Number(l.placeId)===18);
+  return market.listings.filter(l=>(l.offerCategory||"")===marketFilter);
 }
 
 function renderListingCard(l){
@@ -1510,20 +1528,34 @@ function renderListingCard(l){
 function renderMarketplace(){
   const items=$("marketItems");
   const empty=$("marketEmpty");
+  const showMoreWrap=$("marketShowMore");
   if(!items) return;
   items.innerHTML="";
-  if(!market.listings.length){
+  const filtered=getFilteredMarketListings();
+  if(!filtered.length){
     if(empty) empty.style.display="block";
+    if(showMoreWrap) showMoreWrap.style.display="none";
     return;
   }
   if(empty) empty.style.display="none";
-  market.listings.forEach(l=>items.appendChild(renderListingCard(l)));
+  const visible=filtered.slice(0, marketVisible);
+  visible.forEach(l=>items.appendChild(renderListingCard(l)));
+  if(showMoreWrap){
+    if(marketVisible < filtered.length){
+      showMoreWrap.style.display="block";
+      const btn=$("marketShowMoreBtn");
+      if(btn) btn.onclick=()=>{ marketVisible+=MARKET_PAGE_SIZE; renderMarketplace(); };
+    } else {
+      showMoreWrap.style.display="none";
+    }
+  }
 }
 
 async function initMarketplace(){
   if(!market.listings.length){
     await loadMarketplaceData();
   }
+  renderMarketplaceCategories();
   renderMarketplace();
 }
 
