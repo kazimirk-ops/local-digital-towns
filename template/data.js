@@ -80,7 +80,9 @@ function toCamelCase(obj) {
       .replace(/residentverified/gi, 'residentVerified')
       .replace(/facebookverified/gi, 'facebookVerified')
       .replace(/variantsjson/gi, 'variantsJson')
-      .replace(/photourlsjson/gi, 'photoUrlsJson');
+      .replace(/photourlsjson/gi, 'photoUrlsJson')
+      .replace(/varianttitle/gi, 'variantTitle')
+      .replace(/variantprice/gi, 'variantPrice');
     result[camelKey] = value;
   }
   return result;
@@ -1329,7 +1331,7 @@ async function getOrderItems(orderId){
 
 async function getCartItemsByUser(userId){
   return stmt(`
-    SELECT id, townId, userId, listingId, quantity, createdAt
+    SELECT id, townId, userId, listingId, quantity, varianttitle, variantprice, createdAt
     FROM cart_items
     WHERE userId=$1
     ORDER BY id DESC
