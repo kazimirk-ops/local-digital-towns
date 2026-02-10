@@ -2598,16 +2598,6 @@ app.post("/api/checkout/create", async (req, res) =>{
   await data.createPaymentForOrder(order.id, totalCents, "stripe");
   await data.clearCart(u);
 
-  // Decrement listing quantities and mark as sold if depleted
-  for(const item of items){
-    const listing = listings.find(l => Number(l.id) === Number(item.listingId));
-    if(listing){
-      const newQty = Math.max(0, (listing.quantity || 0) - item.quantity);
-      await data.updateListingQuantity(listing.id, newQty);
-      if(newQty === 0) await data.updateListingStatus(listing.id, "sold");
-    }
-  }
-
   try{
     await data.tryAwardSweepForEvent({
       townId: 1,
