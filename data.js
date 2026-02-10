@@ -1342,7 +1342,7 @@ async function getCartItem(userId, listingId){
     WHERE userId=$1 AND listingId=$2
   `).get(Number(userId), Number(listingId))) || null;
 }
-async function addCartItem(userId, listingId, quantity){
+async function addCartItem(userId, listingId, quantity, variantTitle, variantPrice){
   const createdAt = nowISO();
   const existing = await getCartItem(userId, listingId);
   if(existing){
@@ -1355,10 +1355,10 @@ async function addCartItem(userId, listingId, quantity){
     return getCartItem(userId, listingId);
   }
   const info = await stmt(`
-    INSERT INTO cart_items (townId, userId, listingId, quantity, createdAt)
-    VALUES ($1,$2,$3,$4,$5)
+    INSERT INTO cart_items (townId, userId, listingId, quantity, varianttitle, variantprice, createdAt)
+    VALUES ($1,$2,$3,$4,$5,$6,$7)
     RETURNING id
-  `).run(1, Number(userId), Number(listingId), Number(quantity || 1), createdAt);
+  `).run(1, Number(userId), Number(listingId), Number(quantity || 1), variantTitle || '', Number(variantPrice) || 0, createdAt);
   return stmt("SELECT * FROM cart_items WHERE id=$1").get(info.rows?.[0]?.id);
 }
 async function removeCartItem(userId, listingId){

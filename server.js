@@ -2548,7 +2548,9 @@ app.post("/api/cart/add", async (req, res) =>{
     const existingQty = Number(existing?.quantity || 0);
     if(Number(listing.quantity || 0) < (existingQty + quantity)) return res.status(400).json({error:"Insufficient quantity"});
   }
-  const created = await data.addCartItem(u, listingId, quantity);
+  const variantTitle = (req.body?.variantTitle || '').toString();
+  const variantPrice = Number(req.body?.variantPrice) || 0;
+  const created = await data.addCartItem(u, listingId, quantity, variantTitle, variantPrice);
   res.json({ ok:true, item: created });
 });
 app.post("/api/cart/remove", async (req, res) =>{
@@ -2589,7 +2591,7 @@ app.post("/api/checkout/create", async (req, res) =>{
     if(Number(placeId) !== Number(listingPlaceId)) return res.status(400).json({error:"Checkout supports a single store per order"});
     const place = placeMap.get(Number(listingPlaceId));
     if(place) sellerUserId = place.ownerUserId ?? place.owneruserid ?? null;
-    const priceCents = Math.round(Number(listing.price || 0) * 100);
+    const priceCents = Math.round(Number(item.variantPrice || item.variantprice || listing.price || 0) * 100);
     subtotalCents += priceCents * Number(item.quantity || 0);
     items.push({
       listingId: listing.id,
