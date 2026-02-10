@@ -2520,12 +2520,13 @@ app.get("/api/cart", async (req, res) =>{
   const enriched = items.map((item)=>{
     const listing = listings.find(l=>Number(l.id)===Number(item.listingId));
     const place = listing ? placeMap.get(Number(listing.placeId)) : null;
-    const priceCents = Math.round(Number(listing?.price || 0) * 100);
+    const priceCents = Math.round(Number(item.variantprice || item.variantPrice || listing?.price || 0) * 100);
     return {
       id: item.id,
       listingId: item.listingId,
       quantity: item.quantity,
       title: listing?.title || "",
+      variantTitle: item.varianttitle || item.variantTitle || "",
       listingType: listing?.listingType || "item",
       priceCents,
       placeId: listing?.placeId || null,

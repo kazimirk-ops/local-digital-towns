@@ -110,7 +110,7 @@ function renderCart(){
     const row = document.createElement("div");
     row.className = "item";
     row.innerHTML = `
-      <div style="font-weight:700;">${item.title || "Item"}</div>
+      <div style="font-weight:700;">${item.title || "Item"}${item.variantTitle ? ` — ${item.variantTitle}` : ""}</div>
       <div class="muted">${item.placeName || ""}</div>
       <div class="row" style="margin-top:6px;">
         <button data-dec="${item.listingId}">-</button>
