@@ -385,81 +385,81 @@ function render(){
     if((!photoUrls || !photoUrls.length) && l.photoUrlsJson){
       try{ photoUrls = JSON.parse(l.photoUrlsJson); }catch{ photoUrls = []; }
     }
-    const img = (photoUrls && photoUrls[0]) ? `<img class="productImg" src="${photoUrls[0]}" alt="">` : "";
     const type = (l.listingType||"item");
-    const offerMeta = (type==="offer" || type==="request") ? `
-      <div class="muted">Category: ${l.offerCategory || "—"}</div>
-      <div class="muted">Availability: ${l.availabilityWindow || "—"}</div>
-      <div class="muted">Compensation: ${l.compensationType || l.exchangeType || "—"}</div>
-    ` : "";
-    const qtyMeta = type==="item" ? `<div class="muted">Qty available: ${Number.isFinite(Number(l.quantity)) ? Number(l.quantity) : "—"}</div>` : "";
-    const isOwner = PLACE && CURRENT_USER_ID && Number(PLACE.ownerUserId) === Number(CURRENT_USER_ID);
-    const auctionEnded = l.auctionEndAt ? (Date.parse(l.auctionEndAt) <= Date.now()) : false;
-    const closeBtn = (type==="auction" && isOwner && auctionEnded)
-      ? `<button data-close="${l.id}">Close Auction</button>`
-      : "";
-    const auctionBlock = type==="auction" ? `
-      <div class="mono" id="auction-${l.id}">Loading auction…</div>
-      <div class="row" style="margin-top:8px;">
-        <input id="bid-${l.id}" placeholder="Bid ($)" style="max-width:160px;" />
-        <button data-bid="${l.id}">Place Bid</button>
-        <a class="pill" id="auction-pay-${l.id}" style="display:none;">Pay Now</a>
-        ${closeBtn}
-      </div>
-    ` : "";
-    const baseMeta = l.offerCategory || l.offercategory || "";
-    const auctionMeta = type==="auction"
-      ? `Auction ID: ${l.id}${l.auctionStatus ? ` • Status: ${l.auctionStatus}` : ""}`
-      : "";
-    const priceDisplay = (l.price && Number(l.price) > 0) ? `<div style="font-weight:700; color:#22c55e; font-size:1.1em;">$${Number(l.price).toFixed(2)}</div>` : "";
     const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
-    const cartBlock = type==="item" ? (isManaged
-      ? `<div class="row" style="gap:6px; align-items:center; margin-top:8px;">
-           <button data-qty-dec="${l.id}" style="width:28px;height:28px;padding:0;">−</button>
-           <span data-qty-val="${l.id}" style="min-width:24px;text-align:center;">1</span>
-           <button data-qty-inc="${l.id}" style="width:28px;height:28px;padding:0;">+</button>
-           <button data-cart="${l.id}" style="flex:1;">Add to Cart</button>
-         </div>`
-      : `<button data-cart="${l.id}">Add to Cart</button>`) : "";
-    d.innerHTML=`
-      ${img}
-      <div class="muted">${baseMeta}</div>
-      ${type==="auction" ? `<div class="muted">${auctionMeta}</div>` : ""}
-      <div style="font-weight:900">${l.title}</div>
-      ${priceDisplay}
-      <div class="muted">${l.description}</div>
-      ${qtyMeta}
-      ${offerMeta}
-      ${type==="auction" ? auctionBlock : (type!=="item" ? `<button data-id="${l.id}">Apply / Message</button>` : cartBlock)}
-    `;
-    const b=d.querySelector("button[data-id]");
-    if(b) b.addEventListener("click", ()=>apply(l.id));
-    // Quantity controls for managed stores
-    const qtyDecBtn = d.querySelector(`button[data-qty-dec="${l.id}"]`);
-    const qtyIncBtn = d.querySelector(`button[data-qty-inc="${l.id}"]`);
-    const qtyValEl = d.querySelector(`span[data-qty-val="${l.id}"]`);
-    if(qtyDecBtn && qtyIncBtn && qtyValEl){
-      qtyDecBtn.addEventListener("click", (e)=>{ e.stopPropagation(); let v=Number(qtyValEl.textContent)||1; if(v>1) qtyValEl.textContent=v-1; });
-      qtyIncBtn.addEventListener("click", (e)=>{ e.stopPropagation(); let v=Number(qtyValEl.textContent)||1; if(v<50) qtyValEl.textContent=v+1; });
+
+    if(isManaged && type === "item"){
+      // Managed store: clean product card
+      const img = (photoUrls && photoUrls[0]) ? `<img class="productImg" src="${photoUrls[0]}" alt="" style="cursor:pointer;">` : "";
+      const category = l.offerCategory || l.offercategory || "";
+      const priceLabel = (l.price && Number(l.price) > 0) ? `From $${Number(l.price).toFixed(2)}` : "";
+      d.style.cursor = "pointer";
+      d.innerHTML = `
+        ${img}
+        ${category ? `<div class="muted" style="font-size:0.8em; text-transform:uppercase; letter-spacing:0.05em; margin-top:6px;">${category}</div>` : ""}
+        <div style="font-weight:700; margin-top:4px;">${l.title}</div>
+        ${priceLabel ? `<div style="font-weight:700; color:#22c55e; margin-top:4px;">${priceLabel}</div>` : ""}
+      `;
+      d.addEventListener("click", ()=> openListingModal(l, photoUrls || []));
+    } else {
+      // Peer store / auctions: legacy card layout
+      const img = (photoUrls && photoUrls[0]) ? `<img class="productImg" src="${photoUrls[0]}" alt="">` : "";
+      const offerMeta = (type==="offer" || type==="request") ? `
+        <div class="muted">Category: ${l.offerCategory || "—"}</div>
+        <div class="muted">Availability: ${l.availabilityWindow || "—"}</div>
+        <div class="muted">Compensation: ${l.compensationType || l.exchangeType || "—"}</div>
+      ` : "";
+      const isOwner = PLACE && CURRENT_USER_ID && Number(PLACE.ownerUserId) === Number(CURRENT_USER_ID);
+      const auctionEnded = l.auctionEndAt ? (Date.parse(l.auctionEndAt) <= Date.now()) : false;
+      const closeBtn = (type==="auction" && isOwner && auctionEnded)
+        ? `<button data-close="${l.id}">Close Auction</button>`
+        : "";
+      const auctionBlock = type==="auction" ? `
+        <div class="mono" id="auction-${l.id}">Loading auction…</div>
+        <div class="row" style="margin-top:8px;">
+          <input id="bid-${l.id}" placeholder="Bid ($)" style="max-width:160px;" />
+          <button data-bid="${l.id}">Place Bid</button>
+          <a class="pill" id="auction-pay-${l.id}" style="display:none;">Pay Now</a>
+          ${closeBtn}
+        </div>
+      ` : "";
+      const baseMeta = l.offerCategory || l.offercategory || "";
+      const auctionMeta = type==="auction"
+        ? `Auction ID: ${l.id}${l.auctionStatus ? ` • Status: ${l.auctionStatus}` : ""}`
+        : "";
+      const priceDisplay = (l.price && Number(l.price) > 0) ? `<div style="font-weight:700; color:#22c55e; font-size:1.1em;">$${Number(l.price).toFixed(2)}</div>` : "";
+      const cartBlock = type==="item" ? `<button data-cart="${l.id}">Add to Cart</button>` : "";
+      d.innerHTML=`
+        ${img}
+        <div class="muted">${baseMeta}</div>
+        ${type==="auction" ? `<div class="muted">${auctionMeta}</div>` : ""}
+        <div style="font-weight:900">${l.title}</div>
+        ${priceDisplay}
+        <div class="muted">${l.description}</div>
+        ${offerMeta}
+        ${type==="auction" ? auctionBlock : (type!=="item" ? `<button data-id="${l.id}">Apply / Message</button>` : cartBlock)}
+      `;
+      const b=d.querySelector("button[data-id]");
+      if(b) b.addEventListener("click", ()=>apply(l.id));
+      const cartBtn=d.querySelector("button[data-cart]");
+      if(cartBtn) cartBtn.addEventListener("click", (e)=>{ e.stopPropagation(); addToCart(l.id, 1); });
+      const bidBtn=d.querySelector("button[data-bid]");
+      if(bidBtn) bidBtn.addEventListener("click", ()=>placeBid(l.id));
+      const closeBtnEl = d.querySelector("button[data-close]");
+      if(closeBtnEl) closeBtnEl.addEventListener("click", async()=>{
+        if(!confirm("Close this auction and notify the winner?")) return;
+        try{
+          await api(`/api/auctions/${l.id}/close`,{method:"POST"});
+          await loadAuction(l.id);
+          renderAuctionText(l.id);
+        }catch(e){ console.error(e.message); }
+      });
+      d.addEventListener("click", (e)=>{
+        const tag = e.target?.tagName?.toLowerCase();
+        if(tag === "button" || tag === "input" || tag === "a") return;
+        openListingModal(l, photoUrls || []);
+      });
     }
-    const cartBtn=d.querySelector("button[data-cart]");
-    if(cartBtn) cartBtn.addEventListener("click", (e)=>{ e.stopPropagation(); const qty=qtyValEl?Number(qtyValEl.textContent)||1:1; addToCart(l.id, qty); });
-    const bidBtn=d.querySelector("button[data-bid]");
-    if(bidBtn) bidBtn.addEventListener("click", ()=>placeBid(l.id));
-    const closeBtnEl = d.querySelector("button[data-close]");
-    if(closeBtnEl) closeBtnEl.addEventListener("click", async()=>{
-      if(!confirm("Close this auction and notify the winner?")) return;
-      try{
-        await api(`/api/auctions/${l.id}/close`,{method:"POST"});
-        await loadAuction(l.id);
-        renderAuctionText(l.id);
-      }catch(e){ console.error(e.message); }
-    });
-    d.addEventListener("click", (e)=>{
-      const tag = e.target?.tagName?.toLowerCase();
-      if(tag === "button" || tag === "input" || tag === "a") return;
-      openListingModal(l, photoUrls || []);
-    });
     g.appendChild(d);
     if(type==="auction"){
       if(!AUCTIONS[l.id]) loadAuction(l.id);
@@ -473,35 +473,80 @@ function openListingModal(l, photos){
   const panel = $("listingModalPanel");
   if(!modal || !panel) return;
   const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
+
+  // Parse variants
+  let variants = [];
+  if(l.variantsJson){
+    try{ variants = typeof l.variantsJson === "string" ? JSON.parse(l.variantsJson) : l.variantsJson; }catch{ variants = []; }
+  }
+  if(!Array.isArray(variants)) variants = [];
+
   $("listingModalTitle").textContent = l.title || "Listing";
-  // For managed stores, show category; for peer stores, show legacy meta
   const category = l.offerCategory || l.offercategory || "";
   $("listingModalMeta").textContent = isManaged ? category : `ID: ${l.id} • ${(l.listingType||"item").toUpperCase()} • ${(l.exchangeType || "money")}`;
-  $("listingModalDesc").textContent = l.description || "";
-  // Extract size/weight from title (e.g., "1 lb", "5 lb", "1/4 lb")
-  const sizeMatch = (l.title || "").match(/(\d+\/?\d*\s*lb|\d+\.\d+\s*lb)/i);
-  const sizeText = sizeMatch ? sizeMatch[0] : "";
+
+  // Description with paragraph formatting
+  const descEl = $("listingModalDesc");
+  if(l.description){
+    descEl.innerHTML = l.description.split(/\n{2,}/).map(p => `<p style="margin:8px 0;line-height:1.5;">${p.replace(/\n/g, '<br>')}</p>`).join("");
+  } else {
+    descEl.textContent = "";
+  }
+
   const detailsEl = $("listingModalDetails");
   if(l.listingType === "auction"){
     detailsEl.innerHTML = `Start bid: $${((l.startBidCents||0)/100).toFixed(2)} • Min increment: $${((l.minIncrementCents||0)/100).toFixed(2)}`;
   } else if(isManaged && l.listingType === "item"){
-    const price = (l.price && Number(l.price) > 0) ? `$${Number(l.price).toFixed(2)}` : "";
+    let selectedIdx = 0;
+    const hasVariants = variants.length > 1;
+    const currentPrice = () => variants.length ? variants[selectedIdx].price : Number(l.price || 0);
+
+    let variantHtml = "";
+    if(hasVariants){
+      variantHtml = `<div id="modalVariants" style="margin:12px 0;">` +
+        variants.map((v, i) => `
+          <div data-vidx="${i}" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:4px;border-radius:8px;border:1px solid ${i===0 ? '#22c55e' : '#334155'};background:${i===0 ? 'rgba(34,197,94,0.1)' : 'transparent'};cursor:pointer;transition:all .15s;">
+            <span style="font-weight:600;">${v.title}</span>
+            <span style="font-weight:700;color:#22c55e;">$${Number(v.price).toFixed(2)}</span>
+          </div>
+        `).join("") + `</div>`;
+    }
+
+    const priceVal = currentPrice();
     detailsEl.innerHTML = `
-      ${price ? `<div style="font-size:1.5em; font-weight:700; color:#22c55e; margin:12px 0;">${price}</div>` : ""}
-      ${sizeText ? `<div class="muted" style="margin-bottom:12px;">Size: ${sizeText}</div>` : ""}
+      <div id="modalPriceDisplay" style="font-size:1.5em; font-weight:700; color:#22c55e; margin:12px 0;">$${Number(priceVal).toFixed(2)}</div>
+      ${variantHtml}
       <div class="row" style="gap:8px; align-items:center; margin-top:12px;">
         <button id="modalQtyDec" style="width:32px;height:32px;padding:0;font-size:18px;">−</button>
         <span id="modalQtyVal" style="min-width:32px;text-align:center;font-size:16px;font-weight:600;">1</span>
         <button id="modalQtyInc" style="width:32px;height:32px;padding:0;font-size:18px;">+</button>
-        <button id="modalAddCart" style="flex:1;padding:10px 16px;">Add to Cart</button>
+        <button id="modalAddCart" style="flex:1;padding:10px 16px;font-weight:700;">Add to Cart</button>
       </div>
     `;
+
+    // Variant selection
+    if(hasVariants){
+      const variantEls = detailsEl.querySelectorAll("[data-vidx]");
+      variantEls.forEach(el => {
+        el.addEventListener("click", ()=>{
+          selectedIdx = Number(el.dataset.vidx);
+          variantEls.forEach((ve, vi) => {
+            const active = vi === selectedIdx;
+            ve.style.borderColor = active ? "#22c55e" : "#334155";
+            ve.style.background = active ? "rgba(34,197,94,0.1)" : "transparent";
+          });
+          $("modalPriceDisplay").textContent = `$${Number(variants[selectedIdx].price).toFixed(2)}`;
+        });
+      });
+    }
+
     $("modalQtyDec")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v>1) $("modalQtyVal").textContent=v-1; });
     $("modalQtyInc")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v<50) $("modalQtyVal").textContent=v+1; });
     $("modalAddCart")?.addEventListener("click", ()=>{ const qty=Number($("modalQtyVal").textContent)||1; addToCart(l.id, qty); modal.style.display="none"; });
   } else {
     detailsEl.textContent = "";
   }
+
   const main = $("listingModalMainImg");
   const thumbs = $("listingModalThumbs");
   const urls = (photos && photos.length) ? photos : [];
