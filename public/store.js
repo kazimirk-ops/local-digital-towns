@@ -542,7 +542,7 @@ function openListingModal(l, photos){
 
     $("modalQtyDec")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v>1) $("modalQtyVal").textContent=v-1; });
     $("modalQtyInc")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v<50) $("modalQtyVal").textContent=v+1; });
-    $("modalAddCart")?.addEventListener("click", ()=>{ const qty=Number($("modalQtyVal").textContent)||1; addToCart(l.id, qty); modal.style.display="none"; });
+    $("modalAddCart")?.addEventListener("click", ()=>{ const qty=Number($("modalQtyVal").textContent)||1; ensureLoggedInForCart(PLACE.id, ()=>{ addToCart(l.id, qty); modal.style.display="none"; }); });
   } else {
     detailsEl.textContent = "";
   }
@@ -574,6 +574,52 @@ async function apply(id){
     await api(`/listings/${id}/apply`,{method:"POST",body:JSON.stringify({message:"Interested"})});
     alert("Conversation started.");
   }catch(e){alert(e.message)}
+}
+
+function ensureLoggedInForCart(placeId, callback){
+  api("/me").then(res => {
+    if(res && res.user) return callback();
+    showGuestEmailModal(placeId, callback);
+  }).catch(() => showGuestEmailModal(placeId, callback));
+}
+
+function showGuestEmailModal(placeId, callback){
+  let overlay = $("guestEmailOverlay");
+  if(overlay) overlay.remove();
+  overlay = document.createElement("div");
+  overlay.id = "guestEmailOverlay";
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;";
+  overlay.innerHTML = `
+    <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:28px 24px;max-width:380px;width:90%;">
+      <div style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:4px;">Enter your email to continue</div>
+      <div style="font-size:14px;color:#94a3b8;margin-bottom:16px;">No account needed — just your email for order updates</div>
+      <input id="guestEmailInput" type="email" placeholder="you@example.com" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#f1f5f9;font-size:15px;box-sizing:border-box;" />
+      <div id="guestEmailError" style="color:#ef4444;font-size:13px;margin-top:6px;min-height:18px;"></div>
+      <button id="guestEmailSubmit" style="width:100%;padding:10px;margin-top:8px;font-weight:700;border-radius:8px;background:#22c55e;color:#fff;border:none;font-size:15px;cursor:pointer;">Continue</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => { if(e.target === overlay) overlay.remove(); });
+  const input = $("guestEmailInput");
+  const errEl = $("guestEmailError");
+  input.focus();
+  input.addEventListener("keydown", (e) => { if(e.key === "Enter") $("guestEmailSubmit").click(); });
+  $("guestEmailSubmit").addEventListener("click", async () => {
+    const email = input.value.trim();
+    if(!email || !email.includes("@")){ errEl.textContent = "Please enter a valid email."; return; }
+    errEl.textContent = "";
+    $("guestEmailSubmit").disabled = true;
+    $("guestEmailSubmit").textContent = "Please wait...";
+    try {
+      await api("/api/auth/guest", { method: "POST", body: JSON.stringify({ email, placeId }) });
+      overlay.remove();
+      callback();
+    } catch(err) {
+      errEl.textContent = err.message || "Something went wrong.";
+      $("guestEmailSubmit").disabled = false;
+      $("guestEmailSubmit").textContent = "Continue";
+    }
+  });
 }
 
 async function main(){

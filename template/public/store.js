@@ -542,7 +542,7 @@ function openListingModal(l, photos){
 
     $("modalQtyDec")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v>1) $("modalQtyVal").textContent=v-1; });
     $("modalQtyInc")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v<50) $("modalQtyVal").textContent=v+1; });
-    $("modalAddCart")?.addEventListener("click", ()=>{ const qty=Number($("modalQtyVal").textContent)||1; addToCart(l.id, qty); modal.style.display="none"; });
+    $("modalAddCart")?.addEventListener("click", ()=>{ const qty=Number($("modalQtyVal").textContent)||1; ensureLoggedInForCart(PLACE.id, ()=>{ addToCart(l.id, qty); modal.style.display="none"; }); });
   } else {
     detailsEl.textContent = "";
   }
