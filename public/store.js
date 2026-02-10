@@ -32,7 +32,6 @@ let LIST=[],TAB="item",AUCTIONS={},CAT_FILTER="All";
 let LIVE_SHOW=null;
 let CART={ items:[] };
 let CART_ORDER_ID=null;
-let DELIVERY_QUOTE = null;
 
 function fmtCents(c){
   if(!Number.isFinite(Number(c))) return "—";
@@ -87,7 +86,7 @@ function renderCart(){
   const howItWorks = document.getElementById('cartHowItWorks');
   if (howItWorks) {
     howItWorks.innerHTML = isManaged
-      ? '<div class="muted" style="color:#93c5fd;"><strong>How it works:</strong> Enter your delivery address, get a quote, then proceed to checkout. We\'ll deliver to your door!</div>'
+      ? '<div class="muted" style="color:#93c5fd;"><strong>How it works:</strong> Enter your shipping address and proceed to checkout. $15 flat rate shipping.</div>'
       : '<div class="muted" style="color:#93c5fd;"><strong>How it works:</strong> Place your order, then contact the seller to arrange pickup and payment (cash, Venmo, etc.).</div>';
   }
   // Update cart messaging based on store type
@@ -122,11 +121,22 @@ function renderCart(){
     `;
     list.appendChild(row);
   });
-  totals.innerHTML = `
-    <div style="margin-bottom:8px;">
-      <div style="font-size:18px;font-weight:700;">Total: ${fmtCents(subtotal)}</div>
-    </div>
-  `;
+  if (isManaged) {
+    const shippingCents = 1500;
+    totals.innerHTML = `
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;"><span>Subtotal:</span><span>${fmtCents(subtotal)}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;"><span>Shipping:</span><span>${fmtCents(shippingCents)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #334155;padding-top:6px;margin-top:6px;font-size:18px;"><span>Total:</span><span>${fmtCents(subtotal + shippingCents)}</span></div>
+      </div>
+    `;
+  } else {
+    totals.innerHTML = `
+      <div style="margin-bottom:8px;">
+        <div style="font-size:18px;font-weight:700;">Total: ${fmtCents(subtotal)}</div>
+      </div>
+    `;
+  }
   list.querySelectorAll("button[data-inc]").forEach((btn)=>{
     btn.addEventListener("click", async ()=>{
       try{
@@ -157,36 +167,6 @@ function renderCart(){
       }
     });
   });
-  const quoteBtn = document.getElementById('getDeliveryQuoteBtn');
-  if (quoteBtn) quoteBtn.onclick = getDeliveryQuote;
-}
-async function getDeliveryQuote() {
-  const street = document.getElementById('deliveryStreetInput').value.trim();
-  const city = document.getElementById('deliveryCityInput').value.trim();
-  const state = document.getElementById('deliveryStateInput').value.trim();
-  const zip = document.getElementById('deliveryZipInput').value.trim();
-  if (!street || !zip) return alert('Please enter your street address and zip code');
-  const addr = street + ', ' + city + ', ' + state + ' ' + zip;
-  const btn = document.getElementById('getDeliveryQuoteBtn');
-  btn.textContent = 'Getting quote...';
-  btn.disabled = true;
-  try {
-    const res = await api('/api/delivery/quote', {
-      method: 'POST',
-      body: JSON.stringify({ placeId: PLACE.id, dropoffAddress: addr })
-    });
-    DELIVERY_QUOTE = res;
-    document.getElementById('deliveryFeeDisplay').textContent = '$' + (res.feeCents / 100).toFixed(2);
-    document.getElementById('deliveryEtaDisplay').textContent = res.estimatedMinutes + ' min';
-    document.getElementById('deliveryQuoteResult').style.display = 'block';
-    const subtotal = CART.items.reduce((s, i) => s + i.priceCents * i.quantity, 0);
-    document.getElementById('cartTotals').innerHTML = '<div style="display:flex;justify-content:space-between;"><span>Subtotal:</span><span>$' + (subtotal/100).toFixed(2) + '</span></div><div style="display:flex;justify-content:space-between;"><span>Delivery:</span><span>$' + (res.feeCents/100).toFixed(2) + '</span></div><div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #ccc;padding-top:6px;margin-top:6px;"><span>Total:</span><span>$' + ((subtotal+res.feeCents)/100).toFixed(2) + '</span></div>';
-  } catch (err) {
-    alert('Could not get delivery quote: ' + (err.message || 'Try again'));
-  } finally {
-    btn.textContent = 'Get Delivery Quote';
-    btn.disabled = false;
-  }
 }
 async function addToCart(listingId, qty=1){
   openCartModal();
@@ -203,20 +183,18 @@ async function addToCart(listingId, qty=1){
 async function checkoutCart(){
   const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
   let body = {};
-  if (isManaged && DELIVERY_QUOTE) {
+  if (isManaged) {
     const street = document.getElementById('deliveryStreetInput').value.trim();
     const city = document.getElementById('deliveryCityInput').value.trim();
     const state = document.getElementById('deliveryStateInput').value.trim();
     const zip = document.getElementById('deliveryZipInput').value.trim();
+    if (!street || !zip) return alert('Please enter your shipping address');
     const addr = street + ', ' + city + ', ' + state + ' ' + zip;
     const name = document.getElementById('deliveryNameInput').value.trim();
     const phone = document.getElementById('deliveryPhoneInput').value.trim();
-    if (!addr) return alert('Please enter your delivery address and get a quote first');
     body = {
       deliveryAddress: { street: addr, name: name, phone: phone },
-      deliveryFeeCents: DELIVERY_QUOTE.feeCents,
-      uberQuoteId: DELIVERY_QUOTE.quoteId,
-      fulfillmentType: 'delivery'
+      fulfillmentType: 'shipping'
     };
   }
   const res = await api("/api/checkout/create", {method:"POST", body:JSON.stringify(body)});
