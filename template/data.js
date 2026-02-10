@@ -165,7 +165,6 @@ async function initDb(){
   await seedChannels();
   await seedArchiveEntries();
   await seedAdminUser();
-  await seedAdminTestStore();
 }
 
 // ---------- Seed ----------
@@ -273,30 +272,6 @@ async function seedAdminUser(){
   if(!(user.displayName || "").toString().trim()){
     await stmt("UPDATE users SET displayName=$1 WHERE id=$2").run("Admin", user.id);
   }
-}
-
-async function seedAdminTestStore(){
-  const adminUser = await stmt("SELECT * FROM users WHERE isAdmin=1 ORDER BY id LIMIT 1").get();
-  if(!adminUser) return;
-  const existing = await stmt("SELECT 1 FROM places WHERE ownerUserId=$1 LIMIT 1").get(adminUser.id);
-  if(existing) return;
-  await stmt(`
-    INSERT INTO places
-      (townId, districtId, name, category, status, description, sellerType, addressPrivate, website, yearsInTown, ownerUserId)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-  `).run(
-    1,
-    1,
-    "Admin Test Store",
-    "Test",
-    "approved",
-    "Test storefront for admin setup.",
-    "individual",
-    "",
-    "",
-    "",
-    adminUser.id
-  );
 }
 
 // ---------- Core getters ----------
