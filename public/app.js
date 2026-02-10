@@ -1453,7 +1453,7 @@ let marketVisible = MARKET_PAGE_SIZE;
 async function loadMarketplaceData(){
   const districts=getDistrictOptions();
   market.districts=districts;
-  const listings=await api("/market/listings?townId=1");
+  const listings=await api("/market/listings?townId="+(tc.id||1));
   market.listings=listings;
   const cats=new Set();
   listings.forEach(l=>{
@@ -1464,7 +1464,7 @@ async function loadMarketplaceData(){
 }
 
 async function loadAuctionData(){
-  const listings=await api("/market/auctions?townId=1");
+  const listings=await api("/market/auctions?townId="+(tc.id||1));
   market.auctions=listings;
 }
 

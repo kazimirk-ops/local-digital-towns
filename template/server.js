@@ -174,7 +174,7 @@ app.get("/health", (req, res) => {
 // --- Town config injection for HTML files ---
 // Builds a safe subset of town config for frontend use and injects it into HTML responses.
 const townPublicConfig = {
-  slug: townCfg.slug, name: townCfg.name, fullName: townCfg.fullName,
+  id: townCfg.id, slug: townCfg.slug, name: townCfg.name, fullName: townCfg.fullName,
   state: townCfg.state, stateFullName: townCfg.stateFullName, region: townCfg.region,
   productionUrl: townCfg.productionUrl,
   location: townCfg.location, address: townCfg.address,
