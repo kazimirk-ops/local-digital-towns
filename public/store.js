@@ -168,10 +168,10 @@ function renderCart(){
     });
   });
 }
-async function addToCart(listingId, qty=1){
+async function addToCart(listingId, qty=1, variant){
   openCartModal();
   try{
-    await api("/api/cart/add",{method:"POST",body:JSON.stringify({listingId, quantity:qty})});
+    await api("/api/cart/add",{method:"POST",body:JSON.stringify({listingId, quantity:qty, variantTitle: variant?.title || '', variantPrice: variant?.price || 0})});
     await loadCart();
     setCartMsg(qty > 1 ? `Added ${qty} items to cart.` : "Added to cart.");
   }catch(e){
@@ -542,7 +542,7 @@ function openListingModal(l, photos){
 
     $("modalQtyDec")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v>1) $("modalQtyVal").textContent=v-1; });
     $("modalQtyInc")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v<50) $("modalQtyVal").textContent=v+1; });
-    $("modalAddCart")?.addEventListener("click", ()=>{ const qty=Number($("modalQtyVal").textContent)||1; ensureLoggedInForCart(PLACE.id, ()=>{ addToCart(l.id, qty); modal.style.display="none"; }); });
+    $("modalAddCart")?.addEventListener("click", ()=>{ const qty=Number($("modalQtyVal").textContent)||1; ensureLoggedInForCart(PLACE.id, ()=>{ addToCart(l.id, qty, variants[selectedIdx]); modal.style.display="none"; }); });
   } else {
     detailsEl.textContent = "";
   }
