@@ -93,7 +93,7 @@ function renderCart(){
   const msgEl = document.querySelector("#cartPanel > div:nth-child(4) .muted");
   if(msgEl){
     msgEl.innerHTML = isManaged
-      ? `<strong>Delivery Info:</strong> Orders close Thursday midnight. Your items ship Friday and deliver to your door the following week. ${tc.delivery?.freeDeliveryText || "$15 flat rate shipping."}`
+      ? `<strong>Shipping Info:</strong> Your items ship directly from our supplier to your door. ${tc.delivery?.freeDeliveryText || "$15 flat rate shipping."}`
       : `<strong>How it works:</strong> Place your order, then contact the seller to arrange pickup and payment (cash, Venmo, etc.).`;
   }
   const checkoutBtn = $("cartCheckoutBtn");
@@ -488,7 +488,7 @@ function openListingModal(l, photos){
   // Description with paragraph formatting
   const descEl = $("listingModalDesc");
   if(l.description){
-    descEl.innerHTML = l.description.split(/\n{2,}/).map(p => `<p style="margin:8px 0;line-height:1.5;">${p.replace(/\n/g, '<br>')}</p>`).join("");
+    descEl.innerHTML = l.description.split(/\n{2,}/).map(p => `<p style="margin:8px 0;line-height:1.6;font-size:15px;color:#e2e8f0;">${p.replace(/\n/g, '<br>')}</p>`).join("");
   } else {
     descEl.textContent = "";
   }
