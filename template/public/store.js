@@ -663,6 +663,17 @@ async function main(){
     LIST=await api(`/places/${id}/listings`);
     setTab("item");
     await loadCart();
+    const autoListingId = new URLSearchParams(window.location.search).get("listing");
+    if(autoListingId){
+      const target = LIST.find(l => String(l.id) === autoListingId);
+      if(target){
+        let photos = target.photoUrls || [];
+        if((!photos || !photos.length) && target.photoUrlsJson){
+          try{ photos = JSON.parse(target.photoUrlsJson); }catch{ photos = []; }
+        }
+        openListingModal(target, photos);
+      }
+    }
     debug("Ready.");
   }catch(e){debug(e.message)}
 }

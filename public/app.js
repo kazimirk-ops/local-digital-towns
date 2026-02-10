@@ -1525,8 +1525,9 @@ function renderListingCard(l){
         <div><strong>${l.title || "Listing"}</strong></div>
         <div class="muted">${shortDesc || "No description"}</div>
         <div class="muted">${l.placeName || "Store"} • ${price}</div>
-        <div class="row" style="margin-top:8px;">
-          <a class="btn" href="/store/${l.placeId}">Open Store</a>
+        <div class="row" style="margin-top:8px;gap:8px;">
+          <a class="btn" href="/store/${l.placeId}?listing=${l.id}">Add to Cart</a>
+          <a class="btn btn-outline" href="/store/${l.placeId}">Open Store</a>
         </div>
       </div>
     </div>
