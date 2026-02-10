@@ -2576,7 +2576,10 @@ app.post("/api/checkout/create", async (req, res) =>{
   const deliveryFeeCents = Number(req.body?.deliveryFeeCents || 0);
   const uberQuoteId = (req.body?.uberQuoteId || "").toString();
   const serviceGratuityCents = 0; // Subscription model - no commission
-  const totalCents = subtotalCents + serviceGratuityCents + (deliveryFeeCents || 0);
+  const storePlace = placeMap.get(Number(placeId));
+  const isManaged = (storePlace?.storetype || storePlace?.storeType || 'peer') === 'managed';
+  const shippingFeeCents = isManaged ? 1500 : 0;
+  const totalCents = subtotalCents + serviceGratuityCents + (deliveryFeeCents || 0) + shippingFeeCents;
   const order = await data.createOrderFromCart({
     townId: 1,
     listingId: items[0].listingId,
@@ -2657,6 +2660,19 @@ app.post("/api/checkout/stripe", async (req,res)=>{
         currency: 'usd',
         product_data: { name: 'Delivery Fee' },
         unit_amount: deliveryFee
+      },
+      quantity: 1
+    });
+  }
+  const orderPlaceId = order.sellerPlaceId ?? order.sellerplaceid;
+  const orderPlace = orderPlaceId ? await data.getPlaceById(Number(orderPlaceId)) : null;
+  const orderIsManaged = (orderPlace?.storetype || orderPlace?.storeType || 'peer') === 'managed';
+  if (orderIsManaged) {
+    lineItems.push({
+      price_data: {
+        currency: 'usd',
+        product_data: { name: 'Flat Rate Shipping' },
+        unit_amount: 1500
       },
       quantity: 1
     });
