@@ -78,7 +78,9 @@ function toCamelCase(obj) {
       .replace(/issellerverified/gi, 'isSellerVerified')
       .replace(/isadmin/gi, 'isAdmin')
       .replace(/residentverified/gi, 'residentVerified')
-      .replace(/facebookverified/gi, 'facebookVerified');
+      .replace(/facebookverified/gi, 'facebookVerified')
+      .replace(/variantsjson/gi, 'variantsJson')
+      .replace(/photourlsjson/gi, 'photoUrlsJson');
     result[camelKey] = value;
   }
   return result;
@@ -430,6 +432,7 @@ async function getListings(){
   return rows.map((l)=>({
     ...l,
     photoUrls: parseJsonArray(l.photoUrlsJson || l.photourlsjson || "[]"),
+    variantsJson: l.variantsJson || l.variantsjson || "[]",
     listingType: l.listingType || l.listingtype || "item",
     exchangeType: l.exchangeType || l.exchangetype || "money",
     startAt: l.startAt || l.startat || "",
@@ -1177,6 +1180,7 @@ async function getListingById(id){
   return {
     ...l,
     photoUrls: parseJsonArray(l.photoUrlsJson || l.photourlsjson || "[]"),
+    variantsJson: l.variantsJson || l.variantsjson || "[]",
     listingType: l.listingType || l.listingtype || "item",
     exchangeType: l.exchangeType || l.exchangetype || "money",
     startAt: l.startAt || l.startat || "",
