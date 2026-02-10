@@ -1384,6 +1384,8 @@ async function finalizeOrderPayment(order){
       await data.decrementListingQuantity(item.listingId, item.quantity);
     }
   }
+  const buyerId = order.buyerUserId ?? order.buyeruserid;
+  if(buyerId) await data.clearCart(Number(buyerId));
   return { ok:true, order: updated };
 }
 
@@ -2596,7 +2598,6 @@ app.post("/api/checkout/create", async (req, res) =>{
     uberQuoteId
   }, items);
   await data.createPaymentForOrder(order.id, totalCents, "stripe");
-  await data.clearCart(u);
 
   try{
     await data.tryAwardSweepForEvent({
