@@ -1447,7 +1447,7 @@ function getDistrictOptions(){
 }
 
 const MARKET_PAGE_SIZE = 24;
-let marketFilter = "All";
+let marketFilter = null; // null = show category cards, string = show listings for that category
 let marketVisible = MARKET_PAGE_SIZE;
 
 async function loadMarketplaceData(){
@@ -1468,36 +1468,45 @@ async function loadAuctionData(){
   market.auctions=listings;
 }
 
-function renderMarketplaceCategories(){
-  const wrap=$("marketCategories");
-  if(!wrap) return;
-  wrap.innerHTML="";
-  // "All" button
-  const allBtn=document.createElement("button");
-  allBtn.className="catBtn"+(marketFilter==="All"?" active":"");
-  allBtn.textContent="All";
-  allBtn.onclick=()=>{ marketFilter="All"; marketVisible=MARKET_PAGE_SIZE; renderMarketplaceCategories(); renderMarketplace(); };
-  wrap.appendChild(allBtn);
-  // "Organic Food Ingredients" master category
-  const organicBtn=document.createElement("button");
-  organicBtn.className="catBtn"+(marketFilter==="__organic__"?" active":"");
-  organicBtn.textContent="Organic Food Ingredients";
-  organicBtn.onclick=()=>{ marketFilter="__organic__"; marketVisible=MARKET_PAGE_SIZE; renderMarketplaceCategories(); renderMarketplace(); };
-  wrap.appendChild(organicBtn);
-  // Individual category buttons
-  market.categories.forEach(c=>{
-    const btn=document.createElement("button");
-    btn.className="catBtn"+(marketFilter===c?" active":"");
-    btn.textContent=c;
-    btn.onclick=()=>{ marketFilter=c; marketVisible=MARKET_PAGE_SIZE; renderMarketplaceCategories(); renderMarketplace(); };
-    wrap.appendChild(btn);
-  });
+function getCategoryThumb(cat){
+  const match = market.listings.find(l=>(l.offerCategory||"")===cat && (l.photoUrls||l.photourls||[]).length);
+  if(!match) return "";
+  return (match.photoUrls || match.photourls || [])[0] || "";
 }
 
-function getFilteredMarketListings(){
-  if(marketFilter==="All") return market.listings;
-  if(marketFilter==="__organic__") return market.listings.filter(l=>Number(l.placeId)===18);
-  return market.listings.filter(l=>(l.offerCategory||"")===marketFilter);
+function getCategoryCount(cat){
+  return market.listings.filter(l=>(l.offerCategory||"")===cat).length;
+}
+
+function renderCategoryCards(){
+  const items=$("marketItems");
+  const empty=$("marketEmpty");
+  const backBar=$("marketBackBar");
+  const showMoreWrap=$("marketShowMore");
+  if(!items) return;
+  items.innerHTML="";
+  if(backBar) backBar.style.display="none";
+  if(showMoreWrap) showMoreWrap.style.display="none";
+  if(!market.categories.length){
+    if(empty) empty.style.display="block";
+    return;
+  }
+  if(empty) empty.style.display="none";
+  market.categories.forEach(cat=>{
+    const thumb=getCategoryThumb(cat);
+    const count=getCategoryCount(cat);
+    const card=document.createElement("div");
+    card.className="marketCatCard";
+    card.innerHTML=`
+      ${thumb ? `<img src="${thumb}" alt="">` : `<div style="width:100%;height:140px;background:rgba(255,255,255,0.06);"></div>`}
+      <div class="catInfo">
+        <div class="catName">${cat}</div>
+        <div class="catCount">${count} product${count!==1?"s":""}</div>
+      </div>
+    `;
+    card.onclick=()=>{ marketFilter=cat; marketVisible=MARKET_PAGE_SIZE; renderMarketplace(); };
+    items.appendChild(card);
+  });
 }
 
 function renderListingCard(l){
@@ -1526,12 +1535,21 @@ function renderListingCard(l){
 }
 
 function renderMarketplace(){
+  // If no filter selected, show category cards
+  if(marketFilter===null){ renderCategoryCards(); return; }
   const items=$("marketItems");
   const empty=$("marketEmpty");
+  const backBar=$("marketBackBar");
   const showMoreWrap=$("marketShowMore");
   if(!items) return;
   items.innerHTML="";
-  const filtered=getFilteredMarketListings();
+  // Show back button
+  if(backBar){
+    backBar.style.display="block";
+    const backBtn=$("marketBackBtn");
+    if(backBtn) backBtn.onclick=()=>{ marketFilter=null; renderMarketplace(); };
+  }
+  const filtered=market.listings.filter(l=>(l.offerCategory||"")===marketFilter);
   if(!filtered.length){
     if(empty) empty.style.display="block";
     if(showMoreWrap) showMoreWrap.style.display="none";
@@ -1555,7 +1573,6 @@ async function initMarketplace(){
   if(!market.listings.length){
     await loadMarketplaceData();
   }
-  renderMarketplaceCategories();
   renderMarketplace();
 }
 
