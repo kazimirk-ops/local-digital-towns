@@ -306,8 +306,8 @@ async function getPlaces(){
            description, website, yearsInTown, bannerUrl, avatarUrl,
            sellerType, visibilityLevel, pickupZone, addressPublic, addressPrivate,
            meetupInstructions, hours, verifiedStatus, ownerUserId
-    FROM places WHERE townId=1 ORDER BY id
-  `).all();
+    FROM places WHERE townId=$1 ORDER BY id
+  `).all(townCfg.id || 1);
 }
 async function getPlaceById(id){
   return stmt(`
