@@ -95,7 +95,7 @@ async function loadWaitlist(){
       tr.appendChild(td(row.email));
       tr.appendChild(td(row.interests || ""));
       tr.appendChild(td(row.status + (row.approvedTier ? ` (Tier ${row.approvedTier})` : "")));
-      tr.appendChild(actionsCell(row.id, "waitlist", row.approvedtier || 1,
+      tr.appendChild(actionsCell(row.id, "waitlist", row.approvedTier || 1,
         async (tier)=>{ await postStatusWithTier(`/api/admin/waitlist/${row.id}/status`, "approved", tier); loadWaitlist(); },
         async ()=>{ await postStatusWithTier(`/api/admin/waitlist/${row.id}/status`, "rejected", null); loadWaitlist(); }
       ));
@@ -128,7 +128,7 @@ async function loadBusiness(){
       tr.appendChild(td(row.category));
       tr.appendChild(td(row.inTown));
       tr.appendChild(td(row.status + (row.approvedTier ? ` (Tier ${row.approvedTier})` : "")));
-      tr.appendChild(actionsCell(row.id, "business", row.approvedtier || 4,
+      tr.appendChild(actionsCell(row.id, "business", row.approvedTier || 4,
         async (tier)=>{ await postStatusWithTier(`/api/admin/applications/business/${row.id}/status`, "approved", tier); loadBusiness(); },
         async ()=>{ await postStatusWithTier(`/api/admin/applications/business/${row.id}/status`, "rejected", null); loadBusiness(); }
       ));
@@ -160,7 +160,7 @@ async function loadResident(){
       tr.appendChild(td(`${row.city}, ${row.state}`));
       tr.appendChild(td(row.yearsInTown || ""));
       tr.appendChild(td(row.status + (row.approvedTier ? ` (Tier ${row.approvedTier})` : "")));
-      tr.appendChild(actionsCell(row.id, "resident", row.approvedtier || 2,
+      tr.appendChild(actionsCell(row.id, "resident", row.approvedTier || 2,
         async (tier)=>{ await postStatusWithTier(`/api/admin/applications/resident/${row.id}/status`, "approved", tier); loadResident(); },
         async ()=>{ await postStatusWithTier(`/api/admin/applications/resident/${row.id}/status`, "rejected", null); loadResident(); }
       ));

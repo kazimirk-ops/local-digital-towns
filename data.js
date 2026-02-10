@@ -64,7 +64,21 @@ function toCamelCase(obj) {
       .replace(/reviewedbyuserid/gi, 'reviewedByUserId')
       .replace(/decisionreason/gi, 'decisionReason')
       .replace(/startat\b/gi, 'startAt')
-      .replace(/endat\b/gi, 'endAt');
+      .replace(/endat\b/gi, 'endAt')
+      .replace(/contactname/gi, 'contactName')
+      .replace(/businessname/gi, 'businessName')
+      .replace(/approvedtier/gi, 'approvedTier')
+      .replace(/intown/gi, 'inTown')
+      .replace(/yearsintown/gi, 'yearsInTown')
+      .replace(/addressline1/gi, 'addressLine1')
+      .replace(/termsacceptedat/gi, 'termsAcceptedAt')
+      .replace(/locationverified/gi, 'locationVerified')
+      .replace(/confirmlocalbusiness/gi, 'confirmLocalBusiness')
+      .replace(/isbuyerverified/gi, 'isBuyerVerified')
+      .replace(/issellerverified/gi, 'isSellerVerified')
+      .replace(/isadmin/gi, 'isAdmin')
+      .replace(/residentverified/gi, 'residentVerified')
+      .replace(/facebookverified/gi, 'facebookVerified');
     result[camelKey] = value;
   }
   return result;
