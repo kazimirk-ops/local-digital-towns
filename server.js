@@ -3414,7 +3414,7 @@ app.get("/api/seller/deposits", async (req, res) => {
 app.get("/api/seller/listings", async (req, res) => {
   try {
     const seller = await requireSellerPlace(req, res); if(!seller) return;
-    const r = await data.query('SELECT id, title, description, price, quantity, status, "photoUrlsJson", createdat FROM listings WHERE placeid = $1 ORDER BY createdat DESC', [seller.placeId]);
+    const r = await data.query('SELECT id, title, description, price, quantity, status, photourlsjson, createdat FROM listings WHERE placeid = $1 ORDER BY createdat DESC', [seller.placeId]);
     res.json(r.rows);
   } catch(err){ console.error("SELLER_LISTINGS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });

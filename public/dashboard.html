@@ -1092,7 +1092,7 @@
           }
           body.innerHTML = rows.map(function(p){
             var photos = [];
-            try { photos = typeof p.photoUrlsJson === "string" ? JSON.parse(p.photoUrlsJson) : (p.photoUrlsJson || []); } catch(e){}
+            try { photos = typeof p.photourlsjson === "string" ? JSON.parse(p.photourlsjson) : (p.photourlsjson || []); } catch(e){}
             var thumb = photos.length ? '<img src="' + photos[0] + '" style="width:40px;height:40px;object-fit:cover;border-radius:6px;">' : '<div style="width:40px;height:40px;border-radius:6px;background:#1e293b;"></div>';
             var sBg = p.status === "active" ? "#10b981" : "#374151";
             return '<tr>'
