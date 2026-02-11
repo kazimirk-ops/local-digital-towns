@@ -1513,25 +1513,44 @@ function renderListingCard(l){
   const div=document.createElement("div");
   div.className="item";
   const price = Number.isFinite(Number(l.price)) ? `$${Number(l.price).toFixed(2)}` : "—";
-  const desc = (l.description || "").toString().trim();
-  const shortDesc = desc.length > 80 ? `${desc.slice(0,77)}...` : desc;
   const photos = l.photoUrls || l.photourls || [];
   const firstPhoto = photos[0] || "";
-  const imgHtml = firstPhoto ? `<img src="${firstPhoto}" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.12);margin-right:12px;" />` : "";
-  div.innerHTML=`
-    <div style="display:flex;">
-      ${imgHtml}
-      <div style="flex:1;">
-        <div><strong>${l.title || "Listing"}</strong></div>
-        <div class="muted">${shortDesc || "No description"}</div>
-        <div class="muted">${l.placeName || "Store"} • ${price}</div>
-        <div class="row" style="margin-top:8px;gap:8px;">
-          <a class="btn" href="/store/${l.placeId}?listing=${l.id}">Add to Cart</a>
-          <a class="btn btn-outline" href="/store/${l.placeId}">Open Store</a>
+  const sType = l.storeType || l.storetype || "peer";
+  const isClean = (sType === "managed" || sType === "promoted");
+
+  if(isClean){
+    const cat = l.offerCategory || l.offercategory || "";
+    const catTag = cat ? `<span style="display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.08);color:#94a3b8;margin-bottom:6px;">${cat}</span>` : "";
+    const imgBlock = firstPhoto ? `<img src="${firstPhoto}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.08);" />` : "";
+    div.style.cssText = "cursor:pointer;";
+    div.onclick = () => { window.location.href = "/store/" + (l.placeId || l.placeid) + "?listing=" + l.id; };
+    div.innerHTML = `
+      ${imgBlock}
+      <div style="padding:8px 0;">
+        ${catTag}
+        <div style="font-weight:600;font-size:14px;color:#e2e8f0;">${l.title || "Listing"}</div>
+        <div style="font-size:13px;color:#94a3b8;margin-top:2px;">${l.placeName || "Store"} &middot; ${price}</div>
+      </div>
+    `;
+  } else {
+    const desc = (l.description || "").toString().trim();
+    const shortDesc = desc.length > 80 ? `${desc.slice(0,77)}...` : desc;
+    const imgHtml = firstPhoto ? `<img src="${firstPhoto}" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.12);margin-right:12px;" />` : "";
+    div.innerHTML=`
+      <div style="display:flex;">
+        ${imgHtml}
+        <div style="flex:1;">
+          <div><strong>${l.title || "Listing"}</strong></div>
+          <div class="muted">${shortDesc || "No description"}</div>
+          <div class="muted">${l.placeName || "Store"} • ${price}</div>
+          <div class="row" style="margin-top:8px;gap:8px;">
+            <a class="btn" href="/store/${l.placeId}?listing=${l.id}">Add to Cart</a>
+            <a class="btn btn-outline" href="/store/${l.placeId}">Open Store</a>
+          </div>
         </div>
       </div>
-    </div>
-  `;
+    `;
+  }
   return div;
 }
 
