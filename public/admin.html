@@ -284,6 +284,24 @@
         </div>
 
         <div class="card">
+          <div class="card-header">
+            <div>
+              <strong class="card-title">Click Tracking — The Soap House</strong>
+              <div class="muted">Outbound clicks to Shopify from promoted store</div>
+            </div>
+            <span class="pill" id="clickTotal">Total: —</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Product</th><th>Clicks</th></tr>
+              </thead>
+              <tbody id="clickRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
           <strong class="card-title">Store Applications</strong>
           <div class="muted">Pending approvals for new stores.</div>
           <div class="table-wrap">
@@ -465,5 +483,22 @@
     <script src="/admin.js?v=1"></script>
     <script src="/admin_sweep.js?v=3"></script>
     <script>(function(){var tc=window.__TOWN_CONFIG__;if(!tc)return;var t=tc.pageTitles?.admin;document.querySelectorAll('.hero-title').forEach(function(el){if(el.textContent.includes('Sebastian')&&t)el.textContent=t;});})();</script>
+    <script>
+    (async function(){
+      try {
+        const res = await fetch("/api/admin/clicks/13");
+        const d = await res.json();
+        document.getElementById("clickTotal").textContent = "Total: " + (d.total || 0);
+        const tbody = document.getElementById("clickRows");
+        if(!d.byProduct || !d.byProduct.length){
+          tbody.innerHTML = '<tr><td colspan="2">(no clicks yet)</td></tr>';
+          return;
+        }
+        tbody.innerHTML = d.byProduct.map(r =>
+          `<tr><td>${r.title || "(unknown)"}</td><td>${r.clicks}</td></tr>`
+        ).join("");
+      } catch(e){ console.error("click fetch error", e); }
+    })();
+    </script>
   </body>
 </html>
