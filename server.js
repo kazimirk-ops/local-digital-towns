@@ -3166,7 +3166,7 @@ app.get("/api/seller/analytics", async (req, res) => {
       data.query("SELECT status, COUNT(*) as count FROM invoices WHERE place_id = $1 GROUP BY status", [pid]),
       data.query("SELECT DATE_TRUNC('week', paid_at) as week, SUM(total) as revenue, COUNT(*) as orders FROM invoices WHERE place_id = $1 AND status = 'paid' AND paid_at >= NOW() - INTERVAL '12 weeks' GROUP BY DATE_TRUNC('week', paid_at) ORDER BY week", [pid]),
       data.query("SELECT AVG(total) as avg FROM invoices WHERE place_id = $1 AND status = 'paid'", [pid]),
-      data.query("SELECT DATE(created_at) as day, COUNT(*) as count FROM listings WHERE placeId = $1 AND created_at >= NOW() - INTERVAL '30 days' GROUP BY DATE(created_at) ORDER BY day", [pid])
+      data.query("SELECT DATE("createdAt") as day, COUNT(*) as count FROM listings WHERE "placeId" = $1 AND "createdAt" >= NOW() - INTERVAL '30 days' GROUP BY DATE("createdAt") ORDER BY day", [pid])
     ]);
 
     // Aggregate revenue by product title
