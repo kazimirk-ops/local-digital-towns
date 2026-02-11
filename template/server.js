@@ -4136,7 +4136,8 @@ app.get("/market/listings", async (req, res) =>{
       placeName: p.name || "Store",
       placeCategory: p.category || "",
       districtId: p.districtId ?? p.districtid,
-      photoUrls: l.photoUrls || l.photourls || []
+      photoUrls: l.photoUrls || l.photourls || [],
+      storeType: p.storeType || p.storetype || "peer"
     };
     if(listingType === "auction"){
       const summary = await data.getAuctionSummary(l.id);
