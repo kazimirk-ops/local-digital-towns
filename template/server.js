@@ -3157,7 +3157,82 @@ app.put("/api/seller/invoices/:id/send", async (req, res) => {
       [Number(req.params.id), seller.placeId]
     );
     if(!r.rows.length) return res.status(404).json({ error: "Invoice not found" });
-    res.json(r.rows[0]);
+    const inv = r.rows[0];
+    res.json(inv);
+
+    // Send invoice email to buyer (fire-and-forget)
+    const apiKey = (process.env.RESEND_API_KEY || "").trim();
+    if(!apiKey){ console.warn("Invoice email skipped (no RESEND_API_KEY)"); return; }
+    try {
+      const from = (process.env.EMAIL_FROM || "").trim() || "onboarding@resend.dev";
+      const buyerEmail = inv.buyer_email || inv.buyeremail || inv.buyerEmail;
+      const storeName = seller.placeName;
+      const invoiceId = inv.id;
+      const items = typeof inv.items === "string" ? JSON.parse(inv.items) : (inv.items || []);
+      const subtotal = Number(inv.subtotal) || 0;
+      const platformFee = Number(inv.platform_fee || inv.platformfee || inv.platformFee) || 0;
+      const total = Number(inv.total) || 0;
+      const notes = inv.notes || "";
+      const dueDate = inv.due_date || inv.duedate || inv.dueDate || "";
+      const baseUrl = (process.env.BASE_URL || "").trim() || (req.protocol + "://" + req.get("host"));
+      const viewUrl = baseUrl + "/invoice/" + invoiceId;
+
+      let itemsHtml = items.map(function(i){
+        const qty = Number(i.quantity) || 1;
+        const price = Number(i.unitPrice) || 0;
+        return '<tr><td style="padding:8px 12px;border-bottom:1px solid #eee;">' + (i.title || "Item") + '</td>'
+          + '<td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">' + qty + '</td>'
+          + '<td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">$' + price.toFixed(2) + '</td>'
+          + '<td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">$' + (qty * price).toFixed(2) + '</td></tr>';
+      }).join("");
+
+      let extraHtml = "";
+      if(notes) extraHtml += '<p style="color:#555;margin-top:16px;"><strong>Notes:</strong> ' + notes + '</p>';
+      if(dueDate) extraHtml += '<p style="color:#555;"><strong>Due:</strong> ' + new Date(dueDate).toLocaleDateString() + '</p>';
+
+      const html = '<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
+        + '<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">'
+        + '<h2 style="color:#333;">' + storeName + '</h2>'
+        + '<p style="font-size:18px;font-weight:600;">You\'ve received an invoice</p>'
+        + '<p style="color:#666;">Invoice #' + invoiceId + '</p>'
+        + '<table style="width:100%;border-collapse:collapse;margin:16px 0;">'
+        + '<thead><tr style="background:#f5f5f5;">'
+        + '<th style="padding:8px 12px;text-align:left;font-size:13px;color:#666;">Item</th>'
+        + '<th style="padding:8px 12px;text-align:center;font-size:13px;color:#666;">Qty</th>'
+        + '<th style="padding:8px 12px;text-align:right;font-size:13px;color:#666;">Price</th>'
+        + '<th style="padding:8px 12px;text-align:right;font-size:13px;color:#666;">Total</th>'
+        + '</tr></thead><tbody>' + itemsHtml + '</tbody></table>'
+        + '<div style="text-align:right;margin:12px 0;font-size:14px;color:#555;">'
+        + '<div>Subtotal: <strong>$' + subtotal.toFixed(2) + '</strong></div>'
+        + '<div>Platform Fee (5%): <strong>$' + platformFee.toFixed(2) + '</strong></div>'
+        + '<div style="font-size:18px;color:#333;margin-top:4px;">Total: <strong>$' + total.toFixed(2) + '</strong></div>'
+        + '</div>'
+        + extraHtml
+        + '<div style="text-align:center;margin:24px 0;">'
+        + '<a href="' + viewUrl + '" style="display:inline-block;padding:14px 32px;background:#10b981;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">View &amp; Pay</a>'
+        + '</div>'
+        + '<p style="color:#999;font-size:12px;">This invoice was sent by ' + storeName + '.</p>'
+        + '</body></html>';
+
+      const emailResp = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from,
+          to: [buyerEmail],
+          subject: "Invoice #" + invoiceId + " from " + storeName,
+          text: "You've received invoice #" + invoiceId + " from " + storeName + " for $" + total.toFixed(2) + ". View and pay: " + viewUrl,
+          html
+        })
+      });
+      if(!emailResp.ok){
+        const errBody = await emailResp.text().catch(function(){ return ""; });
+        console.error("INVOICE_EMAIL_ERROR", { statusCode: emailResp.status, error: errBody });
+      } else {
+        const result = await emailResp.json().catch(function(){ return {}; });
+        console.log("INVOICE_EMAIL_SENT", { invoiceId, to: buyerEmail, id: result.id });
+      }
+    } catch(emailErr){ console.error("INVOICE_EMAIL_ERROR", emailErr?.message); }
   } catch(err){ console.error("INVOICE_SEND_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
