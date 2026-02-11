@@ -225,7 +225,7 @@
           <!-- Comment-to-Pay Webhook -->
           <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:24px;max-width:700px;margin-bottom:24px;">
             <h3 style="font-size:16px;font-weight:700;margin-bottom:4px;">Comment-to-Pay Webhook</h3>
-            <p style="font-size:13px;color:#64748b;margin-bottom:16px;">When a customer comments on your Facebook post, ManyChat sends their info here and gets back a payment link to DM them.</p>
+            <p style="font-size:13px;color:#64748b;margin-bottom:16px;">When a customer comments on your Facebook post, your automation tool sends their info here and gets back a payment link to DM them.</p>
 
             <label style="display:block;font-size:13px;color:#94a3b8;margin-bottom:4px;">Webhook URL</label>
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
@@ -234,11 +234,11 @@
             </div>
 
             <div style="background:#0a0e1a;border:1px solid #1e293b;border-radius:8px;padding:16px;font-size:13px;color:#94a3b8;line-height:1.6;margin-bottom:16px;">
-              <strong style="color:#e2e8f0;">ManyChat Setup:</strong><br>
-              1. Create a Flow triggered by Facebook comment keyword (e.g. "BUY", "WANT", "ORDER").<br>
-              2. Add an "Ask Email" step to collect the buyer's email address.<br>
+              <strong style="color:#e2e8f0;">Automation Setup:</strong><br>
+              1. Create an automation triggered by Facebook comment keywords (e.g. "BUY", "WANT", "ORDER").<br>
+              2. Add a step to collect the buyer's email address.<br>
               3. Add an External Request (POST) to the <strong>Webhook URL</strong> above with JSON body (see example below).<br>
-              4. Use the returned <code>paymentMessage</code> in a "Send Message" step to DM the buyer their payment link.<br><br>
+              4. Use the returned <code>paymentMessage</code> to send a DM to the buyer with their payment link.<br><br>
               <strong style="color:#e2e8f0;">JSON Body Example:</strong>
               <code style="display:block;background:#111827;padding:10px;border-radius:6px;margin:8px 0;font-size:12px;color:#10b981;">
 {<br>
@@ -331,7 +331,7 @@
           <!-- Facebook Auto-Sync -->
           <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:24px;max-width:600px;margin-top:24px;">
             <h3 style="font-size:16px;font-weight:700;margin-bottom:4px;">Facebook Auto-Sync</h3>
-            <p style="font-size:13px;color:#64748b;margin-bottom:16px;">Connect ManyChat (or any automation tool) to auto-create listings from your Facebook posts.</p>
+            <p style="font-size:13px;color:#64748b;margin-bottom:16px;">Connect your automation tool to auto-create listings from your Facebook posts.</p>
 
             <label style="display:block;font-size:13px;color:#94a3b8;margin-bottom:4px;">Your API Key</label>
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
@@ -347,8 +347,8 @@
             </div>
 
             <div style="background:#0a0e1a;border:1px solid #1e293b;border-radius:8px;padding:16px;font-size:13px;color:#94a3b8;line-height:1.6;">
-              <strong style="color:#e2e8f0;">ManyChat Setup Instructions:</strong><br>
-              1. In ManyChat, create a new Flow triggered by a Facebook post.<br>
+              <strong style="color:#e2e8f0;">Setup Instructions:</strong><br>
+              1. Create an automation triggered by a new Facebook post.<br>
               2. Add an "External Request" (HTTP POST) action pointing to the <strong>Webhook URL</strong> above.<br>
               3. Set the body to JSON with these fields:<br>
               <code style="display:block;background:#111827;padding:10px;border-radius:6px;margin:8px 0;font-size:12px;color:#10b981;">
