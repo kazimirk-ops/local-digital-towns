@@ -3410,6 +3410,28 @@ app.get("/api/seller/deposits", async (req, res) => {
   } catch(err){ console.error("SELLER_DEPOSITS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
+/* ─── Seller Listings (Products tab) ─── */
+app.get("/api/seller/listings", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const r = await data.query('SELECT id, title, description, price, quantity, status, "photoUrlsJson", createdat FROM listings WHERE placeid = $1 ORDER BY createdat DESC', [seller.placeId]);
+    res.json(r.rows);
+  } catch(err){ console.error("SELLER_LISTINGS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.put("/api/seller/listings/:id", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const { title, price, quantity, status } = req.body || {};
+    const r = await data.query(
+      "UPDATE listings SET title=$1, price=$2, quantity=$3, status=$4 WHERE id=$5 AND placeid=$6 RETURNING *",
+      [String(title), Number(price), Number(quantity), String(status), Number(req.params.id), seller.placeId]
+    );
+    if(!r.rows.length) return res.status(404).json({ error: "Listing not found" });
+    res.json(r.rows[0]);
+  } catch(err){ console.error("SELLER_LISTING_UPDATE_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
 /* ─── Facebook Auto-Sync ─── */
 app.get("/api/seller/facebook-key", async (req, res) => {
   try {

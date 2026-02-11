@@ -214,9 +214,39 @@
         <!-- Products -->
         <div class="tab-content" id="tab-products">
           <div class="main-title">Products</div>
-          <div class="placeholder-card">
-            <div class="ph-title">Coming Soon</div>
-            <div class="ph-desc">Add, edit, and manage your product catalog. Set prices, upload photos, and manage inventory.</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <span id="prodCount" style="color:#94a3b8;font-size:14px;">0 products</span>
+            <button type="button" id="prodRefreshBtn" class="btn-gray" style="padding:6px 16px;font-size:13px;">Refresh</button>
+          </div>
+          <div id="prodGrid" style="background:#111827;border:1px solid #1e293b;border-radius:12px;overflow:hidden;">
+            <table class="inv-table">
+              <thead><tr><th>Image</th><th>Title</th><th>Price</th><th>Qty</th><th>Status</th><th></th></tr></thead>
+              <tbody id="prodTableBody">
+                <tr><td colspan="6" class="inv-empty">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Product Edit Modal -->
+        <div id="prodEditOverlay" class="inv-modal-overlay">
+          <div class="inv-modal">
+            <div style="font-size:18px;font-weight:700;color:#e2e8f0;margin-bottom:16px;">Edit Product</div>
+            <input type="hidden" id="prodEditId">
+            <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Title</label>
+            <input type="text" id="prodEditTitle" style="margin-bottom:12px;">
+            <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Price ($)</label>
+            <input type="number" id="prodEditPrice" step="0.01" min="0" style="margin-bottom:12px;">
+            <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Quantity</label>
+            <input type="number" id="prodEditQty" min="0" style="margin-bottom:12px;">
+            <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Status</label>
+            <div style="margin-bottom:16px;">
+              <button type="button" id="prodStatusToggle" class="inv-badge" style="cursor:pointer;padding:4px 14px;font-size:13px;">active</button>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button type="button" id="prodEditCancel" class="btn-gray" style="padding:8px 16px;font-size:13px;">Cancel</button>
+              <button type="button" id="prodEditSave" class="btn-green" style="padding:8px 16px;font-size:13px;">Save</button>
+            </div>
           </div>
         </div>
 
@@ -1021,9 +1051,90 @@
         obs.observe(document.getElementById("tab-" + tabId), { attributes: true, attributeFilter: ["class"] });
       }
 
+      /* ─── Products tab ─── */
+      async function loadProducts(){
+        try {
+          var resp = await fetch("/api/seller/listings");
+          if(!resp.ok) return;
+          var rows = await resp.json();
+          document.getElementById("prodCount").textContent = rows.length + " product" + (rows.length !== 1 ? "s" : "");
+          var body = document.getElementById("prodTableBody");
+          if(!rows.length){
+            body.innerHTML = '<tr><td colspan="6" class="inv-empty">No products yet. Add listings from your store page or use the Facebook Auto-Sync webhook.</td></tr>';
+            return;
+          }
+          body.innerHTML = rows.map(function(p){
+            var photos = [];
+            try { photos = typeof p.photoUrlsJson === "string" ? JSON.parse(p.photoUrlsJson) : (p.photoUrlsJson || []); } catch(e){}
+            var thumb = photos.length ? '<img src="' + photos[0] + '" style="width:40px;height:40px;object-fit:cover;border-radius:6px;">' : '<div style="width:40px;height:40px;border-radius:6px;background:#1e293b;"></div>';
+            var sBg = p.status === "active" ? "#10b981" : "#374151";
+            return '<tr>'
+              + '<td>' + thumb + '</td>'
+              + '<td style="color:#e2e8f0;">' + (p.title || "") + '</td>'
+              + '<td>$' + (Number(p.price) || 0).toFixed(2) + '</td>'
+              + '<td>' + (p.quantity || 0) + '</td>'
+              + '<td><span class="inv-badge" style="background:' + sBg + ';color:#fff;">' + (p.status || "inactive") + '</span></td>'
+              + '<td><button type="button" class="btn-gray prod-edit-btn" data-id="' + p.id + '" data-title="' + (p.title || "").replace(/"/g, "&quot;") + '" data-price="' + (p.price || 0) + '" data-qty="' + (p.quantity || 0) + '" data-status="' + (p.status || "inactive") + '" style="padding:4px 12px;font-size:12px;">Edit</button></td>'
+              + '</tr>';
+          }).join("");
+        } catch(err){ console.error("LOAD_PRODUCTS_ERROR", err); }
+      }
+
+      document.getElementById("prodRefreshBtn").addEventListener("click", loadProducts);
+
+      document.getElementById("prodGrid").addEventListener("click", function(e){
+        var btn = e.target.closest(".prod-edit-btn");
+        if(!btn) return;
+        document.getElementById("prodEditId").value = btn.getAttribute("data-id");
+        document.getElementById("prodEditTitle").value = btn.getAttribute("data-title");
+        document.getElementById("prodEditPrice").value = btn.getAttribute("data-price");
+        document.getElementById("prodEditQty").value = btn.getAttribute("data-qty");
+        var st = btn.getAttribute("data-status") || "inactive";
+        var tog = document.getElementById("prodStatusToggle");
+        tog.textContent = st;
+        tog.style.background = st === "active" ? "#10b981" : "#374151";
+        document.getElementById("prodEditOverlay").style.display = "flex";
+      });
+
+      document.getElementById("prodStatusToggle").addEventListener("click", function(){
+        var tog = document.getElementById("prodStatusToggle");
+        var next = tog.textContent === "active" ? "inactive" : "active";
+        tog.textContent = next;
+        tog.style.background = next === "active" ? "#10b981" : "#374151";
+      });
+
+      document.getElementById("prodEditCancel").addEventListener("click", function(){
+        document.getElementById("prodEditOverlay").style.display = "none";
+      });
+
+      document.getElementById("prodEditOverlay").addEventListener("click", function(e){
+        if(e.target === this) this.style.display = "none";
+      });
+
+      document.getElementById("prodEditSave").addEventListener("click", async function(){
+        var id = document.getElementById("prodEditId").value;
+        var payload = {
+          title: document.getElementById("prodEditTitle").value,
+          price: Number(document.getElementById("prodEditPrice").value),
+          quantity: Number(document.getElementById("prodEditQty").value),
+          status: document.getElementById("prodStatusToggle").textContent
+        };
+        try {
+          var resp = await fetch("/api/seller/listings/" + id, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if(!resp.ok){ alert("Save failed"); return; }
+          document.getElementById("prodEditOverlay").style.display = "none";
+          loadProducts();
+        } catch(err){ console.error("SAVE_PRODUCT_ERROR", err); alert("Save failed"); }
+      });
+
       watchTab("overview", loadDashboardStats);
       watchTab("invoices", loadInvoices);
       watchTab("orders", loadDeposits);
+      watchTab("products", loadProducts);
       watchTab("analytics", loadAnalytics);
       watchTab("facebook", loadCtpWebhookUrl);
       watchTab("settings", function(){ loadSettings(); loadFacebookKey(); });
