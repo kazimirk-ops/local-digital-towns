@@ -3214,6 +3214,7 @@ app.put("/api/seller/invoices/:id/send", async (req, res) => {
         + '<p style="color:#999;font-size:12px;">This invoice was sent by ' + storeName + '.</p>'
         + '</body></html>';
 
+      console.log("INVOICE_EMAIL_SENDING", { to: buyerEmail, invoiceId: inv.id, from, subject: "Invoice #" + invoiceId + " from " + storeName });
       const emailResp = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
@@ -3225,12 +3226,10 @@ app.put("/api/seller/invoices/:id/send", async (req, res) => {
           html
         })
       });
-      if(!emailResp.ok){
-        const errBody = await emailResp.text().catch(function(){ return ""; });
-        console.error("INVOICE_EMAIL_ERROR", { statusCode: emailResp.status, error: errBody });
-      } else {
-        const result = await emailResp.json().catch(function(){ return {}; });
-        console.log("INVOICE_EMAIL_SENT", { invoiceId, to: buyerEmail, id: result.id });
+      const emailBody = await emailResp.text();
+      console.log("INVOICE_EMAIL_RESULT", emailResp.status, emailBody);
+      if(emailResp.status !== 200){
+        console.error("INVOICE_EMAIL_FAILED", emailResp.status, emailBody);
       }
     } catch(emailErr){ console.error("INVOICE_EMAIL_ERROR", emailErr?.message); }
   } catch(err){ console.error("INVOICE_SEND_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
