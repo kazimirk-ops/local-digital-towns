@@ -3126,6 +3126,35 @@ async function requireSellerPlace(req, res){
   return { userId: u, placeId: pr.rows[0].id, placeName: pr.rows[0].name };
 }
 
+/* ─── Dashboard Stats ─── */
+app.get("/api/seller/dashboard-stats", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const pid = seller.placeId;
+    const [todayRev, totalRev, pendDep, outstanding, byDay, fees, monthRev] = await Promise.all([
+      data.query("SELECT COALESCE(SUM(total),0) as rev, COUNT(*) as cnt FROM invoices WHERE place_id=$1 AND status='paid' AND paid_at >= CURRENT_DATE", [pid]),
+      data.query("SELECT COALESCE(SUM(total),0) as rev, COUNT(*) as cnt FROM invoices WHERE place_id=$1 AND status='paid'", [pid]),
+      data.query("SELECT COALESCE(SUM(amount),0) as amt, COUNT(*) as cnt FROM deposits WHERE place_id=$1 AND status='pending'", [pid]),
+      data.query("SELECT COALESCE(SUM(total),0) as amt FROM invoices WHERE place_id=$1 AND status='sent'", [pid]),
+      data.query("SELECT DATE(paid_at) as day, SUM(total) as revenue, COUNT(*) as orders FROM invoices WHERE place_id=$1 AND status='paid' AND paid_at >= NOW() - INTERVAL '30 days' GROUP BY DATE(paid_at) ORDER BY day", [pid]),
+      data.query("SELECT COALESCE(SUM(platform_fee),0) as amt FROM invoices WHERE place_id=$1 AND status='paid'", [pid]),
+      data.query("SELECT COALESCE(SUM(total),0) as rev FROM invoices WHERE place_id=$1 AND status='paid' AND paid_at >= DATE_TRUNC('month', CURRENT_DATE)", [pid])
+    ]);
+    res.json({
+      todayRevenue: Number(todayRev.rows[0].rev) || 0,
+      todayOrders: Number(todayRev.rows[0].cnt) || 0,
+      totalRevenue: Number(totalRev.rows[0].rev) || 0,
+      totalOrders: Number(totalRev.rows[0].cnt) || 0,
+      pendingDeposits: Number(pendDep.rows[0].amt) || 0,
+      pendingDepositCount: Number(pendDep.rows[0].cnt) || 0,
+      outstandingInvoices: Number(outstanding.rows[0].amt) || 0,
+      revenueByDay: byDay.rows.map(function(r){ return { day: r.day, revenue: Number(r.revenue)||0, orders: Number(r.orders)||0 }; }),
+      platformFeesTotal: Number(fees.rows[0].amt) || 0,
+      monthlyRevenue: Number(monthRev.rows[0].rev) || 0
+    });
+  } catch(err){ console.error("DASHBOARD_STATS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
 app.post("/api/seller/invoices", async (req, res) => {
   try {
     const seller = await requireSellerPlace(req, res); if(!seller) return;

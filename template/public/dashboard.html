@@ -57,6 +57,8 @@
       .kpi-card .kpi-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
       .kpi-card .kpi-value { font-size: 28px; font-weight: 700; color: #e2e8f0; margin-top: 6px; }
       .kpi-card .kpi-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+      .rev-bar { transition: opacity .15s; }
+      .rev-bar:hover { opacity: 0.7; }
 
       /* Placeholder card */
       .placeholder-card {
@@ -145,7 +147,7 @@
       </nav>
       <div class="sidebar-footer">
         <div class="rev-label">Monthly Revenue</div>
-        <div class="rev-amount">&mdash;</div>
+        <div class="rev-amount" id="sidebarMonthlyRev">&mdash;</div>
         <div class="rev-period" id="revPeriod">This month</div>
       </div>
     </aside>
@@ -158,11 +160,20 @@
         <div class="tab-content active" id="tab-overview">
           <div class="main-title">Overview</div>
           <div class="kpi-grid">
-            <div class="kpi-card"><div class="kpi-label">Today's Revenue</div><div class="kpi-value">&mdash;</div><div class="kpi-sub">vs yesterday</div></div>
-            <div class="kpi-card"><div class="kpi-label">Orders</div><div class="kpi-value">&mdash;</div><div class="kpi-sub">Today</div></div>
-            <div class="kpi-card"><div class="kpi-label">Store Views</div><div class="kpi-value">&mdash;</div><div class="kpi-sub">Last 24h</div></div>
-            <div class="kpi-card"><div class="kpi-label">Conversion Rate</div><div class="kpi-value">&mdash;</div><div class="kpi-sub">Views to orders</div></div>
-            <div class="kpi-card"><div class="kpi-label">Pending Deposits</div><div class="kpi-value">&mdash;</div><div class="kpi-sub">Awaiting payout</div></div>
+            <div class="kpi-card"><div class="kpi-label">Today's Revenue</div><div class="kpi-value" id="kpiTodayRev" style="color:#10b981;">&mdash;</div><div class="kpi-sub" id="kpiTodayOrders">0 orders today</div></div>
+            <div class="kpi-card"><div class="kpi-label">Today's Orders</div><div class="kpi-value" id="kpiTodayOrd" style="color:#3b82f6;">&mdash;</div><div class="kpi-sub">Paid invoices today</div></div>
+            <div class="kpi-card"><div class="kpi-label">Total Revenue</div><div class="kpi-value" id="kpiTotalRev" style="color:#10b981;">&mdash;</div><div class="kpi-sub" id="kpiTotalOrders">0 orders all time</div></div>
+            <div class="kpi-card"><div class="kpi-label">Outstanding Invoices</div><div class="kpi-value" id="kpiOutstanding" style="color:#f59e0b;">&mdash;</div><div class="kpi-sub">Sent &amp; unpaid</div></div>
+            <div class="kpi-card"><div class="kpi-label">Pending Deposits</div><div class="kpi-value" id="kpiDeposits" style="color:#ef4444;">&mdash;</div><div class="kpi-sub" id="kpiDepCount">0 pending</div></div>
+          </div>
+          <!-- Revenue Chart (last 30 days) -->
+          <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h3 style="font-size:15px;font-weight:700;margin:0;">Revenue — Last 30 Days</h3>
+              <span style="font-size:12px;color:#64748b;" id="chartTotal"></span>
+            </div>
+            <div id="revChart" style="display:flex;align-items:flex-end;gap:3px;height:140px;"></div>
+            <div id="revChartLabels" style="display:flex;gap:3px;margin-top:6px;"></div>
           </div>
         </div>
 
@@ -448,6 +459,53 @@
         document.getElementById("sidebar").classList.remove("open");
         document.getElementById("overlay").classList.remove("open");
       });
+
+      /* ─── Overview / Dashboard Stats ─── */
+      async function loadDashboardStats(){
+        try {
+          var resp = await fetch("/api/seller/dashboard-stats");
+          if(!resp.ok) return;
+          var s = await resp.json();
+          document.getElementById("kpiTodayRev").textContent = "$" + (s.todayRevenue||0).toFixed(2);
+          document.getElementById("kpiTodayOrd").textContent = s.todayOrders || "0";
+          document.getElementById("kpiTodayOrders").textContent = s.todayOrders + " order" + (s.todayOrders !== 1 ? "s" : "") + " today";
+          document.getElementById("kpiTotalRev").textContent = "$" + (s.totalRevenue||0).toFixed(2);
+          document.getElementById("kpiTotalOrders").textContent = s.totalOrders + " order" + (s.totalOrders !== 1 ? "s" : "") + " all time";
+          document.getElementById("kpiOutstanding").textContent = "$" + (s.outstandingInvoices||0).toFixed(2);
+          document.getElementById("kpiDeposits").textContent = "$" + (s.pendingDeposits||0).toFixed(2);
+          document.getElementById("kpiDepCount").textContent = s.pendingDepositCount + " pending";
+          document.getElementById("sidebarMonthlyRev").textContent = "$" + (s.monthlyRevenue||0).toFixed(2);
+          document.getElementById("chartTotal").textContent = "Total: $" + (s.totalRevenue||0).toFixed(2);
+
+          // Build 30-day bar chart
+          var chart = document.getElementById("revChart");
+          var labels = document.getElementById("revChartLabels");
+          var days = s.revenueByDay || [];
+          // Fill in all 30 days
+          var dayMap = {};
+          days.forEach(function(d){ dayMap[d.day ? d.day.substring(0,10) : ""] = d.revenue; });
+          var bars = [];
+          for(var i = 29; i >= 0; i--){
+            var dt = new Date(); dt.setDate(dt.getDate() - i);
+            var key = dt.toISOString().substring(0,10);
+            bars.push({ day: key, revenue: dayMap[key] || 0, label: dt.getDate() });
+          }
+          var maxRev = Math.max.apply(null, bars.map(function(b){ return b.revenue; })) || 1;
+          chart.innerHTML = bars.map(function(b){
+            var pct = Math.max((b.revenue / maxRev) * 100, 2);
+            var color = b.revenue > 0 ? "#10b981" : "#1e293b";
+            var title = b.day + ": $" + b.revenue.toFixed(2);
+            return '<div title="' + title + '" class="rev-bar" style="flex:1;min-width:0;height:' + pct + '%;background:' + color + ';border-radius:3px 3px 0 0;cursor:pointer;"></div>';
+          }).join("");
+          labels.innerHTML = bars.map(function(b, idx){
+            var show = idx === 0 || idx === 14 || idx === 29;
+            return '<div style="flex:1;min-width:0;text-align:center;font-size:10px;color:' + (show ? '#64748b' : 'transparent') + ';">' + b.label + '</div>';
+          }).join("");
+        } catch(err){ console.error("LOAD_DASHBOARD_STATS_ERROR", err); }
+      }
+
+      // Load overview immediately since it's the default active tab
+      loadDashboardStats();
 
       /* ─── Invoice helpers ─── */
       function fmt(n){ return "$" + (Number(n)||0).toFixed(2); }
@@ -834,6 +892,7 @@
         obs.observe(document.getElementById("tab-" + tabId), { attributes: true, attributeFilter: ["class"] });
       }
 
+      watchTab("overview", loadDashboardStats);
       watchTab("invoices", loadInvoices);
       watchTab("orders", loadDeposits);
       watchTab("facebook", loadCtpWebhookUrl);
