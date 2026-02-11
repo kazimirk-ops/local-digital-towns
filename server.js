@@ -3155,6 +3155,50 @@ app.get("/api/seller/dashboard-stats", async (req, res) => {
   } catch(err){ console.error("DASHBOARD_STATS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
+/* ─── Analytics ─── */
+app.get("/api/seller/analytics", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const pid = seller.placeId;
+    const [paidInvoices, topCust, statusCounts, weeklyRev, avgOV, fbActivity] = await Promise.all([
+      data.query("SELECT items FROM invoices WHERE place_id = $1 AND status = 'paid'", [pid]),
+      data.query("SELECT buyer_email, buyer_name, COUNT(*) as order_count, SUM(total) as total_spent FROM invoices WHERE place_id = $1 AND status = 'paid' GROUP BY buyer_email, buyer_name ORDER BY total_spent DESC LIMIT 10", [pid]),
+      data.query("SELECT status, COUNT(*) as count FROM invoices WHERE place_id = $1 GROUP BY status", [pid]),
+      data.query("SELECT DATE_TRUNC('week', paid_at) as week, SUM(total) as revenue, COUNT(*) as orders FROM invoices WHERE place_id = $1 AND status = 'paid' AND paid_at >= NOW() - INTERVAL '12 weeks' GROUP BY DATE_TRUNC('week', paid_at) ORDER BY week", [pid]),
+      data.query("SELECT AVG(total) as avg FROM invoices WHERE place_id = $1 AND status = 'paid'", [pid]),
+      data.query("SELECT DATE(created_at) as day, COUNT(*) as count FROM listings WHERE placeId = $1 AND created_at >= NOW() - INTERVAL '30 days' GROUP BY DATE(created_at) ORDER BY day", [pid])
+    ]);
+
+    // Aggregate revenue by product title
+    const productMap = {};
+    paidInvoices.rows.forEach(function(row){
+      const items = typeof row.items === "string" ? JSON.parse(row.items) : (row.items || []);
+      items.forEach(function(i){
+        const t = (i.title || "Untitled").toString();
+        if(!productMap[t]) productMap[t] = { title: t, units: 0, revenue: 0 };
+        const qty = Number(i.quantity) || 1;
+        const up = Number(i.unitPrice || i.price) || 0;
+        productMap[t].units += qty;
+        productMap[t].revenue += qty * up;
+      });
+    });
+    const revenueByProduct = Object.values(productMap).sort(function(a,b){ return b.revenue - a.revenue; }).slice(0, 10);
+
+    // Status counts map
+    const statusMap = {};
+    statusCounts.rows.forEach(function(r){ statusMap[r.status] = Number(r.count) || 0; });
+
+    res.json({
+      revenueByProduct,
+      topCustomers: topCust.rows.map(function(r){ return { email: r.buyer_email || r.buyeremail, name: r.buyer_name || r.buyername, orderCount: Number(r.order_count || r.ordercount) || 0, totalSpent: Number(r.total_spent || r.totalspent) || 0 }; }),
+      invoiceConversion: { draft: statusMap.draft || 0, sent: statusMap.sent || 0, paid: statusMap.paid || 0, cancelled: statusMap.cancelled || 0 },
+      revenueByWeek: weeklyRev.rows.map(function(r){ return { week: r.week, revenue: Number(r.revenue) || 0, orders: Number(r.orders) || 0 }; }),
+      averageOrderValue: Number(avgOV.rows[0]?.avg) || 0,
+      fbWebhookActivity: fbActivity.rows.map(function(r){ return { day: r.day, count: Number(r.count) || 0 }; })
+    });
+  } catch(err){ console.error("ANALYTICS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
 app.post("/api/seller/invoices", async (req, res) => {
   try {
     const seller = await requireSellerPlace(req, res); if(!seller) return;
