@@ -530,7 +530,7 @@ function openListingModal(l, photos){
     if(isPromoted){
       // Promoted store: price + Shop on Shopify button
       const shopBtn = shopifyUrl
-        ? `<a href="${shopifyUrl}" target="_blank" rel="noopener" style="display:block;text-align:center;padding:12px 16px;font-weight:700;font-size:15px;border-radius:8px;background:#22c55e;color:#fff;text-decoration:none;margin-top:12px;">Shop on Website &#10140;</a>`
+        ? `<a href="/api/click/${l.id}" target="_blank" rel="noopener" style="display:block;text-align:center;padding:12px 16px;font-weight:700;font-size:15px;border-radius:8px;background:#22c55e;color:#fff;text-decoration:none;margin-top:12px;">Shop on Website &#10140;</a>`
         : "";
       detailsEl.innerHTML = `
         <div style="font-size:1.5em; font-weight:700; color:#22c55e; margin:12px 0;">$${Number(priceVal).toFixed(2)}</div>
