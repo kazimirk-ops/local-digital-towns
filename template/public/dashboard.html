@@ -372,9 +372,17 @@
         <!-- Customers -->
         <div class="tab-content" id="tab-customers">
           <div class="main-title">Customers</div>
-          <div class="placeholder-card">
-            <div class="ph-title">Coming Soon</div>
-            <div class="ph-desc">View customer profiles, order history, and manage your customer relationships.</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <span id="custCount" style="color:#94a3b8;font-size:14px;">0 customers</span>
+            <button type="button" id="custExportBtn" class="btn-gray" style="padding:6px 16px;font-size:13px;">Export CSV</button>
+          </div>
+          <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;overflow:hidden;">
+            <table class="inv-table">
+              <thead><tr><th>Name</th><th>Email</th><th>Orders</th><th>Total Spent</th><th>Last Purchase</th></tr></thead>
+              <tbody id="custTableBody">
+                <tr><td colspan="5" class="inv-empty">Loading...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -1131,10 +1139,57 @@
         } catch(err){ console.error("SAVE_PRODUCT_ERROR", err); alert("Save failed"); }
       });
 
+      /* ─── Customers tab ─── */
+      var _custRows = [];
+      async function loadCustomers(){
+        try {
+          var resp = await fetch("/api/seller/customers");
+          if(!resp.ok) return;
+          _custRows = await resp.json();
+          document.getElementById("custCount").textContent = _custRows.length + " customer" + (_custRows.length !== 1 ? "s" : "");
+          var body = document.getElementById("custTableBody");
+          if(!_custRows.length){
+            body.innerHTML = '<tr><td colspan="5" class="inv-empty">No customers yet. Customers appear here once they pay an invoice.</td></tr>';
+            return;
+          }
+          body.innerHTML = _custRows.map(function(c){
+            var spent = Number(c.total_spent || c.totalspent || c.total_spent) || 0;
+            var lastDate = c.last_purchase || c.lastpurchase || c.last_purchase || "";
+            if(lastDate) lastDate = new Date(lastDate).toLocaleDateString();
+            return '<tr>'
+              + '<td style="color:#e2e8f0;">' + (c.buyer_name || c.buyername || "") + '</td>'
+              + '<td>' + (c.buyer_email || c.buyeremail || "") + '</td>'
+              + '<td>' + (c.order_count || c.ordercount || 0) + '</td>'
+              + '<td style="color:#10b981;">$' + spent.toFixed(2) + '</td>'
+              + '<td style="color:#64748b;">' + lastDate + '</td>'
+              + '</tr>';
+          }).join("");
+        } catch(err){ console.error("LOAD_CUSTOMERS_ERROR", err); }
+      }
+
+      document.getElementById("custExportBtn").addEventListener("click", function(){
+        if(!_custRows.length) return;
+        var csv = "Name,Email,Orders,Total Spent,Last Purchase\n";
+        _custRows.forEach(function(c){
+          var name = (c.buyer_name || c.buyername || "").replace(/"/g, '""');
+          var email = (c.buyer_email || c.buyeremail || "").replace(/"/g, '""');
+          var spent = (Number(c.total_spent || c.totalspent) || 0).toFixed(2);
+          var lastDate = c.last_purchase || c.lastpurchase || "";
+          if(lastDate) lastDate = new Date(lastDate).toLocaleDateString();
+          csv += '"' + name + '","' + email + '",' + (c.order_count || c.ordercount || 0) + ',' + spent + ',"' + lastDate + '"\n';
+        });
+        var blob = new Blob([csv], { type: "text/csv" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "customers.csv";
+        a.click();
+      });
+
       watchTab("overview", loadDashboardStats);
       watchTab("invoices", loadInvoices);
       watchTab("orders", loadDeposits);
       watchTab("products", loadProducts);
+      watchTab("customers", loadCustomers);
       watchTab("analytics", loadAnalytics);
       watchTab("facebook", loadCtpWebhookUrl);
       watchTab("settings", function(){ loadSettings(); loadFacebookKey(); });

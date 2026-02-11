@@ -3432,6 +3432,15 @@ app.put("/api/seller/listings/:id", async (req, res) => {
   } catch(err){ console.error("SELLER_LISTING_UPDATE_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
+/* ─── Seller Customers (Customers tab) ─── */
+app.get("/api/seller/customers", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const r = await data.query("SELECT buyer_email, buyer_name, COUNT(*) as order_count, SUM(total) as total_spent, MAX(paid_at) as last_purchase FROM invoices WHERE place_id = $1 AND status = 'paid' GROUP BY buyer_email, buyer_name ORDER BY total_spent DESC", [seller.placeId]);
+    res.json(r.rows);
+  } catch(err){ console.error("SELLER_CUSTOMERS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
 /* ─── Facebook Auto-Sync ─── */
 app.get("/api/seller/facebook-key", async (req, res) => {
   try {
