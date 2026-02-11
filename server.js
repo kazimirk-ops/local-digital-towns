@@ -3235,6 +3235,77 @@ app.put("/api/seller/invoices/:id/send", async (req, res) => {
   } catch(err){ console.error("INVOICE_SEND_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
+app.get("/invoice/:id", async (req, res) => {
+  try {
+    const r = await data.query("SELECT * FROM invoices WHERE id = $1", [Number(req.params.id)]);
+    if(!r.rows.length) return res.type("html").send('<!doctype html><html><head><meta charset="utf-8"><title>Not Found</title></head><body style="font-family:Arial,sans-serif;background:#0a0e1a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;"><div style="text-align:center;"><h1 style="font-size:24px;">Invoice not found</h1><p style="color:#64748b;">This invoice may have been removed or the link is incorrect.</p><a href="/" style="color:#10b981;">Go home</a></div></body></html>');
+    const inv = r.rows[0];
+    const placeR = await data.query("SELECT name FROM places WHERE id = $1", [Number(inv.place_id || inv.placeid || inv.placeId)]);
+    const storeName = placeR.rows.length ? placeR.rows[0].name : "Store";
+    const items = typeof inv.items === "string" ? JSON.parse(inv.items) : (inv.items || []);
+    const subtotal = Number(inv.subtotal) || 0;
+    const platformFee = Number(inv.platform_fee || inv.platformfee || inv.platformFee) || 0;
+    const total = Number(inv.total) || 0;
+    const notes = inv.notes || "";
+    const dueDate = inv.due_date || inv.duedate || inv.dueDate || "";
+    const status = inv.status || "draft";
+    const paidAt = inv.paid_at || inv.paidat || inv.paidAt || "";
+    const platformName = townCfg.fullName || townCfg.name || "Local Digital Towns";
+
+    const badgeColors = { draft: "#374151", sent: "#2563eb", paid: "#10b981", cancelled: "#ef4444" };
+    const badgeBg = badgeColors[status] || "#374151";
+
+    let itemsHtml = items.map(function(i){
+      const qty = Number(i.quantity) || 1;
+      const price = Number(i.unitPrice) || 0;
+      return '<tr><td style="padding:10px 12px;border-bottom:1px solid #1e293b;">' + (i.title || "Item") + '</td>'
+        + '<td style="padding:10px 12px;border-bottom:1px solid #1e293b;text-align:center;">' + qty + '</td>'
+        + '<td style="padding:10px 12px;border-bottom:1px solid #1e293b;text-align:right;">$' + price.toFixed(2) + '</td>'
+        + '<td style="padding:10px 12px;border-bottom:1px solid #1e293b;text-align:right;">$' + (qty * price).toFixed(2) + '</td></tr>';
+    }).join("");
+
+    let extraHtml = "";
+    if(notes) extraHtml += '<div style="margin-top:20px;padding:16px;background:#111827;border-radius:8px;"><span style="font-size:13px;color:#64748b;">Notes</span><p style="margin:6px 0 0;color:#e2e8f0;">' + notes + '</p></div>';
+    if(dueDate) extraHtml += '<p style="color:#64748b;margin-top:12px;">Due: <span style="color:#e2e8f0;">' + new Date(dueDate).toLocaleDateString() + '</span></p>';
+
+    let actionHtml;
+    if(status === "paid"){
+      const paidDate = paidAt ? new Date(paidAt).toLocaleDateString() : "";
+      actionHtml = '<div style="text-align:center;margin:32px 0;padding:20px;background:rgba(16,185,129,.1);border-radius:12px;">'
+        + '<span style="font-size:32px;">&#10003;</span>'
+        + '<p style="font-size:18px;font-weight:700;color:#10b981;margin-top:8px;">Paid' + (paidDate ? " on " + paidDate : "") + '</p></div>';
+    } else {
+      actionHtml = '<div style="text-align:center;margin:32px 0;">'
+        + '<button disabled style="padding:14px 40px;background:#374151;color:#94a3b8;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:not-allowed;">Pay Now (Coming Soon)</button></div>';
+    }
+
+    const html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invoice #' + inv.id + ' — ' + storeName + '</title></head>'
+      + '<body style="font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;background:#0a0e1a;color:#e2e8f0;margin:0;padding:0;min-height:100vh;">'
+      + '<div style="max-width:600px;margin:0 auto;padding:32px 20px;">'
+      + '<h2 style="margin:0 0 4px;font-size:18px;color:#94a3b8;">' + storeName + '</h2>'
+      + '<h1 style="margin:0 0 16px;font-size:28px;">Invoice #' + inv.id + '</h1>'
+      + '<span style="display:inline-block;padding:3px 12px;border-radius:6px;font-size:13px;font-weight:600;background:' + badgeBg + ';color:#fff;">' + status + '</span>'
+      + '<table style="width:100%;border-collapse:collapse;margin:24px 0;">'
+      + '<thead><tr style="border-bottom:1px solid #1e293b;">'
+      + '<th style="padding:10px 12px;text-align:left;font-size:12px;color:#64748b;text-transform:uppercase;">Item</th>'
+      + '<th style="padding:10px 12px;text-align:center;font-size:12px;color:#64748b;text-transform:uppercase;">Qty</th>'
+      + '<th style="padding:10px 12px;text-align:right;font-size:12px;color:#64748b;text-transform:uppercase;">Price</th>'
+      + '<th style="padding:10px 12px;text-align:right;font-size:12px;color:#64748b;text-transform:uppercase;">Total</th>'
+      + '</tr></thead><tbody>' + itemsHtml + '</tbody></table>'
+      + '<div style="text-align:right;padding:12px 0;font-size:14px;color:#94a3b8;">'
+      + '<div style="padding:3px 0;">Subtotal: <strong style="color:#e2e8f0;">$' + subtotal.toFixed(2) + '</strong></div>'
+      + '<div style="padding:3px 0;">Platform Fee (5%): <strong style="color:#e2e8f0;">$' + platformFee.toFixed(2) + '</strong></div>'
+      + '<div style="padding:8px 0 0;font-size:20px;color:#10b981;font-weight:700;">Total: $' + total.toFixed(2) + '</div>'
+      + '</div>'
+      + extraHtml
+      + actionHtml
+      + '<div style="text-align:center;padding:24px 0;border-top:1px solid #1e293b;margin-top:24px;font-size:12px;color:#475569;">Powered by ' + platformName + '</div>'
+      + '</div></body></html>';
+
+    res.type("html").send(html);
+  } catch(err){ console.error("INVOICE_PAGE_ERROR", err?.message); res.status(500).type("html").send('<!doctype html><html><body style="font-family:sans-serif;background:#0a0e1a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;"><p>Something went wrong.</p></body></html>'); }
+});
+
 app.get("/api/invoice/:id", async (req, res) => {
   try {
     const r = await data.query("SELECT * FROM invoices WHERE id = $1", [Number(req.params.id)]);
