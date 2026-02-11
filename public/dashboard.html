@@ -86,8 +86,7 @@
       .inv-empty { text-align: center; padding: 40px; color: #64748b; }
 
       /* Invoice modal */
-      .inv-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; align-items: center; justify-content: center; }
-      .inv-modal-overlay.open { display: flex; }
+      .inv-modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.6); z-index: 100; align-items: center; justify-content: center; }
       .inv-modal { background: #1e293b; border-radius: 16px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 24px; position: relative; }
       .inv-modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
       .inv-modal .close-btn { position: absolute; top: 12px; right: 16px; background: none; border: none; color: #94a3b8; font-size: 22px; cursor: pointer; }
@@ -186,7 +185,7 @@
           </div>
           <div class="inv-header">
             <span style="font-size:14px;color:#64748b;" id="invCount">0 invoices</span>
-            <button class="btn-green" onclick="openInvModal()">+ New Invoice</button>
+            <button type="button" class="btn-green" onclick="openInvModal()">+ New Invoice</button>
           </div>
           <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;overflow:hidden;">
             <table class="inv-table">
@@ -254,7 +253,7 @@
     </div>
 
     <!-- Invoice Modal -->
-    <div class="inv-modal-overlay" id="invModalOverlay">
+    <div class="inv-modal-overlay" id="invModalOverlay" onclick="if(event.target===this)closeInvModal();">
       <div class="inv-modal">
         <button class="close-btn" onclick="closeInvModal()">&times;</button>
         <h3>Create Invoice</h3>
@@ -374,11 +373,12 @@
       addInvLine();
       calcInvTotals();
       document.getElementById("invSubmitBtn").disabled = false;
-      document.getElementById("invModalOverlay").classList.add("open");
+      document.getElementById("invSubmitBtn").textContent = "Create Draft";
+      document.getElementById("invModalOverlay").style.display = "flex";
     }
 
     function closeInvModal(){
-      document.getElementById("invModalOverlay").classList.remove("open");
+      document.getElementById("invModalOverlay").style.display = "none";
     }
 
     async function submitInvoice(){
