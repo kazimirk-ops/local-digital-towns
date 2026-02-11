@@ -1806,6 +1806,8 @@ app.get("/api/me", async (req, res) =>{
   const ctx = await data.getTownContext(1, r.user.id);
   const trustTier = (ctx.membership?.trustTier ?? ctx.membership?.trusttier ?? r.user.trustTier ?? 0);
 const tierName = permissions.tierName(trustTier);
+  const placeCheck = await data.query("SELECT id FROM places WHERE ownerUserId = $1 LIMIT 1", [r.user.id]);
+  const hasStore = placeCheck.rows.length > 0;
   res.json({
     ok: true,
     user: {
@@ -1816,7 +1818,8 @@ const tierName = permissions.tierName(trustTier);
       trustTierLabel: tierName,
       level: trustTier,
       isAdmin: isAdminUser(r.user),
-      isBuyerVerified: Number(r.user.isBuyerVerified ?? r.user.isbuyerverified ?? 0)
+      isBuyerVerified: Number(r.user.isBuyerVerified ?? r.user.isbuyerverified ?? 0),
+      hasStore
     }
   });
 });

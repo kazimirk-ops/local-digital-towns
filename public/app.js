@@ -2565,6 +2565,8 @@ function updateSidebarAuth(){
   if(storeLink) storeLink.href = "/me/store";
   const myProfileLink = $("navMyProfileLink");
   if(myProfileLink) myProfileLink.href = "/me/profile";
+  const dashLink = $("navDashboardLink");
+  if(dashLink) dashLink.style.display = (access.loggedIn && access.hasStore) ? "inline-flex" : "none";
   const adminLink = $("topAdminLink");
   if(adminLink) adminLink.href = access.isAdmin ? "/admin" : "/admin/login";
   const welcome = $("welcomeCard");
@@ -2615,7 +2617,8 @@ async function loadMe() {
   const status = me.signup?.status || "waitlist";
   const reason = me.signup?.reason || "No signup record yet.";
   const isAdmin = Number(me.user.isAdmin) === 1;
-  access = { loggedIn:true, eligible: status==="eligible", email, reason, isAdmin };
+  const hasStore = !!me.user.hasStore;
+  access = { loggedIn:true, eligible: status==="eligible", email, reason, isAdmin, hasStore };
   window.access = access;
   window.state = state;
   currentUser = { id: me.user.id, displayName };
