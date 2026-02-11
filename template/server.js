@@ -4634,6 +4634,25 @@ app.get("/places/:id/listings", async (req, res) =>{
     return placeId === pid && (showAll || isActive);
   }));
 });
+app.get("/api/admin/clicks/:placeId", async (req, res) => {
+  try {
+    const placeId = Number(req.params.placeId);
+    const byProduct = await data.query(
+      `SELECT ce.listing_id, l.title, COUNT(*) as clicks FROM click_events ce LEFT JOIN listings l ON l.id = ce.listing_id WHERE ce.place_id = $1 GROUP BY ce.listing_id, l.title ORDER BY clicks DESC`,
+      [placeId]
+    );
+    const byDay = await data.query(
+      `SELECT DATE(created_at) as day, COUNT(*) as clicks FROM click_events WHERE place_id = $1 AND created_at > NOW() - INTERVAL '30 days' GROUP BY day ORDER BY day`,
+      [placeId]
+    );
+    const total = byProduct.rows.reduce((sum, r) => sum + Number(r.clicks), 0);
+    res.json({ byProduct: byProduct.rows, byDay: byDay.rows, total });
+  } catch (err) {
+    console.error("CLICK_ANALYTICS_ERROR", err?.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 app.get("/api/click/:listingId", async (req, res) => {
   try {
     const listingId = Number(req.params.listingId);
