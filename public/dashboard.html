@@ -66,6 +66,46 @@
       .placeholder-card .ph-title { font-size: 18px; font-weight: 600; color: #94a3b8; margin-bottom: 8px; }
       .placeholder-card .ph-desc { font-size: 14px; color: #64748b; max-width: 400px; margin: 0 auto; line-height: 1.6; }
 
+      /* Invoice metrics */
+      .inv-metrics { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+      .inv-metric { flex: 1; min-width: 140px; background: #111827; border: 1px solid #1e293b; border-radius: 12px; padding: 16px; }
+      .inv-metric .im-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+      .inv-metric .im-value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+      .inv-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+      .btn-green { background: #10b981; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; }
+      .btn-green:hover { background: #059669; }
+      .btn-gray { background: #374151; color: #e2e8f0; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; }
+      .btn-gray:hover { background: #4b5563; }
+
+      /* Invoice table */
+      .inv-table { width: 100%; border-collapse: collapse; }
+      .inv-table th { text-align: left; font-size: 12px; color: #64748b; text-transform: uppercase; padding: 8px 12px; border-bottom: 1px solid #1e293b; }
+      .inv-table td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,.04); font-size: 14px; }
+      .inv-table tr:hover td { background: rgba(255,255,255,.02); }
+      .inv-badge { display: inline-block; padding: 2px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+      .inv-empty { text-align: center; padding: 40px; color: #64748b; }
+
+      /* Invoice modal */
+      .inv-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; align-items: center; justify-content: center; }
+      .inv-modal-overlay.open { display: flex; }
+      .inv-modal { background: #1e293b; border-radius: 16px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 24px; position: relative; }
+      .inv-modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+      .inv-modal .close-btn { position: absolute; top: 12px; right: 16px; background: none; border: none; color: #94a3b8; font-size: 22px; cursor: pointer; }
+      .inv-modal label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 4px; margin-top: 12px; }
+      .inv-modal input, .inv-modal textarea { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid #374151; background: #111827; color: #e2e8f0; font-size: 14px; }
+      .inv-modal textarea { min-height: 60px; resize: vertical; }
+      .inv-modal input:focus, .inv-modal textarea:focus { outline: none; border-color: #10b981; }
+      .inv-line-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+      .inv-line-row input { flex: 1; }
+      .inv-line-row .qty-input { max-width: 60px; }
+      .inv-line-row .price-input { max-width: 90px; }
+      .inv-line-row .remove-line { background: none; border: none; color: #ef4444; font-size: 18px; cursor: pointer; padding: 4px 8px; }
+      .inv-add-line { color: #10b981; font-size: 13px; cursor: pointer; margin-top: 8px; display: inline-block; background: none; border: none; }
+      .inv-totals { margin-top: 16px; padding-top: 12px; border-top: 1px solid #374151; font-size: 14px; }
+      .inv-totals div { display: flex; justify-content: space-between; padding: 3px 0; }
+      .inv-totals .inv-total-row { font-weight: 700; font-size: 16px; color: #10b981; }
+      .inv-modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+
       /* Responsive */
       @media (max-width: 768px) {
         .sidebar { transform: translateX(-100%); transition: transform .25s; width: 260px; }
@@ -139,9 +179,20 @@
         <!-- Invoices -->
         <div class="tab-content" id="tab-invoices">
           <div class="main-title">Invoices</div>
-          <div class="placeholder-card">
-            <div class="ph-title">Coming Soon</div>
-            <div class="ph-desc">Generate and send invoices to customers, track payment status, and manage billing history.</div>
+          <div class="inv-metrics">
+            <div class="inv-metric"><div class="im-label">Collected</div><div class="im-value" id="invCollected" style="color:#10b981;">$0.00</div></div>
+            <div class="inv-metric"><div class="im-label">Outstanding</div><div class="im-value" id="invOutstanding" style="color:#f59e0b;">$0.00</div></div>
+            <div class="inv-metric"><div class="im-label">Fees Earned</div><div class="im-value" id="invFees" style="color:#94a3b8;">$0.00</div></div>
+          </div>
+          <div class="inv-header">
+            <span style="font-size:14px;color:#64748b;" id="invCount">0 invoices</span>
+            <button class="btn-green" onclick="openInvModal()">+ New Invoice</button>
+          </div>
+          <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;overflow:hidden;">
+            <table class="inv-table">
+              <thead><tr><th>Invoice</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead>
+              <tbody id="invTableBody"><tr><td colspan="6" class="inv-empty">No invoices yet</td></tr></tbody>
+            </table>
           </div>
         </div>
 
@@ -202,6 +253,36 @@
       </main>
     </div>
 
+    <!-- Invoice Modal -->
+    <div class="inv-modal-overlay" id="invModalOverlay">
+      <div class="inv-modal">
+        <button class="close-btn" onclick="closeInvModal()">&times;</button>
+        <h3>Create Invoice</h3>
+        <label>Customer Email *</label>
+        <input type="email" id="invEmail" placeholder="customer@example.com" />
+        <label>Customer Name</label>
+        <input type="text" id="invName" placeholder="Jane Doe" />
+        <label>Phone</label>
+        <input type="tel" id="invPhone" placeholder="(555) 123-4567" />
+        <label>Line Items *</label>
+        <div id="invLines"></div>
+        <button class="inv-add-line" onclick="addInvLine()">+ Add line item</button>
+        <div class="inv-totals">
+          <div><span>Subtotal</span><span id="invSubtotal">$0.00</span></div>
+          <div><span>Platform Fee (5%)</span><span id="invFee">$0.00</span></div>
+          <div class="inv-total-row"><span>Total</span><span id="invTotal">$0.00</span></div>
+        </div>
+        <label>Notes</label>
+        <textarea id="invNotes" placeholder="Optional notes for the customer..."></textarea>
+        <label>Due Date</label>
+        <input type="date" id="invDueDate" />
+        <div class="inv-modal-actions">
+          <button class="btn-gray" onclick="closeInvModal()">Cancel</button>
+          <button class="btn-green" id="invSubmitBtn" onclick="submitInvoice()">Create Draft</button>
+        </div>
+      </div>
+    </div>
+
     <script>
     (function(){
       var place = window.SELLER_PLACE;
@@ -251,6 +332,155 @@
         document.getElementById("sidebar").classList.remove("open");
         document.getElementById("overlay").classList.remove("open");
       });
+    })();
+
+    /* ─── Invoice logic ─── */
+    function fmt(n){ return "$" + (Number(n)||0).toFixed(2); }
+
+    function addInvLine(){
+      var wrap = document.getElementById("invLines");
+      var row = document.createElement("div");
+      row.className = "inv-line-row";
+      row.innerHTML = '<input type="text" placeholder="Item name" class="line-title" />'
+        + '<input type="number" min="1" value="1" class="qty-input line-qty" />'
+        + '<input type="number" step="0.01" min="0" placeholder="Price" class="price-input line-price" />'
+        + '<button class="remove-line" onclick="this.parentElement.remove();calcInvTotals();">&times;</button>';
+      wrap.appendChild(row);
+      row.querySelector(".line-qty").addEventListener("input", calcInvTotals);
+      row.querySelector(".line-price").addEventListener("input", calcInvTotals);
+    }
+
+    function calcInvTotals(){
+      var rows = document.querySelectorAll("#invLines .inv-line-row");
+      var sub = 0;
+      rows.forEach(function(r){
+        var q = Number(r.querySelector(".line-qty").value) || 0;
+        var p = Number(r.querySelector(".line-price").value) || 0;
+        sub += q * p;
+      });
+      var fee = Math.round(sub * 5) / 100;
+      document.getElementById("invSubtotal").textContent = fmt(sub);
+      document.getElementById("invFee").textContent = fmt(fee);
+      document.getElementById("invTotal").textContent = fmt(sub + fee);
+    }
+
+    function openInvModal(){
+      document.getElementById("invEmail").value = "";
+      document.getElementById("invName").value = "";
+      document.getElementById("invPhone").value = "";
+      document.getElementById("invNotes").value = "";
+      document.getElementById("invDueDate").value = "";
+      document.getElementById("invLines").innerHTML = "";
+      addInvLine();
+      calcInvTotals();
+      document.getElementById("invSubmitBtn").disabled = false;
+      document.getElementById("invModalOverlay").classList.add("open");
+    }
+
+    function closeInvModal(){
+      document.getElementById("invModalOverlay").classList.remove("open");
+    }
+
+    async function submitInvoice(){
+      var btn = document.getElementById("invSubmitBtn");
+      btn.disabled = true; btn.textContent = "Saving...";
+      var rows = document.querySelectorAll("#invLines .inv-line-row");
+      var items = [];
+      rows.forEach(function(r){
+        var title = r.querySelector(".line-title").value.trim();
+        var qty = Number(r.querySelector(".line-qty").value) || 1;
+        var price = Number(r.querySelector(".line-price").value) || 0;
+        if(title) items.push({ title: title, quantity: qty, unitPrice: price });
+      });
+      if(!items.length){ alert("Add at least one line item"); btn.disabled = false; btn.textContent = "Create Draft"; return; }
+      var email = document.getElementById("invEmail").value.trim();
+      if(!email){ alert("Customer email is required"); btn.disabled = false; btn.textContent = "Create Draft"; return; }
+      try {
+        var resp = await fetch("/api/seller/invoices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            buyerEmail: email,
+            buyerName: document.getElementById("invName").value.trim(),
+            buyerPhone: document.getElementById("invPhone").value.trim(),
+            items: items,
+            notes: document.getElementById("invNotes").value.trim(),
+            dueDate: document.getElementById("invDueDate").value || null
+          })
+        });
+        if(!resp.ok) throw new Error((await resp.json()).error || "Failed");
+        closeInvModal();
+        loadInvoices();
+      } catch(err){
+        alert("Error: " + err.message);
+      }
+      btn.disabled = false; btn.textContent = "Create Draft";
+    }
+
+    async function sendInvoice(id){
+      if(!confirm("Mark this invoice as sent?")) return;
+      try {
+        var resp = await fetch("/api/seller/invoices/" + id + "/send", { method: "PUT" });
+        if(!resp.ok) throw new Error("Failed");
+        loadInvoices();
+      } catch(err){ alert("Error: " + err.message); }
+    }
+
+    function badgeHtml(status){
+      var colors = { draft: "#374151", sent: "#2563eb", paid: "#10b981", cancelled: "#ef4444" };
+      var bg = colors[status] || "#374151";
+      return '<span class="inv-badge" style="background:' + bg + ';color:#fff;">' + (status||"draft") + '</span>';
+    }
+
+    async function loadInvoices(){
+      try {
+        var resp = await fetch("/api/seller/invoices");
+        if(!resp.ok) return;
+        var rows = await resp.json();
+        var body = document.getElementById("invTableBody");
+        var collected = 0, outstanding = 0, fees = 0;
+        rows.forEach(function(inv){
+          var t = Number(inv.total) || 0;
+          var f = Number(inv.platform_fee || inv.platformfee || inv.platformFee) || 0;
+          if(inv.status === "paid"){ collected += t; fees += f; }
+          if(inv.status === "sent" || inv.status === "draft") outstanding += t;
+        });
+        document.getElementById("invCollected").textContent = fmt(collected);
+        document.getElementById("invOutstanding").textContent = fmt(outstanding);
+        document.getElementById("invFees").textContent = fmt(fees);
+        document.getElementById("invCount").textContent = rows.length + " invoice" + (rows.length !== 1 ? "s" : "");
+        if(!rows.length){
+          body.innerHTML = '<tr><td colspan="6" class="inv-empty">No invoices yet — create your first one!</td></tr>';
+          return;
+        }
+        body.innerHTML = rows.map(function(inv){
+          var date = inv.created_at || inv.createdat || inv.createdAt || "";
+          if(date) date = new Date(date).toLocaleDateString();
+          var name = inv.buyer_name || inv.buyername || inv.buyerName || inv.buyer_email || inv.buyeremail || inv.buyerEmail || "";
+          var actions = inv.status === "draft" ? '<button class="btn-green" style="padding:4px 12px;font-size:12px;" onclick="sendInvoice(' + inv.id + ')">Send</button>' : "";
+          return '<tr>'
+            + '<td>#' + inv.id + '</td>'
+            + '<td>' + name + '</td>'
+            + '<td>' + fmt(inv.total) + '</td>'
+            + '<td>' + badgeHtml(inv.status) + '</td>'
+            + '<td style="color:#64748b;">' + date + '</td>'
+            + '<td>' + actions + '</td>'
+            + '</tr>';
+        }).join("");
+      } catch(err){ console.error("LOAD_INVOICES_ERROR", err); }
+    }
+
+    // Auto-load invoices when tab becomes active
+    (function(){
+      if(window.location.hash === "#invoices") loadInvoices();
+      var invLoaded = window.location.hash === "#invoices";
+      var observer = new MutationObserver(function(){
+        var tab = document.getElementById("tab-invoices");
+        if(tab && tab.classList.contains("active")){
+          if(!invLoaded){ invLoaded = true; loadInvoices(); }
+        } else { invLoaded = false; }
+      });
+      observer.observe(document.getElementById("tab-invoices"), { attributes: true, attributeFilter: ["class"] });
     })();
     </script>
   </body>
