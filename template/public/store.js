@@ -386,13 +386,14 @@ function render(){
       try{ photoUrls = JSON.parse(l.photoUrlsJson); }catch{ photoUrls = []; }
     }
     const type = (l.listingType||"item");
-    const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
+    const storeType = PLACE?.storeType || PLACE?.storetype || "peer";
+    const isCleanCard = (storeType === "managed" || storeType === "promoted");
 
-    if(isManaged && type === "item"){
-      // Managed store: clean product card
+    if(isCleanCard && type === "item"){
+      // Managed/promoted store: clean product card
       const img = (photoUrls && photoUrls[0]) ? `<img class="productImg" src="${photoUrls[0]}" alt="" style="cursor:pointer;">` : "";
       const category = l.offerCategory || l.offercategory || "";
-      const priceLabel = (l.price && Number(l.price) > 0) ? `From $${Number(l.price).toFixed(2)}` : "";
+      const priceLabel = (l.price && Number(l.price) > 0) ? `$${Number(l.price).toFixed(2)}` : "";
       d.style.cursor = "pointer";
       d.innerHTML = `
         ${img}
@@ -472,7 +473,10 @@ function openListingModal(l, photos){
   const modal = $("listingModal");
   const panel = $("listingModalPanel");
   if(!modal || !panel) return;
-  const isManaged = PLACE && (PLACE.storeType === 'managed' || PLACE.storetype === 'managed');
+  const storeType = PLACE?.storeType || PLACE?.storetype || "peer";
+  const isManaged = storeType === "managed";
+  const isPromoted = storeType === "promoted";
+  const isClean = isManaged || isPromoted;
 
   // Parse variants
   let variants = [];
@@ -481,22 +485,31 @@ function openListingModal(l, photos){
   }
   if(!Array.isArray(variants)) variants = [];
 
+  // Extract Shopify URL from description if present
+  let descText = l.description || "";
+  let shopifyUrl = "";
+  const urlMatch = descText.match(/Shop online:\s*(https?:\/\/\S+)/i);
+  if(urlMatch){ shopifyUrl = urlMatch[1]; descText = descText.replace(/\n*Shop online:\s*https?:\/\/\S+/i, "").trim(); }
+
   $("listingModalTitle").textContent = l.title || "Listing";
   const category = l.offerCategory || l.offercategory || "";
-  $("listingModalMeta").textContent = isManaged ? category : `ID: ${l.id} • ${(l.listingType||"item").toUpperCase()} • ${(l.exchangeType || "money")}`;
+  $("listingModalMeta").textContent = isClean ? category : `ID: ${l.id} • ${(l.listingType||"item").toUpperCase()} • ${(l.exchangeType || "money")}`;
 
   // Description with paragraph formatting
   const descEl = $("listingModalDesc");
-  if(l.description){
-    descEl.innerHTML = l.description.split(/\n{2,}/).map(p => `<p style="margin:8px 0;line-height:1.6;font-size:15px;color:#e2e8f0;">${p.replace(/\n/g, '<br>')}</p>`).join("");
+  if(descText){
+    const descStyle = isClean ? "margin:8px 0;line-height:1.7;font-size:15px;color:#cbd5e1;" : "margin:8px 0;line-height:1.6;font-size:15px;color:#e2e8f0;";
+    descEl.style.cssText = isClean ? "max-height:300px;overflow-y:auto;" : "";
+    descEl.innerHTML = descText.split(/\n{2,}/).map(p => `<p style="${descStyle}">${p.replace(/\n/g, '<br>')}</p>`).join("");
   } else {
     descEl.textContent = "";
+    descEl.style.cssText = "";
   }
 
   const detailsEl = $("listingModalDetails");
   if(l.listingType === "auction"){
     detailsEl.innerHTML = `Start bid: $${((l.startBidCents||0)/100).toFixed(2)} • Min increment: $${((l.minIncrementCents||0)/100).toFixed(2)}`;
-  } else if(isManaged && l.listingType === "item"){
+  } else if(isClean && l.listingType === "item"){
     let selectedIdx = 0;
     const hasVariants = variants.length > 1;
     const currentPrice = () => variants.length ? variants[selectedIdx].price : Number(l.price || 0);
@@ -513,18 +526,32 @@ function openListingModal(l, photos){
     }
 
     const priceVal = currentPrice();
-    detailsEl.innerHTML = `
-      <div id="modalPriceDisplay" style="font-size:1.5em; font-weight:700; color:#22c55e; margin:12px 0;">$${Number(priceVal).toFixed(2)}</div>
-      ${variantHtml}
-      <div class="row" style="gap:8px; align-items:center; margin-top:12px;">
-        <button id="modalQtyDec" style="width:32px;height:32px;padding:0;font-size:18px;">−</button>
-        <span id="modalQtyVal" style="min-width:32px;text-align:center;font-size:16px;font-weight:600;">1</span>
-        <button id="modalQtyInc" style="width:32px;height:32px;padding:0;font-size:18px;">+</button>
-        <button id="modalAddCart" style="flex:1;padding:10px 16px;font-weight:700;">Add to Cart</button>
-      </div>
-    `;
 
-    // Variant selection
+    if(isPromoted){
+      // Promoted store: price + Shop on Website button
+      const shopBtn = shopifyUrl
+        ? `<a href="${shopifyUrl}" target="_blank" rel="noopener" style="display:block;text-align:center;padding:12px 16px;font-weight:700;font-size:15px;border-radius:8px;background:#22c55e;color:#fff;text-decoration:none;margin-top:12px;">Shop on Website &#10140;</a>`
+        : "";
+      detailsEl.innerHTML = `
+        <div style="font-size:1.5em; font-weight:700; color:#22c55e; margin:12px 0;">$${Number(priceVal).toFixed(2)}</div>
+        ${variantHtml}
+        ${shopBtn}
+      `;
+    } else {
+      // Managed store: price + variants + qty + Add to Cart
+      detailsEl.innerHTML = `
+        <div id="modalPriceDisplay" style="font-size:1.5em; font-weight:700; color:#22c55e; margin:12px 0;">$${Number(priceVal).toFixed(2)}</div>
+        ${variantHtml}
+        <div class="row" style="gap:8px; align-items:center; margin-top:12px;">
+          <button id="modalQtyDec" style="width:32px;height:32px;padding:0;font-size:18px;">−</button>
+          <span id="modalQtyVal" style="min-width:32px;text-align:center;font-size:16px;font-weight:600;">1</span>
+          <button id="modalQtyInc" style="width:32px;height:32px;padding:0;font-size:18px;">+</button>
+          <button id="modalAddCart" style="flex:1;padding:10px 16px;font-weight:700;">Add to Cart</button>
+        </div>
+      `;
+    }
+
+    // Variant selection (both managed and promoted)
     if(hasVariants){
       const variantEls = detailsEl.querySelectorAll("[data-vidx]");
       variantEls.forEach(el => {
@@ -535,14 +562,17 @@ function openListingModal(l, photos){
             ve.style.borderColor = active ? "#22c55e" : "#334155";
             ve.style.background = active ? "rgba(34,197,94,0.1)" : "transparent";
           });
-          $("modalPriceDisplay").textContent = `$${Number(variants[selectedIdx].price).toFixed(2)}`;
+          const priceEl = $("modalPriceDisplay") || detailsEl.querySelector("[style*='font-size:1.5em']");
+          if(priceEl) priceEl.textContent = `$${Number(variants[selectedIdx].price).toFixed(2)}`;
         });
       });
     }
 
-    $("modalQtyDec")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v>1) $("modalQtyVal").textContent=v-1; });
-    $("modalQtyInc")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v<50) $("modalQtyVal").textContent=v+1; });
-    $("modalAddCart")?.addEventListener("click", ()=>{ const qty=Number($("modalQtyVal").textContent)||1; ensureLoggedInForCart(PLACE.id, ()=>{ addToCart(l.id, qty, variants[selectedIdx]); modal.style.display="none"; }); });
+    if(isManaged){
+      $("modalQtyDec")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v>1) $("modalQtyVal").textContent=v-1; });
+      $("modalQtyInc")?.addEventListener("click", ()=>{ let v=Number($("modalQtyVal").textContent)||1; if(v<50) $("modalQtyVal").textContent=v+1; });
+      $("modalAddCart")?.addEventListener("click", ()=>{ const qty=Number($("modalQtyVal").textContent)||1; ensureLoggedInForCart(PLACE.id, ()=>{ addToCart(l.id, qty, variants[selectedIdx]); modal.style.display="none"; }); });
+    }
   } else {
     detailsEl.textContent = "";
   }

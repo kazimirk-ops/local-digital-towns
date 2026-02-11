@@ -339,22 +339,18 @@
 </div>
 
 <div id="listingModal" style="display:none; position:fixed; inset:0; background:rgba(2, 6, 23, 0.65); z-index:40;">
-  <div id="listingModalPanel" style="max-width:900px; margin:4vh auto; background:#0d1424; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px; color:#e2e8f0; max-height:90vh; overflow-y:auto;">
+  <div id="listingModalPanel" style="max-width:600px; margin:4vh auto; background:#0d1424; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; color:#e2e8f0; max-height:90vh; overflow-y:auto;">
     <div class="row" style="justify-content:space-between;">
       <div class="contextTitle" id="listingModalTitle">Listing</div>
       <button id="listingModalClose" class="btn-outline">Close</button>
     </div>
-    <div class="row" style="margin-top:12px; gap:12px;">
-      <div style="flex:2;">
-        <img id="listingModalMainImg" src="" alt="" style="width:100%; border-radius:12px; object-fit:cover; max-height:420px;" />
-        <div class="row" id="listingModalThumbs" style="margin-top:10px; gap:8px; flex-wrap:wrap;"></div>
-      </div>
-      <div style="flex:1;">
-        <div class="muted" id="listingModalMeta">—</div>
-        <div style="margin-top:8px;" id="listingModalDetails"></div>
-        <div style="margin-top:8px;" id="listingModalDesc"></div>
-      </div>
+    <div class="muted" id="listingModalMeta" style="margin-top:4px;">—</div>
+    <div style="margin-top:12px;">
+      <img id="listingModalMainImg" src="" alt="" style="width:100%; border-radius:12px; object-fit:cover; max-height:420px;" />
+      <div class="row" id="listingModalThumbs" style="margin-top:10px; gap:8px; flex-wrap:wrap;"></div>
     </div>
+    <div style="margin-top:12px;" id="listingModalDetails"></div>
+    <div style="margin-top:12px;" id="listingModalDesc"></div>
   </div>
 </div>
 
