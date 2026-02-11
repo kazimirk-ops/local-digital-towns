@@ -389,9 +389,28 @@
         <!-- Marketing -->
         <div class="tab-content" id="tab-marketing">
           <div class="main-title">Marketing</div>
-          <div class="placeholder-card">
-            <div class="ph-title">Coming Soon</div>
-            <div class="ph-desc">Create promotions, discount codes, and email campaigns to grow your store.</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+            <!-- Email All Customers -->
+            <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:20px;">
+              <div style="font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:12px;">Email All Customers</div>
+              <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Subject</label>
+              <input type="text" id="mktSubject" placeholder="e.g. New arrivals this week!" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #374151;background:#0a0e1a;color:#e2e8f0;font-size:14px;margin-bottom:10px;box-sizing:border-box;">
+              <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Message</label>
+              <textarea id="mktMessage" rows="4" placeholder="Write your message..." style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid #374151;background:#0a0e1a;color:#e2e8f0;font-size:14px;resize:vertical;margin-bottom:12px;box-sizing:border-box;"></textarea>
+              <button type="button" id="mktSendBtn" class="btn-green" style="width:100%;padding:10px;font-size:14px;">Send to 0 customers</button>
+              <div id="mktSendStatus" style="margin-top:8px;font-size:13px;color:#64748b;display:none;"></div>
+            </div>
+            <!-- Create Discount Code -->
+            <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:20px;">
+              <div style="font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:12px;">Create Discount Code</div>
+              <div style="color:#64748b;font-size:14px;">Coming soon</div>
+            </div>
+            <!-- Export Customer List -->
+            <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:20px;">
+              <div style="font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:12px;">Export Customer List</div>
+              <div style="color:#64748b;font-size:14px;margin-bottom:12px;">Download all your customers as a CSV file.</div>
+              <button type="button" id="mktExportBtn" class="btn-gray" style="width:100%;padding:10px;font-size:14px;">Export CSV</button>
+            </div>
           </div>
         </div>
 
@@ -1185,11 +1204,54 @@
         a.click();
       });
 
+      /* ─── Marketing tab ─── */
+      var _mktCustCount = 0;
+      async function loadMarketing(){
+        try {
+          var resp = await fetch("/api/seller/customers");
+          if(!resp.ok) return;
+          var rows = await resp.json();
+          _mktCustCount = rows.length;
+          document.getElementById("mktSendBtn").textContent = "Send to " + _mktCustCount + " customer" + (_mktCustCount !== 1 ? "s" : "");
+        } catch(err){ console.error("LOAD_MARKETING_ERROR", err); }
+      }
+
+      document.getElementById("mktSendBtn").addEventListener("click", async function(){
+        var subject = document.getElementById("mktSubject").value.trim();
+        var message = document.getElementById("mktMessage").value.trim();
+        if(!subject || !message){ alert("Please fill in both subject and message."); return; }
+        var btn = document.getElementById("mktSendBtn");
+        var status = document.getElementById("mktSendStatus");
+        btn.disabled = true;
+        btn.textContent = "Sending...";
+        status.style.display = "none";
+        try {
+          var resp = await fetch("/api/seller/broadcast", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ subject: subject, message: message })
+          });
+          var result = await resp.json();
+          if(!resp.ok){ status.style.color = "#ef4444"; status.textContent = result.error || "Send failed"; status.style.display = "block"; return; }
+          status.style.color = "#10b981";
+          status.textContent = "Sent to " + (result.sent || 0) + " customer" + ((result.sent || 0) !== 1 ? "s" : "") + "!";
+          status.style.display = "block";
+          document.getElementById("mktSubject").value = "";
+          document.getElementById("mktMessage").value = "";
+        } catch(err){ console.error("BROADCAST_SEND_ERROR", err); status.style.color = "#ef4444"; status.textContent = "Send failed"; status.style.display = "block"; }
+        finally { btn.disabled = false; btn.textContent = "Send to " + _mktCustCount + " customer" + (_mktCustCount !== 1 ? "s" : ""); }
+      });
+
+      document.getElementById("mktExportBtn").addEventListener("click", function(){
+        document.getElementById("custExportBtn").click();
+      });
+
       watchTab("overview", loadDashboardStats);
       watchTab("invoices", loadInvoices);
       watchTab("orders", loadDeposits);
       watchTab("products", loadProducts);
       watchTab("customers", loadCustomers);
+      watchTab("marketing", loadMarketing);
       watchTab("analytics", loadAnalytics);
       watchTab("facebook", loadCtpWebhookUrl);
       watchTab("settings", function(){ loadSettings(); loadFacebookKey(); });

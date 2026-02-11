@@ -3443,6 +3443,46 @@ app.get("/api/seller/customers", async (req, res) => {
   } catch(err){ console.error("SELLER_CUSTOMERS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
+/* ─── Seller Broadcast (Marketing tab) ─── */
+app.post("/api/seller/broadcast", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const { subject, message } = req.body || {};
+    if(!subject || !message) return res.status(400).json({ error: "subject and message are required" });
+    const cr = await data.query("SELECT DISTINCT buyer_email FROM invoices WHERE place_id = $1 AND status = 'paid' AND buyer_email IS NOT NULL AND buyer_email != ''", [seller.placeId]);
+    const emails = cr.rows.map(r => r.buyer_email || r.buyeremail).filter(Boolean);
+    if(!emails.length) return res.json({ ok: true, sent: 0 });
+    const apiKey = (process.env.RESEND_API_KEY || "").trim();
+    if(!apiKey){ console.warn("Broadcast skipped (no RESEND_API_KEY)"); return res.json({ ok: true, sent: 0 }); }
+    const from = (process.env.EMAIL_FROM || "").trim() || "onboarding@resend.dev";
+    const baseUrl = (process.env.BASE_URL || "").trim() || (req.protocol + "://" + req.get("host"));
+    const storeUrl = baseUrl + "/store/" + seller.placeId;
+    const msgHtml = message.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
+    const html = '<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
+      + '<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">'
+      + '<h2 style="color:#333;">' + seller.placeName + '</h2>'
+      + '<div style="font-size:15px;line-height:1.6;margin:16px 0;">' + msgHtml + '</div>'
+      + '<div style="text-align:center;margin:24px 0;">'
+      + '<a href="' + storeUrl + '" style="display:inline-block;padding:14px 32px;background:#10b981;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">Visit Store</a>'
+      + '</div>'
+      + '<p style="color:#999;font-size:12px;">You received this email because you made a purchase from ' + seller.placeName + '.</p>'
+      + '</body></html>';
+    let sent = 0;
+    for(const email of emails){
+      try {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
+          body: JSON.stringify({ from, to: [email], subject: String(subject), html, text: message })
+        });
+        sent++;
+      } catch(emailErr){ console.error("BROADCAST_EMAIL_ERROR", email, emailErr?.message); }
+    }
+    console.log("BROADCAST_SENT", { placeId: seller.placeId, sent, total: emails.length });
+    res.json({ ok: true, sent });
+  } catch(err){ console.error("BROADCAST_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
 /* ─── Facebook Auto-Sync ─── */
 app.get("/api/seller/facebook-key", async (req, res) => {
   try {
