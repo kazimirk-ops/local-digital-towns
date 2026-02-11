@@ -4634,6 +4634,25 @@ app.get("/places/:id/listings", async (req, res) =>{
     return placeId === pid && (showAll || isActive);
   }));
 });
+app.get("/api/click/:listingId", async (req, res) => {
+  try {
+    const listingId = Number(req.params.listingId);
+    const listing = await data.getListingById(listingId);
+    if (!listing) return res.redirect("/");
+    const placeId = Number(listing.placeId ?? listing.placeid);
+    const match = (listing.description || "").match(/Shop online:\s*(https?:\/\/\S+)/i);
+    const dest = match ? match[1] : null;
+    await data.query(
+      `INSERT INTO click_events (place_id, listing_id, destination_url, referrer, user_agent) VALUES ($1,$2,$3,$4,$5)`,
+      [placeId, listingId, dest || "", req.get("referer") || "", req.get("user-agent") || ""]
+    );
+    res.redirect(302, dest || `/store/${placeId}`);
+  } catch (err) {
+    console.error("CLICK_TRACK_ERROR", err?.message);
+    res.redirect("/");
+  }
+});
+
 app.post("/places/:id/listings", async (req, res) =>{
   console.log("LISTING REQUEST BODY:", JSON.stringify(req.body, null, 2));
   const u=await requireLogin(req,res); if(!u) return;
