@@ -282,7 +282,7 @@ async function getPlaces(){
     SELECT id, townId, districtId, name, category, status,
            description, website, yearsInTown, bannerUrl, avatarUrl,
            sellerType, visibilityLevel, pickupZone, addressPublic, addressPrivate,
-           meetupInstructions, hours, verifiedStatus, ownerUserId
+           meetupInstructions, hours, verifiedStatus, ownerUserId, storeType
     FROM places WHERE townId=$1 ORDER BY id
   `).all(townCfg.id || 1);
 }
