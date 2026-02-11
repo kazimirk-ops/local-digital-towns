@@ -166,12 +166,17 @@
           </div>
         </div>
 
-        <!-- Orders -->
+        <!-- Orders / Deposits -->
         <div class="tab-content" id="tab-orders">
-          <div class="main-title">Orders</div>
-          <div class="placeholder-card">
-            <div class="ph-title">Coming Soon</div>
-            <div class="ph-desc">View and manage incoming orders, update fulfillment status, and track shipping.</div>
+          <div class="main-title">Orders &amp; Deposits</div>
+          <div class="inv-header">
+            <span style="font-size:14px;color:#64748b;" id="depCount">0 deposits</span>
+          </div>
+          <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;overflow:hidden;">
+            <table class="inv-table">
+              <thead><tr><th>Order</th><th>Buyer</th><th>Amount</th><th>%</th><th>Status</th><th>Expires</th><th></th></tr></thead>
+              <tbody id="depTableBody"><tr><td colspan="7" class="inv-empty">No deposits yet</td></tr></tbody>
+            </table>
           </div>
         </div>
 
@@ -243,9 +248,21 @@
         <!-- Settings -->
         <div class="tab-content" id="tab-settings">
           <div class="main-title">Settings</div>
-          <div class="placeholder-card">
-            <div class="ph-title">Coming Soon</div>
-            <div class="ph-desc">Configure store details, payment methods, shipping options, and notification preferences.</div>
+          <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:24px;max-width:480px;">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">Deposit Settings</h3>
+            <label style="display:block;font-size:13px;color:#94a3b8;margin-bottom:8px;">Deposit Mode</label>
+            <select id="settDepositMode" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #374151;background:#0a0e1a;color:#e2e8f0;font-size:14px;margin-bottom:16px;">
+              <option value="none">None — No deposits required</option>
+              <option value="standard">Standard (5%) — 5% deposit on all orders</option>
+              <option value="double">Double (10%) — 10% deposit on all orders</option>
+            </select>
+            <label style="display:block;font-size:13px;color:#94a3b8;margin-bottom:4px;">Ghost Timeout (hours)</label>
+            <p style="font-size:12px;color:#475569;margin-bottom:8px;">Hours before a pending deposit is auto-forfeited</p>
+            <input type="number" id="settGhostHours" min="1" max="720" value="48" style="width:120px;padding:10px 12px;border-radius:8px;border:1px solid #374151;background:#0a0e1a;color:#e2e8f0;font-size:14px;margin-bottom:20px;" />
+            <div>
+              <button type="button" class="btn-green" id="saveSettingsBtn">Save Settings</button>
+              <span id="settSaved" style="margin-left:12px;color:#10b981;font-size:13px;display:none;">Saved!</span>
+            </div>
           </div>
         </div>
 
@@ -508,16 +525,120 @@
         }
       });
 
-      // Auto-load invoices when tab becomes active
-      if(window.location.hash === "#invoices") loadInvoices();
-      var invLoaded = window.location.hash === "#invoices";
-      var observer = new MutationObserver(function(){
-        var tab = document.getElementById("tab-invoices");
-        if(tab && tab.classList.contains("active")){
-          if(!invLoaded){ invLoaded = true; loadInvoices(); }
-        } else { invLoaded = false; }
+      /* ─── Settings logic ─── */
+      async function loadSettings(){
+        try {
+          var resp = await fetch("/api/seller/settings");
+          if(!resp.ok) return;
+          var s = await resp.json();
+          document.getElementById("settDepositMode").value = s.depositMode || "none";
+          document.getElementById("settGhostHours").value = s.ghostTimeoutHours || 48;
+        } catch(err){ console.error("LOAD_SETTINGS_ERROR", err); }
+      }
+
+      async function saveSettings(){
+        var btn = document.getElementById("saveSettingsBtn");
+        btn.disabled = true; btn.textContent = "Saving...";
+        try {
+          var resp = await fetch("/api/seller/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              depositMode: document.getElementById("settDepositMode").value,
+              ghostTimeoutHours: Number(document.getElementById("settGhostHours").value) || 48
+            })
+          });
+          if(!resp.ok) throw new Error((await resp.json()).error || "Failed");
+          var saved = document.getElementById("settSaved");
+          saved.style.display = "inline";
+          setTimeout(function(){ saved.style.display = "none"; }, 2500);
+        } catch(err){ alert("Error: " + err.message); }
+        btn.disabled = false; btn.textContent = "Save Settings";
+      }
+
+      document.getElementById("saveSettingsBtn").addEventListener("click", saveSettings);
+
+      /* ─── Deposits logic ─── */
+      function depBadge(status){
+        var colors = { pending: "#eab308", collected: "#10b981", forfeited: "#ef4444", refunded: "#3b82f6" };
+        var bg = colors[status] || "#374151";
+        return '<span class="inv-badge" style="background:' + bg + ';color:#fff;">' + (status || "pending") + '</span>';
+      }
+
+      async function loadDeposits(){
+        try {
+          var resp = await fetch("/api/seller/deposits");
+          if(!resp.ok) return;
+          var rows = await resp.json();
+          var body = document.getElementById("depTableBody");
+          document.getElementById("depCount").textContent = rows.length + " deposit" + (rows.length !== 1 ? "s" : "");
+          if(!rows.length){
+            body.innerHTML = '<tr><td colspan="7" class="inv-empty">No deposits yet</td></tr>';
+            return;
+          }
+          body.innerHTML = rows.map(function(d){
+            var exp = d.expires_at || d.expiresat || d.expiresAt || "";
+            if(exp) exp = new Date(exp).toLocaleString();
+            var email = d.buyer_email || d.buyeremail || d.buyerEmail || "";
+            var st = d.status || "pending";
+            var actions = "";
+            if(st === "pending") actions = '<button type="button" class="dep-forfeit-btn" data-id="' + d.id + '" style="padding:3px 10px;font-size:12px;font-weight:600;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;">Forfeit</button>';
+            if(st === "collected") actions = '<button type="button" class="dep-refund-btn" data-id="' + d.id + '" style="padding:3px 10px;font-size:12px;font-weight:600;background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer;">Refund</button>';
+            return '<tr>'
+              + '<td>#' + (d.order_id || d.orderid || d.orderId || "") + '</td>'
+              + '<td>' + email + '</td>'
+              + '<td>' + fmt(d.amount) + '</td>'
+              + '<td>' + (d.deposit_percent || d.depositpercent || d.depositPercent || 5) + '%</td>'
+              + '<td>' + depBadge(st) + '</td>'
+              + '<td style="color:#64748b;font-size:12px;">' + exp + '</td>'
+              + '<td>' + actions + '</td>'
+              + '</tr>';
+          }).join("");
+        } catch(err){ console.error("LOAD_DEPOSITS_ERROR", err); }
+      }
+
+      async function forfeitDeposit(id){
+        if(!confirm("Forfeit this deposit? This cannot be undone.")) return;
+        try {
+          var resp = await fetch("/api/deposits/" + id + "/forfeit", { method: "PUT" });
+          if(!resp.ok) throw new Error("Failed");
+          loadDeposits();
+        } catch(err){ alert("Error: " + err.message); }
+      }
+
+      async function refundDeposit(id){
+        if(!confirm("Refund this deposit?")) return;
+        try {
+          var resp = await fetch("/api/deposits/" + id + "/refund", { method: "PUT" });
+          if(!resp.ok) throw new Error("Failed");
+          loadDeposits();
+        } catch(err){ alert("Error: " + err.message); }
+      }
+
+      // Event delegation for deposit action buttons
+      document.getElementById("depTableBody").addEventListener("click", function(e){
+        var fb = e.target.closest(".dep-forfeit-btn");
+        if(fb){ forfeitDeposit(Number(fb.getAttribute("data-id"))); return; }
+        var rb = e.target.closest(".dep-refund-btn");
+        if(rb){ refundDeposit(Number(rb.getAttribute("data-id"))); return; }
       });
-      observer.observe(document.getElementById("tab-invoices"), { attributes: true, attributeFilter: ["class"] });
+
+      /* ─── Tab auto-load observers ─── */
+      function watchTab(tabId, loadFn){
+        if(window.location.hash === "#" + tabId) loadFn();
+        var loaded = window.location.hash === "#" + tabId;
+        var obs = new MutationObserver(function(){
+          var el = document.getElementById("tab-" + tabId);
+          if(el && el.classList.contains("active")){
+            if(!loaded){ loaded = true; loadFn(); }
+          } else { loaded = false; }
+        });
+        obs.observe(document.getElementById("tab-" + tabId), { attributes: true, attributeFilter: ["class"] });
+      }
+
+      watchTab("invoices", loadInvoices);
+      watchTab("orders", loadDeposits);
+      watchTab("settings", loadSettings);
 
     })();
     </script>
