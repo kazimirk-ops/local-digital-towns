@@ -3103,6 +3103,72 @@ app.get("/api/seller/sales/export.csv", async (req, res) =>{
   res.setHeader("Content-Type","text/csv");
   res.send([header, ...csv].join("\n"));
 });
+// ── Invoice endpoints ──
+async function requireSellerPlace(req, res){
+  const u = await getUserId(req);
+  if(!u){ res.status(401).json({ error: "Login required" }); return null; }
+  const pr = await data.query("SELECT id, name FROM places WHERE ownerUserId = $1 LIMIT 1", [u]);
+  if(!pr.rows.length){ res.status(403).json({ error: "You don't own a store" }); return null; }
+  return { userId: u, placeId: pr.rows[0].id, placeName: pr.rows[0].name };
+}
+
+app.post("/api/seller/invoices", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const { buyerEmail, buyerName, buyerPhone, items, notes, dueDate } = req.body || {};
+    if(!buyerEmail) return res.status(400).json({ error: "buyerEmail is required" });
+    if(!items || !items.length) return res.status(400).json({ error: "At least one item is required" });
+    const lineItems = items.map(i => ({ title: (i.title||"").toString(), quantity: Number(i.quantity)||1, unitPrice: Number(i.unitPrice)||0 }));
+    const subtotal = lineItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+    const platformFee = Math.round(subtotal * 5) / 100;
+    const total = subtotal + platformFee;
+    const r = await data.query(
+      `INSERT INTO invoices (place_id, seller_user_id, buyer_email, buyer_name, buyer_phone, items, subtotal, platform_fee, total, notes, due_date, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'draft') RETURNING *`,
+      [seller.placeId, seller.userId, buyerEmail.toString(), (buyerName||"").toString(), (buyerPhone||"").toString(),
+       JSON.stringify(lineItems), subtotal, platformFee, total, (notes||"").toString(), dueDate || null]
+    );
+    res.json(r.rows[0]);
+  } catch(err){ console.error("INVOICE_CREATE_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.get("/api/seller/invoices", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const r = await data.query("SELECT * FROM invoices WHERE place_id = $1 ORDER BY created_at DESC", [seller.placeId]);
+    res.json(r.rows);
+  } catch(err){ console.error("INVOICE_LIST_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.get("/api/seller/invoices/:id", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const r = await data.query("SELECT * FROM invoices WHERE id = $1 AND place_id = $2", [Number(req.params.id), seller.placeId]);
+    if(!r.rows.length) return res.status(404).json({ error: "Invoice not found" });
+    res.json(r.rows[0]);
+  } catch(err){ console.error("INVOICE_GET_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.put("/api/seller/invoices/:id/send", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const r = await data.query(
+      "UPDATE invoices SET status = 'sent', sent_at = NOW() WHERE id = $1 AND place_id = $2 RETURNING *",
+      [Number(req.params.id), seller.placeId]
+    );
+    if(!r.rows.length) return res.status(404).json({ error: "Invoice not found" });
+    res.json(r.rows[0]);
+  } catch(err){ console.error("INVOICE_SEND_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.get("/api/invoice/:id", async (req, res) => {
+  try {
+    const r = await data.query("SELECT * FROM invoices WHERE id = $1", [Number(req.params.id)]);
+    if(!r.rows.length) return res.status(404).json({ error: "Invoice not found" });
+    res.json(r.rows[0]);
+  } catch(err){ console.error("INVOICE_PUBLIC_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
 app.post("/api/admin/pulse/generate", async (req, res) =>{
   try{
     const admin=await requireAdminOrDev(req,res); if(!admin) return;
