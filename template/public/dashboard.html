@@ -1,0 +1,257 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Seller Dashboard</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; background: #0a0e1a; color: #e2e8f0; min-height: 100vh; }
+      a { color: #10b981; text-decoration: none; }
+
+      .dash { display: flex; min-height: 100vh; }
+
+      /* Sidebar */
+      .sidebar {
+        width: 220px; min-height: 100vh; background: #111827; border-right: 1px solid #1e293b;
+        display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 20;
+      }
+      .sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid #1e293b; }
+      .sidebar-header .store-name { font-weight: 700; font-size: 15px; color: #e2e8f0; }
+      .sidebar-header .store-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+      .sidebar-nav { flex: 1; padding: 8px 0; }
+      .sidebar-nav a {
+        display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-size: 14px;
+        color: #94a3b8; transition: all .15s; border-left: 3px solid transparent;
+      }
+      .sidebar-nav a:hover { color: #e2e8f0; background: rgba(255,255,255,.04); }
+      .sidebar-nav a.active { color: #10b981; border-left-color: #10b981; background: rgba(16,185,129,.08); }
+      .sidebar-nav a .icon { width: 18px; text-align: center; font-size: 15px; }
+      .sidebar-footer { padding: 16px; border-top: 1px solid #1e293b; }
+      .sidebar-footer .rev-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .05em; }
+      .sidebar-footer .rev-amount { font-size: 20px; font-weight: 700; color: #10b981; margin-top: 4px; }
+      .sidebar-footer .rev-period { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+      /* Mobile nav toggle */
+      .mobile-header {
+        display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 30;
+        background: #111827; border-bottom: 1px solid #1e293b; padding: 12px 16px;
+        align-items: center; justify-content: space-between;
+      }
+      .mobile-header .store-name { font-weight: 700; font-size: 15px; }
+      .mobile-header button { background: none; border: none; color: #e2e8f0; font-size: 22px; cursor: pointer; padding: 4px 8px; }
+
+      /* Main content */
+      .main { flex: 1; margin-left: 220px; padding: 32px; }
+      .main-title { font-size: 22px; font-weight: 700; margin-bottom: 24px; }
+
+      /* Tab content */
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+
+      /* KPI grid */
+      .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+      .kpi-card {
+        background: #111827; border: 1px solid #1e293b; border-radius: 12px; padding: 20px;
+      }
+      .kpi-card .kpi-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+      .kpi-card .kpi-value { font-size: 28px; font-weight: 700; color: #e2e8f0; margin-top: 6px; }
+      .kpi-card .kpi-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+
+      /* Placeholder card */
+      .placeholder-card {
+        background: #111827; border: 1px solid #1e293b; border-radius: 12px; padding: 40px;
+        text-align: center;
+      }
+      .placeholder-card .ph-title { font-size: 18px; font-weight: 600; color: #94a3b8; margin-bottom: 8px; }
+      .placeholder-card .ph-desc { font-size: 14px; color: #64748b; max-width: 400px; margin: 0 auto; line-height: 1.6; }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .sidebar { transform: translateX(-100%); transition: transform .25s; width: 260px; }
+        .sidebar.open { transform: translateX(0); }
+        .mobile-header { display: flex; }
+        .main { margin-left: 0; padding: 16px; padding-top: 64px; }
+        .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 15; }
+        .overlay.open { display: block; }
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- Mobile header -->
+    <div class="mobile-header">
+      <span class="store-name" id="mobileStoreName">Dashboard</span>
+      <button id="menuToggle">&#9776;</button>
+    </div>
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="store-name" id="sidebarStoreName">Loading...</div>
+        <div class="store-sub">Seller Dashboard</div>
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav">
+        <a href="#overview" data-tab="overview" class="active"><span class="icon">&#9635;</span> Overview</a>
+        <a href="#orders" data-tab="orders"><span class="icon">&#9993;</span> Orders</a>
+        <a href="#invoices" data-tab="invoices"><span class="icon">&#9889;</span> Invoices</a>
+        <a href="#products" data-tab="products"><span class="icon">&#9881;</span> Products</a>
+        <a href="#analytics" data-tab="analytics"><span class="icon">&#9670;</span> Analytics</a>
+        <a href="#facebook" data-tab="facebook"><span class="icon">&#402;</span> Facebook</a>
+        <a href="#customers" data-tab="customers"><span class="icon">&#9786;</span> Customers</a>
+        <a href="#marketing" data-tab="marketing"><span class="icon">&#9733;</span> Marketing</a>
+        <a href="#settings" data-tab="settings"><span class="icon">&#9881;</span> Settings</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="rev-label">Monthly Revenue</div>
+        <div class="rev-amount">&mdash;</div>
+        <div class="rev-period" id="revPeriod">This month</div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="dash">
+      <main class="main">
+
+        <!-- Overview -->
+        <div class="tab-content active" id="tab-overview">
+          <div class="main-title">Overview</div>
+          <div class="kpi-grid">
+            <div class="kpi-card"><div class="kpi-label">Today's Revenue</div><div class="kpi-value">&mdash;</div><div class="kpi-sub">vs yesterday</div></div>
+            <div class="kpi-card"><div class="kpi-label">Orders</div><div class="kpi-value">&mdash;</div><div class="kpi-sub">Today</div></div>
+            <div class="kpi-card"><div class="kpi-label">Store Views</div><div class="kpi-value">&mdash;</div><div class="kpi-sub">Last 24h</div></div>
+            <div class="kpi-card"><div class="kpi-label">Conversion Rate</div><div class="kpi-value">&mdash;</div><div class="kpi-sub">Views to orders</div></div>
+            <div class="kpi-card"><div class="kpi-label">Pending Deposits</div><div class="kpi-value">&mdash;</div><div class="kpi-sub">Awaiting payout</div></div>
+          </div>
+        </div>
+
+        <!-- Orders -->
+        <div class="tab-content" id="tab-orders">
+          <div class="main-title">Orders</div>
+          <div class="placeholder-card">
+            <div class="ph-title">Coming Soon</div>
+            <div class="ph-desc">View and manage incoming orders, update fulfillment status, and track shipping.</div>
+          </div>
+        </div>
+
+        <!-- Invoices -->
+        <div class="tab-content" id="tab-invoices">
+          <div class="main-title">Invoices</div>
+          <div class="placeholder-card">
+            <div class="ph-title">Coming Soon</div>
+            <div class="ph-desc">Generate and send invoices to customers, track payment status, and manage billing history.</div>
+          </div>
+        </div>
+
+        <!-- Products -->
+        <div class="tab-content" id="tab-products">
+          <div class="main-title">Products</div>
+          <div class="placeholder-card">
+            <div class="ph-title">Coming Soon</div>
+            <div class="ph-desc">Add, edit, and manage your product catalog. Set prices, upload photos, and manage inventory.</div>
+          </div>
+        </div>
+
+        <!-- Analytics -->
+        <div class="tab-content" id="tab-analytics">
+          <div class="main-title">Analytics</div>
+          <div class="placeholder-card">
+            <div class="ph-title">Coming Soon</div>
+            <div class="ph-desc">View store performance, traffic sources, top products, and revenue trends over time.</div>
+          </div>
+        </div>
+
+        <!-- Facebook -->
+        <div class="tab-content" id="tab-facebook">
+          <div class="main-title">Facebook</div>
+          <div class="placeholder-card">
+            <div class="ph-title">Coming Soon</div>
+            <div class="ph-desc">Connect your Facebook page, auto-post new products, and manage social engagement.</div>
+          </div>
+        </div>
+
+        <!-- Customers -->
+        <div class="tab-content" id="tab-customers">
+          <div class="main-title">Customers</div>
+          <div class="placeholder-card">
+            <div class="ph-title">Coming Soon</div>
+            <div class="ph-desc">View customer profiles, order history, and manage your customer relationships.</div>
+          </div>
+        </div>
+
+        <!-- Marketing -->
+        <div class="tab-content" id="tab-marketing">
+          <div class="main-title">Marketing</div>
+          <div class="placeholder-card">
+            <div class="ph-title">Coming Soon</div>
+            <div class="ph-desc">Create promotions, discount codes, and email campaigns to grow your store.</div>
+          </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="tab-content" id="tab-settings">
+          <div class="main-title">Settings</div>
+          <div class="placeholder-card">
+            <div class="ph-title">Coming Soon</div>
+            <div class="ph-desc">Configure store details, payment methods, shipping options, and notification preferences.</div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <script>
+    (function(){
+      var place = window.SELLER_PLACE;
+      if(!place){ window.location.href = "/login"; return; }
+
+      // Set store name
+      document.getElementById("sidebarStoreName").textContent = place.name;
+      document.getElementById("mobileStoreName").textContent = place.name;
+
+      // Tab switching
+      var navLinks = document.querySelectorAll("#sidebarNav a");
+      var tabs = document.querySelectorAll(".tab-content");
+
+      function switchTab(tabId){
+        tabs.forEach(function(t){ t.classList.remove("active"); });
+        navLinks.forEach(function(a){ a.classList.remove("active"); });
+        var target = document.getElementById("tab-" + tabId);
+        if(target) target.classList.add("active");
+        var link = document.querySelector('#sidebarNav a[data-tab="' + tabId + '"]');
+        if(link) link.classList.add("active");
+        // Close mobile sidebar
+        document.getElementById("sidebar").classList.remove("open");
+        document.getElementById("overlay").classList.remove("open");
+      }
+
+      navLinks.forEach(function(a){
+        a.addEventListener("click", function(e){
+          e.preventDefault();
+          var tab = this.getAttribute("data-tab");
+          switchTab(tab);
+          history.replaceState(null, "", "#" + tab);
+        });
+      });
+
+      // Handle hash on load
+      var hash = window.location.hash.replace("#","");
+      if(hash && document.getElementById("tab-" + hash)){
+        switchTab(hash);
+      }
+
+      // Mobile toggle
+      document.getElementById("menuToggle").addEventListener("click", function(){
+        document.getElementById("sidebar").classList.toggle("open");
+        document.getElementById("overlay").classList.toggle("open");
+      });
+      document.getElementById("overlay").addEventListener("click", function(){
+        document.getElementById("sidebar").classList.remove("open");
+        document.getElementById("overlay").classList.remove("open");
+      });
+    })();
+    </script>
+  </body>
+</html>

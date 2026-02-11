@@ -815,6 +815,20 @@ app.get("/admin/media", async (req, res) =>{
   res.sendFile(path.join(__dirname,"public","admin_media.html"));
 });
 app.get("/store/:id", async (req, res) =>res.sendFile(path.join(__dirname,"public","store.html")));
+app.get("/dashboard", async (req, res) => {
+  const uid = await getUserId(req);
+  if(!uid) return res.redirect("/login");
+  const placeRes = await data.query("SELECT id, name FROM places WHERE ownerUserId = $1 LIMIT 1", [uid]);
+  const place = placeRes.rows[0];
+  const fs2 = require("fs");
+  let html = fs2.readFileSync(path.join(__dirname, "public", "dashboard.html"), "utf8");
+  const sellerScript = place
+    ? `<script>window.SELLER_PLACE=${JSON.stringify({ id: place.id, name: place.name })};</script>`
+    : `<script>window.SELLER_PLACE=null;</script>`;
+  html = html.replace("</head>", townConfigScript + "\n" + sellerScript + "\n</head>");
+  if(!place) html = html.replace('<main class="main">', '<main class="main"><div style="padding:60px 20px;text-align:center;"><h2 style="color:#94a3b8;">You don\'t have a store yet</h2><p style="color:#64748b;margin-top:8px;">Apply to open a store to access the seller dashboard.</p><a href="/" style="display:inline-block;margin-top:16px;padding:10px 24px;background:#10b981;color:#fff;border-radius:8px;font-weight:600;">Back to Home</a></div><div style="display:none;">');
+  res.type("html").send(html);
+});
 app.get("/business-subscription", async (req, res) =>res.sendFile(path.join(__dirname,"public","business_subscription.html")));
 app.get("/giveaway-offer", async (req, res) =>res.sendFile(path.join(__dirname,"public","giveaway_offer_form.html")));
 app.get("/admin/sweep", async (req, res) =>{
