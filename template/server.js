@@ -3249,6 +3249,94 @@ app.put("/api/seller/invoices/:id/send", async (req, res) => {
   } catch(err){ console.error("INVOICE_SEND_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
+/* ─── Seller Settings ─── */
+app.get("/api/seller/settings", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const r = await data.query("SELECT deposit_mode, ghost_timeout_hours FROM places WHERE id = $1", [seller.placeId]);
+    if(!r.rows.length) return res.status(404).json({ error: "Place not found" });
+    const p = r.rows[0];
+    res.json({ depositMode: p.deposit_mode || p.depositmode || "none", ghostTimeoutHours: Number(p.ghost_timeout_hours || p.ghosttimeouthours || 48) });
+  } catch(err){ console.error("SELLER_SETTINGS_GET_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.put("/api/seller/settings", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const { depositMode, ghostTimeoutHours } = req.body || {};
+    const validModes = ["none", "standard", "double"];
+    if(depositMode !== undefined && !validModes.includes(depositMode)) return res.status(400).json({ error: "depositMode must be none, standard, or double" });
+    const updates = [];
+    const params = [];
+    let idx = 1;
+    if(depositMode !== undefined){ updates.push("deposit_mode = $" + idx); params.push(depositMode); idx++; }
+    if(ghostTimeoutHours !== undefined){ updates.push("ghost_timeout_hours = $" + idx); params.push(Number(ghostTimeoutHours) || 48); idx++; }
+    if(!updates.length) return res.status(400).json({ error: "Nothing to update" });
+    params.push(seller.placeId);
+    await data.query("UPDATE places SET " + updates.join(", ") + " WHERE id = $" + idx, params);
+    const r = await data.query("SELECT deposit_mode, ghost_timeout_hours FROM places WHERE id = $1", [seller.placeId]);
+    const p = r.rows[0];
+    res.json({ depositMode: p.deposit_mode || p.depositmode || "none", ghostTimeoutHours: Number(p.ghost_timeout_hours || p.ghosttimeouthours || 48) });
+  } catch(err){ console.error("SELLER_SETTINGS_PUT_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+/* ─── Deposit System ─── */
+app.post("/api/deposits/collect", async (req, res) => {
+  try {
+    const { orderId, placeId, buyerEmail, orderTotal } = req.body || {};
+    if(!orderId || !placeId) return res.status(400).json({ error: "orderId and placeId required" });
+    const placeR = await data.query("SELECT deposit_mode, ghost_timeout_hours FROM places WHERE id = $1", [Number(placeId)]);
+    if(!placeR.rows.length) return res.status(404).json({ error: "Place not found" });
+    const place = placeR.rows[0];
+    const mode = place.deposit_mode || place.depositmode || "none";
+    if(mode === "none") return res.json({ deposit: null });
+    const pct = mode === "double" ? 10 : 5;
+    const total = Number(orderTotal) || 0;
+    const amount = Math.round(total * pct) / 100;
+    const timeoutH = Number(place.ghost_timeout_hours || place.ghosttimeouthours || 48);
+    const r = await data.query(
+      `INSERT INTO deposits (order_id, place_id, buyer_email, amount, deposit_percent, order_total, status, ghost_timeout_hours, expires_at)
+       VALUES ($1,$2,$3,$4,$5,$6,'pending',$7, NOW() + ($7 || ' hours')::INTERVAL) RETURNING *`,
+      [Number(orderId), Number(placeId), (buyerEmail || "").toString(), amount, pct, total, timeoutH]
+    );
+    const dep = r.rows[0];
+    await data.query("UPDATE orders SET deposit_id = $1, deposit_amount = $2, deposit_status = 'pending' WHERE id = $3", [dep.id, amount, Number(orderId)]);
+    res.json({ deposit: dep });
+  } catch(err){ console.error("DEPOSIT_COLLECT_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.put("/api/deposits/:id/forfeit", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const depId = Number(req.params.id);
+    const check = await data.query("SELECT * FROM deposits WHERE id = $1 AND place_id = $2", [depId, seller.placeId]);
+    if(!check.rows.length) return res.status(404).json({ error: "Deposit not found" });
+    const r = await data.query("UPDATE deposits SET status = 'forfeited', forfeited_at = NOW() WHERE id = $1 RETURNING *", [depId]);
+    await data.query("UPDATE orders SET deposit_status = 'forfeited' WHERE id = $1", [r.rows[0].order_id]);
+    res.json(r.rows[0]);
+  } catch(err){ console.error("DEPOSIT_FORFEIT_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.put("/api/deposits/:id/refund", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const depId = Number(req.params.id);
+    const check = await data.query("SELECT * FROM deposits WHERE id = $1 AND place_id = $2", [depId, seller.placeId]);
+    if(!check.rows.length) return res.status(404).json({ error: "Deposit not found" });
+    const r = await data.query("UPDATE deposits SET status = 'refunded', refunded_at = NOW() WHERE id = $1 RETURNING *", [depId]);
+    await data.query("UPDATE orders SET deposit_status = 'refunded' WHERE id = $1", [r.rows[0].order_id]);
+    res.json(r.rows[0]);
+  } catch(err){ console.error("DEPOSIT_REFUND_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.get("/api/seller/deposits", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const r = await data.query("SELECT * FROM deposits WHERE place_id = $1 ORDER BY created_at DESC", [seller.placeId]);
+    res.json(r.rows);
+  } catch(err){ console.error("SELLER_DEPOSITS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
 app.get("/invoice/:id", async (req, res) => {
   try {
     const r = await data.query("SELECT * FROM invoices WHERE id = $1", [Number(req.params.id)]);
