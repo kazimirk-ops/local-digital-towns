@@ -2565,8 +2565,6 @@ function updateSidebarAuth(){
   if(storeLink) storeLink.href = "/me/store";
   const myProfileLink = $("navMyProfileLink");
   if(myProfileLink) myProfileLink.href = "/me/profile";
-  const dashLink = $("navDashboardLink");
-  if(dashLink) dashLink.style.display = (access.loggedIn && access.hasStore) ? "inline-flex" : "none";
   const adminLink = $("topAdminLink");
   if(adminLink) adminLink.href = access.isAdmin ? "/admin" : "/admin/login";
   const welcome = $("welcomeCard");

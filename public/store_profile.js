@@ -182,6 +182,8 @@ async function loadOwnedStores() {
   if(inboxSelect) inboxSelect.innerHTML = "";
   if(salesSelect) salesSelect.innerHTML = "";
   if(ordersSelect) ordersSelect.innerHTML = "";
+  const dashBtn = document.getElementById("dashboardBtn");
+  if(dashBtn) dashBtn.style.display = owned.length ? "block" : "none";
   if (!owned.length) {
     list.innerHTML = `<div class="muted">No owned stores yet.</div>`;
     return;
