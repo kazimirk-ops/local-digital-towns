@@ -406,6 +406,20 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
       }
     }
 
+    // Handle invoice payment
+    if(session?.metadata?.type === "invoice"){
+      const invId = Number(session.metadata.invoiceId || 0);
+      if(invId){
+        try {
+          await data.query(
+            "UPDATE invoices SET status = 'paid', paid_at = NOW(), stripe_session_id = $1 WHERE id = $2 AND status != 'paid'",
+            [session.payment_intent || session.id || "", invId]
+          );
+          console.log("INVOICE_PAID_VIA_STRIPE", { invoiceId: invId, paymentIntent: session.payment_intent });
+        } catch(invErr){ console.error("INVOICE_PAYMENT_UPDATE_ERROR", invErr?.message); }
+      }
+    }
+
     // Handle business subscription payment
     if(placeId && session.subscription){
       console.log("Processing business subscription for placeId:", placeId);
@@ -3268,15 +3282,23 @@ app.get("/invoice/:id", async (req, res) => {
     if(notes) extraHtml += '<div style="margin-top:20px;padding:16px;background:#111827;border-radius:8px;"><span style="font-size:13px;color:#64748b;">Notes</span><p style="margin:6px 0 0;color:#e2e8f0;">' + notes + '</p></div>';
     if(dueDate) extraHtml += '<p style="color:#64748b;margin-top:12px;">Due: <span style="color:#e2e8f0;">' + new Date(dueDate).toLocaleDateString() + '</span></p>';
 
+    const showPaid = status === "paid" || req.query.paid === "1";
     let actionHtml;
-    if(status === "paid"){
+    if(showPaid){
       const paidDate = paidAt ? new Date(paidAt).toLocaleDateString() : "";
       actionHtml = '<div style="text-align:center;margin:32px 0;padding:20px;background:rgba(16,185,129,.1);border-radius:12px;">'
         + '<span style="font-size:32px;">&#10003;</span>'
-        + '<p style="font-size:18px;font-weight:700;color:#10b981;margin-top:8px;">Paid' + (paidDate ? " on " + paidDate : "") + '</p></div>';
+        + '<p style="font-size:18px;font-weight:700;color:#10b981;margin-top:8px;">Paid' + (paidDate ? "" : " — Thank you!") + (paidDate ? " on " + paidDate : "") + '</p></div>';
     } else {
       actionHtml = '<div style="text-align:center;margin:32px 0;">'
-        + '<button disabled style="padding:14px 40px;background:#374151;color:#94a3b8;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:not-allowed;">Pay Now (Coming Soon)</button></div>';
+        + '<button id="payBtn" style="padding:14px 40px;background:#10b981;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;">Pay Now</button></div>'
+        + '<script>document.getElementById("payBtn").addEventListener("click",function(){'
+        + 'var b=this;b.disabled=true;b.textContent="Redirecting...";b.style.background="#374151";b.style.color="#94a3b8";'
+        + 'fetch("/api/invoice/' + inv.id + '/checkout",{method:"POST",headers:{"Content-Type":"application/json"}})'
+        + '.then(function(r){return r.json();})'
+        + '.then(function(d){if(d.url){window.location.href=d.url;}else{alert(d.error||"Checkout failed");b.disabled=false;b.textContent="Pay Now";b.style.background="#10b981";b.style.color="#fff";}})'
+        + '.catch(function(e){alert("Error: "+e.message);b.disabled=false;b.textContent="Pay Now";b.style.background="#10b981";b.style.color="#fff";});'
+        + '});<\/script>';
     }
 
     const html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invoice #' + inv.id + ' — ' + storeName + '</title></head>'
@@ -3312,6 +3334,45 @@ app.get("/api/invoice/:id", async (req, res) => {
     if(!r.rows.length) return res.status(404).json({ error: "Invoice not found" });
     res.json(r.rows[0]);
   } catch(err){ console.error("INVOICE_PUBLIC_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.post("/api/invoice/:id/checkout", async (req, res) => {
+  try {
+    const s = requireStripeConfig(res); if(!s) return;
+    const invId = Number(req.params.id);
+    const r = await data.query("SELECT * FROM invoices WHERE id = $1", [invId]);
+    if(!r.rows.length) return res.status(404).json({ error: "Invoice not found" });
+    const inv = r.rows[0];
+    if(inv.status === "paid") return res.status(400).json({ error: "Already paid" });
+
+    const items = typeof inv.items === "string" ? JSON.parse(inv.items) : (inv.items || []);
+    const platformFee = Number(inv.platform_fee || inv.platformfee || inv.platformFee) || 0;
+    const buyerEmail = inv.buyer_email || inv.buyeremail || inv.buyerEmail || "";
+    const baseUrl = (process.env.BASE_URL || "").trim() || (req.protocol + "://" + req.get("host"));
+
+    const lineItems = items.map(function(i){
+      return {
+        price_data: { currency: "usd", unit_amount: Math.round((Number(i.unitPrice) || 0) * 100), product_data: { name: i.title || "Item" } },
+        quantity: Number(i.quantity) || 1
+      };
+    });
+    if(platformFee > 0){
+      lineItems.push({
+        price_data: { currency: "usd", unit_amount: Math.round(platformFee * 100), product_data: { name: "Service Fee" } },
+        quantity: 1
+      });
+    }
+
+    const session = await s.checkout.sessions.create({
+      mode: "payment",
+      line_items: lineItems,
+      success_url: baseUrl + "/invoice/" + invId + "?paid=1",
+      cancel_url: baseUrl + "/invoice/" + invId,
+      metadata: { invoiceId: invId.toString(), type: "invoice" },
+      customer_email: buyerEmail || undefined
+    });
+    res.json({ url: session.url });
+  } catch(err){ console.error("INVOICE_CHECKOUT_ERROR", err?.message); res.status(500).json({ error: "Checkout failed" }); }
 });
 
 app.post("/api/admin/pulse/generate", async (req, res) =>{
