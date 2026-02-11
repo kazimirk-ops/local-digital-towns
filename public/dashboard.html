@@ -264,6 +264,44 @@
               <span id="settSaved" style="margin-left:12px;color:#10b981;font-size:13px;display:none;">Saved!</span>
             </div>
           </div>
+
+          <!-- Facebook Auto-Sync -->
+          <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:24px;max-width:600px;margin-top:24px;">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:4px;">Facebook Auto-Sync</h3>
+            <p style="font-size:13px;color:#64748b;margin-bottom:16px;">Connect ManyChat (or any automation tool) to auto-create listings from your Facebook posts.</p>
+
+            <label style="display:block;font-size:13px;color:#94a3b8;margin-bottom:4px;">Your API Key</label>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+              <input type="text" id="fbApiKey" readonly style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #374151;background:#0a0e1a;color:#e2e8f0;font-size:13px;font-family:monospace;" value="Loading..." />
+              <button type="button" id="fbCopyKeyBtn" style="padding:8px 14px;font-size:12px;font-weight:600;background:#1e293b;color:#e2e8f0;border:1px solid #374151;border-radius:8px;cursor:pointer;white-space:nowrap;">Copy</button>
+              <button type="button" id="fbRegenKeyBtn" style="padding:8px 14px;font-size:12px;font-weight:600;background:#dc2626;color:#fff;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;">Regenerate</button>
+            </div>
+
+            <label style="display:block;font-size:13px;color:#94a3b8;margin-bottom:4px;">Webhook URL</label>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+              <input type="text" id="fbWebhookUrl" readonly style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #374151;background:#0a0e1a;color:#e2e8f0;font-size:13px;font-family:monospace;" />
+              <button type="button" id="fbCopyUrlBtn" style="padding:8px 14px;font-size:12px;font-weight:600;background:#1e293b;color:#e2e8f0;border:1px solid #374151;border-radius:8px;cursor:pointer;white-space:nowrap;">Copy</button>
+            </div>
+
+            <div style="background:#0a0e1a;border:1px solid #1e293b;border-radius:8px;padding:16px;font-size:13px;color:#94a3b8;line-height:1.6;">
+              <strong style="color:#e2e8f0;">ManyChat Setup Instructions:</strong><br>
+              1. In ManyChat, create a new Flow triggered by a Facebook post.<br>
+              2. Add an "External Request" (HTTP POST) action pointing to the <strong>Webhook URL</strong> above.<br>
+              3. Set the body to JSON with these fields:<br>
+              <code style="display:block;background:#111827;padding:10px;border-radius:6px;margin:8px 0;font-size:12px;color:#10b981;">
+{<br>
+&nbsp;&nbsp;"apiKey": "YOUR_API_KEY",<br>
+&nbsp;&nbsp;"title": "Post title or first line",<br>
+&nbsp;&nbsp;"description": "Full post text",<br>
+&nbsp;&nbsp;"price": 29.99,<br>
+&nbsp;&nbsp;"photoUrls": ["https://..."],<br>
+&nbsp;&nbsp;"quantity": 1,<br>
+&nbsp;&nbsp;"category": "optional"<br>
+}
+              </code>
+              <strong style="color:#e2e8f0;">Tips:</strong> If <code>title</code> is omitted, the first line of <code>description</code> is used. If <code>price</code> is omitted, it's parsed from the text (e.g. "$25.00").
+            </div>
+          </div>
         </div>
 
       </main>
@@ -558,6 +596,48 @@
 
       document.getElementById("saveSettingsBtn").addEventListener("click", saveSettings);
 
+      /* ─── Facebook Auto-Sync logic ─── */
+      async function loadFacebookKey(){
+        try {
+          var resp = await fetch("/api/seller/facebook-key");
+          if(!resp.ok) return;
+          var d = await resp.json();
+          document.getElementById("fbApiKey").value = d.apiKey || "";
+          document.getElementById("fbWebhookUrl").value = window.location.origin + "/api/webhooks/facebook-listing";
+        } catch(err){ console.error("FB_KEY_LOAD_ERROR", err); }
+      }
+
+      document.getElementById("fbCopyKeyBtn").addEventListener("click", function(){
+        var inp = document.getElementById("fbApiKey");
+        navigator.clipboard.writeText(inp.value).then(function(){
+          var btn = document.getElementById("fbCopyKeyBtn");
+          btn.textContent = "Copied!";
+          setTimeout(function(){ btn.textContent = "Copy"; }, 1500);
+        });
+      });
+
+      document.getElementById("fbCopyUrlBtn").addEventListener("click", function(){
+        var inp = document.getElementById("fbWebhookUrl");
+        navigator.clipboard.writeText(inp.value).then(function(){
+          var btn = document.getElementById("fbCopyUrlBtn");
+          btn.textContent = "Copied!";
+          setTimeout(function(){ btn.textContent = "Copy"; }, 1500);
+        });
+      });
+
+      document.getElementById("fbRegenKeyBtn").addEventListener("click", async function(){
+        if(!confirm("Regenerate your Facebook API key? The old key will stop working immediately.")) return;
+        var btn = document.getElementById("fbRegenKeyBtn");
+        btn.disabled = true; btn.textContent = "Regenerating...";
+        try {
+          var resp = await fetch("/api/seller/facebook-key/regenerate", { method: "PUT" });
+          if(!resp.ok) throw new Error("Failed");
+          var d = await resp.json();
+          document.getElementById("fbApiKey").value = d.apiKey || "";
+        } catch(err){ alert("Error: " + err.message); }
+        btn.disabled = false; btn.textContent = "Regenerate";
+      });
+
       /* ─── Deposits logic ─── */
       function depBadge(status){
         var colors = { pending: "#eab308", collected: "#10b981", forfeited: "#ef4444", refunded: "#3b82f6" };
@@ -638,7 +718,7 @@
 
       watchTab("invoices", loadInvoices);
       watchTab("orders", loadDeposits);
-      watchTab("settings", loadSettings);
+      watchTab("settings", function(){ loadSettings(); loadFacebookKey(); });
 
     })();
     </script>

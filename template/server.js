@@ -3337,6 +3337,74 @@ app.get("/api/seller/deposits", async (req, res) => {
   } catch(err){ console.error("SELLER_DEPOSITS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
+/* ─── Facebook Auto-Sync ─── */
+app.get("/api/seller/facebook-key", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const r = await data.query("SELECT facebook_api_key FROM places WHERE id = $1", [seller.placeId]);
+    let key = r.rows[0]?.facebook_api_key || r.rows[0]?.facebookapikey || "";
+    if(!key){
+      key = "fbk_" + crypto.randomBytes(24).toString("hex");
+      await data.query("UPDATE places SET facebook_api_key = $1 WHERE id = $2", [key, seller.placeId]);
+    }
+    res.json({ apiKey: key });
+  } catch(err){ console.error("FB_KEY_GET_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.put("/api/seller/facebook-key/regenerate", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const key = "fbk_" + crypto.randomBytes(24).toString("hex");
+    await data.query("UPDATE places SET facebook_api_key = $1 WHERE id = $2", [key, seller.placeId]);
+    res.json({ apiKey: key });
+  } catch(err){ console.error("FB_KEY_REGEN_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.post("/api/webhooks/facebook-listing", async (req, res) => {
+  try {
+    const { apiKey, title, description, price, photoUrls, quantity, category } = req.body || {};
+    if(!apiKey) return res.status(401).json({ error: "apiKey required" });
+    const pr = await data.query("SELECT id FROM places WHERE facebook_api_key = $1", [String(apiKey)]);
+    if(!pr.rows.length) return res.status(403).json({ error: "Invalid API key" });
+    const placeId = pr.rows[0].id;
+
+    // Parse title from first line of description if missing
+    let finalTitle = (title || "").trim();
+    let finalDesc = (description || "").trim();
+    if(!finalTitle && finalDesc){
+      const lines = finalDesc.split(/\r?\n/);
+      finalTitle = lines[0].substring(0, 120);
+      finalDesc = lines.slice(1).join("\n").trim();
+    }
+    if(!finalTitle) return res.status(400).json({ error: "title or description required" });
+
+    // Parse price from description if missing — looks for $XX or $XX.XX
+    let finalPrice = Number(price) || 0;
+    if(!finalPrice && finalDesc){
+      const m = finalDesc.match(/\$(\d+(?:\.\d{1,2})?)/);
+      if(m) finalPrice = Number(m[1]) || 0;
+    }
+    if(!finalPrice && finalTitle){
+      const m = finalTitle.match(/\$(\d+(?:\.\d{1,2})?)/);
+      if(m) finalPrice = Number(m[1]) || 0;
+    }
+
+    const photos = Array.isArray(photoUrls) ? photoUrls : [];
+    const qty = Number(quantity) || 1;
+
+    const info = await data.query(`
+      INSERT INTO listings
+        (placeId, title, description, quantity, price, status, createdAt, photoUrlsJson, listingType, exchangeType, offerCategory)
+      VALUES ($1,$2,$3,$4,$5,'active',NOW(),$6,'listing','sell',$7)
+      RETURNING id
+    `, [placeId, finalTitle, finalDesc, qty, finalPrice, JSON.stringify(photos), category || ""]);
+
+    const listingId = info.rows[0]?.id;
+    console.log("FB_WEBHOOK_LISTING_CREATED", { placeId, listingId, title: finalTitle });
+    res.json({ ok: true, listingId });
+  } catch(err){ console.error("FB_WEBHOOK_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
 app.get("/invoice/:id", async (req, res) => {
   try {
     const r = await data.query("SELECT * FROM invoices WHERE id = $1", [Number(req.params.id)]);
