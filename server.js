@@ -3405,6 +3405,54 @@ app.post("/api/webhooks/facebook-listing", async (req, res) => {
   } catch(err){ console.error("FB_WEBHOOK_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
+app.post("/api/webhooks/comment-to-pay", async (req, res) => {
+  try {
+    const { apiKey, buyerName, buyerEmail, messengerUserId, items, description, productTitle, price } = req.body || {};
+    if(!apiKey) return res.status(401).json({ error: "apiKey required" });
+    const pr = await data.query("SELECT id, ownerUserId, owneruserid FROM places WHERE facebook_api_key = $1", [String(apiKey)]);
+    if(!pr.rows.length) return res.status(403).json({ error: "Invalid API key" });
+    const placeId = pr.rows[0].id;
+    const sellerUserId = pr.rows[0].owneruserid || pr.rows[0].ownerUserId || pr.rows[0].owneruserid || 0;
+
+    // Build line items — accept items array or simple productTitle + price
+    let lineItems = [];
+    if(Array.isArray(items) && items.length){
+      lineItems = items.map(i => ({ title: (i.title||"").toString(), quantity: Number(i.quantity)||1, unitPrice: Number(i.unitPrice || i.price)||0 }));
+    } else if(productTitle){
+      let p = Number(price) || 0;
+      if(!p && description){
+        const m = (description || "").match(/\$(\d+(?:\.\d{1,2})?)/);
+        if(m) p = Number(m[1]) || 0;
+      }
+      lineItems = [{ title: (productTitle||"").toString(), quantity: 1, unitPrice: p }];
+    } else {
+      return res.status(400).json({ error: "items array or productTitle required" });
+    }
+
+    if(!buyerEmail) return res.status(400).json({ error: "buyerEmail required" });
+
+    const subtotal = lineItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+    const platformFee = Math.round(subtotal * 5) / 100;
+    const total = subtotal + platformFee;
+    const mainTitle = lineItems[0]?.title || "Order";
+
+    const r = await data.query(
+      `INSERT INTO invoices (place_id, seller_user_id, buyer_email, buyer_name, buyer_phone, items, subtotal, platform_fee, total, notes, status, sent_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'sent',NOW()) RETURNING *`,
+      [placeId, sellerUserId, buyerEmail.toString(), (buyerName||"").toString(), (messengerUserId||"").toString(),
+       JSON.stringify(lineItems), subtotal, platformFee, total, (description||"").toString()]
+    );
+
+    const inv = r.rows[0];
+    const baseUrl = req.protocol + "://" + req.get("host");
+    const invoiceUrl = baseUrl + "/invoice/" + inv.id;
+    const paymentMessage = "Hi " + (buyerName || "there") + "! Here's your invoice for " + mainTitle + ": " + invoiceUrl + " — Total: $" + total.toFixed(2);
+
+    console.log("COMMENT_TO_PAY_INVOICE_CREATED", { placeId, invoiceId: inv.id, buyerEmail, total });
+    res.json({ ok: true, invoiceId: inv.id, invoiceUrl, total, paymentMessage });
+  } catch(err){ console.error("COMMENT_TO_PAY_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
 app.get("/invoice/:id", async (req, res) => {
   try {
     const r = await data.query("SELECT * FROM invoices WHERE id = $1", [Number(req.params.id)]);

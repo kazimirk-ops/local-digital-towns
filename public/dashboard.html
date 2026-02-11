@@ -220,10 +220,73 @@
 
         <!-- Facebook -->
         <div class="tab-content" id="tab-facebook">
-          <div class="main-title">Facebook</div>
-          <div class="placeholder-card">
-            <div class="ph-title">Coming Soon</div>
-            <div class="ph-desc">Connect your Facebook page, auto-post new products, and manage social engagement.</div>
+          <div class="main-title">Facebook / Comment-to-Pay</div>
+
+          <!-- Comment-to-Pay Webhook -->
+          <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:24px;max-width:700px;margin-bottom:24px;">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:4px;">Comment-to-Pay Webhook</h3>
+            <p style="font-size:13px;color:#64748b;margin-bottom:16px;">When a customer comments on your Facebook post, ManyChat sends their info here and gets back a payment link to DM them.</p>
+
+            <label style="display:block;font-size:13px;color:#94a3b8;margin-bottom:4px;">Webhook URL</label>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+              <input type="text" id="ctpWebhookUrl" readonly style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #374151;background:#0a0e1a;color:#e2e8f0;font-size:13px;font-family:monospace;" />
+              <button type="button" id="ctpCopyUrlBtn" style="padding:8px 14px;font-size:12px;font-weight:600;background:#1e293b;color:#e2e8f0;border:1px solid #374151;border-radius:8px;cursor:pointer;white-space:nowrap;">Copy</button>
+            </div>
+
+            <div style="background:#0a0e1a;border:1px solid #1e293b;border-radius:8px;padding:16px;font-size:13px;color:#94a3b8;line-height:1.6;margin-bottom:16px;">
+              <strong style="color:#e2e8f0;">ManyChat Setup:</strong><br>
+              1. Create a Flow triggered by Facebook comment keyword (e.g. "BUY", "WANT", "ORDER").<br>
+              2. Add an "Ask Email" step to collect the buyer's email address.<br>
+              3. Add an External Request (POST) to the <strong>Webhook URL</strong> above with JSON body (see example below).<br>
+              4. Use the returned <code>paymentMessage</code> in a "Send Message" step to DM the buyer their payment link.<br><br>
+              <strong style="color:#e2e8f0;">JSON Body Example:</strong>
+              <code style="display:block;background:#111827;padding:10px;border-radius:6px;margin:8px 0;font-size:12px;color:#10b981;">
+{<br>
+&nbsp;&nbsp;"apiKey": "YOUR_API_KEY",<br>
+&nbsp;&nbsp;"buyerName": "Jane Doe",<br>
+&nbsp;&nbsp;"buyerEmail": "jane@example.com",<br>
+&nbsp;&nbsp;"messengerUserId": "12345",<br>
+&nbsp;&nbsp;"productTitle": "Lavender Body Butter",<br>
+&nbsp;&nbsp;"price": 14.99,<br>
+&nbsp;&nbsp;"description": "Optional notes"<br>
+}
+              </code>
+              <strong style="color:#e2e8f0;">Or with multiple items:</strong>
+              <code style="display:block;background:#111827;padding:10px;border-radius:6px;margin:8px 0;font-size:12px;color:#10b981;">
+{<br>
+&nbsp;&nbsp;"apiKey": "YOUR_API_KEY",<br>
+&nbsp;&nbsp;"buyerEmail": "jane@example.com",<br>
+&nbsp;&nbsp;"items": [<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{"title": "Body Butter", "price": 14.99, "quantity": 1},<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{"title": "Lip Balm", "price": 5.99, "quantity": 2}<br>
+&nbsp;&nbsp;]<br>
+}
+              </code>
+              <strong style="color:#e2e8f0;">Response:</strong> <code>{ ok, invoiceId, invoiceUrl, total, paymentMessage }</code> — use <code>paymentMessage</code> as the DM text.
+            </div>
+
+            <!-- Test Section -->
+            <h4 style="font-size:14px;font-weight:600;margin-bottom:12px;color:#e2e8f0;">Test Comment-to-Pay</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+              <div>
+                <label style="display:block;font-size:12px;color:#94a3b8;margin-bottom:4px;">Buyer Name</label>
+                <input type="text" id="ctpTestName" placeholder="Jane Doe" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #374151;background:#0a0e1a;color:#e2e8f0;font-size:13px;box-sizing:border-box;" />
+              </div>
+              <div>
+                <label style="display:block;font-size:12px;color:#94a3b8;margin-bottom:4px;">Buyer Email *</label>
+                <input type="email" id="ctpTestEmail" placeholder="jane@example.com" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #374151;background:#0a0e1a;color:#e2e8f0;font-size:13px;box-sizing:border-box;" />
+              </div>
+              <div>
+                <label style="display:block;font-size:12px;color:#94a3b8;margin-bottom:4px;">Product Title *</label>
+                <input type="text" id="ctpTestProduct" placeholder="Lavender Body Butter" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #374151;background:#0a0e1a;color:#e2e8f0;font-size:13px;box-sizing:border-box;" />
+              </div>
+              <div>
+                <label style="display:block;font-size:12px;color:#94a3b8;margin-bottom:4px;">Price *</label>
+                <input type="number" id="ctpTestPrice" placeholder="14.99" step="0.01" min="0" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #374151;background:#0a0e1a;color:#e2e8f0;font-size:13px;box-sizing:border-box;" />
+              </div>
+            </div>
+            <button type="button" class="btn-green" id="ctpTestBtn">Send Test</button>
+            <pre id="ctpTestResult" style="margin-top:12px;background:#0a0e1a;border:1px solid #1e293b;border-radius:8px;padding:12px;font-size:12px;color:#10b981;white-space:pre-wrap;display:none;"></pre>
           </div>
         </div>
 
@@ -596,6 +659,61 @@
 
       document.getElementById("saveSettingsBtn").addEventListener("click", saveSettings);
 
+      /* ─── Comment-to-Pay logic ─── */
+      function loadCtpWebhookUrl(){
+        document.getElementById("ctpWebhookUrl").value = window.location.origin + "/api/webhooks/comment-to-pay";
+      }
+
+      document.getElementById("ctpCopyUrlBtn").addEventListener("click", function(){
+        var inp = document.getElementById("ctpWebhookUrl");
+        navigator.clipboard.writeText(inp.value).then(function(){
+          var btn = document.getElementById("ctpCopyUrlBtn");
+          btn.textContent = "Copied!";
+          setTimeout(function(){ btn.textContent = "Copy"; }, 1500);
+        });
+      });
+
+      document.getElementById("ctpTestBtn").addEventListener("click", async function(){
+        var btn = document.getElementById("ctpTestBtn");
+        var result = document.getElementById("ctpTestResult");
+        var email = document.getElementById("ctpTestEmail").value.trim();
+        var product = document.getElementById("ctpTestProduct").value.trim();
+        var price = Number(document.getElementById("ctpTestPrice").value) || 0;
+        if(!email || !product){ alert("Email and Product Title are required."); return; }
+        btn.disabled = true; btn.textContent = "Sending...";
+        result.style.display = "none";
+        try {
+          var keyResp = await fetch("/api/seller/facebook-key");
+          if(!keyResp.ok) throw new Error("Could not load API key");
+          var keyData = await keyResp.json();
+          var resp = await fetch("/api/webhooks/comment-to-pay", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              apiKey: keyData.apiKey,
+              buyerName: document.getElementById("ctpTestName").value.trim() || "Test Buyer",
+              buyerEmail: email,
+              productTitle: product,
+              price: price
+            })
+          });
+          var d = await resp.json();
+          result.style.display = "block";
+          if(resp.ok){
+            result.style.color = "#10b981";
+            result.textContent = JSON.stringify(d, null, 2);
+          } else {
+            result.style.color = "#ef4444";
+            result.textContent = "Error: " + (d.error || "Unknown error");
+          }
+        } catch(err){
+          result.style.display = "block";
+          result.style.color = "#ef4444";
+          result.textContent = "Error: " + err.message;
+        }
+        btn.disabled = false; btn.textContent = "Send Test";
+      });
+
       /* ─── Facebook Auto-Sync logic ─── */
       async function loadFacebookKey(){
         try {
@@ -718,6 +836,7 @@
 
       watchTab("invoices", loadInvoices);
       watchTab("orders", loadDeposits);
+      watchTab("facebook", loadCtpWebhookUrl);
       watchTab("settings", function(){ loadSettings(); loadFacebookKey(); });
 
     })();
