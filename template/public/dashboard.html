@@ -795,28 +795,31 @@
             }).join("");
           }
 
-          // Weekly Revenue chart
+          // Weekly Revenue chart — always show 12 bars
           var weekChart = document.getElementById("anWeekChart");
           var weekLabels = document.getElementById("anWeekLabels");
           var weeks = a.revenueByWeek || [];
-          if(!weeks.length){
-            weekChart.innerHTML = '<div style="color:#64748b;font-size:13px;padding:40px 0;text-align:center;width:100%;">No weekly data yet</div>';
-            weekLabels.innerHTML = "";
-          } else {
-            var maxW = Math.max.apply(null, weeks.map(function(w){ return w.revenue; })) || 1;
-            weekChart.innerHTML = weeks.map(function(w){
-              var pct = Math.max((w.revenue / maxW) * 100, 3);
-              var color = w.revenue > 0 ? "#3b82f6" : "#1e293b";
-              var dt = new Date(w.week);
-              var lbl = (dt.getMonth()+1) + "/" + dt.getDate();
-              var title = "Week of " + lbl + ": $" + w.revenue.toFixed(2) + " (" + w.orders + " orders)";
-              return '<div title="' + title + '" class="rev-bar" style="flex:1;min-width:0;height:' + pct + '%;background:' + color + ';border-radius:3px 3px 0 0;cursor:pointer;"></div>';
-            }).join("");
-            weekLabels.innerHTML = weeks.map(function(w){
-              var dt = new Date(w.week);
-              return '<div style="flex:1;min-width:0;text-align:center;font-size:10px;color:#64748b;">' + (dt.getMonth()+1) + '/' + dt.getDate() + '</div>';
-            }).join("");
+          var weekMap = {};
+          weeks.forEach(function(w){ weekMap[w.week ? w.week.substring(0,10) : ""] = w; });
+          var weekBars = [];
+          for(var wi = 11; wi >= 0; wi--){
+            var wd = new Date(); wd.setDate(wd.getDate() - wi * 7);
+            var dayOfWeek = wd.getDay();
+            wd.setDate(wd.getDate() - dayOfWeek); // roll back to Monday (week start)
+            var wKey = wd.toISOString().substring(0,10);
+            var wData = weekMap[wKey] || null;
+            weekBars.push({ day: wKey, revenue: wData ? wData.revenue : 0, orders: wData ? wData.orders : 0, label: (wd.getMonth()+1) + "/" + wd.getDate() });
           }
+          var maxW = Math.max.apply(null, weekBars.map(function(b){ return b.revenue; })) || 1;
+          weekChart.innerHTML = weekBars.map(function(b){
+            var pct = Math.max((b.revenue / maxW) * 100, 2);
+            var color = b.revenue > 0 ? "#3b82f6" : "#1e293b";
+            var title = "Week of " + b.label + ": $" + b.revenue.toFixed(2) + " (" + b.orders + " orders)";
+            return '<div title="' + title + '" class="rev-bar" style="flex:1;min-width:0;height:' + pct + '%;background:' + color + ';border-radius:3px 3px 0 0;cursor:pointer;"></div>';
+          }).join("");
+          weekLabels.innerHTML = weekBars.map(function(b){
+            return '<div style="flex:1;min-width:0;text-align:center;font-size:10px;color:#64748b;">' + b.label + '</div>';
+          }).join("");
 
           // Invoice Funnel
           var funnel = document.getElementById("anFunnel");
