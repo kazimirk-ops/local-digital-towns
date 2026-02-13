@@ -3509,99 +3509,6 @@ app.put("/api/seller/facebook-key/regenerate", async (req, res) => {
   } catch(err){ console.error("FB_KEY_REGEN_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
-app.post("/api/webhooks/facebook-listing", async (req, res) => {
-  try {
-    const { apiKey, title, description, price, photoUrls, quantity, category } = req.body || {};
-    if(!apiKey) return res.status(401).json({ error: "apiKey required" });
-    const pr = await data.query("SELECT id FROM places WHERE facebook_api_key = $1", [String(apiKey)]);
-    if(!pr.rows.length) return res.status(403).json({ error: "Invalid API key" });
-    const placeId = pr.rows[0].id;
-
-    // Parse title from first line of description if missing
-    let finalTitle = (title || "").trim();
-    let finalDesc = (description || "").trim();
-    if(!finalTitle && finalDesc){
-      const lines = finalDesc.split(/\r?\n/);
-      finalTitle = lines[0].substring(0, 120);
-      finalDesc = lines.slice(1).join("\n").trim();
-    }
-    if(!finalTitle) return res.status(400).json({ error: "title or description required" });
-
-    // Parse price from description if missing — looks for $XX or $XX.XX
-    let finalPrice = Number(price) || 0;
-    if(!finalPrice && finalDesc){
-      const m = finalDesc.match(/\$(\d+(?:\.\d{1,2})?)/);
-      if(m) finalPrice = Number(m[1]) || 0;
-    }
-    if(!finalPrice && finalTitle){
-      const m = finalTitle.match(/\$(\d+(?:\.\d{1,2})?)/);
-      if(m) finalPrice = Number(m[1]) || 0;
-    }
-
-    const photos = Array.isArray(photoUrls) ? photoUrls : [];
-    const qty = Number(quantity) || 1;
-
-    const info = await data.query(`
-      INSERT INTO listings
-        (placeId, title, description, quantity, price, status, createdAt, photoUrlsJson, listingType, exchangeType, offerCategory)
-      VALUES ($1,$2,$3,$4,$5,'active',NOW(),$6,'listing','sell',$7)
-      RETURNING id
-    `, [placeId, finalTitle, finalDesc, qty, finalPrice, JSON.stringify(photos), category || ""]);
-
-    const listingId = info.rows[0]?.id;
-    console.log("FB_WEBHOOK_LISTING_CREATED", { placeId, listingId, title: finalTitle });
-    res.json({ ok: true, listingId });
-  } catch(err){ console.error("FB_WEBHOOK_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
-});
-
-app.post("/api/webhooks/comment-to-pay", async (req, res) => {
-  try {
-    const { apiKey, buyerName, buyerEmail, messengerUserId, items, description, productTitle, price } = req.body || {};
-    if(!apiKey) return res.status(401).json({ error: "apiKey required" });
-    const pr = await data.query("SELECT id, ownerUserId, owneruserid FROM places WHERE facebook_api_key = $1", [String(apiKey)]);
-    if(!pr.rows.length) return res.status(403).json({ error: "Invalid API key" });
-    const placeId = pr.rows[0].id;
-    const sellerUserId = pr.rows[0].owneruserid || pr.rows[0].ownerUserId || pr.rows[0].owneruserid || 0;
-
-    // Build line items — accept items array or simple productTitle + price
-    let lineItems = [];
-    if(Array.isArray(items) && items.length){
-      lineItems = items.map(i => ({ title: (i.title||"").toString(), quantity: Number(i.quantity)||1, unitPrice: Number(i.unitPrice || i.price)||0 }));
-    } else if(productTitle){
-      let p = Number(price) || 0;
-      if(!p && description){
-        const m = (description || "").match(/\$(\d+(?:\.\d{1,2})?)/);
-        if(m) p = Number(m[1]) || 0;
-      }
-      lineItems = [{ title: (productTitle||"").toString(), quantity: 1, unitPrice: p }];
-    } else {
-      return res.status(400).json({ error: "items array or productTitle required" });
-    }
-
-    if(!buyerEmail) return res.status(400).json({ error: "buyerEmail required" });
-
-    const subtotal = lineItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
-    const platformFee = 0;
-    const total = subtotal;
-    const mainTitle = lineItems[0]?.title || "Order";
-
-    const r = await data.query(
-      `INSERT INTO invoices (place_id, seller_user_id, buyer_email, buyer_name, buyer_phone, items, subtotal, platform_fee, total, notes, status, sent_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'sent',NOW()) RETURNING *`,
-      [placeId, sellerUserId, buyerEmail.toString(), (buyerName||"").toString(), (messengerUserId||"").toString(),
-       JSON.stringify(lineItems), subtotal, platformFee, total, (description||"").toString()]
-    );
-
-    const inv = r.rows[0];
-    const baseUrl = req.protocol + "://" + req.get("host");
-    const invoiceUrl = baseUrl + "/invoice/" + inv.id;
-    const paymentMessage = "Hi " + (buyerName || "there") + "! Here's your invoice for " + mainTitle + ": " + invoiceUrl + " — Total: $" + total.toFixed(2);
-
-    console.log("COMMENT_TO_PAY_INVOICE_CREATED", { placeId, invoiceId: inv.id, buyerEmail, total });
-    res.json({ ok: true, invoiceId: inv.id, invoiceUrl, total, paymentMessage });
-  } catch(err){ console.error("COMMENT_TO_PAY_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
-});
-
 app.get("/invoice/:id", async (req, res) => {
   try {
     const r = await data.query("SELECT * FROM invoices WHERE id = $1", [Number(req.params.id)]);
@@ -3907,6 +3814,86 @@ app.put("/api/deposits/:id/refund", async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ error: "Deposit not found or not collected" });
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: "Internal server error" }); }
+});
+
+// ─── Facebook API Key ───
+app.get("/api/seller/facebook-key", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const r = await data.query("SELECT id, facebook_api_key FROM places WHERE owner_id=$1 LIMIT 1", [user.id]);
+    if (!r.rows.length) return res.status(404).json({ error: "No storefront found" });
+    let key = r.rows[0].facebook_api_key;
+    if (!key) {
+      key = "fb_" + require("crypto").randomBytes(16).toString("hex");
+      await data.query("UPDATE places SET facebook_api_key=$1 WHERE id=$2", [key, r.rows[0].id]);
+    }
+    res.json({ apiKey: key });
+  } catch (err) { res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.put("/api/seller/facebook-key/regenerate", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const key = "fb_" + require("crypto").randomBytes(16).toString("hex");
+    const r = await data.query("UPDATE places SET facebook_api_key=$1 WHERE owner_id=$2 RETURNING facebook_api_key", [key, user.id]);
+    if (!r.rows.length) return res.status(404).json({ error: "No storefront found" });
+    res.json({ apiKey: key });
+  } catch (err) { res.status(500).json({ error: "Internal server error" }); }
+});
+
+// ─── ManyChat Webhooks ───
+app.post("/api/webhooks/comment-to-pay", async (req, res) => {
+  try {
+    const { apiKey, buyerName, buyerEmail, messengerUserId, productTitle, price, items } = req.body || {};
+    if (!apiKey) return res.status(401).json({ error: "apiKey required" });
+    const sr = await data.query("SELECT p.owner_id as user_id, p.id as place_id FROM places p WHERE p.facebook_api_key=$1", [String(apiKey)]);
+    if (!sr.rows.length) return res.status(403).json({ error: "Invalid API key" });
+    const userId = sr.rows[0].user_id;
+    const placeId = sr.rows[0].place_id;
+    let lineItems, total;
+    if (items && items.length) {
+      lineItems = items.map(i => ({ title: (i.title || "Item").toString(), quantity: Number(i.quantity) || 1, unitPrice: Number(i.price) || 0 }));
+      total = lineItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+    } else {
+      const p = Number(price) || 0;
+      total = p;
+      lineItems = [{ title: (productTitle || "Item").toString(), quantity: 1, unitPrice: p }];
+    }
+    const r = await data.query(
+      "INSERT INTO invoices (place_id, seller_user_id, buyer_email, buyer_name, items, subtotal, platform_fee, total, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'sent') RETURNING *",
+      [placeId, userId, (buyerEmail || "").toString(), (buyerName || "").toString(), JSON.stringify(lineItems), total, 0, total]
+    );
+    const baseUrl = (process.env.PUBLIC_BASE_URL || process.env.BASE_URL || "").trim() || "http://localhost:3000";
+    res.json({ ok: true, invoiceId: r.rows[0].id, invoiceUrl: baseUrl + "/invoice/" + r.rows[0].id, total, paymentMessage: "Your invoice is ready! Total: $" + total.toFixed(2) + " — Pay here: " + baseUrl + "/invoice/" + r.rows[0].id });
+  } catch (err) { console.error("CTP_WEBHOOK_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.post("/api/webhooks/facebook-listing", async (req, res) => {
+  try {
+    const { apiKey, title, description, price, photoUrls, quantity, category } = req.body || {};
+    if (!apiKey) return res.status(401).json({ error: "apiKey required" });
+    const sr = await data.query("SELECT p.owner_id as user_id, p.id as place_id FROM places p WHERE p.facebook_api_key=$1", [String(apiKey)]);
+    if (!sr.rows.length) return res.status(403).json({ error: "Invalid API key" });
+    const userId = sr.rows[0].user_id;
+    const placeId = sr.rows[0].place_id;
+    let finalTitle = (title || "").trim();
+    let finalDesc = (description || "").trim();
+    if (!finalTitle && finalDesc) {
+      const lines = finalDesc.split(/\r?\n/);
+      finalTitle = lines[0].substring(0, 120);
+    }
+    let finalPrice = Number(price) || 0;
+    if (!finalPrice && finalDesc) {
+      const m = finalDesc.match(/\$(\d+(?:\.\d{1,2})?)/);
+      if (m) finalPrice = Number(m[1]);
+    }
+    const photos = Array.isArray(photoUrls) ? photoUrls : [];
+    const r = await data.query(
+      "INSERT INTO listings (place_id, seller_id, title, description, price, quantity, status, photos) VALUES ($1,$2,$3,$4,$5,$6,'active',$7) RETURNING *",
+      [placeId, userId, finalTitle || "Untitled", finalDesc, finalPrice, Number(quantity) || 1, JSON.stringify(photos)]
+    );
+    res.json({ ok: true, listing: r.rows[0] });
+  } catch (err) { console.error("FB_LISTING_WEBHOOK_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
 app.post("/api/admin/pulse/generate", async (req, res) =>{
