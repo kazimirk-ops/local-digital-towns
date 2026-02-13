@@ -3715,10 +3715,10 @@ app.post("/api/invoice/:id/checkout", async (req, res) => {
 
 // ─── Stripe Connect ───
 app.post("/api/seller/stripe-connect", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   const s = requireStripeConfig(res); if (!s) return;
   try {
-    const existing = await data.query("SELECT stripe_account_id FROM users WHERE id=$1", [user.id]);
+    const existing = await data.query("SELECT stripe_account_id FROM users WHERE id=$1", [userId]);
     if (existing.rows[0]?.stripe_account_id) {
       const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3000";
       const link = await s.accountLinks.create({
@@ -3729,8 +3729,9 @@ app.post("/api/seller/stripe-connect", async (req, res) => {
       });
       return res.json({ url: link.url });
     }
-    const account = await s.accounts.create({ type: "express", email: user.email, metadata: { user_id: String(user.id) } });
-    await data.query("UPDATE users SET stripe_account_id=$1 WHERE id=$2", [account.id, user.id]);
+    const userRow = await data.query("SELECT email FROM users WHERE id=$1", [userId]);
+    const account = await s.accounts.create({ type: "express", email: userRow.rows[0]?.email, metadata: { user_id: String(userId) } });
+    await data.query("UPDATE users SET stripe_account_id=$1 WHERE id=$2", [account.id, userId]);
     const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3000";
     const link = await s.accountLinks.create({
       account: account.id,
@@ -3743,16 +3744,16 @@ app.post("/api/seller/stripe-connect", async (req, res) => {
 });
 
 app.get("/api/seller/stripe-connect/status", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   const s = requireStripeConfig(res); if (!s) return;
   try {
-    const r = await data.query("SELECT stripe_account_id, stripe_onboarding_complete FROM users WHERE id=$1", [user.id]);
+    const r = await data.query("SELECT stripe_account_id, stripe_onboarding_complete FROM users WHERE id=$1", [userId]);
     const acctId = r.rows[0]?.stripe_account_id;
     if (!acctId) return res.json({ connected: false });
     const account = await s.accounts.retrieve(acctId);
     const complete = account.charges_enabled && account.payouts_enabled;
     if (complete && !r.rows[0].stripe_onboarding_complete) {
-      await data.query("UPDATE users SET stripe_onboarding_complete=TRUE WHERE id=$1", [user.id]);
+      await data.query("UPDATE users SET stripe_onboarding_complete=TRUE WHERE id=$1", [userId]);
     }
     res.json({ connected: true, chargesEnabled: account.charges_enabled, payoutsEnabled: account.payouts_enabled, complete });
   } catch (err) { console.error("STRIPE_STATUS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
@@ -3760,7 +3761,7 @@ app.get("/api/seller/stripe-connect/status", async (req, res) => {
 
 // ─── Cash Deposit System (Anti-Ghosting) ───
 app.post("/api/seller/deposits/create", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   try {
     const { buyerName, buyerEmail, description, totalPrice } = req.body || {};
     if (!buyerName || !totalPrice) return res.status(400).json({ error: "Buyer name and total price are required" });
@@ -3771,7 +3772,7 @@ app.post("/api/seller/deposits/create", async (req, res) => {
     const expiresAt = new Date(Date.now() + ghostHours * 60 * 60 * 1000);
     const r = await data.query(
       "INSERT INTO deposits (user_id, buyer_email, buyer_name, description, total_price, amount, deposit_percent, status, expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7,'pending',$8) RETURNING *",
-      [user.id, (buyerEmail || "").trim(), (buyerName || "").trim(), (description || "").trim(), Number(totalPrice), amount, depositPct, expiresAt]
+      [userId, (buyerEmail || "").trim(), (buyerName || "").trim(), (description || "").trim(), Number(totalPrice), amount, depositPct, expiresAt]
     );
     const baseUrl = (process.env.PUBLIC_BASE_URL || process.env.BASE_URL || "").trim() || "http://localhost:3000";
     const depositUrl = baseUrl + "/deposit/" + r.rows[0].id;
@@ -3779,7 +3780,8 @@ app.post("/api/seller/deposits/create", async (req, res) => {
       try {
         const apiKey = process.env.RESEND_API_KEY;
         if (apiKey) {
-          const placeName = user.displayName || user.display_name || "Local Seller";
+          const userRow = await data.query("SELECT \"displayName\" FROM users WHERE id=$1", [userId]);
+          const placeName = userRow.rows[0]?.displayName || "Local Seller";
           await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
@@ -3799,9 +3801,9 @@ app.post("/api/seller/deposits/create", async (req, res) => {
 });
 
 app.get("/api/seller/deposits/list", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   try {
-    const r = await data.query("SELECT * FROM deposits WHERE user_id=$1 ORDER BY created_at DESC", [user.id]);
+    const r = await data.query("SELECT * FROM deposits WHERE user_id=$1 ORDER BY created_at DESC", [userId]);
     res.json(r.rows);
   } catch (err) { console.error("LIST_DEPOSITS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
@@ -3840,18 +3842,18 @@ app.post("/api/deposit/:id/checkout", async (req, res) => {
 });
 
 app.put("/api/deposits/:id/forfeit", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   try {
-    const r = await data.query("UPDATE deposits SET status='forfeited' WHERE id=$1 AND user_id=$2 AND status='pending' RETURNING *", [req.params.id, user.id]);
+    const r = await data.query("UPDATE deposits SET status='forfeited' WHERE id=$1 AND user_id=$2 AND status='pending' RETURNING *", [req.params.id, userId]);
     if (!r.rows.length) return res.status(404).json({ error: "Deposit not found or already processed" });
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: "Internal server error" }); }
 });
 
 app.put("/api/deposits/:id/refund", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   try {
-    const r = await data.query("UPDATE deposits SET status='refunded' WHERE id=$1 AND user_id=$2 AND status='collected' RETURNING *", [req.params.id, user.id]);
+    const r = await data.query("UPDATE deposits SET status='refunded' WHERE id=$1 AND user_id=$2 AND status='collected' RETURNING *", [req.params.id, userId]);
     if (!r.rows.length) return res.status(404).json({ error: "Deposit not found or not collected" });
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: "Internal server error" }); }
@@ -3859,9 +3861,9 @@ app.put("/api/deposits/:id/refund", async (req, res) => {
 
 // ─── Facebook API Key ───
 app.get("/api/seller/facebook-key", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const seller = await requireSellerPlace(req, res); if (!seller) return;
   try {
-    const r = await data.query("SELECT id, facebook_api_key FROM places WHERE owner_id=$1 LIMIT 1", [user.id]);
+    const r = await data.query("SELECT id, facebook_api_key FROM places WHERE id=$1", [seller.placeId]);
     if (!r.rows.length) return res.status(404).json({ error: "No storefront found" });
     let key = r.rows[0].facebook_api_key;
     if (!key) {
@@ -3873,10 +3875,10 @@ app.get("/api/seller/facebook-key", async (req, res) => {
 });
 
 app.put("/api/seller/facebook-key/regenerate", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const seller = await requireSellerPlace(req, res); if (!seller) return;
   try {
     const key = "fb_" + require("crypto").randomBytes(16).toString("hex");
-    const r = await data.query("UPDATE places SET facebook_api_key=$1 WHERE owner_id=$2 RETURNING facebook_api_key", [key, user.id]);
+    const r = await data.query("UPDATE places SET facebook_api_key=$1 WHERE id=$2 RETURNING facebook_api_key", [key, seller.placeId]);
     if (!r.rows.length) return res.status(404).json({ error: "No storefront found" });
     res.json({ apiKey: key });
   } catch (err) { res.status(500).json({ error: "Internal server error" }); }
@@ -3939,9 +3941,9 @@ app.post("/api/webhooks/facebook-listing", async (req, res) => {
 
 // ─── Shippo Shipping (Seller's Own API Key) ───
 app.post("/api/seller/shipments/rates", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   try {
-    const u = await data.query("SELECT shippo_api_key, ship_from_name, ship_from_street, ship_from_city, ship_from_state, ship_from_zip FROM users WHERE id=$1", [user.id]);
+    const u = await data.query("SELECT shippo_api_key, ship_from_name, ship_from_street, ship_from_city, ship_from_state, ship_from_zip, \"displayName\" FROM users WHERE id=$1", [userId]);
     const row = u.rows[0] || {};
     if (!row.shippo_api_key) return res.status(400).json({ error: "Please add your Shippo API key in Settings first." });
     const { toName, toStreet, toCity, toState, toZip, weightOz, lengthIn, widthIn, heightIn } = req.body || {};
@@ -3949,7 +3951,7 @@ app.post("/api/seller/shipments/rates", async (req, res) => {
       method: "POST",
       headers: { "Authorization": "ShippoToken " + row.shippo_api_key, "Content-Type": "application/json" },
       body: JSON.stringify({
-        address_from: { name: row.ship_from_name || user.displayName || "", street1: row.ship_from_street || "", city: row.ship_from_city || "", state: row.ship_from_state || "", zip: row.ship_from_zip || "", country: "US" },
+        address_from: { name: row.ship_from_name || row.displayName || "", street1: row.ship_from_street || "", city: row.ship_from_city || "", state: row.ship_from_state || "", zip: row.ship_from_zip || "", country: "US" },
         address_to: { name: toName || "", street1: toStreet || "", city: toCity || "", state: toState || "", zip: toZip || "", country: "US" },
         parcels: [{ length: lengthIn || "10", width: widthIn || "8", height: heightIn || "4", distance_unit: "in", weight: weightOz || "16", mass_unit: "oz" }],
         async: false
@@ -3962,9 +3964,9 @@ app.post("/api/seller/shipments/rates", async (req, res) => {
 });
 
 app.post("/api/seller/shipments/purchase", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   try {
-    const u = await data.query("SELECT shippo_api_key FROM users WHERE id=$1", [user.id]);
+    const u = await data.query("SELECT shippo_api_key FROM users WHERE id=$1", [userId]);
     if (!u.rows[0]?.shippo_api_key) return res.status(400).json({ error: "Shippo API key required" });
     const { rateId, invoiceId, toName, toStreet, toCity, toState, toZip, weightOz, lengthIn, widthIn, heightIn } = req.body || {};
     const txn = await fetch("https://api.goshippo.com/transactions/", {
@@ -3975,7 +3977,7 @@ app.post("/api/seller/shipments/purchase", async (req, res) => {
     if (txn.status === "SUCCESS") {
       await data.query(
         "INSERT INTO shipments (invoice_id, user_id, status, to_name, to_street, to_city, to_state, to_zip, weight_oz, length_in, width_in, height_in, label_url, tracking_number, tracking_url, carrier, service, selected_rate) VALUES ($1,$2,'label_created',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)",
-        [invoiceId || null, user.id, toName, toStreet, toCity, toState, toZip, weightOz, lengthIn, widthIn, heightIn, txn.label_url, txn.tracking_number, txn.tracking_url_provider, txn.rate?.provider || "", txn.rate?.servicelevel?.name || "", JSON.stringify(txn.rate || {})]
+        [invoiceId || null, userId, toName, toStreet, toCity, toState, toZip, weightOz, lengthIn, widthIn, heightIn, txn.label_url, txn.tracking_number, txn.tracking_url_provider, txn.rate?.provider || "", txn.rate?.servicelevel?.name || "", JSON.stringify(txn.rate || {})]
       );
       res.json({ ok: true, labelUrl: txn.label_url, trackingNumber: txn.tracking_number, trackingUrl: txn.tracking_url_provider });
     } else { res.status(400).json({ error: txn.messages || "Purchase failed" }); }
@@ -3983,17 +3985,17 @@ app.post("/api/seller/shipments/purchase", async (req, res) => {
 });
 
 app.get("/api/seller/shipments", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   try {
-    const r = await data.query("SELECT * FROM shipments WHERE user_id=$1 ORDER BY created_at DESC", [user.id]);
+    const r = await data.query("SELECT * FROM shipments WHERE user_id=$1 ORDER BY created_at DESC", [userId]);
     res.json(r.rows);
   } catch (err) { res.status(500).json({ error: "Internal server error" }); }
 });
 
 app.post("/api/seller/shipments/:id/notify", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   try {
-    const r = await data.query("SELECT s.*, i.buyer_email FROM shipments s LEFT JOIN invoices i ON s.invoice_id = i.id WHERE s.id=$1 AND s.user_id=$2", [req.params.id, user.id]);
+    const r = await data.query("SELECT s.*, i.buyer_email FROM shipments s LEFT JOIN invoices i ON s.invoice_id = i.id WHERE s.id=$1 AND s.user_id=$2", [req.params.id, userId]);
     if (!r.rows.length) return res.status(404).json({ error: "Shipment not found" });
     const s = r.rows[0];
     const email = s.buyer_email || req.body?.buyerEmail;
@@ -4017,21 +4019,21 @@ app.post("/api/seller/shipments/:id/notify", async (req, res) => {
 
 // ─── Referrer Program ───
 app.post("/api/referrer/register", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   try {
-    const existing = await data.query("SELECT * FROM referrers WHERE user_id=$1", [user.id]);
+    const existing = await data.query("SELECT * FROM referrers WHERE user_id=$1", [userId]);
     if (existing.rows.length) return res.json(existing.rows[0]);
     const code = "ref_" + require("crypto").randomBytes(4).toString("hex");
     const pct = Math.min(10, Math.max(0, Number(req.body?.commissionPercent) || 5));
-    const r = await data.query("INSERT INTO referrers (user_id, ref_code, commission_percent) VALUES ($1,$2,$3) RETURNING *", [user.id, code, pct]);
+    const r = await data.query("INSERT INTO referrers (user_id, ref_code, commission_percent) VALUES ($1,$2,$3) RETURNING *", [userId, code, pct]);
     res.json(r.rows[0]);
   } catch (err) { res.status(500).json({ error: "Internal server error" }); }
 });
 
 app.get("/api/referrer/status", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   try {
-    const r = await data.query("SELECT * FROM referrers WHERE user_id=$1", [user.id]);
+    const r = await data.query("SELECT * FROM referrers WHERE user_id=$1", [userId]);
     if (!r.rows.length) return res.json({ registered: false });
     const earnings = await data.query("SELECT COALESCE(SUM(amount),0) as total FROM referral_earnings WHERE referrer_id=$1", [r.rows[0].id]);
     res.json({ registered: true, referrer: r.rows[0], totalEarnings: Number(earnings.rows[0].total) });
@@ -4039,9 +4041,9 @@ app.get("/api/referrer/status", async (req, res) => {
 });
 
 app.get("/api/referrer/sellers", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   try {
-    const r = await data.query("SELECT ref_code FROM referrers WHERE user_id=$1", [user.id]);
+    const r = await data.query("SELECT ref_code FROM referrers WHERE user_id=$1", [userId]);
     if (!r.rows.length) return res.json([]);
     const sellers = await data.query("SELECT id, \"displayName\", email, created_at FROM users WHERE referred_by_code=$1", [r.rows[0].ref_code]);
     res.json(sellers.rows);
@@ -4049,9 +4051,9 @@ app.get("/api/referrer/sellers", async (req, res) => {
 });
 
 app.get("/api/referrer/earnings", async (req, res) => {
-  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const userId = await requireLogin(req, res); if (!userId) return;
   try {
-    const r = await data.query("SELECT ref_code, id FROM referrers WHERE user_id=$1", [user.id]);
+    const r = await data.query("SELECT ref_code, id FROM referrers WHERE user_id=$1", [userId]);
     if (!r.rows.length) return res.json([]);
     const earnings = await data.query("SELECT re.*, u.\"displayName\" as seller_name FROM referral_earnings re LEFT JOIN users u ON re.seller_id = u.id WHERE re.referrer_id=$1 ORDER BY re.created_at DESC", [r.rows[0].id]);
     res.json(earnings.rows);
