@@ -506,24 +506,31 @@
               <button type="button" id="fbCopyUrlBtn" style="padding:8px 14px;font-size:12px;font-weight:600;background:#1e293b;color:#e2e8f0;border:1px solid #374151;border-radius:8px;cursor:pointer;white-space:nowrap;">Copy</button>
             </div>
 
-            <div style="background:#0a0e1a;border:1px solid #1e293b;border-radius:8px;padding:16px;font-size:13px;color:#94a3b8;line-height:1.6;">
-              <strong style="color:#e2e8f0;">Setup Instructions:</strong><br>
-              1. Create an automation triggered by a new Facebook post.<br>
-              2. Add an "External Request" (HTTP POST) action pointing to the <strong>Webhook URL</strong> above.<br>
-              3. Set the body to JSON with these fields:<br>
-              <code style="display:block;background:#111827;padding:10px;border-radius:6px;margin:8px 0;font-size:12px;color:#10b981;">
-{<br>
-&nbsp;&nbsp;"apiKey": "YOUR_API_KEY",<br>
-&nbsp;&nbsp;"title": "Post title or first line",<br>
-&nbsp;&nbsp;"description": "Full post text",<br>
-&nbsp;&nbsp;"price": 29.99,<br>
-&nbsp;&nbsp;"photoUrls": ["https://..."],<br>
-&nbsp;&nbsp;"quantity": 1,<br>
-&nbsp;&nbsp;"category": "optional"<br>
-}
-              </code>
-              <strong style="color:#e2e8f0;">Tips:</strong> If <code>title</code> is omitted, the first line of <code>description</code> is used. If <code>price</code> is omitted, it's parsed from the text (e.g. "$25.00").
-            </div>
+            <h4 style="margin:16px 0 8px;font-size:14px;">How Comment-to-Pay Works</h4>
+            <p style="color:#94a3b8;font-size:13px;line-height:1.6;margin-bottom:12px;">
+              Someone comments on your Facebook post → ManyChat auto-DMs them a payment link → they pay → you get paid. Here's how to set it up:
+            </p>
+            <ol style="color:#94a3b8;font-size:13px;line-height:2;padding-left:20px;margin-bottom:16px;">
+              <li>Sign up at <a href="https://manychat.com" target="_blank" style="color:#6366f1;">manychat.com</a> and connect your Facebook Page</li>
+              <li>Create a new <strong>Flow</strong> with trigger: <strong>Comments on a Post</strong></li>
+              <li>Add an action step: <strong>External Request → POST</strong></li>
+              <li>Paste the <strong>Webhook URL</strong> from above</li>
+              <li>Set Header: <code style="background:#0f172a;padding:2px 6px;border-radius:4px;">Content-Type: application/json</code></li>
+              <li>Set Body to JSON (copy & edit below):</li>
+            </ol>
+            <pre style="background:#0f172a;padding:12px;border-radius:8px;font-size:12px;color:#e2e8f0;overflow-x:auto;margin:8px 0 16px;">{
+  "apiKey": "PASTE_YOUR_API_KEY_FROM_ABOVE",
+  "buyerName": "{{first_name}}",
+  "buyerEmail": "{{email}}",
+  "productTitle": "Your item name",
+  "price": 29.99
+}</pre>
+            <p style="color:#94a3b8;font-size:13px;line-height:1.6;">
+              <strong>{{first_name}}</strong> and <strong>{{email}}</strong> are ManyChat variables — they auto-fill with the buyer's info from Messenger.
+            </p>
+            <p style="color:#64748b;font-size:12px;margin-top:12px;">
+              Don't use ManyChat? You can skip this — just create invoices manually from the Invoices tab and send payment links directly.
+            </p>
           </div>
         </div>
 
