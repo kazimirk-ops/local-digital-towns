@@ -443,7 +443,7 @@
             <h3 style="font-size:16px;margin-bottom:8px;">💳 Stripe Connect</h3>
             <p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Connect your Stripe account to receive payouts from sales.</p>
             <div id="stripeConnectStatus" style="margin-bottom:12px;font-size:14px;color:#94a3b8;">Checking...</div>
-            <button id="stripeConnectBtn" onclick="connectStripe()" style="padding:10px 20px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Connect Stripe</button>
+            <button id="stripeConnectBtn" style="padding:10px 20px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Connect Stripe</button>
           </div>
 
           <div style="background:#1e293b;border-radius:12px;padding:20px;margin-bottom:16px;">
@@ -893,6 +893,7 @@
         } catch(err){ alert("Error: " + err.message); }
       }
       window.connectStripe = connectStripe;
+      document.getElementById("stripeConnectBtn").addEventListener("click", connectStripe);
 
       async function loadStripeStatus(){
         try {
