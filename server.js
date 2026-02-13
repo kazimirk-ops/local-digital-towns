@@ -3207,8 +3207,8 @@ app.post("/api/seller/invoices", async (req, res) => {
     if(!items || !items.length) return res.status(400).json({ error: "At least one item is required" });
     const lineItems = items.map(i => ({ title: (i.title||"").toString(), quantity: Number(i.quantity)||1, unitPrice: Number(i.unitPrice)||0 }));
     const subtotal = lineItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
-    const platformFee = Math.round(subtotal * 5) / 100;
-    const total = subtotal + platformFee;
+    const platformFee = 0;
+    const total = subtotal;
     const r = await data.query(
       `INSERT INTO invoices (place_id, seller_user_id, buyer_email, buyer_name, buyer_phone, items, subtotal, platform_fee, total, notes, due_date, status)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'draft') RETURNING *`,
@@ -3576,8 +3576,8 @@ app.post("/api/webhooks/comment-to-pay", async (req, res) => {
     if(!buyerEmail) return res.status(400).json({ error: "buyerEmail required" });
 
     const subtotal = lineItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
-    const platformFee = Math.round(subtotal * 5) / 100;
-    const total = subtotal + platformFee;
+    const platformFee = 0;
+    const total = subtotal;
     const mainTitle = lineItems[0]?.title || "Order";
 
     const r = await data.query(
@@ -3685,40 +3685,77 @@ app.get("/api/invoice/:id", async (req, res) => {
 });
 
 app.post("/api/invoice/:id/checkout", async (req, res) => {
+  const s = requireStripeConfig(res); if (!s) return;
   try {
-    const s = requireStripeConfig(res); if(!s) return;
     const invId = Number(req.params.id);
-    const r = await data.query("SELECT * FROM invoices WHERE id = $1", [invId]);
-    if(!r.rows.length) return res.status(404).json({ error: "Invoice not found" });
-    const inv = r.rows[0];
-    if(inv.status === "paid") return res.status(400).json({ error: "Already paid" });
+    const inv = await data.query("SELECT * FROM invoices WHERE id=$1", [invId]);
+    if (!inv.rows.length) return res.status(404).json({ error: "Invoice not found" });
+    const invoice = inv.rows[0];
+    if (invoice.status === "paid") return res.status(400).json({ error: "Already paid" });
 
-    const items = typeof inv.items === "string" ? JSON.parse(inv.items) : (inv.items || []);
-    const platformFee = Number(inv.platform_fee || inv.platformfee || inv.platformFee) || 0;
-    const buyerEmail = inv.buyer_email || inv.buyeremail || inv.buyerEmail || "";
-    const baseUrl = (process.env.BASE_URL || "").trim() || (req.protocol + "://" + req.get("host"));
+    const seller = await data.query("SELECT stripe_account_id, regen_pct, referred_by_code FROM users WHERE id=$1", [invoice.userId || invoice.user_id || invoice.sellerId || invoice.seller_id]);
+    const sellerRow = seller.rows[0] || {};
+    if (!sellerRow.stripe_account_id) return res.status(400).json({ error: "Seller has not connected Stripe payments yet" });
 
-    const lineItems = items.map(function(i){
-      return {
-        price_data: { currency: "usd", unit_amount: Math.round((Number(i.unitPrice) || 0) * 100), product_data: { name: i.title || "Item" } },
-        quantity: Number(i.quantity) || 1
-      };
-    });
-    if(platformFee > 0){
+    const items = typeof invoice.items === "string" ? JSON.parse(invoice.items) : (invoice.items || []);
+    const subtotal = items.reduce((sum, i) => sum + (Number(i.quantity) || 1) * (Number(i.unitPrice || i.price) || 0), 0);
+
+    // Fee calculation: 2% platform + seller's regen% + referrer%
+    const platformPct = 0.02;
+    const regenPct = Number(sellerRow.regen_pct || 1) / 100;
+    let referrerPct = 0;
+    if (sellerRow.referred_by_code) {
+      const ref = await data.query("SELECT commission_percent FROM referrers WHERE ref_code=$1", [sellerRow.referred_by_code]);
+      if (ref.rows.length) referrerPct = Number(ref.rows[0].commission_percent) / 100;
+    }
+    const totalFeePct = platformPct + regenPct + referrerPct;
+    const applicationFee = Math.round(subtotal * totalFeePct * 100);
+
+    const lineItems = items.map(i => ({
+      price_data: {
+        currency: "usd",
+        product_data: { name: i.title || i.name || "Item" },
+        unit_amount: Math.round((Number(i.unitPrice || i.price) || 0) * 100)
+      },
+      quantity: Number(i.quantity) || 1
+    }));
+
+    // Optional $1 buyer donation
+    if (req.body && req.body.donate) {
       lineItems.push({
-        price_data: { currency: "usd", unit_amount: Math.round(platformFee * 100), product_data: { name: "Service Fee" } },
+        price_data: {
+          currency: "usd",
+          product_data: { name: "🌱 Regenerative Farming Donation (Mad Agriculture)" },
+          unit_amount: 100
+        },
         quantity: 1
       });
     }
 
+    const baseUrl = (process.env.PUBLIC_BASE_URL || process.env.BASE_URL || "").trim() || "http://localhost:3000";
     const session = await s.checkout.sessions.create({
       mode: "payment",
       line_items: lineItems,
+      payment_intent_data: {
+        application_fee_amount: applicationFee,
+        transfer_data: { destination: sellerRow.stripe_account_id }
+      },
       success_url: baseUrl + "/invoice/" + invId + "?paid=1",
       cancel_url: baseUrl + "/invoice/" + invId,
       metadata: { invoiceId: invId.toString(), type: "invoice" },
-      customer_email: buyerEmail || undefined
+      customer_email: invoice.buyerEmail || invoice.buyer_email || undefined
     });
+
+    // Record referral earnings
+    if (referrerPct > 0 && sellerRow.referred_by_code) {
+      const refEarning = subtotal * referrerPct;
+      const refRow = await data.query("SELECT id FROM referrers WHERE ref_code=$1", [sellerRow.referred_by_code]);
+      if (refRow.rows.length) {
+        await data.query("INSERT INTO referral_earnings (referrer_id, seller_id, invoice_id, amount) VALUES ($1,$2,$3,$4)",
+          [refRow.rows[0].id, invoice.userId || invoice.user_id || invoice.sellerId || invoice.seller_id, invId, refEarning]);
+      }
+    }
+
     res.json({ url: session.url });
   } catch(err){ console.error("INVOICE_CHECKOUT_ERROR", err?.message); res.status(500).json({ error: "Checkout failed" }); }
 });
