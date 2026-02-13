@@ -420,6 +420,11 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
       }
     }
 
+    // Handle deposit payment
+    if (session?.metadata?.deposit_id) {
+      await data.query("UPDATE deposits SET status='collected' WHERE id=$1", [session.metadata.deposit_id]);
+    }
+
     // Handle business subscription payment
     if(placeId && session.subscription){
       console.log("Processing business subscription for placeId:", placeId);
@@ -3803,6 +3808,105 @@ app.get("/api/seller/stripe-connect/status", async (req, res) => {
     }
     res.json({ connected: true, chargesEnabled: account.charges_enabled, payoutsEnabled: account.payouts_enabled, complete });
   } catch (err) { console.error("STRIPE_STATUS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+// ─── Cash Deposit System (Anti-Ghosting) ───
+app.post("/api/seller/deposits/create", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const { buyerName, buyerEmail, description, totalPrice } = req.body || {};
+    if (!buyerName || !totalPrice) return res.status(400).json({ error: "Buyer name and total price are required" });
+    const depositPct = 5;
+    const amount = Math.round(Number(totalPrice) * depositPct) / 100;
+    if (amount < 1) return res.status(400).json({ error: "Deposit must be at least $1" });
+    const ghostHours = 48;
+    const expiresAt = new Date(Date.now() + ghostHours * 60 * 60 * 1000);
+    const r = await data.query(
+      "INSERT INTO deposits (user_id, buyer_email, buyer_name, description, total_price, amount, deposit_percent, status, expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7,'pending',$8) RETURNING *",
+      [user.id, (buyerEmail || "").trim(), (buyerName || "").trim(), (description || "").trim(), Number(totalPrice), amount, depositPct, expiresAt]
+    );
+    const baseUrl = (process.env.PUBLIC_BASE_URL || process.env.BASE_URL || "").trim() || "http://localhost:3000";
+    const depositUrl = baseUrl + "/deposit/" + r.rows[0].id;
+    if (buyerEmail) {
+      try {
+        const apiKey = process.env.RESEND_API_KEY;
+        if (apiKey) {
+          const placeName = user.displayName || user.display_name || "Local Seller";
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: process.env.EMAIL_FROM || "support@sebastian-florida.com",
+              to: [buyerEmail.trim()],
+              reply_to: "support@sebastian-florida.com",
+              subject: "Pickup Deposit Required — " + placeName,
+              html: "<h2>Secure Your Pickup</h2><p>Hi " + (buyerName || "there") + ",</p><p>" + placeName + " is requesting a <strong>$" + amount.toFixed(2) + "</strong> deposit to hold your item" + (description ? " (" + description + ")" : "") + ".</p><p>Total sale price: $" + Number(totalPrice).toFixed(2) + "</p><p><a href='" + depositUrl + "' style='display:inline-block;padding:12px 24px;background:#10b981;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;'>Pay Deposit</a></p><p style='color:#888;font-size:13px;'>This deposit is non-refundable and secures your pickup. Pay the remaining balance in cash at pickup.</p>"
+            })
+          });
+        }
+      } catch(emailErr) { console.error("DEPOSIT_EMAIL_ERROR", emailErr?.message); }
+    }
+    res.json({ ok: true, deposit: r.rows[0], depositUrl });
+  } catch (err) { console.error("CREATE_DEPOSIT_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.get("/api/seller/deposits/list", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const r = await data.query("SELECT * FROM deposits WHERE user_id=$1 ORDER BY created_at DESC", [user.id]);
+    res.json(r.rows);
+  } catch (err) { console.error("LIST_DEPOSITS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.get("/api/deposit/:id/public", async (req, res) => {
+  try {
+    const r = await data.query("SELECT d.*, u.\"displayName\" as store_name FROM deposits d LEFT JOIN users u ON d.user_id = u.id WHERE d.id=$1", [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: "Deposit not found" });
+    const d = r.rows[0];
+    if (d.status === "forfeited") return res.status(410).json({ error: "This deposit has expired" });
+    res.json({ depositId: d.id, storeName: d.store_name, buyerName: d.buyer_name, description: d.description, totalPrice: d.total_price, amount: d.amount, status: d.status, expiresAt: d.expires_at });
+  } catch (err) { console.error("DEPOSIT_PUBLIC_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.post("/api/deposit/:id/checkout", async (req, res) => {
+  const s = requireStripeConfig(res); if (!s) return;
+  try {
+    const r = await data.query("SELECT * FROM deposits WHERE id=$1", [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: "Deposit not found" });
+    const d = r.rows[0];
+    if (d.status !== "pending") return res.status(400).json({ error: "Deposit already " + d.status });
+    const baseUrl = (process.env.PUBLIC_BASE_URL || process.env.BASE_URL || "").trim() || "http://localhost:3000";
+    const amountCents = Math.round(Number(d.amount) * 100);
+    const session = await s.checkout.sessions.create({
+      mode: "payment",
+      line_items: [{
+        price_data: { currency: "usd", product_data: { name: "Pickup Deposit — " + (d.description || "Local Sale") }, unit_amount: amountCents },
+        quantity: 1
+      }],
+      success_url: baseUrl + "/deposit/" + d.id + "?paid=true",
+      cancel_url: baseUrl + "/deposit/" + d.id,
+      metadata: { deposit_id: String(d.id) }
+    });
+    res.json({ url: session.url });
+  } catch (err) { console.error("DEPOSIT_CHECKOUT_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.put("/api/deposits/:id/forfeit", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const r = await data.query("UPDATE deposits SET status='forfeited' WHERE id=$1 AND user_id=$2 AND status='pending' RETURNING *", [req.params.id, user.id]);
+    if (!r.rows.length) return res.status(404).json({ error: "Deposit not found or already processed" });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.put("/api/deposits/:id/refund", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const r = await data.query("UPDATE deposits SET status='refunded' WHERE id=$1 AND user_id=$2 AND status='collected' RETURNING *", [req.params.id, user.id]);
+    if (!r.rows.length) return res.status(404).json({ error: "Deposit not found or not collected" });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: "Internal server error" }); }
 });
 
 app.post("/api/admin/pulse/generate", async (req, res) =>{
