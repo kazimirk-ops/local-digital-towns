@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Pay Deposit</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#1e293b;border-radius:16px;padding:32px;max-width:440px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+h2{font-size:20px;margin-bottom:4px;color:#f8fafc}
+.store{color:#94a3b8;font-size:14px;margin-bottom:20px}
+.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #334155;font-size:15px}
+.row .label{color:#94a3b8}.row .val{color:#f8fafc;font-weight:600}
+.total{border-bottom:none;font-size:17px;margin-top:4px}
+.total .val{color:#10b981}
+.warn{background:#1a1207;border:1px solid #854d0e;border-radius:10px;padding:12px;margin:20px 0;font-size:13px;color:#fbbf24;line-height:1.5}
+.btn{display:block;width:100%;padding:14px;background:#10b981;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;margin-top:16px;transition:.2s}
+.btn:hover{background:#059669}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.success{text-align:center;padding:40px 20px}
+.success h2{color:#10b981;font-size:24px;margin-bottom:8px}
+.success p{color:#94a3b8;font-size:15px}
+.error{text-align:center;padding:40px 20px}
+.error h2{color:#ef4444;font-size:20px;margin-bottom:8px}
+.loading{text-align:center;padding:40px;color:#94a3b8}
+</style>
+</head>
+<body>
+<div class="card" id="depositCard">
+  <div class="loading" id="loadingState">Loading deposit details...</div>
+  <div id="depositInfo" style="display:none"></div>
+  <div id="successState" style="display:none" class="success">
+    <h2>✓ Deposit Paid!</h2>
+    <p>Your pickup is confirmed. Pay the remaining balance in cash at pickup.</p>
+  </div>
+  <div id="errorState" style="display:none" class="error">
+    <h2>Deposit Unavailable</h2>
+    <p id="errorMsg"></p>
+  </div>
+</div>
+<script>
+(function(){
+  var id = window.location.pathname.split("/deposit/")[1];
+  if(!id){ document.getElementById("loadingState").textContent = "Invalid deposit link."; return; }
+  if(new URLSearchParams(window.location.search).get("paid")){
+    document.getElementById("loadingState").style.display = "none";
+    document.getElementById("successState").style.display = "block";
+    return;
+  }
+  fetch("/api/deposit/" + id + "/public").then(function(r){
+    if(r.status === 410){ throw new Error("expired"); }
+    if(!r.ok) throw new Error("not found");
+    return r.json();
+  }).then(function(d){
+    if(d.status === "collected"){
+      document.getElementById("loadingState").style.display = "none";
+      document.getElementById("successState").style.display = "block";
+      return;
+    }
+    document.getElementById("loadingState").style.display = "none";
+    var info = document.getElementById("depositInfo");
+    info.style.display = "block";
+    info.innerHTML = '<h2>Pickup Deposit</h2>'
+      + '<p class="store">' + (d.storeName || "Local Seller") + '</p>'
+      + (d.description ? '<div class="row"><span class="label">Item</span><span class="val">' + d.description + '</span></div>' : '')
+      + '<div class="row"><span class="label">Sale Total</span><span class="val">$' + Number(d.totalPrice).toFixed(2) + '</span></div>'
+      + '<div class="row"><span class="label">Deposit (5%)</span><span class="val">$' + Number(d.amount).toFixed(2) + '</span></div>'
+      + '<div class="row total"><span class="label">You pay</span><span class="val">$' + Number(d.amount).toFixed(2) + '</span></div>'
+      + '<div class="warn">⚠ Non-refundable. This secures your pickup. Remainder paid in cash at pickup.</div>'
+      + '<button class="btn" id="payBtn">Pay Deposit</button>';
+    document.getElementById("payBtn").addEventListener("click", function(){
+      this.disabled = true; this.textContent = "Redirecting...";
+      fetch("/api/deposit/" + id + "/checkout", { method: "POST", headers: { "Content-Type": "application/json" } })
+        .then(function(r){ return r.json(); })
+        .then(function(data){ if(data.url) window.location.href = data.url; else { alert(data.error || "Error"); document.getElementById("payBtn").disabled = false; document.getElementById("payBtn").textContent = "Pay Deposit"; } })
+        .catch(function(){ alert("Error processing payment"); document.getElementById("payBtn").disabled = false; document.getElementById("payBtn").textContent = "Pay Deposit"; });
+    });
+  }).catch(function(err){
+    document.getElementById("loadingState").style.display = "none";
+    document.getElementById("errorState").style.display = "block";
+    document.getElementById("errorMsg").textContent = err.message === "expired" ? "This deposit has expired or been forfeited." : "Deposit not found.";
+  });
+})();
+</script>
+</body>
+</html>

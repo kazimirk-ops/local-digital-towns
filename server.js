@@ -3546,6 +3546,10 @@ app.put("/api/seller/facebook-key/regenerate", async (req, res) => {
   } catch(err){ console.error("FB_KEY_REGEN_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
+app.get("/deposit/:id", (req, res) => {
+  res.sendFile(__dirname + "/public/deposit.html");
+});
+
 app.get("/invoice/:id", async (req, res) => {
   try {
     const r = await data.query("SELECT * FROM invoices WHERE id = $1", [Number(req.params.id)]);
