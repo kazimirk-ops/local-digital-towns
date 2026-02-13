@@ -3723,6 +3723,51 @@ app.post("/api/invoice/:id/checkout", async (req, res) => {
   } catch(err){ console.error("INVOICE_CHECKOUT_ERROR", err?.message); res.status(500).json({ error: "Checkout failed" }); }
 });
 
+// ─── Stripe Connect ───
+app.post("/api/seller/stripe-connect", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const s = requireStripeConfig(res); if (!s) return;
+  try {
+    const existing = await data.query("SELECT stripe_account_id FROM users WHERE id=$1", [user.id]);
+    if (existing.rows[0]?.stripe_account_id) {
+      const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3000";
+      const link = await s.accountLinks.create({
+        account: existing.rows[0].stripe_account_id,
+        refresh_url: baseUrl + "/me/store?stripe=refresh",
+        return_url: baseUrl + "/me/store?stripe=complete",
+        type: "account_onboarding"
+      });
+      return res.json({ url: link.url });
+    }
+    const account = await s.accounts.create({ type: "express", email: user.email, metadata: { user_id: String(user.id) } });
+    await data.query("UPDATE users SET stripe_account_id=$1 WHERE id=$2", [account.id, user.id]);
+    const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3000";
+    const link = await s.accountLinks.create({
+      account: account.id,
+      refresh_url: baseUrl + "/me/store?stripe=refresh",
+      return_url: baseUrl + "/me/store?stripe=complete",
+      type: "account_onboarding"
+    });
+    res.json({ url: link.url });
+  } catch (err) { console.error("STRIPE_CONNECT_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.get("/api/seller/stripe-connect/status", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  const s = requireStripeConfig(res); if (!s) return;
+  try {
+    const r = await data.query("SELECT stripe_account_id, stripe_onboarding_complete FROM users WHERE id=$1", [user.id]);
+    const acctId = r.rows[0]?.stripe_account_id;
+    if (!acctId) return res.json({ connected: false });
+    const account = await s.accounts.retrieve(acctId);
+    const complete = account.charges_enabled && account.payouts_enabled;
+    if (complete && !r.rows[0].stripe_onboarding_complete) {
+      await data.query("UPDATE users SET stripe_onboarding_complete=TRUE WHERE id=$1", [user.id]);
+    }
+    res.json({ connected: true, chargesEnabled: account.charges_enabled, payoutsEnabled: account.payouts_enabled, complete });
+  } catch (err) { console.error("STRIPE_STATUS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
 app.post("/api/admin/pulse/generate", async (req, res) =>{
   try{
     const admin=await requireAdminOrDev(req,res); if(!admin) return;
