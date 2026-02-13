@@ -189,6 +189,27 @@
               <tbody id="depTableBody"><tr><td colspan="7" class="inv-empty">No deposits yet</td></tr></tbody>
             </table>
           </div>
+
+          <div style="background:#1e293b;border-radius:12px;padding:20px;margin-top:20px;">
+            <h3 style="font-size:16px;margin-bottom:12px;">🏪 Local Pickup Deposits</h3>
+            <p style="color:#94a3b8;font-size:13px;margin-bottom:16px;">Create a 5% non-refundable deposit for cash pickup sales to prevent no-shows.</p>
+            <div style="display:grid;gap:10px;margin-bottom:16px;">
+              <input type="text" id="depBuyerName" placeholder="Buyer Name *" style="padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;">
+              <input type="email" id="depBuyerEmail" placeholder="Buyer Email (optional)" style="padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;">
+              <input type="text" id="depDescription" placeholder="Item Description" style="padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;">
+              <input type="number" id="depTotalPrice" placeholder="Total Sale Price ($) *" min="20" step="0.01" style="padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;">
+              <div id="depPreview" style="color:#10b981;font-size:14px;font-weight:600;display:none;"></div>
+            </div>
+            <button id="createDepositBtn" style="padding:10px 20px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Create & Copy Link</button>
+            <div id="depResult" style="display:none;margin-top:12px;padding:12px;background:#0f172a;border-radius:8px;">
+              <input type="text" id="depLink" readonly style="width:100%;padding:8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:13px;margin-bottom:8px;">
+              <button id="copyDepLink" style="padding:6px 14px;background:#6366f1;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">Copy Link</button>
+            </div>
+            <table style="width:100%;margin-top:16px;font-size:13px;border-collapse:collapse;" id="cashDepositsTable">
+              <thead><tr style="color:#94a3b8;border-bottom:1px solid #334155;"><th style="text-align:left;padding:8px;">Date</th><th>Buyer</th><th>Item</th><th>Total</th><th>Deposit</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="cashDepositsBody"></tbody>
+            </table>
+          </div>
         </div>
 
         <!-- Invoices -->
@@ -417,6 +438,38 @@
         <!-- Settings -->
         <div class="tab-content" id="tab-settings">
           <div class="main-title">Settings</div>
+
+          <div style="background:#1e293b;border-radius:12px;padding:20px;margin-bottom:16px;">
+            <h3 style="font-size:16px;margin-bottom:8px;">💳 Stripe Connect</h3>
+            <p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Connect your Stripe account to receive payouts from sales.</p>
+            <div id="stripeConnectStatus" style="margin-bottom:12px;font-size:14px;color:#94a3b8;">Checking...</div>
+            <button id="stripeConnectBtn" onclick="connectStripe()" style="padding:10px 20px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Connect Stripe</button>
+          </div>
+
+          <div style="background:#1e293b;border-radius:12px;padding:20px;margin-bottom:16px;">
+            <h3 style="font-size:16px;margin-bottom:8px;">🌱 Regenerative Agriculture Donation</h3>
+            <p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Percentage of each sale donated to Mad Agriculture (1-10%).</p>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <input type="range" id="settRegenPct" min="1" max="10" value="1" style="flex:1;">
+              <span id="regenPctDisplay" style="font-weight:700;color:#10b981;min-width:40px;">1%</span>
+            </div>
+          </div>
+
+          <div style="background:#1e293b;border-radius:12px;padding:20px;margin-bottom:16px;">
+            <h3 style="font-size:16px;margin-bottom:8px;">📦 Shipping Provider (Shippo)</h3>
+            <p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Connect your Shippo account for discounted shipping labels. Free to sign up — you only pay per label.</p>
+            <label style="font-size:13px;color:#94a3b8;">Shippo API Key</label>
+            <input type="text" id="settShippoKey" placeholder="shippo_live_..." style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;margin:6px 0 12px;">
+            <h4 style="font-size:14px;margin:12px 0 8px;">Ship From Address</h4>
+            <input type="text" id="settShipName" placeholder="Name" style="width:100%;padding:8px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;margin-bottom:6px;">
+            <input type="text" id="settShipStreet" placeholder="Street" style="width:100%;padding:8px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;margin-bottom:6px;">
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="settShipCity" placeholder="City" style="flex:2;padding:8px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;">
+              <input type="text" id="settShipState" placeholder="ST" style="flex:1;padding:8px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;">
+              <input type="text" id="settShipZip" placeholder="ZIP" style="flex:1;padding:8px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;">
+            </div>
+          </div>
+
           <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:24px;max-width:480px;">
             <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">Deposit Settings</h3>
             <label style="display:block;font-size:13px;color:#94a3b8;margin-bottom:8px;">Deposit Mode</label>
@@ -492,7 +545,7 @@
         <button class="inv-add-line" id="addLineBtn">+ Add line item</button>
         <div class="inv-totals">
           <div><span>Subtotal</span><span id="invSubtotal">$0.00</span></div>
-          <div><span>Platform Fee (5%)</span><span id="invFee">$0.00</span></div>
+          <div style="font-size:12px;color:#64748b;"><span>Fees deducted from payout at checkout</span></div>
           <div class="inv-total-row"><span>Total</span><span id="invTotal">$0.00</span></div>
         </div>
         <label>Notes</label>
@@ -613,10 +666,8 @@
           var p = Number(r.querySelector(".line-price").value) || 0;
           sub += q * p;
         });
-        var fee = Math.round(sub * 5) / 100;
         document.getElementById("invSubtotal").textContent = fmt(sub);
-        document.getElementById("invFee").textContent = fmt(fee);
-        document.getElementById("invTotal").textContent = fmt(sub + fee);
+        document.getElementById("invTotal").textContent = fmt(sub);
       }
 
       function addInvLine(){
@@ -787,6 +838,14 @@
           var s = await resp.json();
           document.getElementById("settDepositMode").value = s.depositMode || "none";
           document.getElementById("settGhostHours").value = s.ghostTimeoutHours || 48;
+          document.getElementById("settRegenPct").value = s.regenPct || 1;
+          document.getElementById("regenPctDisplay").textContent = (s.regenPct || 1) + "%";
+          document.getElementById("settShippoKey").value = s.shippoApiKey || "";
+          document.getElementById("settShipName").value = s.shipFromName || "";
+          document.getElementById("settShipStreet").value = s.shipFromStreet || "";
+          document.getElementById("settShipCity").value = s.shipFromCity || "";
+          document.getElementById("settShipState").value = s.shipFromState || "";
+          document.getElementById("settShipZip").value = s.shipFromZip || "";
         } catch(err){ console.error("LOAD_SETTINGS_ERROR", err); }
       }
 
@@ -799,7 +858,14 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               depositMode: document.getElementById("settDepositMode").value,
-              ghostTimeoutHours: Number(document.getElementById("settGhostHours").value) || 48
+              ghostTimeoutHours: Number(document.getElementById("settGhostHours").value) || 48,
+              regenPct: Number(document.getElementById("settRegenPct").value),
+              shippoApiKey: document.getElementById("settShippoKey").value,
+              shipFromName: document.getElementById("settShipName").value,
+              shipFromStreet: document.getElementById("settShipStreet").value,
+              shipFromCity: document.getElementById("settShipCity").value,
+              shipFromState: document.getElementById("settShipState").value,
+              shipFromZip: document.getElementById("settShipZip").value
             })
           });
           if(!resp.ok) throw new Error((await resp.json()).error || "Failed");
@@ -811,6 +877,94 @@
       }
 
       document.getElementById("saveSettingsBtn").addEventListener("click", saveSettings);
+
+      // Regen slider
+      document.getElementById("settRegenPct").addEventListener("input", function(){
+        document.getElementById("regenPctDisplay").textContent = this.value + "%";
+      });
+
+      // Stripe Connect
+      async function connectStripe(){
+        try {
+          var r = await fetch("/api/seller/stripe-connect", { method: "POST" });
+          var d = await r.json();
+          if(d.url) window.location.href = d.url;
+          else alert(d.error || "Error connecting Stripe");
+        } catch(err){ alert("Error: " + err.message); }
+      }
+      window.connectStripe = connectStripe;
+
+      async function loadStripeStatus(){
+        try {
+          var r = await fetch("/api/seller/stripe-connect/status");
+          var d = await r.json();
+          var el = document.getElementById("stripeConnectStatus");
+          var btn = document.getElementById("stripeConnectBtn");
+          if(d.complete){ el.innerHTML = '<span style="color:#10b981;font-weight:600;">✓ Connected</span> — Payouts enabled'; btn.textContent = "Manage Stripe"; }
+          else if(d.connected){ el.innerHTML = '<span style="color:#f59e0b;">⚠ Onboarding incomplete</span>'; btn.textContent = "Complete Setup"; }
+          else { el.textContent = "Not connected"; btn.textContent = "Connect Stripe"; }
+        } catch(err){ console.error(err); }
+      }
+
+      // Deposit creation
+      document.getElementById("depTotalPrice").addEventListener("input", function(){
+        var v = Number(this.value);
+        var preview = document.getElementById("depPreview");
+        if(v >= 20){ preview.style.display = "block"; preview.textContent = "Deposit: $" + (v * 0.05).toFixed(2) + " (5%)"; }
+        else { preview.style.display = "none"; }
+      });
+
+      document.getElementById("createDepositBtn").addEventListener("click", async function(){
+        var name = document.getElementById("depBuyerName").value.trim();
+        var total = Number(document.getElementById("depTotalPrice").value);
+        if(!name || !total){ alert("Buyer name and total price are required"); return; }
+        try {
+          var r = await fetch("/api/seller/deposits/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ buyerName: name, buyerEmail: document.getElementById("depBuyerEmail").value.trim(), description: document.getElementById("depDescription").value.trim(), totalPrice: total }) });
+          var d = await r.json();
+          if(!d.ok){ alert(d.error || "Error"); return; }
+          document.getElementById("depLink").value = d.depositUrl;
+          document.getElementById("depResult").style.display = "block";
+          navigator.clipboard.writeText(d.depositUrl);
+          document.getElementById("depBuyerName").value = "";
+          document.getElementById("depBuyerEmail").value = "";
+          document.getElementById("depDescription").value = "";
+          document.getElementById("depTotalPrice").value = "";
+          document.getElementById("depPreview").style.display = "none";
+          loadCashDeposits();
+        } catch(err){ alert("Error: " + err.message); }
+      });
+
+      document.getElementById("copyDepLink").addEventListener("click", function(){
+        navigator.clipboard.writeText(document.getElementById("depLink").value);
+        this.textContent = "Copied!"; setTimeout(function(){ document.getElementById("copyDepLink").textContent = "Copy Link"; }, 2000);
+      });
+
+      async function loadCashDeposits(){
+        try {
+          var r = await fetch("/api/seller/deposits/list");
+          var deps = await r.json();
+          document.getElementById("cashDepositsBody").innerHTML = deps.map(function(d){
+            var date = new Date(d.created_at).toLocaleDateString();
+            var sc = d.status === "collected" ? "#10b981" : d.status === "forfeited" ? "#ef4444" : "#f59e0b";
+            var actions = "";
+            if(d.status === "pending") actions = '<button onclick="forfeitCashDeposit('+d.id+')" style="padding:4px 10px;border:none;border-radius:6px;background:#ef4444;color:#fff;font-size:11px;cursor:pointer;">Forfeit</button>';
+            if(d.status === "collected") actions = '<button onclick="refundCashDeposit('+d.id+')" style="padding:4px 10px;border:none;border-radius:6px;background:#64748b;color:#fff;font-size:11px;cursor:pointer;">Refund</button>';
+            return '<tr><td style="padding:6px;">'+date+'</td><td>'+(d.buyer_name||d.buyer_email||"—")+'</td><td>'+(d.description||"—")+'</td><td>$'+(Number(d.total_price)||0).toFixed(2)+'</td><td>$'+Number(d.amount).toFixed(2)+'</td><td><span style="color:'+sc+';font-weight:600;">'+d.status+'</span></td><td>'+actions+'</td></tr>';
+          }).join("");
+        } catch(err){ console.error("LOAD_CASH_DEPOSITS_ERROR", err); }
+      }
+
+      window.forfeitCashDeposit = async function(id){
+        if(!confirm("Forfeit this deposit?")) return;
+        await fetch("/api/deposits/" + id + "/forfeit", { method: "PUT" });
+        loadCashDeposits();
+      };
+
+      window.refundCashDeposit = async function(id){
+        if(!confirm("Refund this deposit?")) return;
+        await fetch("/api/deposits/" + id + "/refund", { method: "PUT" });
+        loadCashDeposits();
+      };
 
       /* ─── Analytics logic ─── */
       async function loadAnalytics(){
@@ -1248,13 +1402,13 @@
 
       watchTab("overview", loadDashboardStats);
       watchTab("invoices", loadInvoices);
-      watchTab("orders", loadDeposits);
+      watchTab("orders", function(){ loadDeposits(); loadCashDeposits(); });
       watchTab("products", loadProducts);
       watchTab("customers", loadCustomers);
       watchTab("marketing", loadMarketing);
       watchTab("analytics", loadAnalytics);
       watchTab("facebook", loadCtpWebhookUrl);
-      watchTab("settings", function(){ loadSettings(); loadFacebookKey(); });
+      watchTab("settings", function(){ loadSettings(); loadFacebookKey(); loadStripeStatus(); });
 
     })();
     </script>
