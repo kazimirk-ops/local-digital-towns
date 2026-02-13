@@ -3334,27 +3334,64 @@ app.get("/api/seller/settings", async (req, res) => {
     const r = await data.query("SELECT deposit_mode, ghost_timeout_hours FROM places WHERE id = $1", [seller.placeId]);
     if(!r.rows.length) return res.status(404).json({ error: "Place not found" });
     const p = r.rows[0];
-    res.json({ depositMode: p.deposit_mode || p.depositmode || "none", ghostTimeoutHours: Number(p.ghost_timeout_hours || p.ghosttimeouthours || 48) });
+    const u = await data.query("SELECT regen_pct, shippo_api_key, ship_from_name, ship_from_street, ship_from_city, ship_from_state, ship_from_zip FROM users WHERE id=$1", [seller.userId]);
+    const usr = u.rows[0] || {};
+    res.json({
+      depositMode: p.deposit_mode || p.depositmode || "none",
+      ghostTimeoutHours: Number(p.ghost_timeout_hours || p.ghosttimeouthours || 48),
+      regenPct: Number(usr.regen_pct ?? 1),
+      shippoApiKey: usr.shippo_api_key || "",
+      shipFromName: usr.ship_from_name || "",
+      shipFromStreet: usr.ship_from_street || "",
+      shipFromCity: usr.ship_from_city || "",
+      shipFromState: usr.ship_from_state || "",
+      shipFromZip: usr.ship_from_zip || ""
+    });
   } catch(err){ console.error("SELLER_SETTINGS_GET_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
 app.put("/api/seller/settings", async (req, res) => {
   try {
     const seller = await requireSellerPlace(req, res); if(!seller) return;
-    const { depositMode, ghostTimeoutHours } = req.body || {};
+    const { depositMode, ghostTimeoutHours, regenPct, shippoApiKey, shipFromName, shipFromStreet, shipFromCity, shipFromState, shipFromZip } = req.body || {};
     const validModes = ["none", "standard", "double"];
     if(depositMode !== undefined && !validModes.includes(depositMode)) return res.status(400).json({ error: "depositMode must be none, standard, or double" });
+    // Update place-level settings
     const updates = [];
     const params = [];
     let idx = 1;
     if(depositMode !== undefined){ updates.push("deposit_mode = $" + idx); params.push(depositMode); idx++; }
     if(ghostTimeoutHours !== undefined){ updates.push("ghost_timeout_hours = $" + idx); params.push(Number(ghostTimeoutHours) || 48); idx++; }
-    if(!updates.length) return res.status(400).json({ error: "Nothing to update" });
-    params.push(seller.placeId);
-    await data.query("UPDATE places SET " + updates.join(", ") + " WHERE id = $" + idx, params);
+    if(updates.length){ params.push(seller.placeId); await data.query("UPDATE places SET " + updates.join(", ") + " WHERE id = $" + idx, params); }
+    // Update user-level commerce settings
+    const uUpdates = [];
+    const uParams = [];
+    let uIdx = 1;
+    if(regenPct !== undefined){ uUpdates.push("regen_pct = $" + uIdx); uParams.push(Math.min(10, Math.max(1, Number(regenPct) || 1))); uIdx++; }
+    if(shippoApiKey !== undefined){ uUpdates.push("shippo_api_key = $" + uIdx); uParams.push(shippoApiKey.toString().trim()); uIdx++; }
+    if(shipFromName !== undefined){ uUpdates.push("ship_from_name = $" + uIdx); uParams.push(shipFromName.toString().trim()); uIdx++; }
+    if(shipFromStreet !== undefined){ uUpdates.push("ship_from_street = $" + uIdx); uParams.push(shipFromStreet.toString().trim()); uIdx++; }
+    if(shipFromCity !== undefined){ uUpdates.push("ship_from_city = $" + uIdx); uParams.push(shipFromCity.toString().trim()); uIdx++; }
+    if(shipFromState !== undefined){ uUpdates.push("ship_from_state = $" + uIdx); uParams.push(shipFromState.toString().trim()); uIdx++; }
+    if(shipFromZip !== undefined){ uUpdates.push("ship_from_zip = $" + uIdx); uParams.push(shipFromZip.toString().trim()); uIdx++; }
+    if(uUpdates.length){ uParams.push(seller.userId); await data.query("UPDATE users SET " + uUpdates.join(", ") + " WHERE id = $" + uIdx, uParams); }
+    if(!updates.length && !uUpdates.length) return res.status(400).json({ error: "Nothing to update" });
+    // Return updated settings
     const r = await data.query("SELECT deposit_mode, ghost_timeout_hours FROM places WHERE id = $1", [seller.placeId]);
     const p = r.rows[0];
-    res.json({ depositMode: p.deposit_mode || p.depositmode || "none", ghostTimeoutHours: Number(p.ghost_timeout_hours || p.ghosttimeouthours || 48) });
+    const u = await data.query("SELECT regen_pct, shippo_api_key, ship_from_name, ship_from_street, ship_from_city, ship_from_state, ship_from_zip FROM users WHERE id=$1", [seller.userId]);
+    const usr = u.rows[0] || {};
+    res.json({
+      depositMode: p.deposit_mode || p.depositmode || "none",
+      ghostTimeoutHours: Number(p.ghost_timeout_hours || p.ghosttimeouthours || 48),
+      regenPct: Number(usr.regen_pct ?? 1),
+      shippoApiKey: usr.shippo_api_key || "",
+      shipFromName: usr.ship_from_name || "",
+      shipFromStreet: usr.ship_from_street || "",
+      shipFromCity: usr.ship_from_city || "",
+      shipFromState: usr.ship_from_state || "",
+      shipFromZip: usr.ship_from_zip || ""
+    });
   } catch(err){ console.error("SELLER_SETTINGS_PUT_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
@@ -3894,6 +3931,127 @@ app.post("/api/webhooks/facebook-listing", async (req, res) => {
     );
     res.json({ ok: true, listing: r.rows[0] });
   } catch (err) { console.error("FB_LISTING_WEBHOOK_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+// ─── Shippo Shipping (Seller's Own API Key) ───
+app.post("/api/seller/shipments/rates", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const u = await data.query("SELECT shippo_api_key, ship_from_name, ship_from_street, ship_from_city, ship_from_state, ship_from_zip FROM users WHERE id=$1", [user.id]);
+    const row = u.rows[0] || {};
+    if (!row.shippo_api_key) return res.status(400).json({ error: "Please add your Shippo API key in Settings first." });
+    const { toName, toStreet, toCity, toState, toZip, weightOz, lengthIn, widthIn, heightIn } = req.body || {};
+    const shipment = await fetch("https://api.goshippo.com/shipments/", {
+      method: "POST",
+      headers: { "Authorization": "ShippoToken " + row.shippo_api_key, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        address_from: { name: row.ship_from_name || user.displayName || "", street1: row.ship_from_street || "", city: row.ship_from_city || "", state: row.ship_from_state || "", zip: row.ship_from_zip || "", country: "US" },
+        address_to: { name: toName || "", street1: toStreet || "", city: toCity || "", state: toState || "", zip: toZip || "", country: "US" },
+        parcels: [{ length: lengthIn || "10", width: widthIn || "8", height: heightIn || "4", distance_unit: "in", weight: weightOz || "16", mass_unit: "oz" }],
+        async: false
+      })
+    }).then(r => r.json());
+    if (shipment.rates) {
+      res.json({ rates: shipment.rates.map(r => ({ objectId: r.object_id, provider: r.provider, servicelevel: r.servicelevel?.name, amount: r.amount, currency: r.currency, days: r.estimated_days })) });
+    } else { res.json({ rates: [], error: shipment.messages || "No rates available" }); }
+  } catch (err) { console.error("SHIPPO_RATES_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.post("/api/seller/shipments/purchase", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const u = await data.query("SELECT shippo_api_key FROM users WHERE id=$1", [user.id]);
+    if (!u.rows[0]?.shippo_api_key) return res.status(400).json({ error: "Shippo API key required" });
+    const { rateId, invoiceId, toName, toStreet, toCity, toState, toZip, weightOz, lengthIn, widthIn, heightIn } = req.body || {};
+    const txn = await fetch("https://api.goshippo.com/transactions/", {
+      method: "POST",
+      headers: { "Authorization": "ShippoToken " + u.rows[0].shippo_api_key, "Content-Type": "application/json" },
+      body: JSON.stringify({ rate: rateId, async: false })
+    }).then(r => r.json());
+    if (txn.status === "SUCCESS") {
+      await data.query(
+        "INSERT INTO shipments (invoice_id, user_id, status, to_name, to_street, to_city, to_state, to_zip, weight_oz, length_in, width_in, height_in, label_url, tracking_number, tracking_url, carrier, service, selected_rate) VALUES ($1,$2,'label_created',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)",
+        [invoiceId || null, user.id, toName, toStreet, toCity, toState, toZip, weightOz, lengthIn, widthIn, heightIn, txn.label_url, txn.tracking_number, txn.tracking_url_provider, txn.rate?.provider || "", txn.rate?.servicelevel?.name || "", JSON.stringify(txn.rate || {})]
+      );
+      res.json({ ok: true, labelUrl: txn.label_url, trackingNumber: txn.tracking_number, trackingUrl: txn.tracking_url_provider });
+    } else { res.status(400).json({ error: txn.messages || "Purchase failed" }); }
+  } catch (err) { console.error("SHIPPO_PURCHASE_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.get("/api/seller/shipments", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const r = await data.query("SELECT * FROM shipments WHERE user_id=$1 ORDER BY created_at DESC", [user.id]);
+    res.json(r.rows);
+  } catch (err) { res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.post("/api/seller/shipments/:id/notify", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const r = await data.query("SELECT s.*, i.buyer_email FROM shipments s LEFT JOIN invoices i ON s.invoice_id = i.id WHERE s.id=$1 AND s.user_id=$2", [req.params.id, user.id]);
+    if (!r.rows.length) return res.status(404).json({ error: "Shipment not found" });
+    const s = r.rows[0];
+    const email = s.buyer_email || req.body?.buyerEmail;
+    if (!email) return res.status(400).json({ error: "No buyer email" });
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: "Email not configured" });
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: process.env.EMAIL_FROM || "support@sebastian-florida.com",
+        to: [email],
+        subject: "Your order has shipped!",
+        html: "<h2>Your order has shipped!</h2><p>Tracking: <strong>" + (s.tracking_number || "N/A") + "</strong></p>" + (s.tracking_url ? "<p><a href='" + s.tracking_url + "'>Track your package</a></p>" : "") + "<p>Carrier: " + (s.carrier || "") + " " + (s.service || "") + "</p>"
+      })
+    });
+    await data.query("UPDATE shipments SET status='shipped' WHERE id=$1", [s.id]);
+    res.json({ ok: true });
+  } catch (err) { console.error("SHIP_NOTIFY_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+// ─── Referrer Program ───
+app.post("/api/referrer/register", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const existing = await data.query("SELECT * FROM referrers WHERE user_id=$1", [user.id]);
+    if (existing.rows.length) return res.json(existing.rows[0]);
+    const code = "ref_" + require("crypto").randomBytes(4).toString("hex");
+    const pct = Math.min(10, Math.max(0, Number(req.body?.commissionPercent) || 5));
+    const r = await data.query("INSERT INTO referrers (user_id, ref_code, commission_percent) VALUES ($1,$2,$3) RETURNING *", [user.id, code, pct]);
+    res.json(r.rows[0]);
+  } catch (err) { res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.get("/api/referrer/status", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const r = await data.query("SELECT * FROM referrers WHERE user_id=$1", [user.id]);
+    if (!r.rows.length) return res.json({ registered: false });
+    const earnings = await data.query("SELECT COALESCE(SUM(amount),0) as total FROM referral_earnings WHERE referrer_id=$1", [r.rows[0].id]);
+    res.json({ registered: true, referrer: r.rows[0], totalEarnings: Number(earnings.rows[0].total) });
+  } catch (err) { res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.get("/api/referrer/sellers", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const r = await data.query("SELECT ref_code FROM referrers WHERE user_id=$1", [user.id]);
+    if (!r.rows.length) return res.json([]);
+    const sellers = await data.query("SELECT id, \"displayName\", email, created_at FROM users WHERE referred_by_code=$1", [r.rows[0].ref_code]);
+    res.json(sellers.rows);
+  } catch (err) { res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.get("/api/referrer/earnings", async (req, res) => {
+  const user = req.user; if (!user) return res.status(401).json({ error: "Login required" });
+  try {
+    const r = await data.query("SELECT ref_code, id FROM referrers WHERE user_id=$1", [user.id]);
+    if (!r.rows.length) return res.json([]);
+    const earnings = await data.query("SELECT re.*, u.\"displayName\" as seller_name FROM referral_earnings re LEFT JOIN users u ON re.seller_id = u.id WHERE re.referrer_id=$1 ORDER BY re.created_at DESC", [r.rows[0].id]);
+    res.json(earnings.rows);
+  } catch (err) { res.status(500).json({ error: "Internal server error" }); }
 });
 
 app.post("/api/admin/pulse/generate", async (req, res) =>{
