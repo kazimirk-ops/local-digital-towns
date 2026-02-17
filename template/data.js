@@ -3689,13 +3689,15 @@ async function getFeaturedStores() {
 }
 
 async function getFeaturedBusinesses() {
-  // Get places owned by Tier 3 (Business) users with active subscriptions
+  // Get approved places owned by Tier 3 (Business) users with a store avatar
   const rows = await stmt(`
     SELECT p.id, p.name, p.category, p.avatarUrl, p.description, p.bannerUrl,
            u.displayName AS ownerName
     FROM places p
     JOIN users u ON u.id = p.ownerUserId
     WHERE u.trustTier >= 3
+      AND p.status = 'approved'
+      AND p.avatarUrl IS NOT NULL AND p.avatarUrl != ''
     ORDER BY p.name ASC
   `).all();
   return rows;
