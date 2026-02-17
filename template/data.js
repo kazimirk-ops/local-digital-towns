@@ -3283,7 +3283,13 @@ async function addTrustEvent(payload){
 }
 
 async function getStoreFollowCount(placeId){
-  const row = await stmt("SELECT COUNT(*) AS c FROM store_follows WHERE placeId=$1").get(Number(placeId));
+  const row = await stmt(`
+    SELECT COALESCE(p.followercount, 0) + COUNT(sf.id) AS c
+    FROM places p
+    LEFT JOIN store_follows sf ON sf.placeId = p.id
+    WHERE p.id = $1
+    GROUP BY p.id
+  `).get(Number(placeId));
   return row?.c || 0;
 }
 async function isFollowingStore(userId, placeId){
