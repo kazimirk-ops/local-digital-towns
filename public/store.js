@@ -699,6 +699,14 @@ async function main(){
       if(place.avatarUrl || place.avatarurl){
         $("storeAvatar").src = place.avatarUrl || place.avatarurl;
       }
+      const shippingEl = $("storeShipping");
+      if(shippingEl){
+        if(place.storetype === "managed"){
+          shippingEl.textContent = "$15 flat rate shipping";
+        } else {
+          shippingEl.style.display = "none";
+        }
+      }
       const reviews = place.reviewSummary || { count:0, average:0, buyerCount:0, sellerCount:0 };
       $("storeRating").textContent = `★ ${reviews.average.toFixed(1)} (${reviews.count} Reviews)`;
       $("storeReviewRoles").textContent = `Buyer reviews: ${reviews.buyerCount} • Seller reviews: ${reviews.sellerCount}`;
