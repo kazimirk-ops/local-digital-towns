@@ -27,14 +27,17 @@ function updateHeroPreview() {
 
 function updateAvatarPreview() {
   const url = document.getElementById("avatarUrl")?.value || "";
-  const img = document.getElementById("avatarPreview");
+  const img = document.getElementById("avatarImg");
+  const fallback = document.querySelector(".avatar-fallback");
   if (!img) return;
   if (url.trim()) {
-    img.src = url.trim();
+    img.src = `${url.trim()}?v=${Date.now()}`;
     img.style.display = "block";
+    if (fallback) fallback.style.display = "none";
   } else {
     img.removeAttribute("src");
     img.style.display = "none";
+    if (fallback) fallback.style.display = "flex";
   }
 }
 
@@ -116,7 +119,12 @@ async function doUploadAvatarBlob(blob) {
     const avatarInput = document.getElementById("avatarUrl");
     const avatarImg = document.getElementById("avatarImg");
     if (avatarInput) avatarInput.value = returnedUrl;
-    if (avatarImg && returnedUrl) avatarImg.src = `${returnedUrl}?v=${Date.now()}`;
+    if (avatarImg && returnedUrl) {
+      avatarImg.src = `${returnedUrl}?v=${Date.now()}`;
+      avatarImg.style.display = "block";
+      const fallback = document.querySelector(".avatar-fallback");
+      if (fallback) fallback.style.display = "none";
+    }
     await saveProfile();
     setMsg("profileMsg", "Uploaded and saved.");
   } catch (e) {
