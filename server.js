@@ -3456,7 +3456,7 @@ app.get("/api/seller/deposits", async (req, res) => {
 app.get("/api/seller/listings", async (req, res) => {
   try {
     const seller = await requireSellerPlace(req, res); if(!seller) return;
-    const r = await data.query('SELECT id, title, description, price, quantity, status, photourlsjson, createdat FROM listings WHERE placeid = $1 ORDER BY createdat DESC', [seller.placeId]);
+    const r = await data.query('SELECT id, title, description, price, quantity, status, photourlsjson, createdat, listingtype, service_form_fields, service_cta_label, service_thank_you, google_calendar_url FROM listings WHERE placeid = $1 ORDER BY createdat DESC', [seller.placeId]);
     res.json(r.rows);
   } catch(err){ console.error("SELLER_LISTINGS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
@@ -3464,14 +3464,122 @@ app.get("/api/seller/listings", async (req, res) => {
 app.put("/api/seller/listings/:id", async (req, res) => {
   try {
     const seller = await requireSellerPlace(req, res); if(!seller) return;
-    const { title, price, quantity, status } = req.body || {};
-    const r = await data.query(
-      "UPDATE listings SET title=$1, price=$2, quantity=$3, status=$4 WHERE id=$5 AND placeid=$6 RETURNING *",
-      [String(title), Number(price), Number(quantity), String(status), Number(req.params.id), seller.placeId]
-    );
+    const { title, price, quantity, status, listingType } = req.body || {};
+    const lt = listingType || undefined;
+    let q, params;
+    if(lt){
+      q = "UPDATE listings SET title=$1, price=$2, quantity=$3, status=$4, listingtype=$5 WHERE id=$6 AND placeid=$7 RETURNING *";
+      params = [String(title), Number(price), Number(quantity), String(status), String(lt), Number(req.params.id), seller.placeId];
+    } else {
+      q = "UPDATE listings SET title=$1, price=$2, quantity=$3, status=$4 WHERE id=$5 AND placeid=$6 RETURNING *";
+      params = [String(title), Number(price), Number(quantity), String(status), Number(req.params.id), seller.placeId];
+    }
+    const r = await data.query(q, params);
     if(!r.rows.length) return res.status(404).json({ error: "Listing not found" });
     res.json(r.rows[0]);
   } catch(err){ console.error("SELLER_LISTING_UPDATE_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+/* ─── Service Listings ─── */
+app.post("/api/service-inquiries", async (req, res) => {
+  try {
+    const { listingId, formData } = req.body || {};
+    if(!listingId) return res.status(400).json({ error: "listingId required" });
+    const listing = await data.getListingById(listingId);
+    if(!listing) return res.status(404).json({ error: "Listing not found" });
+    const lt = listing.listingType || listing.listingtype || "item";
+    if(lt !== "service") return res.status(400).json({ error: "Not a service listing" });
+    const placeId = Number(listing.placeId ?? listing.placeid);
+    const places = await data.getPlaces();
+    const place = places.find(p => Number(p.id) === placeId);
+    if(!place) return res.status(404).json({ error: "Store not found" });
+    const ownerId = Number(place.ownerUserId ?? place.owneruserid);
+    const fd = formData || {};
+    const buyerName = (fd.f1 || fd.name || fd.fullName || "").toString().slice(0,255);
+    const buyerEmail = (fd.f2 || fd.email || "").toString().slice(0,255);
+    const row = await data.addServiceInquiry({
+      listingId: listing.id, placeId, sellerUserId: ownerId,
+      buyerName, buyerEmail, formData: fd
+    });
+    // Email notification to seller
+    try {
+      const sellerUser = await data.getUserById(ownerId);
+      if(sellerUser?.email){
+        const fields = listing.serviceFormFields || [];
+        let formHtml = "";
+        for(const f of fields){
+          const val = fd[f.id] || "";
+          if(val) formHtml += `<p><strong>${f.label}:</strong> ${String(val).replace(/</g,"&lt;")}</p>`;
+        }
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>`
+          + `<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">`
+          + `<h2>New Service Inquiry</h2>`
+          + `<p>Someone submitted an inquiry for <strong>${listing.title}</strong> at <strong>${place.name}</strong>.</p>`
+          + formHtml
+          + `<p style="margin-top:20px;"><a href="${(process.env.BASE_URL || "").trim() || "https://sebastian-florida.com"}/dashboard#inquiries" style="display:inline-block;padding:12px 24px;background:#10b981;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;">View in Dashboard</a></p>`
+          + `</body></html>`;
+        const text = `New service inquiry for "${listing.title}" at ${place.name}.\n\nName: ${buyerName}\nEmail: ${buyerEmail}\n\nView in your dashboard.`;
+        await sendEmail(sellerUser.email, `New inquiry: ${listing.title}`, text, html);
+      }
+    } catch(emailErr){ console.error("SERVICE_INQUIRY_EMAIL_ERROR", emailErr?.message); }
+    const thankYou = listing.serviceThankYou || listing.service_thank_you || "Thank you — your inquiry has been received.";
+    res.json({ success: true, thankYouMessage: thankYou });
+  } catch(err){ console.error("SERVICE_INQUIRY_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.get("/api/seller/service-inquiries", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const r = await data.query(
+      `SELECT si.*, l.title as listing_title
+       FROM service_inquiries si
+       LEFT JOIN listings l ON l.id = si.listing_id
+       WHERE si.place_id = $1
+       ORDER BY si.created_at DESC`,
+      [seller.placeId]
+    );
+    res.json(r.rows);
+  } catch(err){ console.error("SELLER_INQUIRIES_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.patch("/api/seller/service-inquiries/:id/status", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const { status } = req.body || {};
+    const validStatuses = ["new", "contacted", "completed"];
+    if(!validStatuses.includes(status)) return res.status(400).json({ error: "Invalid status. Allowed: new, contacted, completed" });
+    const r = await data.query(
+      "UPDATE service_inquiries SET status = $1 WHERE id = $2 AND place_id = $3 RETURNING *",
+      [status, Number(req.params.id), seller.placeId]
+    );
+    if(!r.rows.length) return res.status(404).json({ error: "Inquiry not found" });
+    res.json(r.rows[0]);
+  } catch(err){ console.error("INQUIRY_STATUS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
+});
+
+app.put("/api/seller/listings/:id/service-settings", async (req, res) => {
+  try {
+    const seller = await requireSellerPlace(req, res); if(!seller) return;
+    const { serviceFormFields, serviceCtaLabel, serviceThankYou, googleCalendarUrl } = req.body || {};
+    const r = await data.query(
+      `UPDATE listings SET
+        service_form_fields = $1,
+        service_cta_label = $2,
+        service_thank_you = $3,
+        google_calendar_url = $4
+       WHERE id = $5 AND placeid = $6 RETURNING *`,
+      [
+        JSON.stringify(serviceFormFields || []),
+        (serviceCtaLabel || "Request Quote").toString().slice(0,100),
+        (serviceThankYou || "Thank you — your inquiry has been received.").toString().slice(0,500),
+        (googleCalendarUrl || "").toString().slice(0,500),
+        Number(req.params.id),
+        seller.placeId
+      ]
+    );
+    if(!r.rows.length) return res.status(404).json({ error: "Listing not found" });
+    res.json(r.rows[0]);
+  } catch(err){ console.error("SERVICE_SETTINGS_ERROR", err?.message); res.status(500).json({ error: "Internal server error" }); }
 });
 
 /* ─── Seller Customers (Customers tab) ─── */

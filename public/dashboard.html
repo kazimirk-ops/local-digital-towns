@@ -142,6 +142,7 @@
         <a href="#analytics" data-tab="analytics"><span class="icon">&#9670;</span> Analytics</a>
         <a href="#facebook" data-tab="facebook"><span class="icon">&#402;</span> Facebook</a>
         <a href="#customers" data-tab="customers"><span class="icon">&#9786;</span> Customers</a>
+        <a href="#inquiries" data-tab="inquiries"><span class="icon">&#9998;</span> Inquiries</a>
         <a href="#marketing" data-tab="marketing"><span class="icon">&#9733;</span> Marketing</a>
         <a href="#settings" data-tab="settings"><span class="icon">&#9881;</span> Settings</a>
       </nav>
@@ -242,7 +243,7 @@
           </div>
           <div id="prodGrid" style="background:#111827;border:1px solid #1e293b;border-radius:12px;overflow:hidden;">
             <table class="inv-table">
-              <thead><tr><th>Image</th><th>Title</th><th>Price</th><th>Qty</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th>Image</th><th>Title</th><th>Type</th><th>Price</th><th>Qty</th><th>Status</th><th></th></tr></thead>
               <tbody id="prodTableBody">
                 <tr><td colspan="6" class="inv-empty">Loading...</td></tr>
               </tbody>
@@ -268,6 +269,59 @@
             <div style="display:flex;gap:8px;justify-content:flex-end;">
               <button type="button" id="prodEditCancel" class="btn-gray" style="padding:8px 16px;font-size:13px;">Cancel</button>
               <button type="button" id="prodEditSave" class="btn-green" style="padding:8px 16px;font-size:13px;">Save</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Service Inquiries -->
+        <div class="tab-content" id="tab-inquiries">
+          <div class="main-title">Service Inquiries</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <span id="inqCount" style="color:#94a3b8;font-size:14px;">0 inquiries</span>
+            <div style="display:flex;gap:8px;">
+              <select id="inqFilter" style="padding:6px 12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:13px;">
+                <option value="all">All</option>
+                <option value="new">New</option>
+                <option value="contacted">Contacted</option>
+                <option value="completed">Completed</option>
+              </select>
+              <button type="button" id="inqRefreshBtn" class="btn-gray" style="padding:6px 16px;font-size:13px;">Refresh</button>
+            </div>
+          </div>
+          <div id="inqGrid" style="background:#111827;border:1px solid #1e293b;border-radius:12px;overflow:hidden;">
+            <table class="inv-table">
+              <thead><tr><th>Date</th><th>Service</th><th>Name</th><th>Email</th><th>Status</th><th></th></tr></thead>
+              <tbody id="inqTableBody">
+                <tr><td colspan="6" class="inv-empty">No inquiries yet</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="inqDetail" style="display:none;margin-top:16px;background:#111827;border:1px solid #1e293b;border-radius:12px;padding:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <div style="font-size:16px;font-weight:700;color:#e2e8f0;" id="inqDetailTitle">Inquiry Details</div>
+              <button type="button" id="inqDetailClose" class="btn-gray" style="padding:4px 12px;font-size:12px;">Close</button>
+            </div>
+            <div id="inqDetailBody" style="color:#cbd5e1;font-size:14px;line-height:1.7;"></div>
+          </div>
+        </div>
+
+        <!-- Service Settings Modal -->
+        <div id="serviceSettingsOverlay" class="inv-modal-overlay">
+          <div class="inv-modal" style="max-width:600px;">
+            <div style="font-size:18px;font-weight:700;color:#e2e8f0;margin-bottom:16px;">Service Form Builder</div>
+            <input type="hidden" id="svcSettingsId">
+            <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">CTA Button Label</label>
+            <input type="text" id="svcCtaLabel" placeholder="Request Quote" maxlength="100" style="margin-bottom:12px;">
+            <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Thank You Message</label>
+            <textarea id="svcThankYou" rows="2" placeholder="Thank you — your inquiry has been received." maxlength="500" style="margin-bottom:12px;resize:vertical;"></textarea>
+            <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;">Google Calendar URL (optional)</label>
+            <input type="url" id="svcCalendarUrl" placeholder="https://calendar.google.com/..." maxlength="500" style="margin-bottom:16px;">
+            <div style="font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:8px;">Form Fields</div>
+            <div id="svcFieldsList" style="margin-bottom:12px;"></div>
+            <button type="button" id="svcAddField" class="btn-gray" style="padding:6px 16px;font-size:13px;margin-bottom:16px;">+ Add Field</button>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button type="button" id="svcSettingsCancel" class="btn-gray" style="padding:8px 16px;font-size:13px;">Cancel</button>
+              <button type="button" id="svcSettingsSave" class="btn-green" style="padding:8px 16px;font-size:13px;">Save</button>
             </div>
           </div>
         </div>
@@ -1250,21 +1304,28 @@
           document.getElementById("prodCount").textContent = rows.length + " product" + (rows.length !== 1 ? "s" : "");
           var body = document.getElementById("prodTableBody");
           if(!rows.length){
-            body.innerHTML = '<tr><td colspan="6" class="inv-empty">No products yet. Add listings from your store page or use the Facebook Auto-Sync webhook.</td></tr>';
+            body.innerHTML = '<tr><td colspan="7" class="inv-empty">No products yet. Add listings from your store page or use the Facebook Auto-Sync webhook.</td></tr>';
             return;
           }
+          window._sellerListings = rows;
           body.innerHTML = rows.map(function(p){
             var photos = [];
             try { photos = typeof p.photourlsjson === "string" ? JSON.parse(p.photourlsjson) : (p.photourlsjson || []); } catch(e){}
             var thumb = photos.length ? '<img src="' + photos[0] + '" style="width:40px;height:40px;object-fit:cover;border-radius:6px;">' : '<div style="width:40px;height:40px;border-radius:6px;background:#1e293b;"></div>';
             var sBg = p.status === "active" ? "#10b981" : "#374151";
+            var lt = p.listingtype || p.listingType || "item";
+            var typeBadge = lt === "service"
+              ? '<span style="display:inline-block;font-size:10px;padding:2px 8px;border-radius:99px;background:#16a34a;color:#fff;font-weight:600;">Service</span>'
+              : '<span style="display:inline-block;font-size:10px;padding:2px 8px;border-radius:99px;background:#334155;color:#94a3b8;font-weight:600;">Product</span>';
+            var svcBtn = lt === "service" ? ' <button type="button" class="btn-gray svc-settings-btn" data-id="' + p.id + '" style="padding:4px 8px;font-size:11px;">Form</button>' : '';
             return '<tr>'
               + '<td>' + thumb + '</td>'
               + '<td style="color:#e2e8f0;">' + (p.title || "") + '</td>'
+              + '<td>' + typeBadge + '</td>'
               + '<td>$' + (Number(p.price) || 0).toFixed(2) + '</td>'
               + '<td>' + (p.quantity || 0) + '</td>'
               + '<td><span class="inv-badge" style="background:' + sBg + ';color:#fff;">' + (p.status || "inactive") + '</span></td>'
-              + '<td><button type="button" class="btn-gray prod-edit-btn" data-id="' + p.id + '" data-title="' + (p.title || "").replace(/"/g, "&quot;") + '" data-price="' + (p.price || 0) + '" data-qty="' + (p.quantity || 0) + '" data-status="' + (p.status || "inactive") + '" style="padding:4px 12px;font-size:12px;">Edit</button></td>'
+              + '<td><button type="button" class="btn-gray prod-edit-btn" data-id="' + p.id + '" data-title="' + (p.title || "").replace(/"/g, "&quot;") + '" data-price="' + (p.price || 0) + '" data-qty="' + (p.quantity || 0) + '" data-status="' + (p.status || "inactive") + '" style="padding:4px 12px;font-size:12px;">Edit</button>' + svcBtn + '</td>'
               + '</tr>';
           }).join("");
         } catch(err){ console.error("LOAD_PRODUCTS_ERROR", err); }
@@ -1319,6 +1380,200 @@
           document.getElementById("prodEditOverlay").style.display = "none";
           loadProducts();
         } catch(err){ console.error("SAVE_PRODUCT_ERROR", err); alert("Save failed"); }
+      });
+
+      /* ─── Service Form Builder ─── */
+      var _svcFields = [];
+
+      function renderSvcFields(){
+        var list = document.getElementById("svcFieldsList");
+        if(!list) return;
+        if(!_svcFields.length){ list.innerHTML = '<div style="color:#64748b;font-size:13px;padding:8px 0;">No fields yet. Click "Add Field" to get started.</div>'; return; }
+        list.innerHTML = _svcFields.map(function(f, i){
+          return '<div style="display:flex;align-items:center;gap:8px;padding:8px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;margin-bottom:6px;">'
+            + '<div style="display:flex;flex-direction:column;gap:2px;">'
+            + '<button type="button" class="svc-move-up btn-gray" data-idx="' + i + '" style="padding:1px 6px;font-size:10px;"' + (i===0 ? ' disabled' : '') + '>&uarr;</button>'
+            + '<button type="button" class="svc-move-down btn-gray" data-idx="' + i + '" style="padding:1px 6px;font-size:10px;"' + (i===_svcFields.length-1 ? ' disabled' : '') + '>&darr;</button>'
+            + '</div>'
+            + '<div style="flex:1;">'
+            + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">'
+            + '<select class="svc-field-type" data-idx="' + i + '" style="padding:4px 8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:12px;">'
+            + ['text','textarea','email','phone','dropdown','checkbox','date'].map(function(t){ return '<option value="' + t + '"' + (f.type===t ? ' selected' : '') + '>' + t + '</option>'; }).join('')
+            + '</select>'
+            + '<input class="svc-field-label" data-idx="' + i + '" value="' + (f.label||"").replace(/"/g,"&quot;") + '" placeholder="Label" style="flex:1;padding:4px 8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:12px;">'
+            + '<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;white-space:nowrap;"><input type="checkbox" class="svc-field-req" data-idx="' + i + '"' + (f.required ? ' checked' : '') + '> Req</label>'
+            + '</div>'
+            + '<input class="svc-field-placeholder" data-idx="' + i + '" value="' + (f.placeholder||"").replace(/"/g,"&quot;") + '" placeholder="Placeholder text" style="width:100%;padding:4px 8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:12px;box-sizing:border-box;margin-bottom:4px;">'
+            + (f.type === 'dropdown' ? '<input class="svc-field-options" data-idx="' + i + '" value="' + (f.options||[]).join(", ").replace(/"/g,"&quot;") + '" placeholder="Options (comma separated)" style="width:100%;padding:4px 8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:12px;box-sizing:border-box;">' : '')
+            + '</div>'
+            + '<button type="button" class="svc-field-remove btn-gray" data-idx="' + i + '" style="padding:4px 8px;font-size:11px;color:#ef4444;">&#10005;</button>'
+            + '</div>';
+        }).join("");
+      }
+
+      document.getElementById("prodGrid").addEventListener("click", function(e){
+        var btn = e.target.closest(".svc-settings-btn");
+        if(!btn) return;
+        var id = btn.getAttribute("data-id");
+        var listing = (window._sellerListings || []).find(function(p){ return String(p.id) === id; });
+        if(!listing) return;
+        document.getElementById("svcSettingsId").value = id;
+        document.getElementById("svcCtaLabel").value = listing.service_cta_label || listing.servicectalabel || "Request Quote";
+        document.getElementById("svcThankYou").value = listing.service_thank_you || listing.servicethankyou || "Thank you — your inquiry has been received.";
+        document.getElementById("svcCalendarUrl").value = listing.google_calendar_url || listing.googlecalendarurl || "";
+        try { _svcFields = JSON.parse(listing.service_form_fields || listing.serviceformfields || "[]"); } catch(e){ _svcFields = []; }
+        if(!Array.isArray(_svcFields)) _svcFields = [];
+        renderSvcFields();
+        document.getElementById("serviceSettingsOverlay").style.display = "flex";
+      });
+
+      document.getElementById("svcAddField").addEventListener("click", function(){
+        _svcFields.push({ id: "f" + (Date.now() % 100000), type: "text", label: "", required: false, placeholder: "" });
+        renderSvcFields();
+      });
+
+      document.getElementById("svcFieldsList").addEventListener("click", function(e){
+        var btn = e.target.closest(".svc-field-remove");
+        if(btn){ _svcFields.splice(Number(btn.dataset.idx), 1); renderSvcFields(); return; }
+        var up = e.target.closest(".svc-move-up");
+        if(up){ var i = Number(up.dataset.idx); if(i > 0){ var t = _svcFields[i]; _svcFields[i] = _svcFields[i-1]; _svcFields[i-1] = t; renderSvcFields(); } return; }
+        var down = e.target.closest(".svc-move-down");
+        if(down){ var i = Number(down.dataset.idx); if(i < _svcFields.length-1){ var t = _svcFields[i]; _svcFields[i] = _svcFields[i+1]; _svcFields[i+1] = t; renderSvcFields(); } return; }
+      });
+
+      document.getElementById("svcFieldsList").addEventListener("change", function(e){
+        var idx = e.target.dataset.idx;
+        if(idx == null) return;
+        var i = Number(idx);
+        if(e.target.classList.contains("svc-field-type")){ _svcFields[i].type = e.target.value; renderSvcFields(); }
+        if(e.target.classList.contains("svc-field-req")){ _svcFields[i].required = e.target.checked; }
+      });
+
+      document.getElementById("svcFieldsList").addEventListener("input", function(e){
+        var idx = e.target.dataset.idx;
+        if(idx == null) return;
+        var i = Number(idx);
+        if(e.target.classList.contains("svc-field-label")) _svcFields[i].label = e.target.value;
+        if(e.target.classList.contains("svc-field-placeholder")) _svcFields[i].placeholder = e.target.value;
+        if(e.target.classList.contains("svc-field-options")) _svcFields[i].options = e.target.value.split(",").map(function(s){ return s.trim(); }).filter(Boolean);
+      });
+
+      document.getElementById("svcSettingsCancel").addEventListener("click", function(){
+        document.getElementById("serviceSettingsOverlay").style.display = "none";
+      });
+      document.getElementById("serviceSettingsOverlay").addEventListener("click", function(e){
+        if(e.target === this) this.style.display = "none";
+      });
+
+      document.getElementById("svcSettingsSave").addEventListener("click", async function(){
+        var id = document.getElementById("svcSettingsId").value;
+        var payload = {
+          serviceFormFields: _svcFields,
+          serviceCtaLabel: document.getElementById("svcCtaLabel").value || "Request Quote",
+          serviceThankYou: document.getElementById("svcThankYou").value || "Thank you — your inquiry has been received.",
+          googleCalendarUrl: document.getElementById("svcCalendarUrl").value || ""
+        };
+        try {
+          var resp = await fetch("/api/seller/listings/" + id + "/service-settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if(!resp.ok){ alert("Save failed"); return; }
+          document.getElementById("serviceSettingsOverlay").style.display = "none";
+          loadProducts();
+        } catch(err){ console.error("SAVE_SVC_SETTINGS_ERROR", err); alert("Save failed"); }
+      });
+
+      /* ─── Inquiries tab ─── */
+      var _allInquiries = [];
+
+      async function loadInquiries(){
+        try {
+          var resp = await fetch("/api/seller/service-inquiries");
+          if(!resp.ok) return;
+          _allInquiries = await resp.json();
+          renderInquiries();
+        } catch(err){ console.error("LOAD_INQUIRIES_ERROR", err); }
+      }
+
+      function renderInquiries(){
+        var filter = document.getElementById("inqFilter").value;
+        var rows = _allInquiries;
+        if(filter !== "all") rows = rows.filter(function(r){ return r.status === filter; });
+        document.getElementById("inqCount").textContent = rows.length + " inquir" + (rows.length !== 1 ? "ies" : "y");
+        var body = document.getElementById("inqTableBody");
+        if(!rows.length){
+          body.innerHTML = '<tr><td colspan="6" class="inv-empty">No inquiries yet</td></tr>';
+          return;
+        }
+        body.innerHTML = rows.map(function(r){
+          var d = new Date(r.created_at || r.createdat);
+          var dateStr = d.toLocaleDateString();
+          var fd = {};
+          try { fd = typeof r.form_data === "string" ? JSON.parse(r.form_data) : (r.form_data || r.formdata || {}); } catch(e){}
+          var name = r.buyer_name || r.buyername || fd.f1 || "";
+          var email = r.buyer_email || r.buyeremail || fd.f2 || "";
+          var st = r.status || "new";
+          var stColors = { "new": "#3b82f6", "contacted": "#eab308", "completed": "#10b981" };
+          return '<tr class="inq-row" data-inq-id="' + r.id + '" style="cursor:pointer;">'
+            + '<td>' + dateStr + '</td>'
+            + '<td style="color:#e2e8f0;">' + (r.listing_title || r.listingtitle || "") + '</td>'
+            + '<td>' + name + '</td>'
+            + '<td>' + email + '</td>'
+            + '<td><select class="inq-status-select" data-id="' + r.id + '" style="padding:4px 8px;background:' + (stColors[st]||"#334155") + ';color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">'
+            + '<option value="new"' + (st==="new"?" selected":"") + '>new</option>'
+            + '<option value="contacted"' + (st==="contacted"?" selected":"") + '>contacted</option>'
+            + '<option value="completed"' + (st==="completed"?" selected":"") + '>completed</option>'
+            + '</select></td>'
+            + '<td><button type="button" class="btn-gray inq-detail-btn" data-id="' + r.id + '" style="padding:4px 12px;font-size:12px;">View</button></td>'
+            + '</tr>';
+        }).join("");
+      }
+
+      document.getElementById("inqRefreshBtn").addEventListener("click", loadInquiries);
+      document.getElementById("inqFilter").addEventListener("change", renderInquiries);
+
+      document.getElementById("inqGrid").addEventListener("change", async function(e){
+        var sel = e.target.closest(".inq-status-select");
+        if(!sel) return;
+        var id = sel.dataset.id;
+        var status = sel.value;
+        try {
+          var resp = await fetch("/api/seller/service-inquiries/" + id + "/status", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: status })
+          });
+          if(resp.ok){
+            var stColors = { "new": "#3b82f6", "contacted": "#eab308", "completed": "#10b981" };
+            sel.style.background = stColors[status] || "#334155";
+            var inq = _allInquiries.find(function(r){ return String(r.id) === id; });
+            if(inq) inq.status = status;
+          }
+        } catch(err){ console.error("INQ_STATUS_ERROR", err); }
+      });
+
+      document.getElementById("inqGrid").addEventListener("click", function(e){
+        var btn = e.target.closest(".inq-detail-btn");
+        if(!btn) return;
+        var id = btn.dataset.id;
+        var inq = _allInquiries.find(function(r){ return String(r.id) === id; });
+        if(!inq) return;
+        var fd = {};
+        try { fd = typeof inq.form_data === "string" ? JSON.parse(inq.form_data) : (inq.form_data || inq.formdata || {}); } catch(e){}
+        var html = '<div style="margin-bottom:8px;"><strong>Service:</strong> ' + (inq.listing_title || inq.listingtitle || "") + '</div>';
+        html += '<div style="margin-bottom:8px;"><strong>Date:</strong> ' + new Date(inq.created_at || inq.createdat).toLocaleString() + '</div>';
+        Object.keys(fd).forEach(function(k){
+          html += '<div style="margin-bottom:6px;"><strong>' + k + ':</strong> ' + String(fd[k]).replace(/</g,"&lt;") + '</div>';
+        });
+        document.getElementById("inqDetailTitle").textContent = "Inquiry #" + id;
+        document.getElementById("inqDetailBody").innerHTML = html;
+        document.getElementById("inqDetail").style.display = "block";
+      });
+
+      document.getElementById("inqDetailClose").addEventListener("click", function(){
+        document.getElementById("inqDetail").style.display = "none";
       });
 
       /* ─── Customers tab ─── */
@@ -1414,6 +1669,7 @@
       watchTab("orders", function(){ loadDeposits(); loadCashDeposits(); });
       watchTab("products", loadProducts);
       watchTab("customers", loadCustomers);
+      watchTab("inquiries", loadInquiries);
       watchTab("marketing", loadMarketing);
       watchTab("analytics", loadAnalytics);
       watchTab("facebook", loadCtpWebhookUrl);

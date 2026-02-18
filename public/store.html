@@ -190,6 +190,7 @@
 
       <div class="tabs">
         <button class="tabBtn active" id="tabItems">Shop</button>
+        <button class="tabBtn" id="tabServices">Services</button>
         <button class="tabBtn" id="tabOffers">Offers</button>
         <button class="tabBtn" id="tabRequests">Requests</button>
       </div>
@@ -351,6 +352,20 @@
     </div>
     <div style="margin-top:12px;" id="listingModalDetails"></div>
     <div style="margin-top:12px;" id="listingModalDesc"></div>
+  </div>
+</div>
+
+<div id="serviceFormModal" style="display:none; position:fixed; inset:0; background:rgba(2,6,23,0.65); z-index:50;">
+  <div id="serviceFormPanel" style="max-width:560px; margin:4vh auto; background:#0d1424; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; color:#e2e8f0; max-height:90vh; overflow-y:auto;">
+    <div class="row" style="justify-content:space-between;">
+      <div class="contextTitle" id="serviceFormTitle">Inquiry</div>
+      <button id="serviceFormClose" class="btn-outline">Close</button>
+    </div>
+    <div id="serviceFormBody"></div>
+    <div id="serviceFormSuccess" style="display:none; text-align:center; padding:24px 0;">
+      <div style="font-size:48px; color:#22c55e; margin-bottom:12px;">&#10003;</div>
+      <div id="serviceFormThankYou" style="color:#e2e8f0;"></div>
+    </div>
   </div>
 </div>
 

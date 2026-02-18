@@ -134,7 +134,7 @@ function normalizeUserRow(row){
 
 function sanitizeListingType(x){
   const v = (x || "item").toString().trim().toLowerCase();
-  const allowed = new Set(["item","offer","request","auction"]);
+  const allowed = new Set(["item","offer","request","auction","service"]);
   return allowed.has(v) ? v : "item";
 }
 function sanitizeExchangeType(x){
@@ -428,6 +428,10 @@ async function getListings(){
     winnerUserId: (l.winnerUserId ?? l.winneruserid) == null ? null : Number(l.winnerUserId ?? l.winneruserid),
     paymentDueAt: l.paymentDueAt || l.paymentdueat || "",
     paymentStatus: l.paymentStatus || l.paymentstatus || "none",
+    serviceFormFields: parseJsonArray(l.service_form_fields || l.serviceformfields || "[]"),
+    serviceCtaLabel: l.service_cta_label || l.servicectalabel || "Request Quote",
+    serviceThankYou: l.service_thank_you || l.servicethankyou || "Thank you — your inquiry has been received.",
+    googleCalendarUrl: l.google_calendar_url || l.googlecalendarurl || "",
   }));
 }
 
@@ -1173,6 +1177,10 @@ async function getListingById(id){
     winnerUserId: (l.winnerUserId ?? l.winneruserid) == null ? null : Number(l.winnerUserId ?? l.winneruserid),
     paymentDueAt: l.paymentDueAt || l.paymentdueat || "",
     paymentStatus: l.paymentStatus || l.paymentstatus || "none",
+    serviceFormFields: parseJsonArray(l.service_form_fields || l.serviceformfields || "[]"),
+    serviceCtaLabel: l.service_cta_label || l.servicectalabel || "Request Quote",
+    serviceThankYou: l.service_thank_you || l.servicethankyou || "Thank you — your inquiry has been received.",
+    googleCalendarUrl: l.google_calendar_url || l.googlecalendarurl || "",
   };
 }
 async function updateListingStatus(listingId, status){
@@ -3384,11 +3392,15 @@ async function addListing(payload){
   const reserveVal = Number.isFinite(reserveCents) ? reserveCents : null;
   const buyNowVal = Number.isFinite(buyNowCents) ? buyNowCents : null;
   const photoUrls = normalizePhotoUrls(payload.photoUrls || []);
+  const serviceFormFields = JSON.stringify(payload.serviceFormFields || []);
+  const serviceCtaLabel = (payload.serviceCtaLabel || "Request Quote").toString().slice(0,100);
+  const serviceThankYou = (payload.serviceThankYou || "Thank you — your inquiry has been received.").toString().slice(0,500);
+  const googleCalendarUrl = (payload.googleCalendarUrl || "").toString().slice(0,500);
 
   const info = await stmt(`
     INSERT INTO listings
-      (placeId, title, description, quantity, price, status, createdAt, photoUrlsJson, listingType, exchangeType, startAt, endAt, offerCategory, availabilityWindow, compensationType, auctionStartAt, auctionEndAt, startBidCents, minIncrementCents, reserveCents, buyNowCents)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+      (placeId, title, description, quantity, price, status, createdAt, photoUrlsJson, listingType, exchangeType, startAt, endAt, offerCategory, availabilityWindow, compensationType, auctionStartAt, auctionEndAt, startBidCents, minIncrementCents, reserveCents, buyNowCents, service_form_fields, service_cta_label, service_thank_you, google_calendar_url)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
     RETURNING id
   `).run(
     Number(payload.placeId),
@@ -3411,7 +3423,11 @@ async function addListing(payload){
     startBidCents,
     minIncrementCents,
     reserveVal,
-    buyNowVal
+    buyNowVal,
+    serviceFormFields,
+    serviceCtaLabel,
+    serviceThankYou,
+    googleCalendarUrl
   );
 
   const row = await stmt("SELECT * FROM listings WHERE id=$1").get(info.rows?.[0]?.id);
@@ -3432,6 +3448,21 @@ async function addListing(payload){
     reserveCents: row.reserveCents == null ? null : Number(row.reserveCents),
     buyNowCents: row.buyNowCents == null ? null : Number(row.buyNowCents),
   };
+}
+
+// ---------- Service Inquiries ----------
+async function addServiceInquiry(payload) {
+  const r = await stmt(`
+    INSERT INTO service_inquiries (listing_id, place_id, seller_user_id, buyer_name, buyer_email, form_data, status, created_at)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id
+  `).run(
+    Number(payload.listingId), Number(payload.placeId), Number(payload.sellerUserId),
+    (payload.buyerName || "").toString().slice(0,255),
+    (payload.buyerEmail || "").toString().slice(0,255),
+    JSON.stringify(payload.formData || {}),
+    "new", nowISO()
+  );
+  return r.rows?.[0];
 }
 
 // ---------- Business Subscriptions ----------
@@ -4157,6 +4188,9 @@ module.exports = {
 
   // listings
   addListing,
+
+  // service inquiries
+  addServiceInquiry,
 
   // business subscriptions
   createBusinessSubscription,

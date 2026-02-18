@@ -326,8 +326,9 @@ async function createTestAuction(){
 function setTab(t){
   TAB=t;
   CAT_FILTER="All";
-  ["tabItems","tabOffers","tabRequests"].forEach(x=>$(x).classList.remove("active"));
+  ["tabItems","tabOffers","tabRequests","tabServices"].forEach(x=>{ const el=$(x); if(el) el.classList.remove("active"); });
   if(t==="item")$("tabItems").classList.add("active");
+  if(t==="service"){ const el=$("tabServices"); if(el) el.classList.add("active"); }
   if(t==="offer")$("tabOffers").classList.add("active");
   if(t==="request")$("tabRequests").classList.add("active");
   renderCategoryFilters();
@@ -377,6 +378,7 @@ function render(){
       }
       return true;
     }
+    if(TAB==="service") return type==="service";
     return type===TAB;
   }).forEach(l=>{
     const d=document.createElement("div");
@@ -389,19 +391,41 @@ function render(){
     const storeType = PLACE?.storeType || PLACE?.storetype || "peer";
     const isCleanCard = (storeType === "managed" || storeType === "promoted");
 
-    if(isCleanCard && type === "item"){
+    if(isCleanCard && (type === "item" || type === "service")){
       // Managed/promoted store: clean product card
       const img = (photoUrls && photoUrls[0]) ? `<img class="productImg" src="${photoUrls[0]}" alt="" style="cursor:pointer;">` : "";
       const category = l.offerCategory || l.offercategory || "";
-      const priceLabel = (l.price && Number(l.price) > 0) ? `$${Number(l.price).toFixed(2)}` : "";
+      const priceLabel = (l.price && Number(l.price) > 0) ? (type === "service" ? `Starting at $${Number(l.price).toFixed(2)}` : `$${Number(l.price).toFixed(2)}`) : "";
+      const serviceBadge = type === "service" ? `<span style="display:inline-block;font-size:10px;padding:2px 8px;border-radius:99px;background:#16a34a;color:#fff;font-weight:600;margin-bottom:4px;">Service</span>` : "";
       d.style.cursor = "pointer";
       d.innerHTML = `
-        ${img}
+        <div style="position:relative;">${img}${type === "service" ? `<span style="position:absolute;top:8px;left:8px;font-size:10px;padding:2px 8px;border-radius:99px;background:#16a34a;color:#fff;font-weight:600;">Service</span>` : ""}</div>
+        ${!img && serviceBadge ? serviceBadge : ""}
         ${category ? `<div class="muted" style="font-size:0.8em; text-transform:uppercase; letter-spacing:0.05em; margin-top:6px;">${category}</div>` : ""}
         <div style="font-weight:700; margin-top:4px;">${l.title}</div>
         ${priceLabel ? `<div style="font-weight:700; color:#22c55e; margin-top:4px;">${priceLabel}</div>` : ""}
       `;
-      d.addEventListener("click", ()=> openListingModal(l, photoUrls || []));
+      d.addEventListener("click", ()=> type === "service" ? openServiceForm(l) : openListingModal(l, photoUrls || []));
+    } else if(type === "service"){
+      // Peer store: service card
+      const img = (photoUrls && photoUrls[0]) ? `<img class="productImg" src="${photoUrls[0]}" alt="">` : "";
+      const priceDisplay = (l.price && Number(l.price) > 0) ? `<div style="font-weight:700; color:#22c55e; font-size:1.1em;">Starting at $${Number(l.price).toFixed(2)}</div>` : "";
+      const ctaLabel = l.serviceCtaLabel || l.service_cta_label || "Request Quote";
+      d.innerHTML = `
+        ${img}
+        <div><span style="display:inline-block;font-size:10px;padding:2px 8px;border-radius:99px;background:#16a34a;color:#fff;font-weight:600;">Service</span></div>
+        <div style="font-weight:900">${l.title}</div>
+        ${priceDisplay}
+        <div class="muted">${l.description || ""}</div>
+        <button data-service="${l.id}" style="margin-top:8px;">${ctaLabel}</button>
+      `;
+      const svcBtn = d.querySelector("button[data-service]");
+      if(svcBtn) svcBtn.addEventListener("click", (e)=>{ e.stopPropagation(); openServiceForm(l); });
+      d.addEventListener("click", (e)=>{
+        const tag = e.target?.tagName?.toLowerCase();
+        if(tag === "button") return;
+        openServiceForm(l);
+      });
     } else {
       // Peer store / auctions: legacy card layout
       const img = (photoUrls && photoUrls[0]) ? `<img class="productImg" src="${photoUrls[0]}" alt="">` : "";
@@ -507,7 +531,18 @@ function openListingModal(l, photos){
   }
 
   const detailsEl = $("listingModalDetails");
-  if(l.listingType === "auction"){
+  if(l.listingType === "service"){
+    // Service listing — show price and CTA in the main modal
+    const ctaLabel = l.serviceCtaLabel || l.service_cta_label || "Request Quote";
+    const priceVal = Number(l.price || 0);
+    const calUrl = l.googleCalendarUrl || l.google_calendar_url || "";
+    detailsEl.innerHTML = `
+      ${priceVal > 0 ? `<div style="font-size:1.5em; font-weight:700; color:#22c55e; margin:12px 0;">Starting at $${priceVal.toFixed(2)}</div>` : ""}
+      <button id="modalServiceCta" style="width:100%;padding:12px 16px;font-weight:700;font-size:15px;border-radius:8px;background:#22c55e;color:#fff;border:none;cursor:pointer;margin-top:8px;">${ctaLabel}</button>
+      ${calUrl ? `<a href="${calUrl}" target="_blank" rel="noopener" style="display:block;text-align:center;padding:10px 16px;font-weight:600;font-size:14px;border-radius:8px;border:1px solid #334155;color:#e2e8f0;text-decoration:none;margin-top:8px;">Schedule Appointment &#10140;</a>` : ""}
+    `;
+    $("modalServiceCta")?.addEventListener("click", ()=>{ modal.style.display="none"; openServiceForm(l); });
+  } else if(l.listingType === "auction"){
     detailsEl.innerHTML = `Start bid: $${((l.startBidCents||0)/100).toFixed(2)} • Min increment: $${((l.minIncrementCents||0)/100).toFixed(2)}`;
   } else if(isClean && l.listingType === "item"){
     let selectedIdx = 0;
@@ -599,6 +634,80 @@ function openListingModal(l, photos){
   modal.style.display = "block";
 }
 
+function openServiceForm(l){
+  const modal = $("serviceFormModal");
+  if(!modal) return;
+  const body = $("serviceFormBody");
+  const success = $("serviceFormSuccess");
+  const title = $("serviceFormTitle");
+  if(title) title.textContent = l.title || "Service Inquiry";
+  if(success) success.style.display = "none";
+  if(!body) return;
+  const fields = l.serviceFormFields || l.service_form_fields || [];
+  const calUrl = l.googleCalendarUrl || l.google_calendar_url || "";
+  const ctaLabel = l.serviceCtaLabel || l.service_cta_label || "Request Quote";
+  const priceVal = Number(l.price || 0);
+  let html = "";
+  if(priceVal > 0) html += `<div style="font-size:1.2em;font-weight:700;color:#22c55e;margin:12px 0;">Starting at $${priceVal.toFixed(2)}</div>`;
+  if(calUrl) html += `<a href="${calUrl}" target="_blank" rel="noopener" style="display:block;text-align:center;padding:10px 16px;font-weight:600;font-size:14px;border-radius:8px;border:1px solid #334155;color:#e2e8f0;text-decoration:none;margin:12px 0;">Schedule Appointment &#10140;</a>`;
+  html += `<form id="serviceIntakeForm" style="margin-top:16px;">`;
+  fields.forEach(f => {
+    const req = f.required ? ' required' : '';
+    const ph = f.placeholder ? ` placeholder="${f.placeholder}"` : '';
+    html += `<div style="margin-bottom:14px;">`;
+    html += `<label style="display:block;font-size:13px;color:#94a3b8;margin-bottom:4px;">${f.label}${f.required ? ' *' : ''}</label>`;
+    if(f.type === "textarea"){
+      html += `<textarea name="${f.id}" rows="3"${ph}${req} style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea>`;
+    } else if(f.type === "dropdown"){
+      html += `<select name="${f.id}"${req} style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;box-sizing:border-box;">`;
+      html += `<option value="">— Select —</option>`;
+      (f.options || []).forEach(o => { html += `<option value="${o}">${o}</option>`; });
+      html += `</select>`;
+    } else if(f.type === "checkbox"){
+      html += `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" name="${f.id}" value="Yes" style="width:18px;height:18px;"> ${f.label}</label>`;
+    } else if(f.type === "date"){
+      html += `<input type="date" name="${f.id}"${req} style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;box-sizing:border-box;">`;
+    } else {
+      const inputType = f.type === "email" ? "email" : f.type === "phone" ? "tel" : "text";
+      html += `<input type="${inputType}" name="${f.id}"${ph}${req} style="width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;box-sizing:border-box;">`;
+    }
+    html += `</div>`;
+  });
+  html += `<div id="serviceFormError" style="color:#ef4444;font-size:13px;margin-bottom:8px;min-height:18px;"></div>`;
+  html += `<button type="submit" style="width:100%;padding:12px;font-weight:700;font-size:15px;border-radius:8px;background:#22c55e;color:#fff;border:none;cursor:pointer;">${ctaLabel}</button>`;
+  html += `</form>`;
+  body.innerHTML = html;
+  const form = $("serviceIntakeForm");
+  if(form) form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errEl = $("serviceFormError");
+    const fd = {};
+    fields.forEach(f => {
+      const el = form.querySelector(`[name="${f.id}"]`);
+      if(!el) return;
+      fd[f.id] = f.type === "checkbox" ? (el.checked ? "Yes" : "No") : el.value;
+    });
+    try {
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = "Submitting..."; }
+      const res = await api("/api/service-inquiries", {
+        method: "POST",
+        body: JSON.stringify({ listingId: l.id, formData: fd })
+      });
+      body.style.display = "none";
+      if(success){
+        success.style.display = "block";
+        $("serviceFormThankYou").textContent = res.thankYouMessage || "Thank you — your inquiry has been received.";
+      }
+    } catch(err) {
+      if(errEl) errEl.textContent = err.message || "Submission failed. Please try again.";
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = ctaLabel; }
+    }
+  });
+  modal.style.display = "block";
+}
+
 async function apply(id){
   try{
     await api(`/listings/${id}/apply`,{method:"POST",body:JSON.stringify({message:"Interested"})});
@@ -656,6 +765,7 @@ async function main(){
   const id=pid();
   // CSP-compliant event listeners
   $("tabItems")?.addEventListener("click", ()=>setTab("item"));
+  $("tabServices")?.addEventListener("click", ()=>setTab("service"));
   $("tabOffers")?.addEventListener("click", ()=>setTab("offer"));
   $("tabRequests")?.addEventListener("click", ()=>setTab("request"));
   $("messageBtn")?.addEventListener("click", startDm);
@@ -670,6 +780,8 @@ async function main(){
   });
   $("listingModalClose")?.addEventListener("click", ()=>{ $("listingModal").style.display="none"; });
   $("listingModal")?.addEventListener("click", (e)=>{ if(e.target?.id==="listingModal") $("listingModal").style.display="none"; });
+  $("serviceFormClose")?.addEventListener("click", ()=>{ $("serviceFormModal").style.display="none"; });
+  $("serviceFormModal")?.addEventListener("click", (e)=>{ if(e.target?.id==="serviceFormModal") $("serviceFormModal").style.display="none"; });
 
   try{
     let me=null;
@@ -745,17 +857,26 @@ async function main(){
         }
       }
     LIST=await api(`/places/${id}/listings`);
+    // Show/hide Services tab based on listing data
+    const hasServices = LIST.some(l => (l.listingType || l.listingtype || "item") === "service");
+    const svcTab = $("tabServices");
+    if(svcTab) svcTab.style.display = hasServices ? "" : "none";
     setTab("item");
     await loadCart();
     const autoListingId = new URLSearchParams(window.location.search).get("listing");
     if(autoListingId){
       const target = LIST.find(l => String(l.id) === autoListingId);
       if(target){
-        let photos = target.photoUrls || [];
-        if((!photos || !photos.length) && target.photoUrlsJson){
-          try{ photos = JSON.parse(target.photoUrlsJson); }catch{ photos = []; }
+        const tType = target.listingType || target.listingtype || "item";
+        if(tType === "service"){
+          openServiceForm(target);
+        } else {
+          let photos = target.photoUrls || [];
+          if((!photos || !photos.length) && target.photoUrlsJson){
+            try{ photos = JSON.parse(target.photoUrlsJson); }catch{ photos = []; }
+          }
+          openListingModal(target, photos);
         }
-        openListingModal(target, photos);
       }
     }
     debug("Ready.");
