@@ -244,40 +244,43 @@ function renderAuctionPhotos() {
   });
 }
 
+async function doUploadAuctionBlob(blob) {
+  if (auctionPhotos.length >= 5) { setMsg("listingMsg", "Max 5 photos per listing."); return; }
+  try {
+    const placeId = document.getElementById("listingStore").value || null;
+    const form = new FormData();
+    form.append("file", blob, blob.name || "image.jpg");
+    form.append("kind", "listing_photo");
+    if(placeId) form.append("placeId", placeId);
+    const res = await api("/api/uploads", { method: "POST", body: form });
+    if(res.url){ auctionPhotos.push(res.url); renderAuctionPhotos(); setMsg("listingMsg", "Photo uploaded."); }
+  } catch (e) {
+    setMsg("listingMsg", `ERROR: ${e.message}`);
+  }
+}
+
 async function handleAuctionPhotoInput() {
   const input = document.getElementById("auctionPhotosInput");
   const files = Array.from(input.files || []);
   if (!files.length) return;
-  for (const file of files) {
-    if (auctionPhotos.length >= 5) {
-      setMsg("listingMsg", "Max 5 photos per listing.");
-      break;
-    }
-    if (!file.type.startsWith("image/")) {
-      setMsg("listingMsg", "Images only.");
-      continue;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setMsg("listingMsg", "Image too large (max 2MB).");
-      continue;
-    }
-    try {
-      const placeId = document.getElementById("listingStore").value || null;
-      const form = new FormData();
-      form.append("file", file);
-      form.append("kind", "listing_photo");
-      if(placeId) form.append("placeId", placeId);
-      const res = await api("/api/uploads", {
-        method: "POST",
-        body: form
+  let i = 0;
+  function processNext() {
+    if (i >= files.length) { input.value = ""; return; }
+    if (auctionPhotos.length >= 5) { setMsg("listingMsg", "Max 5 photos per listing."); input.value = ""; return; }
+    const file = files[i]; i++;
+    if (!file.type.startsWith("image/")) { setMsg("listingMsg", "Images only."); processNext(); return; }
+    if (typeof ImagePreviewCropper !== "undefined") {
+      ImagePreviewCropper.open(file, {
+        type: "listing",
+        onConfirm: function(blob) { doUploadAuctionBlob(blob).then(processNext); },
+        onOriginal: function(orig) { doUploadAuctionBlob(orig).then(processNext); },
+        onCancel: function() { processNext(); }
       });
-      auctionPhotos.push(res.url);
-      renderAuctionPhotos();
-    } catch (e) {
-      setMsg("listingMsg", `ERROR: ${e.message}`);
+    } else {
+      doUploadAuctionBlob(file).then(processNext);
     }
   }
-  input.value = "";
+  processNext();
 }
 
 function resetAuctionFields() {
@@ -360,29 +363,29 @@ async function saveStorefront() {
   }
 }
 
-async function uploadStoreImage(fileInputId, targetInputId, msgId) {
-  const fileInput = document.getElementById(fileInputId);
+async function doUploadStoreBlob(blob, kind, targetInputId, msgId) {
   const target = document.getElementById(targetInputId);
-  const msg = document.getElementById(msgId);
-  if(!fileInput?.files?.length) return setMsg(msgId, "Select an image first.");
-  const file = fileInput.files[0];
-  const form = new FormData();
-  form.append("file", file);
   const placeId = document.getElementById("storefrontStore").value || null;
-  const kind = (targetInputId === "storefrontBannerUrl") ? "store_banner" : "store_avatar";
+  const form = new FormData();
+  form.append("file", blob, blob.name || "image.jpg");
   form.append("kind", kind);
   if(placeId) form.append("placeId", placeId);
   try{
-    const res = await api("/api/uploads", {
-      method: "POST",
-      body: form
-    });
+    const res = await api("/api/uploads", { method: "POST", body: form });
     target.value = res.url;
     await saveStorefront();
     setMsg(msgId, "Uploaded and saved.");
   }catch(e){
     setMsg(msgId, `ERROR: ${e.message}`);
   }
+}
+
+async function uploadStoreImage(fileInputId, targetInputId, msgId) {
+  const fileInput = document.getElementById(fileInputId);
+  if(!fileInput?.files?.length) return setMsg(msgId, "Select an image first.");
+  const file = fileInput.files[0];
+  const kind = (targetInputId === "storefrontBannerUrl") ? "store_banner" : "store_avatar";
+  await doUploadStoreBlob(file, kind, targetInputId, msgId);
 }
 
 async function loadDmList() {
@@ -444,8 +447,26 @@ document.getElementById("createStoreBtn")?.addEventListener("click", createStore
 document.getElementById("saveStorefrontBtn")?.addEventListener("click", saveStorefront);
 document.getElementById("dmSendBtn")?.addEventListener("click", sendDm);
 document.getElementById("storefrontStore")?.addEventListener("change", (e) => loadStorefront(e.target.value));
-document.getElementById("uploadBannerBtn")?.addEventListener("click", () => uploadStoreImage("storefrontBannerFile", "storefrontBannerUrl", "storefrontMsg"));
-document.getElementById("uploadAvatarBtn")?.addEventListener("click", () => uploadStoreImage("storefrontAvatarFile", "storefrontAvatarUrl", "storefrontMsg"));
+// Banner upload with cropper
+document.getElementById("uploadBannerBtn")?.addEventListener("click", () => document.getElementById("storefrontBannerFile")?.click());
+if (typeof ImagePreviewCropper !== "undefined") {
+  ImagePreviewCropper.wrap("storefrontBannerFile", "banner", function(blob) {
+    doUploadStoreBlob(blob, "store_banner", "storefrontBannerUrl", "storefrontMsg");
+  });
+} else {
+  document.getElementById("storefrontBannerFile")?.addEventListener("change", () => uploadStoreImage("storefrontBannerFile", "storefrontBannerUrl", "storefrontMsg"));
+}
+
+// Avatar upload with cropper
+document.getElementById("uploadAvatarBtn")?.addEventListener("click", () => document.getElementById("storefrontAvatarFile")?.click());
+if (typeof ImagePreviewCropper !== "undefined") {
+  ImagePreviewCropper.wrap("storefrontAvatarFile", "avatar", function(blob) {
+    doUploadStoreBlob(blob, "store_avatar", "storefrontAvatarUrl", "storefrontMsg");
+  });
+} else {
+  document.getElementById("storefrontAvatarFile")?.addEventListener("change", () => uploadStoreImage("storefrontAvatarFile", "storefrontAvatarUrl", "storefrontMsg"));
+}
+
 document.getElementById("listingType")?.addEventListener("change", setListingTypeUI);
 document.getElementById("auctionPhotosInput")?.addEventListener("change", handleAuctionPhotoInput);
 document.getElementById("auctionStartLocal")?.addEventListener("change", updateAuctionEndDisplay);

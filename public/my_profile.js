@@ -106,27 +106,15 @@ async function saveProfile() {
   }
 }
 
-async function uploadAvatar() {
-  const fileInput = document.getElementById("avatarFile");
-  const target = document.getElementById("avatarUrl");
-  if (!fileInput?.files?.length) return setMsg("profileMsg", "Select an image first.");
-  const file = fileInput.files[0];
-  if (!file.type.startsWith("image/")) return setMsg("profileMsg", "Images only.");
-  if (file.size > 2 * 1024 * 1024) return setMsg("profileMsg", "Image too large (max 2MB).");
+async function doUploadAvatarBlob(blob) {
   const form = new FormData();
-  form.append("file", file);
+  form.append("file", blob, blob.name || "avatar.jpg");
   form.append("kind", "profile_avatar");
   try {
-    const data = await api("/api/uploads", {
-      method: "POST",
-      body: form
-    });
+    const data = await api("/api/uploads", { method: "POST", body: form });
     const returnedUrl = typeof data === "string" ? data : (data.url || data.avatarUrl || data.publicUrl || "");
     const avatarInput = document.getElementById("avatarUrl");
     const avatarImg = document.getElementById("avatarImg");
-    if (!avatarInput || !avatarImg) {
-      console.warn("Avatar preview elements missing", { avatarUrl: !!avatarInput, avatarImg: !!avatarImg });
-    }
     if (avatarInput) avatarInput.value = returnedUrl;
     if (avatarImg && returnedUrl) avatarImg.src = `${returnedUrl}?v=${Date.now()}`;
     await saveProfile();
@@ -134,6 +122,14 @@ async function uploadAvatar() {
   } catch (e) {
     setMsg("profileMsg", `ERROR: ${e.message}`);
   }
+}
+
+async function uploadAvatar() {
+  const fileInput = document.getElementById("avatarFile");
+  if (!fileInput?.files?.length) return setMsg("profileMsg", "Select an image first.");
+  const file = fileInput.files[0];
+  if (!file.type.startsWith("image/")) return setMsg("profileMsg", "Images only.");
+  await doUploadAvatarBlob(file);
 }
 
 async function loadDmList() {
@@ -219,7 +215,13 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
   uploadBtn.addEventListener("click", () => fileInput.click());
-  fileInput.addEventListener("change", () => uploadAvatar());
+  if (typeof ImagePreviewCropper !== "undefined") {
+    ImagePreviewCropper.wrap("avatarFile", "avatar", function(blob) {
+      doUploadAvatarBlob(blob);
+    });
+  } else {
+    fileInput.addEventListener("change", () => uploadAvatar());
+  }
 });
 
 loadTownContext().then(() => loadProfile().then(async () => {

@@ -372,28 +372,35 @@ async function saveStorefront() {
   }
 }
 
-async function uploadStoreImage(fileInputId, targetInputId, msgId) {
-  const fileInput = document.getElementById(fileInputId);
+async function doUploadBlob(blob, kind, targetInputId, msgId, andSave) {
   const target = document.getElementById(targetInputId);
-  if(!fileInput?.files?.length) return setMsg(msgId, "Select an image first.");
-  const file = fileInput.files[0];
-  const form = new FormData();
-  form.append("file", file);
   const placeId = document.getElementById("storefrontStore").value || null;
-  const kind = (targetInputId === "storefrontBannerUrl") ? "store_banner" : "store_avatar";
+  const form = new FormData();
+  form.append("file", blob, blob.name || "image.jpg");
   form.append("kind", kind);
   if(placeId) form.append("placeId", placeId);
   try{
-    const res = await api("/api/uploads", {
-      method: "POST",
-      body: form
-    });
+    const res = await api("/api/uploads", { method: "POST", body: form });
     target.value = res.url;
-    await saveStorefront();
+    if(andSave) await saveStorefront();
     setMsg(msgId, "Uploaded and saved.");
   }catch(e){
     setMsg(msgId, `ERROR: ${e.message}`);
   }
+}
+
+function uploadStoreImageWithCropper(fileInputId, targetInputId, msgId) {
+  const fileInput = document.getElementById(fileInputId);
+  if(!fileInput) return;
+  fileInput.click();
+}
+
+// Legacy wrapper kept for direct calls — now handled by ImagePreviewCropper.wrap in setupEventListeners
+async function uploadStoreImage(fileInputId, targetInputId, msgId) {
+  const fileInput = document.getElementById(fileInputId);
+  if(!fileInput?.files?.length) return setMsg(msgId, "Select an image first.");
+  const file = fileInput.files[0];
+  await doUploadBlob(file, (targetInputId === "storefrontBannerUrl") ? "store_banner" : "store_avatar", targetInputId, msgId, true);
 }
 
 function getUploadUrl(payload) {
@@ -419,6 +426,26 @@ function renderListingPhotos() {
   });
 }
 
+async function doUploadListingPhotoBlob(blob) {
+  try {
+    const placeId = document.getElementById("listingStore")?.value || document.getElementById("storefrontStore")?.value || null;
+    const form = new FormData();
+    form.append("file", blob, blob.name || "image.jpg");
+    form.append("kind", "listing_photo");
+    if (placeId) form.append("placeId", placeId);
+    const res = await api("/api/uploads", { method: "POST", body: form });
+    const url = getUploadUrl(res);
+    if (!url) throw new Error("Upload did not return a URL");
+    listingPhotos.push(url);
+    syncListingPhotoField();
+    renderListingPhotos();
+    setMsg("listingMsg", "Photo uploaded.");
+  } catch (e) {
+    setMsg("listingMsg", `ERROR: ${e.message}`);
+  }
+}
+
+// Legacy — now handled by ImagePreviewCropper.wrap
 async function uploadListingPhoto() {
   const input = document.getElementById("listingPhotoInput");
   if (!input?.files?.length) return;
@@ -429,20 +456,7 @@ async function uploadListingPhoto() {
     return;
   }
   try {
-    const placeId = document.getElementById("listingStore")?.value || document.getElementById("storefrontStore")?.value || null;
-    const form = new FormData();
-    form.append("file", file);
-    form.append("kind", "listing_photo");
-    if (placeId) form.append("placeId", placeId);
-    const res = await api("/api/uploads", {
-      method: "POST",
-      body: form
-    });
-    const url = getUploadUrl(res);
-    if (!url) throw new Error("Upload did not return a URL");
-    listingPhotos.push(url);
-    syncListingPhotoField();
-    renderListingPhotos();
+    await doUploadListingPhotoBlob(file);
   } catch (e) {
     setMsg("listingMsg", `ERROR: ${e.message}`);
   } finally {
@@ -547,51 +561,56 @@ function renderAuctionPhotos() {
     list.appendChild(wrap);
   });
 }
+async function doUploadAuctionPhotoBlob(blob) {
+  if (auctionPhotos.length >= 5) {
+    setMsg("listingMsg", "Max 5 photos per listing.");
+    return;
+  }
+  try {
+    const placeId = document.getElementById("listingStore")?.value || document.getElementById("storefrontStore")?.value || null;
+    const form = new FormData();
+    form.append("file", blob, blob.name || "image.jpg");
+    form.append("kind", "listing_photo");
+    if(placeId) form.append("placeId", placeId);
+    const res = await api("/api/uploads", { method: "POST", body: form });
+    if (res.url) {
+      auctionPhotos.push(res.url);
+      renderAuctionPhotos();
+      setMsg("listingMsg", "Photo uploaded.");
+    } else {
+      setMsg("listingMsg", "Upload failed - no URL returned");
+    }
+  } catch (e) {
+    setMsg("listingMsg", `Upload failed: ${e.message}`);
+    console.error("Photo upload error:", e);
+  }
+}
+
 async function handleAuctionPhotoInput() {
   const input = document.getElementById("auctionPhotosInput");
   const files = Array.from(input.files || []);
   if (!files.length) return;
-  setMsg("listingMsg", "Uploading photos...");
-  let uploadedCount = 0;
-  for (const file of files) {
-    if (auctionPhotos.length >= 5) {
-      setMsg("listingMsg", "Max 5 photos per listing.");
-      break;
-    }
-    if (!file.type.startsWith("image/")) {
-      setMsg("listingMsg", "Images only.");
-      continue;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setMsg("listingMsg", "Image too large (max 2MB).");
-      continue;
-    }
-    try {
-      const placeId = document.getElementById("listingStore")?.value || document.getElementById("storefrontStore")?.value || null;
-      const form = new FormData();
-      form.append("file", file);
-      form.append("kind", "listing_photo");
-      if(placeId) form.append("placeId", placeId);
-      const res = await api("/api/uploads", {
-        method: "POST",
-        body: form
+
+  // Process files sequentially through cropper
+  let i = 0;
+  function processNext() {
+    if (i >= files.length) { input.value = ""; return; }
+    if (auctionPhotos.length >= 5) { setMsg("listingMsg", "Max 5 photos per listing."); input.value = ""; return; }
+    const file = files[i];
+    i++;
+    if (!file.type.startsWith("image/")) { setMsg("listingMsg", "Images only."); processNext(); return; }
+    if (typeof ImagePreviewCropper !== "undefined") {
+      ImagePreviewCropper.open(file, {
+        type: "listing",
+        onConfirm: function(blob) { doUploadAuctionPhotoBlob(blob).then(processNext); },
+        onOriginal: function(orig) { doUploadAuctionPhotoBlob(orig).then(processNext); },
+        onCancel: function() { processNext(); }
       });
-      if (res.url) {
-        auctionPhotos.push(res.url);
-        uploadedCount++;
-        renderAuctionPhotos();
-      } else {
-        setMsg("listingMsg", "Upload failed - no URL returned");
-      }
-    } catch (e) {
-      setMsg("listingMsg", `Upload failed: ${e.message}`);
-      console.error("Photo upload error:", e);
+    } else {
+      doUploadAuctionPhotoBlob(file).then(processNext);
     }
   }
-  input.value = "";
-  if (uploadedCount > 0) {
-    setMsg("listingMsg", `${uploadedCount} photo(s) uploaded successfully.`);
-  }
+  processNext();
 }
 function resetAuctionFields() {
   auctionPhotos = [];
@@ -772,10 +791,35 @@ function setupEventListeners() {
   });
 
   document.getElementById("storeInboxSendBtn")?.addEventListener("click", sendStoreMessage);
-  document.getElementById("uploadBannerBtn")?.addEventListener("click", () => uploadStoreImage("storefrontBannerFile", "storefrontBannerUrl", "storefrontMsg"));
-  document.getElementById("uploadAvatarBtn")?.addEventListener("click", () => uploadStoreImage("storefrontAvatarFile", "storefrontAvatarUrl", "storefrontMsg"));
+  // Banner upload with cropper
+  document.getElementById("uploadBannerBtn")?.addEventListener("click", () => document.getElementById("storefrontBannerFile")?.click());
+  if (typeof ImagePreviewCropper !== "undefined") {
+    ImagePreviewCropper.wrap("storefrontBannerFile", "banner", function(blob) {
+      doUploadBlob(blob, "store_banner", "storefrontBannerUrl", "storefrontMsg", true);
+    });
+  } else {
+    document.getElementById("storefrontBannerFile")?.addEventListener("change", () => uploadStoreImage("storefrontBannerFile", "storefrontBannerUrl", "storefrontMsg"));
+  }
+
+  // Avatar upload with cropper
+  document.getElementById("uploadAvatarBtn")?.addEventListener("click", () => document.getElementById("storefrontAvatarFile")?.click());
+  if (typeof ImagePreviewCropper !== "undefined") {
+    ImagePreviewCropper.wrap("storefrontAvatarFile", "avatar", function(blob) {
+      doUploadBlob(blob, "store_avatar", "storefrontAvatarUrl", "storefrontMsg", true);
+    });
+  } else {
+    document.getElementById("storefrontAvatarFile")?.addEventListener("change", () => uploadStoreImage("storefrontAvatarFile", "storefrontAvatarUrl", "storefrontMsg"));
+  }
+
+  // Listing photo upload with cropper
   document.getElementById("listingPhotoUploadBtn")?.addEventListener("click", () => document.getElementById("listingPhotoInput")?.click());
-  document.getElementById("listingPhotoInput")?.addEventListener("change", uploadListingPhoto);
+  if (typeof ImagePreviewCropper !== "undefined") {
+    ImagePreviewCropper.wrap("listingPhotoInput", "listing", function(blob) {
+      doUploadListingPhotoBlob(blob);
+    });
+  } else {
+    document.getElementById("listingPhotoInput")?.addEventListener("change", uploadListingPhoto);
+  }
 }
 
 setupEventListeners();
