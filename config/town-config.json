@@ -46,7 +46,7 @@
       "ogImage": "/images/og-image.png",
       "ogImageAbsolute": "https://sebastian-florida.com/og-image.jpg",
       "mapImage": "/images/sebastian-ui-map.png",
-      "heroImage": "/images/sebastian-main-map.png",
+      "heroImage": "/images/renter-imbalance.svg",
       "themeFile": "sebastian.json"
     },
     "theme": {
