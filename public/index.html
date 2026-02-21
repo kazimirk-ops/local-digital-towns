@@ -27,6 +27,52 @@
     <link rel="stylesheet" href="/ui_v2.css?v=4">
     <style>
       .pulse-card:hover { background: rgba(47,164,185,0.1) !important; border-color: rgba(47,164,185,0.3) !important; }
+      .hero-scene {
+        background: #0a0a14;
+        border-radius: 12px;
+        overflow: hidden;
+        margin: 12px;
+      }
+      .hero-top-label {
+        text-align: center;
+        padding: 14px;
+        color: #f0c040;
+        font-family: monospace;
+        font-size: 12px;
+        letter-spacing: 3px;
+        border-bottom: 1px solid #1e293b;
+      }
+      .hero-text {
+        text-align: center;
+        padding: 20px 24px 28px;
+        background: linear-gradient(to bottom, transparent, #0a0a14);
+      }
+      .hero-headline {
+        font-size: clamp(24px, 5vw, 42px);
+        font-weight: 800;
+        color: #ffffff;
+        margin-bottom: 10px;
+        text-shadow: 0 2px 20px rgba(0,0,0,0.8);
+        font-family: Georgia, serif;
+      }
+      .hero-sub {
+        font-size: clamp(14px, 2.5vw, 18px);
+        color: #e2e8f0;
+        margin-bottom: 18px;
+        font-style: italic;
+      }
+      .hero-cta {
+        display: inline-block;
+        background: #991b1b;
+        color: #fecaca;
+        border: 1px solid #ef4444;
+        padding: 10px 24px;
+        font-family: monospace;
+        font-size: 12px;
+        letter-spacing: 2px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
       .landlord-reviews {
         background: #0a0e1a;
         border-top: 1px solid #1e293b;
@@ -183,9 +229,101 @@
               </div>
 
               <div class="panel map-panel" id="panelMap">
-                <div class="panelBody">
-                  <div class="mapWrap">
-                    <img class="mapImage" src="/images/renter-imbalance.svg" alt="Renter Imbalance" />
+                <div class="panelBody" style="padding:0;">
+
+                  <div class="hero-scene">
+                    <div class="hero-top-label">THE RENTAL SYSTEM IS BROKEN</div>
+
+                    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:420px;display:block;">
+                      <!-- Background glow -->
+                      <defs>
+                        <radialGradient id="bgGlow" cx="50%" cy="50%">
+                          <stop offset="0%" stop-color="#1a0a0a" stop-opacity="1"/>
+                          <stop offset="100%" stop-color="#0a0a0a" stop-opacity="1"/>
+                        </radialGradient>
+                      </defs>
+                      <rect width="800" height="400" fill="url(#bgGlow)"/>
+
+                      <!-- Fulcrum/pivot point -->
+                      <polygon points="400,280 380,320 420,320" fill="#475569"/>
+                      <rect x="360" y="318" width="80" height="8" rx="4" fill="#334155"/>
+
+                      <!-- Balance beam - tilted left down, right up -->
+                      <line x1="100" y1="260" x2="700" y2="160" stroke="#94a3b8" stroke-width="6" stroke-linecap="round"/>
+
+                      <!-- Pivot circle -->
+                      <circle cx="400" cy="213" r="10" fill="#ef4444"/>
+
+                      <!-- LEFT SIDE — Landlord platform -->
+                      <rect x="60" y="258" width="80" height="8" rx="4" fill="#475569"/>
+
+                      <!-- Landlord figure -->
+                      <circle cx="100" cy="210" r="22" fill="#1e3a5f"/>
+                      <circle cx="100" cy="178" r="16" fill="#fbbf24"/>
+                      <path d="M93,182 Q100,188 107,182" stroke="#1e3a5f" stroke-width="2" fill="none" stroke-linecap="round"/>
+                      <circle cx="95" cy="176" r="2" fill="#1e3a5f"/>
+                      <circle cx="105" cy="176" r="2" fill="#1e3a5f"/>
+                      <!-- Key -->
+                      <circle cx="132" cy="172" r="7" stroke="#f0c040" stroke-width="3" fill="none"/>
+                      <line x1="137" y1="172" x2="150" y2="172" stroke="#f0c040" stroke-width="3"/>
+                      <line x1="146" y1="172" x2="146" y2="178" stroke="#f0c040" stroke-width="2"/>
+                      <line x1="150" y1="172" x2="150" y2="178" stroke="#f0c040" stroke-width="2"/>
+                      <!-- Legs -->
+                      <line x1="93" y1="230" x2="87" y2="258" stroke="#1e3a5f" stroke-width="5" stroke-linecap="round"/>
+                      <line x1="107" y1="230" x2="113" y2="258" stroke="#1e3a5f" stroke-width="5" stroke-linecap="round"/>
+
+                      <!-- LANDLORD label -->
+                      <text x="100" y="285" text-anchor="middle" fill="#f0c040" font-size="13" font-weight="700" font-family="monospace" letter-spacing="1">LANDLORD</text>
+                      <text x="100" y="300" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="monospace">Just... a key.</text>
+
+                      <!-- RIGHT SIDE — Renter platform -->
+                      <rect x="660" y="158" width="80" height="8" rx="4" fill="#475569"/>
+
+                      <!-- Requirement boxes -->
+                      <rect x="635" y="60" width="110" height="22" rx="3" fill="#7f1d1d" stroke="#ef4444" stroke-width="1"/>
+                      <text x="690" y="75" text-anchor="middle" fill="#fca5a5" font-size="9" font-family="monospace" font-weight="700">&#127963; CLEAN RECORD</text>
+
+                      <rect x="635" y="84" width="110" height="22" rx="3" fill="#1e1b4b" stroke="#6366f1" stroke-width="1"/>
+                      <text x="690" y="99" text-anchor="middle" fill="#a5b4fc" font-size="9" font-family="monospace">&#128179; CREDIT SCORE</text>
+
+                      <rect x="635" y="108" width="110" height="22" rx="3" fill="#052e16" stroke="#10b981" stroke-width="1"/>
+                      <text x="690" y="123" text-anchor="middle" fill="#6ee7b7" font-size="9" font-family="monospace">&#128176; EARN 3&#215; RENT</text>
+
+                      <rect x="635" y="132" width="110" height="22" rx="3" fill="#1c1917" stroke="#78716c" stroke-width="1"/>
+                      <text x="690" y="147" text-anchor="middle" fill="#d6d3d1" font-size="9" font-family="monospace">&#128188; STABLE JOB</text>
+
+                      <!-- Renter figure -->
+                      <ellipse cx="700" cy="136" rx="18" ry="14" fill="#1e40af"/>
+                      <circle cx="700" cy="116" r="14" fill="#93c5fd"/>
+                      <circle cx="695" cy="114" r="2" fill="#1e3a5f"/>
+                      <circle cx="705" cy="114" r="2" fill="#1e3a5f"/>
+                      <path d="M695,120 Q700,117 705,120" stroke="#1e3a5f" stroke-width="2" fill="none" stroke-linecap="round"/>
+                      <ellipse cx="712" cy="110" rx="3" ry="4" fill="#60a5fa" opacity="0.7"/>
+                      <!-- Arms -->
+                      <line x1="684" y1="130" x2="670" y2="148" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
+                      <line x1="716" y1="130" x2="730" y2="148" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
+                      <!-- Legs -->
+                      <line x1="694" y1="148" x2="688" y2="168" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
+                      <line x1="706" y1="148" x2="712" y2="168" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
+
+                      <!-- RENTER label -->
+                      <text x="700" y="192" text-anchor="middle" fill="#60a5fa" font-size="13" font-weight="700" font-family="monospace" letter-spacing="1">RENTER</text>
+
+                      <!-- Corner brackets -->
+                      <path d="M20,20 L20,50 M20,20 L50,20" stroke="#f0c040" stroke-width="2" fill="none"/>
+                      <path d="M780,20 L780,50 M780,20 L750,20" stroke="#f0c040" stroke-width="2" fill="none"/>
+                      <path d="M20,380 L20,350 M20,380 L50,380" stroke="#f0c040" stroke-width="2" fill="none"/>
+                      <path d="M780,380 L780,350 M780,380 L750,380" stroke="#f0c040" stroke-width="2" fill="none"/>
+                    </svg>
+
+                    <div class="hero-text">
+                      <h1 class="hero-headline">The System Needs a New Key.</h1>
+                      <p class="hero-sub">Renters carry everything. Landlords answer to no one.</p>
+                      <div class="hero-cta">INTRODUCING FAIR RENTER MARKETPLACE &#8212; COMING SOON</div>
+                    </div>
+                  </div>
+
+                  <div class="mapWrap" style="margin:12px;">
                     <div id="map"></div>
                   </div>
                 </div>
