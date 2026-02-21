@@ -27,6 +27,53 @@
     <link rel="stylesheet" href="/ui_v2.css?v=4">
     <style>
       .pulse-card:hover { background: rgba(47,164,185,0.1) !important; border-color: rgba(47,164,185,0.3) !important; }
+      .landlord-reviews {
+        background: #0a0e1a;
+        border-top: 1px solid #1e293b;
+        padding: 24px 20px;
+      }
+      .lr-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #e2e8f0;
+        margin-bottom: 16px;
+      }
+      .lr-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .lr-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #111827;
+        border: 1px solid #1e293b;
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .lr-num {
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 600;
+        min-width: 20px;
+      }
+      .lr-address {
+        color: #e2e8f0;
+        font-size: 14px;
+        font-weight: 500;
+        flex: 1;
+      }
+      .lr-status.loading {
+        color: #f0c040;
+        font-size: 12px;
+        font-family: monospace;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+      }
     </style>
   </head>
   <body data-town="sebastian" class="theme-light">
@@ -143,6 +190,22 @@
                   </div>
                 </div>
               </div>
+
+              <section class="landlord-reviews">
+                <h2 class="lr-title">&#127968; Sebastian Landlord Reviews</h2>
+                <div class="lr-list">
+                  <div class="lr-item">
+                    <span class="lr-num">1.</span>
+                    <span class="lr-address">1274 Columbia Avenue</span>
+                    <span class="lr-status loading">LOADING.........</span>
+                  </div>
+                  <div class="lr-item">
+                    <span class="lr-num">2.</span>
+                    <span class="lr-address">763 Carnation DR</span>
+                    <span class="lr-status loading">LOADING.........</span>
+                  </div>
+                </div>
+              </section>
 
               <div class="panel sweep-panel" id="panelSweepstake">
                 <div class="panelHead">
