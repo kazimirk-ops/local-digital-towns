@@ -234,7 +234,7 @@
                   <div class="hero-scene">
                     <div class="hero-top-label">THE RENTAL SYSTEM IS BROKEN</div>
 
-                    <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:420px;display:block;">
+                    <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:480px;display:block;">
                       <!-- Background glow -->
                       <defs>
                         <radialGradient id="bgGlow" cx="50%" cy="50%">
@@ -242,7 +242,7 @@
                           <stop offset="100%" stop-color="#0a0a0a" stop-opacity="1"/>
                         </radialGradient>
                       </defs>
-                      <rect width="800" height="400" fill="url(#bgGlow)"/>
+                      <rect width="800" height="460" fill="url(#bgGlow)"/>
 
                       <!-- Fulcrum/pivot point -->
                       <polygon points="400,280 380,320 420,320" fill="#475569"/>
@@ -279,41 +279,57 @@
                       <!-- RIGHT SIDE — Renter platform -->
                       <rect x="660" y="158" width="80" height="8" rx="4" fill="#475569"/>
 
-                      <!-- Requirement boxes -->
-                      <rect x="635" y="60" width="110" height="22" rx="3" fill="#7f1d1d" stroke="#ef4444" stroke-width="1"/>
-                      <text x="690" y="75" text-anchor="middle" fill="#fca5a5" font-size="9" font-family="monospace" font-weight="700">&#127963; CLEAN RECORD</text>
+                      <!-- Renter figure standing ON the platform -->
+                      <!-- Body -->
+                      <ellipse cx="700" cy="138" rx="18" ry="14" fill="#1e40af"/>
+                      <!-- Head -->
+                      <circle cx="700" cy="118" r="14" fill="#93c5fd"/>
+                      <!-- Eyes -->
+                      <circle cx="695" cy="116" r="2" fill="#1e3a5f"/>
+                      <circle cx="705" cy="116" r="2" fill="#1e3a5f"/>
+                      <!-- Worried mouth -->
+                      <path d="M695,122 Q700,119 705,122" stroke="#1e3a5f" stroke-width="2" fill="none" stroke-linecap="round"/>
+                      <!-- Sweat drop -->
+                      <ellipse cx="712" cy="112" rx="3" ry="4" fill="#60a5fa" opacity="0.7"/>
+                      <!-- Arms raised -->
+                      <line x1="684" y1="132" x2="670" y2="120" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
+                      <line x1="716" y1="132" x2="730" y2="120" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
+                      <!-- Legs standing on platform -->
+                      <line x1="694" y1="150" x2="690" y2="158" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
+                      <line x1="706" y1="150" x2="710" y2="158" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
 
-                      <rect x="635" y="84" width="110" height="22" rx="3" fill="#1e1b4b" stroke="#6366f1" stroke-width="1"/>
-                      <text x="690" y="99" text-anchor="middle" fill="#a5b4fc" font-size="9" font-family="monospace">&#128179; CREDIT SCORE</text>
+                      <!-- RENTER label just below figure -->
+                      <text x="700" y="175" text-anchor="middle" fill="#60a5fa" font-size="13" font-weight="700" font-family="monospace" letter-spacing="1">RENTER</text>
 
-                      <rect x="635" y="108" width="110" height="22" rx="3" fill="#052e16" stroke="#10b981" stroke-width="1"/>
-                      <text x="690" y="123" text-anchor="middle" fill="#6ee7b7" font-size="9" font-family="monospace">&#128176; EARN 3&#215; RENT</text>
+                      <!-- Chain from platform down to boxes -->
+                      <line x1="700" y1="166" x2="700" y2="190" stroke="#475569" stroke-width="2" stroke-dasharray="4,3"/>
 
-                      <rect x="635" y="132" width="110" height="22" rx="3" fill="#1c1917" stroke="#78716c" stroke-width="1"/>
-                      <text x="690" y="147" text-anchor="middle" fill="#d6d3d1" font-size="9" font-family="monospace">&#128188; STABLE JOB</text>
+                      <!-- Requirement boxes hanging BELOW platform -->
+                      <!-- Box 1 — REFERENCES REQ'D -->
+                      <rect x="635" y="190" width="110" height="22" rx="3" fill="#292524" stroke="#a8a29e" stroke-width="1"/>
+                      <text x="690" y="205" text-anchor="middle" fill="#e7e5e4" font-size="9" font-family="monospace">&#128203; REFERENCES REQ'D</text>
 
-                      <!-- Renter figure -->
-                      <ellipse cx="700" cy="136" rx="18" ry="14" fill="#1e40af"/>
-                      <circle cx="700" cy="116" r="14" fill="#93c5fd"/>
-                      <circle cx="695" cy="114" r="2" fill="#1e3a5f"/>
-                      <circle cx="705" cy="114" r="2" fill="#1e3a5f"/>
-                      <path d="M695,120 Q700,117 705,120" stroke="#1e3a5f" stroke-width="2" fill="none" stroke-linecap="round"/>
-                      <ellipse cx="712" cy="110" rx="3" ry="4" fill="#60a5fa" opacity="0.7"/>
-                      <!-- Arms -->
-                      <line x1="684" y1="130" x2="670" y2="148" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
-                      <line x1="716" y1="130" x2="730" y2="148" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
-                      <!-- Legs -->
-                      <line x1="694" y1="148" x2="688" y2="168" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
-                      <line x1="706" y1="148" x2="712" y2="168" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
+                      <!-- Box 2 — CLEAN RECORD -->
+                      <rect x="635" y="214" width="110" height="22" rx="3" fill="#7f1d1d" stroke="#ef4444" stroke-width="1"/>
+                      <text x="690" y="229" text-anchor="middle" fill="#fca5a5" font-size="9" font-family="monospace" font-weight="700">&#127963; CLEAN RECORD</text>
 
-                      <!-- RENTER label -->
-                      <text x="700" y="192" text-anchor="middle" fill="#60a5fa" font-size="13" font-weight="700" font-family="monospace" letter-spacing="1">RENTER</text>
+                      <!-- Box 3 — CREDIT SCORE -->
+                      <rect x="635" y="238" width="110" height="22" rx="3" fill="#1e1b4b" stroke="#6366f1" stroke-width="1"/>
+                      <text x="690" y="253" text-anchor="middle" fill="#a5b4fc" font-size="9" font-family="monospace">&#128179; CREDIT SCORE</text>
+
+                      <!-- Box 4 — EARN 3× RENT -->
+                      <rect x="635" y="262" width="110" height="22" rx="3" fill="#052e16" stroke="#10b981" stroke-width="1"/>
+                      <text x="690" y="277" text-anchor="middle" fill="#6ee7b7" font-size="9" font-family="monospace">&#128176; EARN 3&#215; RENT</text>
+
+                      <!-- Box 5 — STABLE JOB -->
+                      <rect x="635" y="286" width="110" height="22" rx="3" fill="#1c1917" stroke="#78716c" stroke-width="1"/>
+                      <text x="690" y="301" text-anchor="middle" fill="#d6d3d1" font-size="9" font-family="monospace">&#128188; STABLE JOB</text>
 
                       <!-- Corner brackets -->
                       <path d="M20,20 L20,50 M20,20 L50,20" stroke="#f0c040" stroke-width="2" fill="none"/>
                       <path d="M780,20 L780,50 M780,20 L750,20" stroke="#f0c040" stroke-width="2" fill="none"/>
-                      <path d="M20,380 L20,350 M20,380 L50,380" stroke="#f0c040" stroke-width="2" fill="none"/>
-                      <path d="M780,380 L780,350 M780,380 L750,380" stroke="#f0c040" stroke-width="2" fill="none"/>
+                      <path d="M20,440 L20,410 M20,440 L50,440" stroke="#f0c040" stroke-width="2" fill="none"/>
+                      <path d="M780,440 L780,410 M780,440 L750,440" stroke="#f0c040" stroke-width="2" fill="none"/>
                     </svg>
 
                     <div class="hero-text">
