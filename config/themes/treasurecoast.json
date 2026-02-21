@@ -1,0 +1,14 @@
+{
+  "name": "Treasure Coast",
+  "slug": "treasurecoast",
+  "tagline": "Florida's Treasure Coast — Local Commerce, Community First",
+  "heroImage": "/assets/treasurecoast-hero.jpg",
+  "mapCenter": { "lat": 27.3364, "lng": -80.2659 },
+  "mapZoom": 11,
+  "colors": {
+    "primary": "#0ea5e9",
+    "secondary": "#10b981",
+    "accent": "#f0c040",
+    "bg": "#0a0f1a"
+  }
+}

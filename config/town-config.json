@@ -485,5 +485,226 @@
     "trustDefaults": {
       "defaultLevel": "visitor"
     }
+  },
+  "treasurecoast": {
+    "id": 3,
+    "slug": "treasurecoast",
+    "name": "Treasure Coast",
+    "fullName": "Digital Treasure Coast",
+    "tagline": "Your Local Digital Town Square",
+    "state": "FL",
+    "stateFullName": "Florida",
+    "region": "Indian River, Martin, St. Lucie",
+    "country": "US",
+    "timezone": "America/New_York",
+    "domains": [
+      "treasurecoast-fl.com",
+      "www.treasurecoast-fl.com",
+      "treasurecoast.digitaltowns.com",
+      "localhost"
+    ],
+    "productionUrl": "https://treasurecoast-fl.com",
+    "localFallbackUrl": "https://treasurecoast.local",
+    "location": {
+      "lat": 27.3364,
+      "lng": -80.2659,
+      "zoom": 13,
+      "radiusMeters": 15000,
+      "boundingBox": {
+        "minLat": 27.20,
+        "maxLat": 27.47,
+        "minLng": -80.42,
+        "maxLng": -80.11
+      }
+    },
+    "address": {
+      "city": "Treasure Coast",
+      "state": "FL",
+      "zip": "",
+      "county": "Indian River, Martin, St. Lucie",
+      "countyShort": "IRMSL",
+      "placeholder": "123 Main St, Treasure Coast, FL",
+      "streetPlaceholder": "Street address (e.g. 1234 Main St)"
+    },
+    "branding": {
+      "primaryColor": "#3b82f6",
+      "secondaryColor": "#22d3ee",
+      "logoUrl": "/images/logo.png",
+      "faviconUrl": "/favicon.ico",
+      "ogImage": "/images/og-image.png",
+      "ogImageAbsolute": "https://treasurecoast-fl.com/og-image.jpg",
+      "mapImage": "/images/treasurecoast-ui-map.png",
+      "heroImage": "/images/treasurecoast-main-map.png",
+      "themeFile": "treasurecoast.json"
+    },
+    "theme": {
+      "primaryColor": "#0ea5e9",
+      "secondaryColor": "#10b981",
+      "accentColor": "#f0c040"
+    },
+    "contact": {
+      "supportEmail": "support@treasurecoast-fl.com",
+      "supportEmailAlt": "support@treasurecoast-fl.com",
+      "noReplyEmail": "noreply@treasurecoast-fl.com",
+      "nonEmergencyPhone": "",
+      "nonEmergencyPhoneTel": "",
+      "nonEmergencyLabel": "IRMSL Sheriff's Office"
+    },
+    "legal": {
+      "jurisdictionText": "Any legal action shall be brought in the courts of Indian River, Martin, St. Lucie, Florida",
+      "governingLawText": "These Terms are governed by the laws of the State of Florida",
+      "contactAddress": "Treasure Coast, Florida"
+    },
+    "features": {
+      "marketplace": true,
+      "map": true,
+      "pulse": true,
+      "auctions": false,
+      "livestream": false,
+      "sweepstakes": false,
+      "delivery": false
+    },
+    "payments": {
+      "currency": "usd",
+      "stripeEnabled": true,
+      "userSubscriptionPriceCents": 0,
+      "businessSubscriptionPriceCents": 1000,
+      "trialDays": 30,
+      "referralCommissionPercent": 25
+    },
+    "social": {
+      "facebook": null,
+      "instagram": null,
+      "twitter": null
+    },
+    "content": {
+      "welcomeMessage": "Welcome to Digital Treasure Coast!",
+      "aboutUrl": "/about",
+      "termsUrl": "/terms",
+      "privacyUrl": "/privacy",
+      "betaNotice": "Thank you for being an early adopter! Contact support@treasurecoast-fl.com if you need assistance.",
+      "comingSoonTitle": "Treasure Coast Digital Town is in private beta.",
+      "applyResidentLabel": "Apply as a Treasure Coast Resident",
+      "deleteAccountText": "To request deletion of your Digital Treasure Coast account and all associated data, please email us at:"
+    },
+    "pageTitles": {
+      "main": "Treasure Coast Digital Town",
+      "login": "Login - Digital Treasure Coast",
+      "subscribe": "Join Digital Treasure Coast",
+      "subscribeSuccess": "Welcome to Digital Treasure Coast!",
+      "subscription": "Subscribe - Digital Treasure Coast",
+      "mySubscription": "My Subscription - Digital Treasure Coast",
+      "businessSubscription": "Business Subscription - Digital Treasure Coast",
+      "store": "Storefront • Treasure Coast Digital Town",
+      "sellerOrders": "Seller Orders – Treasure Coast",
+      "myOrders": "My Orders – Treasure Coast",
+      "referrals": "Referral Program - Digital Treasure Coast",
+      "giveawayOffer": "Submit Giveaway Offer - Digital Treasure Coast",
+      "deliveryTracking": "Delivery Tracking - Treasure Coast Express",
+      "deleteAccount": "Delete Account - Treasure Coast Florida",
+      "comingSoon": "Treasure Coast Digital Town — Private Beta",
+      "admin": "Admin Metrics – Treasure Coast",
+      "adminMedia": "Admin Media – Treasure Coast",
+      "adminPulse": "Daily Pulse Export – Treasure Coast",
+      "adminAnalytics": "Platform Analytics – Treasure Coast"
+    },
+    "meta": {
+      "ogTitle": "Treasure Coast, Florida — Local Community Platform",
+      "ogDescription": "Buy, sell, chat, enter giveaways, discover local businesses. Free to join.",
+      "description": "Treasure Coast, Florida's local community platform. Marketplace, giveaways, events, local business directory. Free to join."
+    },
+    "channels": [
+      "tackle", "coral", "boats", "golf",
+      "citrus", "pawnpurge", "plants",
+      "pokepurge", "sneakers", "vintage",
+      "tech", "toys", "books", "jewelry",
+      "sportscards", "homegoods"
+    ],
+    "delivery": {
+      "serviceName": "Treasure Coast Express",
+      "defaultCity": "Treasure Coast",
+      "defaultState": "FL",
+      "freeDeliveryText": "Free delivery in Treasure Coast."
+    },
+    "emails": {
+      "loginCodeSubject": "Your Treasure Coast Digital Town login code",
+      "approvalSubject": "Your Treasure Coast Digital Town Application is Approved!",
+      "approvalBody": "Your {{applicationType}} application for Treasure Coast Digital Town has been approved.",
+      "deliveryFromName": "Treasure Coast Express",
+      "deliverySubjectPrefix": "Treasure Coast Express - ",
+      "deliveryHtmlHeading": "🚀 Treasure Coast Express",
+      "testEmailSubject": "[Treasure Coast Beta] Test Email",
+      "adminDisplayName": "Digital Treasure Coast"
+    },
+    "shareText": {
+      "purchase": "Just bought {{itemName}} from {{storeName}} on Digital Treasure Coast! Support local businesses in Treasure Coast, FL.",
+      "giveawayWin": "I won {{prizeName}} in the Treasure Coast Giveaway! Join Digital Treasure Coast and enter to win amazing local prizes.",
+      "sweepstakesWin": "I won {{prizeName}} in the Treasure Coast Sweepstakes! Join Digital Treasure Coast and enter to win amazing local prizes.",
+      "reviewPositive": "I loved {{storeName}} on Digital Treasure Coast! Highly recommend checking them out.",
+      "reviewNeutral": "I found {{storeName}} on Digital Treasure Coast! Support local businesses in Treasure Coast, FL.",
+      "newListing": "Check out my new listing: {{title}} on Digital Treasure Coast!",
+      "newAuction": "Check out my new auction: {{title}} on Digital Treasure Coast! Bidding starts now.",
+      "storeShare": "Check out {{storeName}} on Digital Treasure Coast! {{description}}",
+      "giveawayOffer": "I'm giving away \"{{title}}\" on Digital Treasure Coast! Check out local giveaways and support Treasure Coast businesses.",
+      "verification": "I just got verified as a {{tierName}} on Digital Treasure Coast! Join our local community and support Treasure Coast businesses.",
+      "purchaseModal": "Just made a purchase in Treasure Coast! 🛍️",
+      "giveawayWinModal": "🏆 I just won in the Treasure Coast Town Giveaway!",
+      "reviewModal": "Just left a review on Treasure Coast Digital Town!",
+      "verificationModal": "You're officially a verified Treasure Coast local! 🏠",
+      "storeListed": "Get your store listed on Digital Treasure Coast"
+    },
+    "pulse": {
+      "titleTemplate": "Daily Pulse — Treasure Coast — {{date}}",
+      "facebookIntro": "🌴 Today in Treasure Coast:",
+      "facebookHashtags": "#TreasureCoastFL #SupportLocal #ShopLocal #DigitalTreasureCoast",
+      "enableFishing": true,
+      "enableTides": true,
+      "enableSafety": true,
+      "noaaStationId": "8722670"
+    },
+    "safety": {
+      "headerLabel": "Treasure Coast, FL • Community Safety",
+      "areaLabel": "Treasure Coast Area • Last 30 Days",
+      "countyStatText": "Indian River, Martin, St. Lucie community safety overview",
+      "incidentsLabel": "View recent incidents in Indian River, Martin, St. Lucie",
+      "marineLabel": "Treasure Coast • Marine"
+    },
+    "verification": {
+      "locationVerifiedMessage": "Location verified in Treasure Coast.",
+      "outsideBoxMessage": "Not inside Treasure Coast verification box.",
+      "outsideZoneMessage": "Not inside Treasure Coast verification zone.",
+      "locationRequiredMessage": "Verify location in Treasure Coast before submitting Tier 1.",
+      "locationRequiredError": "Location verified in Treasure Coast required.",
+      "residentLabel": "Treasure Coast Resident+ required to submit prizes.",
+      "defaultTierName": "Treasure Coast local",
+      "confirmBusinessLabel": "I confirm this business is physically located in Treasure Coast, FL",
+      "locatedInLabel": "Located in Treasure Coast?",
+      "yearsInLabel": "How long in Treasure Coast?",
+      "cityMatchValue": "treasurecoast",
+      "eligibleZip": "",
+      "eligibleReason": "Address matches Treasure Coast pilot.",
+      "waitlistReason": "Outside Treasure Coast/; added to waitlist."
+    },
+    "localBiz": {
+      "directoryTitle": "Local Treasure Coast Businesses",
+      "directoryDescription": "This is a curated directory of businesses physically located in Treasure Coast. Apply below.",
+      "serviceProvidersDescription": "Find trusted service providers in Treasure Coast.",
+      "storeSetupLabel": "Set up a new store in Treasure Coast"
+    },
+    "mobileApp": {
+      "appId": "com.treasurecoast.app",
+      "appName": "Treasure Coast Florida",
+      "namespace": "com.treasurecoast.app"
+    },
+    "storage": {
+      "r2Bucket": "treasurecoast-assets"
+    },
+    "trustDefaults": {
+      "defaultLevel": "visitor"
+    },
+    "level": 0,
+    "levelProgress": 45,
+    "networkHub": "floridastatedigital.com",
+    "nationalHub": "usa-digital.ca"
   }
 }
