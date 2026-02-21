@@ -20,16 +20,24 @@
       <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#c0392b" flood-opacity="0.4"/>
     </filter>
     <filter id="textShadow">
-      <feDropShadow dx="2" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.8"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="10" flood-color="#000" flood-opacity="0.9"/>
     </filter>
     <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
       <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ffffff" stroke-width="0.15" opacity="0.08"/>
     </pattern>
+    <linearGradient id="heroOverlay" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" style="stop-color:#0a0e1a;stop-opacity:0.3" />
+      <stop offset="40%" style="stop-color:#0a0e1a;stop-opacity:0.0" />
+      <stop offset="100%" style="stop-color:#0a0e1a;stop-opacity:0.6" />
+    </linearGradient>
   </defs>
 
   <!-- Background -->
   <rect width="1200" height="675" fill="url(#bgGrad)"/>
   <rect width="1200" height="675" fill="url(#grid)"/>
+
+  <!-- Gradient overlay for text contrast -->
+  <rect width="1200" height="675" fill="url(#heroOverlay)"/>
 
   <!-- Subtle red glow behind scale -->
   <ellipse cx="600" cy="340" rx="420" ry="200" fill="#c0392b" opacity="0.04"/>
@@ -121,7 +129,7 @@
   </g>
 
   <!-- Landlord label -->
-  <text x="282" y="348" font-family="Georgia, serif" font-size="13" fill="#f0c040" text-anchor="middle" font-weight="bold" opacity="0.9">LANDLORD</text>
+  <text x="282" y="348" font-family="Georgia, serif" font-size="13" fill="#f0c040" text-anchor="middle" font-weight="700" opacity="1">LANDLORD</text>
 
   <!-- ══════════════════════════════════════════ -->
   <!-- RIGHT SIDE: RENTER (crushed, burdened) -->
@@ -192,7 +200,7 @@
   </g>
 
   <!-- Renter label -->
-  <text x="922" y="430" font-family="Georgia, serif" font-size="13" fill="#c0392b" text-anchor="middle" font-weight="bold">RENTER</text>
+  <text x="922" y="430" font-family="Georgia, serif" font-size="13" fill="#60a5fa" text-anchor="middle" font-weight="700">RENTER</text>
 
   <!-- ══════════════════════════════════════════ -->
   <!-- CENTER DIVIDING LINE & DOOR -->
@@ -206,18 +214,18 @@
   <!-- ══════════════════════════════════════════ -->
 
   <!-- Top label -->
-  <text x="600" y="58" font-family="'Courier New', monospace" font-size="11" fill="#c0392b" text-anchor="middle" letter-spacing="6" opacity="0.9">THE RENTAL SYSTEM IS BROKEN</text>
+  <text x="600" y="58" font-family="'Courier New', monospace" font-size="11" fill="#f0c040" text-anchor="middle" letter-spacing="6" opacity="1">THE RENTAL SYSTEM IS BROKEN</text>
 
   <!-- Main title -->
-  <text x="600" y="500" font-family="Georgia, serif" font-size="52" fill="#ffffff" text-anchor="middle" font-weight="bold" filter="url(#textShadow)" letter-spacing="-1">The System Needs a New Key.</text>
+  <text x="600" y="500" font-family="Georgia, serif" font-size="52" fill="#ffffff" text-anchor="middle" font-weight="800" filter="url(#textShadow)" letter-spacing="-1" style="text-shadow:0 2px 20px rgba(0,0,0,0.8)">The System Needs a New Key.</text>
 
   <!-- Subtitle -->
-  <text x="600" y="540" font-family="Georgia, serif" font-size="19" fill="#aaaaaa" text-anchor="middle" font-style="italic">Renters carry everything. Landlords answer to no one.</text>
+  <text x="600" y="540" font-family="Georgia, serif" font-size="19" fill="#e2e8f0" text-anchor="middle" font-style="italic" filter="url(#textShadow)">Renters carry everything. Landlords answer to no one.</text>
 
   <!-- Bottom tagline -->
-  <rect x="370" y="556" width="460" height="38" fill="#c0392b" rx="4" opacity="0.15"/>
-  <rect x="370" y="556" width="460" height="38" fill="none" stroke="#c0392b" stroke-width="1" rx="4" opacity="0.4"/>
-  <text x="600" y="580" font-family="'Courier New', monospace" font-size="13" fill="#ff8888" text-anchor="middle" letter-spacing="2">INTRODUCING FAIR RENTER MARKETPLACE — COMING SOON</text>
+  <rect x="370" y="556" width="460" height="38" fill="#b91c1c" rx="4" opacity="1"/>
+  <rect x="370" y="556" width="460" height="38" fill="none" stroke="#ef4444" stroke-width="1" rx="4" opacity="1"/>
+  <text x="600" y="580" font-family="'Courier New', monospace" font-size="13" fill="#ffffff" text-anchor="middle" letter-spacing="2">INTRODUCING FAIR RENTER MARKETPLACE — COMING SOON</text>
 
   <!-- ══════════════════════════════════════════ -->
   <!-- LANDLORD SIDE CALLOUT -->
@@ -227,14 +235,14 @@
   <!-- ══════════════════════════════════════════ -->
   <!-- CORNER ACCENTS -->
   <!-- ══════════════════════════════════════════ -->
-  <line x1="30" y1="30" x2="80" y2="30" stroke="#c0392b" stroke-width="1.5" opacity="0.5"/>
-  <line x1="30" y1="30" x2="30" y2="80" stroke="#c0392b" stroke-width="1.5" opacity="0.5"/>
-  <line x1="1170" y1="30" x2="1120" y2="30" stroke="#c0392b" stroke-width="1.5" opacity="0.5"/>
-  <line x1="1170" y1="30" x2="1170" y2="80" stroke="#c0392b" stroke-width="1.5" opacity="0.5"/>
-  <line x1="30" y1="645" x2="80" y2="645" stroke="#c0392b" stroke-width="1.5" opacity="0.5"/>
-  <line x1="30" y1="645" x2="30" y2="595" stroke="#c0392b" stroke-width="1.5" opacity="0.5"/>
-  <line x1="1170" y1="645" x2="1120" y2="645" stroke="#c0392b" stroke-width="1.5" opacity="0.5"/>
-  <line x1="1170" y1="645" x2="1170" y2="595" stroke="#c0392b" stroke-width="1.5" opacity="0.5"/>
+  <line x1="30" y1="30" x2="80" y2="30" stroke="#f0c040" stroke-width="1.5" opacity="0.9"/>
+  <line x1="30" y1="30" x2="30" y2="80" stroke="#f0c040" stroke-width="1.5" opacity="0.9"/>
+  <line x1="1170" y1="30" x2="1120" y2="30" stroke="#f0c040" stroke-width="1.5" opacity="0.9"/>
+  <line x1="1170" y1="30" x2="1170" y2="80" stroke="#f0c040" stroke-width="1.5" opacity="0.9"/>
+  <line x1="30" y1="645" x2="80" y2="645" stroke="#f0c040" stroke-width="1.5" opacity="0.9"/>
+  <line x1="30" y1="645" x2="30" y2="595" stroke="#f0c040" stroke-width="1.5" opacity="0.9"/>
+  <line x1="1170" y1="645" x2="1120" y2="645" stroke="#f0c040" stroke-width="1.5" opacity="0.9"/>
+  <line x1="1170" y1="645" x2="1170" y2="595" stroke="#f0c040" stroke-width="1.5" opacity="0.9"/>
 
   <!-- Watermark/brand -->
   <text x="600" y="660" font-family="'Courier New', monospace" font-size="10" fill="#ffffff" text-anchor="middle" opacity="0.2" letter-spacing="3">FLORIDA STATE DIGITAL — LOCAL COMMERCE REIMAGINED</text>
