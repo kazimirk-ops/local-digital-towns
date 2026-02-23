@@ -269,6 +269,24 @@ app.use(async (req,res,next)=>{
   setCookie(res, "lockdown_logged_in", userId ? "1" : "0", { maxAge: 300 });
   return res.status(200).sendFile(path.join(__dirname,"public","coming_soon.html"));
 });
+
+// Activity tracking — update last_active_at (at most once per hour)
+app.use("/api", async (req, res, next) => {
+  try {
+    const sid = parseCookies(req).sid;
+    if (sid) {
+      const r = await data.getUserBySession(sid);
+      if (r && r.user && r.user.id) {
+        await db.query(
+          "UPDATE users SET last_active_at = NOW() WHERE id = $1 AND (last_active_at IS NULL OR last_active_at < NOW() - INTERVAL '1 hour')",
+          [r.user.id]
+        );
+      }
+    }
+  } catch(e) {}
+  next();
+});
+
 app.use("/admin", async (req, res, next) =>{
   if(req.path === "/login" || req.path === "/bootstrap") return next();
   const userId = await getUserId(req);
@@ -1817,6 +1835,26 @@ app.get("/me", async (req, res) =>{
   r.user.isAdmin = isAdminUser(r.user);
   res.json(r);
 });
+// Public stats
+app.get("/api/stats/mau", async (req, res) => {
+  try {
+    const mau = await db.query("SELECT COUNT(DISTINCT id) as count FROM users WHERE last_active_at > NOW() - INTERVAL '30 days'");
+    const dau = await db.query("SELECT COUNT(DISTINCT id) as count FROM users WHERE last_active_at > NOW() - INTERVAL '1 day'");
+    const total = await db.query("SELECT COUNT(*) as count FROM users");
+    const newThisMonth = await db.query("SELECT COUNT(*) as count FROM users WHERE created_at > NOW() - INTERVAL '30 days'");
+    res.json({
+      site: 'sebastian-florida.com',
+      mau: parseInt(mau.rows[0].count),
+      dau: parseInt(dau.rows[0].count),
+      total_users: parseInt(total.rows[0].count),
+      new_this_month: parseInt(newThisMonth.rows[0].count),
+      generated_at: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Stats unavailable' });
+  }
+});
+
 app.get("/api/me", async (req, res) =>{
   const sid = parseCookies(req).sid;
   if(!sid) return res.status(401).json({ error: "not logged in" });
