@@ -222,52 +222,10 @@ app.use(async (req,res,next)=>{
   if(req.path === "/api/webhooks/uber") return next();
   return jsonParser(req,res,next);
 });
-const LOCKDOWN = (process.env.LOCKDOWN_MODE || "").toLowerCase() === "true";
-app.use(async (req,res,next)=>{
-  if(!LOCKDOWN) return next();
-  const pathName = req.path || "";
-  const isGet = req.method === "GET";
-  if(isGet && pathName === "/health") return next();
-  if(isGet && (pathName === "/waitlist" || pathName === "/apply/business" || pathName === "/apply/resident")) return next();
-  if(isGet && (pathName === "/admin/login" || pathName === "/admin/bootstrap")) return next();
-  if(isGet && pathName.startsWith("/sweep/claim/")) return next();
-  if(isGet && pathName === "/auth/magic") return next();
-  if(pathName === "/auth/logout" && (req.method === "GET" || req.method === "POST")) return next();
-  if(req.method === "POST" && pathName === "/auth/request-link") return next();
-  if(req.method === "POST" && pathName === "/admin/login") return next();
-  if(req.method === "POST"){
-    if(pathName === "/api/public/waitlist") return next();
-    if(pathName === "/api/public/apply/business") return next();
-    if(pathName === "/api/public/apply/resident") return next();
-    if(pathName === "/api/auth/request-code") return next();
-    if(pathName === "/api/auth/verify-code") return next();
-    if(pathName === "/api/auth/google") return next();
-    if(pathName === "/api/auth/google/callback") return next();
-    if(pathName === "/api/auth/guest") return next();
-    if(pathName.startsWith("/api/sweep/claim/")) return next();
-    if(pathName === "/api/admin/test-email") return next();
-  }
-  if(isGet && pathName.startsWith("/api/sweep/claim/")) return next();
-  if(isGet && pathName === "/api/me") return next();
-  if(isGet){
-    const isStatic =
-      pathName === "/favicon.ico" ||
-      pathName.startsWith("/images/") ||
-      pathName.startsWith("/css/") ||
-      pathName.startsWith("/js/") ||
-      pathName.startsWith("/fonts/") ||
-      pathName.startsWith("/uploads/") ||
-      /\.[a-z0-9]+$/i.test(pathName);
-    if(isStatic) return next();
-  }
-  const userId = await getUserId(req);
-  const user = userId ? await data.getUserById(userId) : null;
-  if(isAdminUser(user)) return next();
-  if(pathName.startsWith("/api")){
-    return res.status(403).json({ error: "coming soon" });
-  }
-  setCookie(res, "lockdown_logged_in", userId ? "1" : "0", { maxAge: 300 });
-  return res.status(200).sendFile(path.join(__dirname,"public","coming_soon.html"));
+// ─── View-only lockdown ───
+app.use(function(req, res, next) {
+  if (req.method === 'GET') return next();
+  return res.status(403).json({ error: 'This site is in view-only mode.' });
 });
 
 // Activity tracking — update last_active_at (at most once per hour)
