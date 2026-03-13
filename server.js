@@ -171,6 +171,67 @@ app.get("/health", (req, res) => {
   });
 });
 
+// --- Staging password protection ---
+// Set STAGING_PASSWORD in Render environment variables.
+// Fallback: "digitaltowns2026"
+const STAGING_PASSWORD = (process.env.STAGING_PASSWORD || "digitaltowns2026").trim();
+
+const STAGING_LOGIN_HTML = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Digital Towns — Staging Login</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Space Grotesk',system-ui,sans-serif;background:#070b10;color:#e8eef6;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.card{background:#0f1722;border:1px solid #1e293b;border-radius:16px;padding:48px 40px;width:100%;max-width:380px;text-align:center}
+.logo{font-size:24px;font-weight:700;color:#0ea5e9;margin-bottom:4px;letter-spacing:-0.5px}
+.sub{font-size:13px;color:#64748b;margin-bottom:28px}
+input[type=password]{width:100%;padding:12px 16px;border-radius:10px;border:1px solid #334155;background:#0a0f1a;color:#e8eef6;font-size:15px;font-family:inherit;outline:none;margin-bottom:14px}
+input[type=password]:focus{border-color:#0ea5e9}
+button{width:100%;padding:12px;background:#0ea5e9;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer}
+button:hover{background:#0284c7}
+.err{color:#ef4444;font-size:13px;margin-bottom:14px;display:none}
+</style></head><body>
+<div class="card">
+<div class="logo">Digital Towns</div>
+<div class="sub">Staging Environment</div>
+<form method="POST" action="/staging-auth">
+<div class="err" id="err">Access denied</div>
+<input type="password" name="password" placeholder="Password" autofocus required>
+<button type="submit">Enter</button>
+</form>
+</div>
+<script>if(location.search.includes("denied=1"))document.getElementById("err").style.display="block";</script>
+</body></html>`;
+
+app.post("/staging-auth", express.urlencoded({ extended: false }), (req, res) => {
+  if ((req.body.password || "").trim() === STAGING_PASSWORD) {
+    const secure = (req.headers["x-forwarded-proto"] || "").includes("https");
+    res.setHeader("Set-Cookie", "staging_access=true; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000" + (secure ? "; Secure" : ""));
+    return res.redirect("/");
+  }
+  res.redirect("/staging-auth?denied=1");
+});
+
+app.get("/staging-auth", (req, res) => {
+  res.type("html").send(STAGING_LOGIN_HTML);
+});
+
+app.use((req, res, next) => {
+  // Skip auth check for the login endpoint and static assets (css, js, images, fonts)
+  if (req.path === "/staging-auth") return next();
+  if (/\.(css|js|png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|eot|map)$/i.test(req.path)) return next();
+
+  const cookies = (req.headers.cookie || "").split(";").reduce((acc, c) => {
+    const [k, v] = c.trim().split("=");
+    if (k) acc[k] = v || "";
+    return acc;
+  }, {});
+
+  if (cookies.staging_access === "true") return next();
+  res.redirect("/staging-auth");
+});
+
 // --- Town config injection for HTML files ---
 // Builds a safe subset of town config for frontend use and injects it into HTML responses.
 const townPublicConfig = {
