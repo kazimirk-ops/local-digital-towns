@@ -4,5 +4,37 @@
   "version": "1.0.0",
   "description": "Universal tagging for users, listings, and events. Content, behavioral, and interest tags.",
   "layer": 1,
-  "dependencies": ["core"]
+  "dependencies": ["core"],
+  "submodules": [
+    {
+      "id": "tags.content",
+      "name": "Content Tags",
+      "description": "Niche routing tags",
+      "default": true
+    },
+    {
+      "id": "tags.behavioral",
+      "name": "Behavioral Tags",
+      "description": "Auto-applied system tags",
+      "default": true
+    },
+    {
+      "id": "tags.interest",
+      "name": "Interest Tags",
+      "description": "Built from user actions",
+      "default": true
+    },
+    {
+      "id": "tags.location",
+      "name": "Location Tags",
+      "description": "From shipping/purchase address",
+      "default": true
+    },
+    {
+      "id": "tags.events",
+      "name": "Tag Events",
+      "description": "tag_events accumulation table",
+      "default": true
+    }
+  ]
 }

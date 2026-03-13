@@ -1943,7 +1943,7 @@ app.get("/api/stats", async (req, res) => {
   }
 });
 
-// GET /api/modules — list all modules with install status
+// GET /api/modules — list all modules with install status and submodules
 app.get("/api/modules", async (req, res) => {
   try {
     const nodePath = require("path");
@@ -1955,19 +1955,34 @@ app.get("/api/modules", async (req, res) => {
       installedMap[row.module_name] = row.applied_at;
     }
 
-    const result = [];
-    // Core is always present
-    result.push({ id: "core", name: "Core Infrastructure", status: "ACTIVE", installed_at: null, layer: 0 });
+    // Load community flags for submodule enabled state
+    const communitySlug = req.query.community || "digitaltowns";
+    const comm = await db.one("SELECT feature_flags FROM communities WHERE slug = $1", [communitySlug]);
+    const flags = comm ? (typeof comm.feature_flags === "string" ? JSON.parse(comm.feature_flags || "{}") : (comm.feature_flags || {})) : {};
 
-    // Scan modules directory for manifests
+    const result = [];
+
+    // Scan all module directories (including core)
     const dirs = nodeFs.readdirSync(modulesDir).filter(d => {
-      return d !== "core" && nodeFs.statSync(nodePath.join(modulesDir, d)).isDirectory();
+      return nodeFs.statSync(nodePath.join(modulesDir, d)).isDirectory();
     });
     for (const dir of dirs) {
       const manifestPath = nodePath.join(modulesDir, dir, "manifest.json");
       if (!nodeFs.existsSync(manifestPath)) continue;
       const manifest = JSON.parse(nodeFs.readFileSync(manifestPath, "utf8"));
-      const isInstalled = !!installedMap[manifest.id];
+      const isInstalled = manifest.id === "core" || !!installedMap[manifest.id];
+
+      // Build submodules with enabled state from flags
+      const submodules = (manifest.submodules || []).map(function(sub) {
+        return {
+          id: sub.id,
+          name: sub.name,
+          description: sub.description || "",
+          default: sub.default !== undefined ? sub.default : true,
+          enabled: flags[sub.id] !== undefined ? !!flags[sub.id] : (sub.default !== undefined ? sub.default : true)
+        };
+      });
+
       result.push({
         id: manifest.id,
         name: manifest.name,
@@ -1975,7 +1990,8 @@ app.get("/api/modules", async (req, res) => {
         layer: manifest.layer,
         dependencies: manifest.dependencies || [],
         status: isInstalled ? "ACTIVE" : "INACTIVE",
-        installed_at: installedMap[manifest.id] || null
+        installed_at: installedMap[manifest.id] || null,
+        submodules: submodules
       });
     }
 
@@ -2078,6 +2094,20 @@ app.get("/api/admin/analytics/summary", async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: "Analytics unavailable", detail: err.message });
+  }
+});
+
+// GET /api/admin/feature-flags — returns all flags including sub-module states
+app.get("/api/admin/feature-flags", async (req, res) => {
+  const admin = await requireAdmin(req, res); if (!admin) return;
+  try {
+    const slug = req.query.slug || "digitaltowns";
+    const comm = await db.one("SELECT feature_flags FROM communities WHERE slug = $1", [slug]);
+    if (!comm) return res.status(404).json({ error: "Community not found" });
+    const flags = typeof comm.feature_flags === "string" ? JSON.parse(comm.feature_flags || "{}") : (comm.feature_flags || {});
+    res.json({ community: slug, flags: flags });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load flags", detail: err.message });
   }
 });
 

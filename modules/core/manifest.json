@@ -5,5 +5,25 @@
   "description": "Migrations table, communities, users, sessions. Always runs first.",
   "layer": 0,
   "dependencies": [],
-  "alwaysRun": true
+  "alwaysRun": true,
+  "submodules": [
+    {
+      "id": "core.sessions",
+      "name": "Session Management",
+      "description": "Cookie-based session tracking",
+      "default": true
+    },
+    {
+      "id": "core.communities",
+      "name": "Communities",
+      "description": "Community records and configuration",
+      "default": true
+    },
+    {
+      "id": "core.users",
+      "name": "User Accounts",
+      "description": "User registration and profiles",
+      "default": true
+    }
+  ]
 }

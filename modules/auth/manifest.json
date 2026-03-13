@@ -5,10 +5,41 @@
   "layer": 1,
   "dependencies": ["core"],
   "submodules": [
-    "email-otp",
-    "google-oauth",
-    "facebook-oauth",
-    "trust-tiers",
-    "sessions"
+    {
+      "id": "auth.facebook",
+      "name": "Facebook OAuth",
+      "description": "Login with Facebook",
+      "default": true
+    },
+    {
+      "id": "auth.google",
+      "name": "Google OAuth",
+      "description": "Login with Google",
+      "default": true
+    },
+    {
+      "id": "auth.email-otp",
+      "name": "Email OTP",
+      "description": "6-digit email verification",
+      "default": true
+    },
+    {
+      "id": "auth.phone-verify",
+      "name": "Phone Verification",
+      "description": "SMS code verification",
+      "default": false
+    },
+    {
+      "id": "auth.id-scan",
+      "name": "ID Scan",
+      "description": "Stripe Identity document scan",
+      "default": false
+    },
+    {
+      "id": "auth.gps-presence",
+      "name": "GPS Presence",
+      "description": "Physical location verification",
+      "default": false
+    }
   ]
 }

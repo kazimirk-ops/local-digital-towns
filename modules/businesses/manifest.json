@@ -4,5 +4,31 @@
   "version": "1.0.0",
   "layer": 0,
   "dependencies": ["core", "places"],
-  "description": "Business listings, seeded map pins, claim flow, Haversine geo filter, local business applications."
+  "description": "Business listings, seeded map pins, claim flow, Haversine geo filter, local business applications.",
+  "submodules": [
+    {
+      "id": "businesses.claims",
+      "name": "Business Claims",
+      "description": "Claim business listing",
+      "default": true
+    },
+    {
+      "id": "businesses.reviews",
+      "name": "Business Reviews",
+      "description": "Business reviews",
+      "default": true
+    },
+    {
+      "id": "businesses.seeded-pins",
+      "name": "Seeded Pins",
+      "description": "Auto-seeded map pins",
+      "default": true
+    },
+    {
+      "id": "businesses.applications",
+      "name": "Business Applications",
+      "description": "Apply to list business",
+      "default": true
+    }
+  ]
 }

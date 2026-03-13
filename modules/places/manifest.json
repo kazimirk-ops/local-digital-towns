@@ -4,5 +4,37 @@
   "version": "1.0.0",
   "layer": 0,
   "dependencies": ["core"],
-  "description": "Towns, regions, states, countries. Self-referencing hierarchy. Domain routing. Geo-filtering."
+  "description": "Towns, regions, states, countries. Self-referencing hierarchy. Domain routing. Geo-filtering.",
+  "submodules": [
+    {
+      "id": "places.memberships",
+      "name": "Memberships",
+      "description": "Join/leave places",
+      "default": true
+    },
+    {
+      "id": "places.requests",
+      "name": "Town Requests",
+      "description": "Town request form",
+      "default": true
+    },
+    {
+      "id": "places.geo-filter",
+      "name": "Geo Filter",
+      "description": "Haversine radius filtering",
+      "default": true
+    },
+    {
+      "id": "places.network-levels",
+      "name": "Network Levels",
+      "description": "PP level/progress system",
+      "default": true
+    },
+    {
+      "id": "places.genesis",
+      "name": "Town Genesis",
+      "description": "Town genesis map (L3)",
+      "default": false
+    }
+  ]
 }

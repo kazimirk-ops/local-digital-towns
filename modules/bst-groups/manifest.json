@@ -4,5 +4,37 @@
   "version": "1.0.0",
   "layer": 0,
   "dependencies": ["core", "places", "auth"],
-  "description": "Buy/Sell/Trade groups with mod dashboard, join requests, analytics."
+  "description": "Buy/Sell/Trade groups with mod dashboard, join requests, analytics.",
+  "submodules": [
+    {
+      "id": "bst-groups.mod-tools",
+      "name": "Mod Tools",
+      "description": "Moderator dashboard",
+      "default": true
+    },
+    {
+      "id": "bst-groups.leaderboard",
+      "name": "Leaderboard",
+      "description": "Sales leaderboard",
+      "default": false
+    },
+    {
+      "id": "bst-groups.listings-crosspost",
+      "name": "Listings Crosspost",
+      "description": "Post listings into groups",
+      "default": false
+    },
+    {
+      "id": "bst-groups.private-groups",
+      "name": "Private Groups",
+      "description": "Private group support",
+      "default": true
+    },
+    {
+      "id": "bst-groups.applications",
+      "name": "Group Applications",
+      "description": "Apply to create group",
+      "default": true
+    }
+  ]
 }

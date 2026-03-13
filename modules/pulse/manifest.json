@@ -4,5 +4,43 @@
   "version": "1.0.0",
   "layer": 0,
   "dependencies": ["core", "places", "auth"],
-  "description": "Daily digest, activity feed, Facebook export, pulse posts."
+  "description": "Daily digest, activity feed, Facebook export, pulse posts.",
+  "submodules": [
+    {
+      "id": "pulse.daily-digest",
+      "name": "Daily Digest",
+      "description": "Auto-generated daily stats",
+      "default": true
+    },
+    {
+      "id": "pulse.facebook-export",
+      "name": "Facebook Export",
+      "description": "Copy post for Facebook",
+      "default": true
+    },
+    {
+      "id": "pulse.tides",
+      "name": "Tide Data",
+      "description": "NOAA tide data (DT pattern)",
+      "default": false
+    },
+    {
+      "id": "pulse.posts",
+      "name": "Community Posts",
+      "description": "Community contributed posts",
+      "default": true
+    },
+    {
+      "id": "pulse.weather",
+      "name": "Weather Feed",
+      "description": "Weather feed",
+      "default": false
+    },
+    {
+      "id": "pulse.events",
+      "name": "Events Feed",
+      "description": "Upcoming events feed",
+      "default": false
+    }
+  ]
 }

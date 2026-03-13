@@ -4,5 +4,37 @@
   "version": "1.0.0",
   "layer": 0,
   "dependencies": ["core", "places", "auth"],
-  "description": "Channels, threaded messages, DMs, channel requests, muting."
+  "description": "Channels, threaded messages, DMs, channel requests, muting.",
+  "submodules": [
+    {
+      "id": "channels.threads",
+      "name": "Threads",
+      "description": "Threaded replies",
+      "default": true
+    },
+    {
+      "id": "channels.images",
+      "name": "Image Uploads",
+      "description": "Image uploads in messages",
+      "default": true
+    },
+    {
+      "id": "channels.dm",
+      "name": "Direct Messages",
+      "description": "Direct messages",
+      "default": true
+    },
+    {
+      "id": "channels.muting",
+      "name": "Muting",
+      "description": "Mute/block users",
+      "default": true
+    },
+    {
+      "id": "channels.requests",
+      "name": "Channel Requests",
+      "description": "User channel creation requests",
+      "default": true
+    }
+  ]
 }

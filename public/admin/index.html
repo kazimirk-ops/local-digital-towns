@@ -333,10 +333,10 @@
     <div class="panel" id="panel-flags">
       <div class="card">
         <div class="card-header">
-          <div><div class="card-title">Feature Flags</div><div class="card-sub">Toggle features per community</div></div>
-          <select id="flagCommunity" onchange="loadFlags()"></select>
+          <div><div class="card-title">Feature Flags</div><div class="card-sub">Toggle modules and sub-modules per community</div></div>
+          <select id="flagCommunity" onchange="loadFlags()" style="padding:6px 10px;background:#0c1219;border:1px solid #1e293b;border-radius:6px;color:#e2e8f0;font-size:13px;"></select>
         </div>
-        <div id="flagToggles"></div>
+        <div id="flagAccordion" style="margin-top:8px;"></div>
         <div class="msg" id="flagMsg"></div>
       </div>
     </div>
@@ -706,7 +706,8 @@
     }
 
     // ========== PANEL 6: FEATURE FLAGS ==========
-    var ALL_FLAGS = ['core', 'tags', 'auth', 'listings', 'orders', 'payments', 'sweepstakes', 'live-shows', 'referrals', 'pulse', 'channels', 'gigs'];
+    var flagModules = [];
+    var flagData = {};
 
     function loadFlagsCommunities() {
       api('/api/admin/communities').then(function(rows) {
@@ -722,25 +723,68 @@
     function loadFlags() {
       var slug = document.getElementById('flagCommunity').value;
       if (!slug) return;
-      api('/api/admin/communities').then(function(rows) {
-        var arr = Array.isArray(rows) ? rows : (rows.communities || [rows]);
-        var comm = arr.find(function(c) { return c.slug === slug; });
-        var flags = comm ? (comm.feature_flags || comm.featureFlags || {}) : {};
-        if (typeof flags === 'string') try { flags = JSON.parse(flags); } catch(e) { flags = {}; }
-        var el = document.getElementById('flagToggles');
-        el.innerHTML = ALL_FLAGS.map(function(f) {
-          var on = !!flags[f];
-          return '<div class="toggle-row"><span class="toggle-label">' + esc(f) + '</span>'
-            + '<div class="toggle' + (on ? ' on' : '') + '" onclick="toggleFlag(\'' + esc(slug) + '\',\'' + esc(f) + '\',' + !on + ',this)"></div></div>';
-        }).join('');
+      Promise.all([
+        api('/api/modules?community=' + encodeURIComponent(slug)),
+        api('/api/admin/feature-flags?slug=' + encodeURIComponent(slug))
+      ]).then(function(results) {
+        flagModules = results[0].modules || [];
+        flagData = results[1].flags || {};
+        renderFlagAccordion(slug);
         document.getElementById('flagMsg').textContent = '';
       }).catch(function(e) { document.getElementById('flagMsg').textContent = 'Error: ' + e.message; });
     }
 
-    function toggleFlag(slug, feature, enabled, el) {
+    function renderFlagAccordion(slug) {
+      var el = document.getElementById('flagAccordion');
+      el.innerHTML = flagModules.map(function(mod) {
+        var modOn = flagData[mod.id] !== undefined ? !!flagData[mod.id] : true;
+        var subs = mod.submodules || [];
+        var subHtml = subs.map(function(sub) {
+          var subOn = flagData[sub.id] !== undefined ? !!flagData[sub.id] : !!sub.default;
+          var disabled = !modOn;
+          return '<div class="toggle-row" style="padding-left:28px;opacity:' + (disabled ? '0.4' : '1') + ';" data-sub-row="' + esc(sub.id) + '">'
+            + '<span class="toggle-label" style="font-size:12px;color:#94a3b8;">' + esc(sub.name) + ' <span style="color:#475569;font-size:11px;">(' + esc(sub.id) + ')</span></span>'
+            + '<div class="toggle' + (subOn ? ' on' : '') + (disabled ? '' : '') + '" style="' + (disabled ? 'pointer-events:none;' : '') + '" onclick="toggleFlag(\'' + esc(slug) + '\',\'' + esc(sub.id) + '\',' + !subOn + ',this,\'' + esc(mod.id) + '\')"></div>'
+            + '</div>';
+        }).join('');
+        return '<div style="border:1px solid #1e293b;border-radius:8px;margin-bottom:8px;overflow:hidden;" data-mod-section="' + esc(mod.id) + '">'
+          + '<div class="toggle-row" style="background:#0c1219;padding:12px 14px;border-bottom:1px solid #1e293b;">'
+          + '<span class="toggle-label" style="font-weight:600;color:#e2e8f0;font-size:14px;">' + esc(mod.name) + ' <span style="color:#475569;font-size:11px;font-weight:400;">(' + esc(mod.id) + ')</span></span>'
+          + '<div class="toggle' + (modOn ? ' on' : '') + '" onclick="toggleModuleFlag(\'' + esc(slug) + '\',\'' + esc(mod.id) + '\',' + !modOn + ',this)"></div>'
+          + '</div>'
+          + subHtml
+          + '</div>';
+      }).join('');
+    }
+
+    function toggleModuleFlag(slug, moduleId, enabled, el) {
+      api('/api/admin/feature-flags', { method: 'PUT', body: JSON.stringify({ slug: slug, feature: moduleId, enabled: enabled }) })
+        .then(function() {
+          if (enabled) el.classList.add('on'); else el.classList.remove('on');
+          flagData[moduleId] = enabled;
+          // Update sub-module row opacity and pointer-events
+          var section = document.querySelector('[data-mod-section="' + moduleId + '"]');
+          if (section) {
+            section.querySelectorAll('[data-sub-row]').forEach(function(row) {
+              row.style.opacity = enabled ? '1' : '0.4';
+              var tog = row.querySelector('.toggle');
+              if (tog) tog.style.pointerEvents = enabled ? '' : 'none';
+            });
+          }
+          document.getElementById('flagMsg').className = 'msg ok';
+          document.getElementById('flagMsg').textContent = moduleId + ' ' + (enabled ? 'enabled' : 'disabled');
+        })
+        .catch(function(e) {
+          document.getElementById('flagMsg').className = 'msg err';
+          document.getElementById('flagMsg').textContent = 'Error: ' + e.message;
+        });
+    }
+
+    function toggleFlag(slug, feature, enabled, el, parentModuleId) {
       api('/api/admin/feature-flags', { method: 'PUT', body: JSON.stringify({ slug: slug, feature: feature, enabled: enabled }) })
         .then(function() {
           if (enabled) el.classList.add('on'); else el.classList.remove('on');
+          flagData[feature] = enabled;
           document.getElementById('flagMsg').className = 'msg ok';
           document.getElementById('flagMsg').textContent = feature + ' ' + (enabled ? 'enabled' : 'disabled');
         })
