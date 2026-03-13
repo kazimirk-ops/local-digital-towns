@@ -1,0 +1,9 @@
+{
+  "id": "core",
+  "name": "Core Infrastructure",
+  "version": "1.0.0",
+  "description": "Migrations table, communities, users, sessions. Always runs first.",
+  "layer": 0,
+  "dependencies": [],
+  "alwaysRun": true
+}

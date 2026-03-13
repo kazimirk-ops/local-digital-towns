@@ -1,0 +1,8 @@
+{
+  "id": "tags",
+  "name": "Tag System",
+  "version": "1.0.0",
+  "description": "Universal tagging for users, listings, and events. Content, behavioral, and interest tags.",
+  "layer": 1,
+  "dependencies": ["core"]
+}

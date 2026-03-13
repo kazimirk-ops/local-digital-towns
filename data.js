@@ -77,6 +77,67 @@ async function runStatements(sql){
 }
 
 async function initDb(){
+  const fs = require("fs");
+  const nodePath = require("path");
+  const modulesDir = nodePath.join(__dirname, "modules");
+
+  // Step 1: Always run core migration first (creates migrations, communities, users, sessions)
+  const coreSql = fs.readFileSync(nodePath.join(modulesDir, "core", "migration.sql"), "utf8");
+  await runStatements(coreSql);
+  console.log("Module core: applied (always runs)");
+
+  // Step 2: Read community feature_flags to find enabled modules
+  const commRow = await db.one("SELECT slug, feature_flags FROM communities WHERE status = 'active' LIMIT 1");
+  if (!commRow) {
+    console.log("Module loader: no active community found, skipping module migrations");
+    return;
+  }
+  const flags = commRow.feature_flags || {};
+  console.log("Module loader: community=" + commRow.slug + ", flags=" + JSON.stringify(flags));
+
+  // Step 3: Scan modules directory for enabled modules
+  const moduleDirs = fs.readdirSync(modulesDir).filter(function(d) {
+    return fs.statSync(nodePath.join(modulesDir, d)).isDirectory() && d !== "core";
+  });
+
+  for (const modDir of moduleDirs) {
+    const manifestPath = nodePath.join(modulesDir, modDir, "manifest.json");
+    const migrationPath = nodePath.join(modulesDir, modDir, "migration.sql");
+
+    if (!fs.existsSync(manifestPath) || !fs.existsSync(migrationPath)) continue;
+
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    const modId = manifest.id || modDir;
+
+    // Check if this module is enabled in feature_flags
+    if (!flags[modId]) {
+      console.log("Module " + modId + ": not enabled, skipping");
+      continue;
+    }
+
+    // Check if already applied
+    const applied = await db.one("SELECT id FROM migrations WHERE module_name = $1", [modId]);
+    if (applied) {
+      console.log("Module " + modId + ": already current");
+      continue;
+    }
+
+    // Run migration
+    const migSql = fs.readFileSync(migrationPath, "utf8");
+    await runStatements(migSql);
+    await db.query("INSERT INTO migrations (module_name) VALUES ($1)", [modId]);
+    console.log("Module " + modId + ": applied");
+  }
+
+  console.log("Module migrations complete");
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   OLD SCHEMA — preserved for reference, do not run.
+   All tables are now created by module migrations in /modules.
+   ═══════════════════════════════════════════════════════════════ */
+/*
+async function initDb_OLD(){
   const schemaSql = `
 CREATE TABLE IF NOT EXISTS towns (
   id SERIAL PRIMARY KEY,
@@ -888,6 +949,10 @@ CREATE INDEX IF NOT EXISTS idx_media_created ON media_objects(createdAt DESC);
   await seedAdminUser();
   await seedAdminTestStore();
 }
+*/
+// ═══════════════════════════════════════════════════════════════
+// END OLD SCHEMA
+// ═══════════════════════════════════════════════════════════════
 
 // ---------- Seed ----------
 async function seedChannels(){
