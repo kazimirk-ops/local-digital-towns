@@ -1,0 +1,458 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mod Dashboard</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif; background: #070b10; color: #e2e8f0; }
+      a { color: #10b981; text-decoration: none; }
+      :root { --accent: #10b981; }
+
+      .top-bar { background: #111827; border-bottom: 1px solid #1e293b; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+      .logo { font-size: 20px; font-weight: 800; color: var(--accent); }
+      .top-links { display: flex; gap: 16px; align-items: center; }
+      .top-links a { font-size: 13px; color: #94a3b8; }
+      .top-links a:hover { color: #e2e8f0; }
+
+      .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+      .page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+      .page-header h1 { font-size: 24px; font-weight: 800; color: #fff; }
+
+      .tab-nav { display: flex; gap: 0; border-bottom: 1px solid #1e293b; margin-bottom: 24px; overflow-x: auto; }
+      .tab-btn { padding: 12px 18px; border: none; background: none; color: #64748b; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; font-family: inherit; transition: all .15s; white-space: nowrap; position: relative; }
+      .tab-btn:hover { color: #e2e8f0; }
+      .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+      .tab-badge { position: absolute; top: 6px; right: 4px; background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px; min-width: 16px; text-align: center; }
+
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+
+      .data-table { width: 100%; border-collapse: collapse; }
+      .data-table th { text-align: left; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .05em; padding: 10px 12px; border-bottom: 1px solid #1e293b; }
+      .data-table td { padding: 10px 12px; border-bottom: 1px solid #0f172a; font-size: 13px; vertical-align: middle; }
+      .data-table tr:hover td { background: rgba(30,41,59,.5); }
+      .avatar-sm { width: 32px; height: 32px; border-radius: 50%; background: #1e293b; object-fit: cover; vertical-align: middle; }
+      .avatar-placeholder { width: 32px; height: 32px; border-radius: 50%; background: #1e293b; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; color: #64748b; vertical-align: middle; }
+      .role-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; }
+      .role-mod { background: rgba(16,185,129,.12); color: var(--accent); }
+      .role-member { background: rgba(100,116,139,.15); color: #94a3b8; }
+
+      .filter-pills { display: flex; gap: 8px; margin-bottom: 16px; }
+      .pill { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; background: #1e293b; color: #94a3b8; border: 1px solid transparent; transition: all .15s; }
+      .pill:hover { background: #263244; color: #e2e8f0; }
+      .pill.active { background: rgba(16,185,129,.15); color: var(--accent); border-color: rgba(16,185,129,.4); }
+
+      .btn { padding: 6px 14px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .15s; }
+      .btn:hover { opacity: .85; }
+      .btn:disabled { opacity: .5; cursor: not-allowed; }
+      .btn-red { background: rgba(239,68,68,.15); color: #ef4444; }
+      .btn-green { background: var(--accent); color: #fff; }
+      .btn-gray { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+      .btn-save { padding: 10px 28px; font-size: 14px; font-weight: 700; border-radius: 8px; }
+
+      .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-bottom: 24px; }
+      .kpi-card { background: #111827; border: 1px solid #1e293b; border-radius: 12px; padding: 20px; }
+      .kpi-label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+      .kpi-value { font-size: 28px; font-weight: 800; color: #fff; }
+
+      .form-group { margin-bottom: 18px; }
+      .form-label { display: block; font-size: 13px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; }
+      .form-input { width: 100%; padding: 10px 12px; background: #0a0e1a; border: 1px solid #1e293b; border-radius: 8px; color: #e2e8f0; font-size: 14px; font-family: inherit; }
+      .form-input:focus { outline: none; border-color: var(--accent); }
+      .form-textarea { resize: vertical; min-height: 100px; }
+      .color-swatches { display: flex; gap: 8px; margin-top: 6px; }
+      .swatch { width: 28px; height: 28px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; transition: border-color .15s; }
+      .swatch:hover, .swatch.active { border-color: #fff; }
+      .toggle-row { display: flex; align-items: center; gap: 12px; }
+      .toggle { position: relative; width: 44px; height: 24px; background: #334155; border-radius: 12px; cursor: pointer; transition: background .2s; }
+      .toggle.on { background: var(--accent); }
+      .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: transform .2s; }
+      .toggle.on::after { transform: translateX(20px); }
+
+      .info-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #1e293b; font-size: 13px; }
+      .info-row:last-child { border-bottom: none; }
+
+      .empty { text-align: center; padding: 40px 20px; color: #64748b; font-size: 14px; }
+      .loading { text-align: center; padding: 60px 20px; color: #64748b; }
+      .toast { position: fixed; bottom: 24px; right: 24px; background: #111827; border: 1px solid var(--accent); color: var(--accent); padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 300; display: none; }
+
+      @media (max-width: 640px) {
+        .data-table { font-size: 12px; }
+        .data-table th, .data-table td { padding: 8px 6px; }
+        .hide-mobile { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top-bar">
+      <a href="/" class="logo">Digital Towns</a>
+      <div class="top-links">
+        <a href="/bst-groups">BST Groups</a>
+      </div>
+    </div>
+
+    <div class="container">
+      <div id="pageLoading" class="loading">Loading...</div>
+      <div id="mainContent" style="display:none;">
+        <div class="page-header">
+          <h1 id="groupTitle">Mod Dashboard</h1>
+        </div>
+
+        <div class="tab-nav" id="tabNav">
+          <button class="tab-btn active" data-tab="members">Members</button>
+          <button class="tab-btn" data-tab="listings">Listings</button>
+          <button class="tab-btn" data-tab="settings">Settings</button>
+          <button class="tab-btn" data-tab="analytics">Analytics</button>
+          <button class="tab-btn" data-tab="join-requests">Join Requests <span class="tab-badge" id="jrBadge" style="display:none;">0</span></button>
+        </div>
+
+        <!-- Members Tab -->
+        <div class="tab-content active" id="tab-members">
+          <div class="filter-pills" id="memberFilter">
+            <span class="pill active" data-filter="all">All</span>
+            <span class="pill" data-filter="mods">Mods Only</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="data-table" id="membersTable">
+              <thead><tr><th></th><th>Name</th><th class="hide-mobile">Email</th><th>Role</th><th class="hide-mobile">Joined</th><th>Actions</th></tr></thead>
+              <tbody id="membersBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="membersEmpty" style="display:none;">No members yet.</div>
+        </div>
+
+        <!-- Listings Tab (placeholder — BST listings not yet built) -->
+        <div class="tab-content" id="tab-listings">
+          <div class="empty" id="listingsEmpty">BST listings coming soon.</div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div class="tab-content" id="tab-settings">
+          <div style="max-width:600px;">
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea class="form-input form-textarea" id="setDesc"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Rules</label>
+              <textarea class="form-input form-textarea" id="setRules"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Banner Color</label>
+              <input type="color" id="setColor" class="form-input" style="width:60px;height:36px;padding:2px;cursor:pointer;" />
+              <div class="color-swatches" id="swatches"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Private Group</label>
+              <div class="toggle-row">
+                <div class="toggle" id="setPrivate" onclick="togglePrivate()"></div>
+                <span style="font-size:13px;color:#94a3b8;" id="privateLabel">Public</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Facebook Group URL</label>
+              <input type="text" class="form-input" id="setFbUrl" placeholder="https://facebook.com/groups/..." />
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;margin-top:24px;">
+              <button class="btn btn-green btn-save" id="saveSettingsBtn" onclick="saveSettings()">Save Settings</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div class="tab-content" id="tab-analytics">
+          <div class="kpi-grid" id="kpiGrid"></div>
+          <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:16px;">
+            <div class="info-row">
+              <span style="color:#64748b;">Group URL</span>
+              <a id="analyticsUrl" href="#" style="flex:1;margin-left:8px;word-break:break-all;"></a>
+              <button class="btn btn-gray" onclick="copyGroupUrl()">Copy</button>
+            </div>
+            <div class="info-row" id="analyticsFbRow" style="display:none;">
+              <span style="color:#64748b;">Facebook Group</span>
+              <a id="analyticsFbUrl" href="#" target="_blank" rel="noopener" style="flex:1;margin-left:8px;word-break:break-all;"></a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Join Requests Tab -->
+        <div class="tab-content" id="tab-join-requests">
+          <div style="overflow-x:auto;">
+            <table class="data-table" id="jrTable">
+              <thead><tr><th></th><th>Name</th><th class="hide-mobile">Email</th><th class="hide-mobile">Message</th><th class="hide-mobile">Requested</th><th>Actions</th></tr></thead>
+              <tbody id="jrBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="jrEmpty" style="display:none;">No pending join requests.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    (function(){
+      var slug = window.location.pathname.split('/')[2] || '';
+      if (!slug) { document.getElementById('pageLoading').innerHTML = 'No group specified.'; return; }
+
+      var currentGroup = null;
+      var allMembers = [];
+      var memberFilterMode = 'all';
+      var isPrivate = false;
+      var swatchColors = ['#10b981','#3b82f6','#8b5cf6','#f59e0b','#ef4444','#ec4899'];
+
+      function esc(s) {
+        if (!s) return '';
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      function toast(msg) {
+        var t = document.getElementById('toast');
+        t.textContent = msg;
+        t.style.display = 'block';
+        setTimeout(function(){ t.style.display = 'none'; }, 2500);
+      }
+
+      function avatarHtml(url) {
+        if (url) return '<img class="avatar-sm" src="' + url.replace(/"/g, '&quot;') + '" alt="" />';
+        return '<div class="avatar-placeholder">&#128100;</div>';
+      }
+
+      // Load group info
+      fetch('/api/bst-groups/' + encodeURIComponent(slug), { credentials: 'include' })
+        .then(function(r){ return r.json(); }).then(function(g){
+          if (g.error) { document.getElementById('pageLoading').innerHTML = '<span style="color:#ef4444;">' + esc(g.error) + '</span>'; return; }
+          currentGroup = g;
+          document.getElementById('groupTitle').textContent = (g.name || 'Group') + ' — Mod Dashboard';
+          document.getElementById('pageLoading').style.display = 'none';
+          document.getElementById('mainContent').style.display = '';
+          loadActiveTab();
+        }).catch(function(){
+          document.getElementById('pageLoading').innerHTML = '<span style="color:#ef4444;">Failed to load group.</span>';
+        });
+
+      // Tabs
+      document.querySelectorAll('#tabNav .tab-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          document.querySelectorAll('#tabNav .tab-btn').forEach(function(b){ b.classList.remove('active'); });
+          btn.classList.add('active');
+          document.querySelectorAll('.tab-content').forEach(function(tc){ tc.classList.remove('active'); });
+          document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+          loadActiveTab();
+        });
+      });
+
+      function getActiveTab() {
+        var active = document.querySelector('#tabNav .tab-btn.active');
+        return active ? active.dataset.tab : 'members';
+      }
+
+      function loadActiveTab() {
+        var tab = getActiveTab();
+        if (tab === 'members') loadMembers();
+        else if (tab === 'settings') loadSettings();
+        else if (tab === 'analytics') loadAnalytics();
+        else if (tab === 'join-requests') loadJoinRequests();
+      }
+
+      // --- Members ---
+      document.querySelectorAll('#memberFilter .pill').forEach(function(p){
+        p.addEventListener('click', function(){
+          document.querySelectorAll('#memberFilter .pill').forEach(function(pp){ pp.classList.remove('active'); });
+          p.classList.add('active');
+          memberFilterMode = p.dataset.filter;
+          renderMembers();
+        });
+      });
+
+      function loadMembers() {
+        fetch('/api/bst-groups/' + encodeURIComponent(slug) + '/members', { credentials: 'include' })
+          .then(function(r){ return r.json(); }).then(function(data){
+            allMembers = data.members || [];
+            renderMembers();
+          });
+        // Update JR badge
+        fetch('/api/bst-groups/' + encodeURIComponent(slug) + '/join-requests', { credentials: 'include' })
+          .then(function(r){ if (r.ok) return r.json(); return { requests: [] }; }).then(function(data){
+            var count = (data.requests || []).length;
+            var badge = document.getElementById('jrBadge');
+            if (count > 0) { badge.textContent = count; badge.style.display = ''; }
+            else { badge.style.display = 'none'; }
+          }).catch(function(){});
+      }
+
+      function renderMembers() {
+        var filtered = allMembers;
+        if (memberFilterMode === 'mods') {
+          filtered = allMembers.filter(function(m){ return m.role === 'mod' || m.role === 'co-mod'; });
+        }
+        var body = document.getElementById('membersBody');
+        var empty = document.getElementById('membersEmpty');
+        if (!filtered.length) { body.innerHTML = ''; empty.style.display = ''; return; }
+        empty.style.display = 'none';
+        body.innerHTML = filtered.map(function(m){
+          var joined = m.joined_at ? new Date(m.joined_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          var roleClass = (m.role === 'mod' || m.role === 'co-mod') ? 'role-mod' : 'role-member';
+          var removeBtn = (m.role !== 'mod')
+            ? '<button class="btn btn-red" onclick="removeMember(' + m.user_id + ', this)">Remove</button>'
+            : '';
+          return '<tr>'
+            + '<td>' + avatarHtml(m.avatar_url) + '</td>'
+            + '<td>' + esc(m.display_name || 'Member') + '</td>'
+            + '<td class="hide-mobile">' + esc(m.email || '') + '</td>'
+            + '<td><span class="role-badge ' + roleClass + '">' + esc(m.role) + '</span></td>'
+            + '<td class="hide-mobile">' + joined + '</td>'
+            + '<td>' + removeBtn + '</td>'
+            + '</tr>';
+        }).join('');
+      }
+
+      window.removeMember = function(userId, btn) {
+        if (!confirm('Remove this member from the group?')) return;
+        btn.disabled = true; btn.textContent = '...';
+        fetch('/api/bst-groups/' + encodeURIComponent(slug) + '/members/' + userId, {
+          method: 'DELETE', credentials: 'include'
+        }).then(function(r){ return r.json(); }).then(function(d){
+          if (d.ok) {
+            allMembers = allMembers.filter(function(m){ return m.user_id !== userId; });
+            renderMembers();
+            toast('Member removed');
+          } else { btn.disabled = false; btn.textContent = 'Remove'; alert(d.error || 'Failed'); }
+        }).catch(function(){ btn.disabled = false; btn.textContent = 'Remove'; });
+      };
+
+      // --- Settings ---
+      function loadSettings() {
+        if (!currentGroup) return;
+        document.getElementById('setDesc').value = currentGroup.description || '';
+        document.getElementById('setRules').value = currentGroup.rules || '';
+        document.getElementById('setColor').value = currentGroup.banner_color || '#10b981';
+        document.getElementById('setFbUrl').value = currentGroup.facebook_group_url || '';
+        isPrivate = !!currentGroup.is_private;
+        updatePrivateToggle();
+
+        var sw = document.getElementById('swatches');
+        sw.innerHTML = swatchColors.map(function(c){
+          var act = (currentGroup.banner_color || '#10b981') === c ? ' active' : '';
+          return '<div class="swatch' + act + '" style="background:' + c + ';" data-color="' + c + '"></div>';
+        }).join('');
+        sw.querySelectorAll('.swatch').forEach(function(s){
+          s.addEventListener('click', function(){
+            document.getElementById('setColor').value = s.dataset.color;
+            sw.querySelectorAll('.swatch').forEach(function(ss){ ss.classList.remove('active'); });
+            s.classList.add('active');
+          });
+        });
+      }
+
+      function updatePrivateToggle() {
+        var tog = document.getElementById('setPrivate');
+        var label = document.getElementById('privateLabel');
+        if (isPrivate) { tog.classList.add('on'); label.textContent = 'Private'; }
+        else { tog.classList.remove('on'); label.textContent = 'Public'; }
+      }
+
+      window.togglePrivate = function() {
+        isPrivate = !isPrivate;
+        updatePrivateToggle();
+      };
+
+      window.saveSettings = function() {
+        toast('Settings save not yet wired (read-only for now)');
+      };
+
+      // --- Analytics ---
+      function loadAnalytics() {
+        var grid = document.getElementById('kpiGrid');
+        grid.innerHTML = '<div style="text-align:center;padding:20px;color:#64748b;">Loading...</div>';
+        fetch('/api/bst-groups/' + encodeURIComponent(slug) + '/analytics', { credentials: 'include' })
+          .then(function(r){ return r.json(); }).then(function(d){
+            grid.innerHTML = [
+              { label: 'Total Members', value: d.memberCount || 0 },
+              { label: 'New This Month', value: d.newThisMonth || 0 },
+              { label: 'Pending Requests', value: d.pendingRequests || 0 }
+            ].map(function(k){
+              return '<div class="kpi-card"><div class="kpi-label">' + k.label + '</div><div class="kpi-value">' + k.value + '</div></div>';
+            }).join('');
+
+            var groupUrl = window.location.origin + '/bst-groups/' + encodeURIComponent(slug);
+            var urlEl = document.getElementById('analyticsUrl');
+            urlEl.href = groupUrl; urlEl.textContent = groupUrl;
+
+            var fbRow = document.getElementById('analyticsFbRow');
+            if (currentGroup && currentGroup.facebook_group_url) {
+              fbRow.style.display = '';
+              var fbEl = document.getElementById('analyticsFbUrl');
+              fbEl.href = currentGroup.facebook_group_url;
+              fbEl.textContent = currentGroup.facebook_group_url;
+            } else { fbRow.style.display = 'none'; }
+          }).catch(function(){
+            grid.innerHTML = '<div style="color:#ef4444;">Failed to load analytics.</div>';
+          });
+      }
+
+      window.copyGroupUrl = function() {
+        var url = window.location.origin + '/bst-groups/' + encodeURIComponent(slug);
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(url).then(function(){ toast('URL copied!'); });
+        }
+      };
+
+      // --- Join Requests ---
+      function loadJoinRequests() {
+        var body = document.getElementById('jrBody');
+        var empty = document.getElementById('jrEmpty');
+        body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#64748b;">Loading...</td></tr>';
+        empty.style.display = 'none';
+        fetch('/api/bst-groups/' + encodeURIComponent(slug) + '/join-requests', { credentials: 'include' })
+          .then(function(r){ return r.json(); }).then(function(data){
+            var reqs = data.requests || [];
+            var badge = document.getElementById('jrBadge');
+            if (reqs.length > 0) { badge.textContent = reqs.length; badge.style.display = ''; }
+            else { badge.style.display = 'none'; }
+
+            if (!reqs.length) { body.innerHTML = ''; empty.style.display = ''; return; }
+            body.innerHTML = reqs.map(function(r){
+              var reqDate = r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+              return '<tr data-rid="' + r.id + '">'
+                + '<td>' + avatarHtml(r.avatar_url) + '</td>'
+                + '<td>' + esc(r.display_name || 'User') + '</td>'
+                + '<td class="hide-mobile">' + esc(r.email || '') + '</td>'
+                + '<td class="hide-mobile" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.message || '') + '</td>'
+                + '<td class="hide-mobile">' + reqDate + '</td>'
+                + '<td style="white-space:nowrap;"><button class="btn btn-green" style="margin-right:4px;" onclick="handleJR(' + r.id + ',\'approve\',this)">Approve</button><button class="btn btn-red" onclick="handleJR(' + r.id + ',\'decline\',this)">Decline</button></td>'
+                + '</tr>';
+            }).join('');
+          }).catch(function(){
+            body.innerHTML = ''; empty.style.display = ''; empty.textContent = 'Failed to load requests.';
+          });
+      }
+
+      window.handleJR = function(requestId, action, btn) {
+        btn.disabled = true;
+        var row = btn.closest('tr');
+        fetch('/api/bst-groups/' + encodeURIComponent(slug) + '/join-requests/' + requestId, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ action: action })
+        }).then(function(r){ return r.json(); }).then(function(d){
+          if (d.ok) {
+            if (row) row.remove();
+            toast(action === 'approve' ? 'Member approved' : 'Request declined');
+            var remaining = document.querySelectorAll('#jrBody tr').length;
+            var badge = document.getElementById('jrBadge');
+            if (remaining > 0) { badge.textContent = remaining; badge.style.display = ''; }
+            else { badge.style.display = 'none'; document.getElementById('jrEmpty').style.display = ''; }
+          } else { btn.disabled = false; alert(d.error || 'Failed'); }
+        }).catch(function(){ btn.disabled = false; });
+      };
+    })();
+    </script>
+  </body>
+</html>

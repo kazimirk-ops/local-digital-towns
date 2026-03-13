@@ -1,0 +1,8 @@
+{
+  "id": "channels",
+  "name": "Discussion Groups & Channels",
+  "version": "1.0.0",
+  "layer": 0,
+  "dependencies": ["core", "places", "auth"],
+  "description": "Channels, threaded messages, DMs, channel requests, muting."
+}

@@ -1,0 +1,8 @@
+{
+  "id": "gigs",
+  "name": "Gigs & Local Services",
+  "version": "1.0.0",
+  "layer": 0,
+  "dependencies": ["core", "places", "auth"],
+  "description": "Gig categories, providers, bookings, reviews, service inquiries."
+}

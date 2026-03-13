@@ -1,0 +1,8 @@
+{
+  "id": "businesses",
+  "name": "Map & Businesses",
+  "version": "1.0.0",
+  "layer": 0,
+  "dependencies": ["core", "places"],
+  "description": "Business listings, seeded map pins, claim flow, Haversine geo filter, local business applications."
+}

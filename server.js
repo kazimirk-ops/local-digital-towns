@@ -299,6 +299,13 @@ try {
   console.error("Places module failed to load:", err?.message);
 }
 
+// ─── Mount L0 modules (before view-only lockdown so POST/PUT/DELETE endpoints work) ───
+try { require('./modules/businesses/routes')(app, db); } catch(e) { console.error('businesses:', e.message); }
+try { require('./modules/bst-groups/routes')(app, db); } catch(e) { console.error('bst-groups:', e.message); }
+try { require('./modules/channels/routes')(app, db); } catch(e) { console.error('channels:', e.message); }
+try { require('./modules/gigs/routes')(app, db); } catch(e) { console.error('gigs:', e.message); }
+try { require('./modules/pulse/routes')(app, db); } catch(e) { console.error('pulse:', e.message); }
+
 // ─── View-only lockdown ───
 app.use(function(req, res, next) {
   if (req.method === 'GET') return next();
@@ -306,6 +313,12 @@ app.use(function(req, res, next) {
   if (req.path.startsWith('/api/auth/') || req.path.startsWith('/auth/')) return next();
   // Allow places POST/PUT/DELETE endpoints through
   if (req.path.startsWith('/api/places') || req.path.startsWith('/api/place-requests') || req.path.startsWith('/api/admin/place')) return next();
+  // Allow L0 module POST/PUT/DELETE endpoints through
+  if (req.path.startsWith('/api/businesses') || req.path.startsWith('/api/localbiz') || req.path.startsWith('/api/admin/businesses') || req.path.startsWith('/api/admin/localbiz')) return next();
+  if (req.path.startsWith('/api/bst-groups') || req.path.startsWith('/api/admin/bst-groups')) return next();
+  if (req.path.startsWith('/api/channels') || req.path.startsWith('/api/channel-requests') || req.path.startsWith('/api/dm/') || req.path.startsWith('/api/admin/channel-requests')) return next();
+  if (req.path.startsWith('/api/gigs') || req.path.startsWith('/api/service-inquiries') || req.path.startsWith('/api/admin/gig')) return next();
+  if (req.path.startsWith('/api/pulse') || req.path.startsWith('/api/admin/pulse')) return next();
   return res.status(403).json({ error: 'This site is in view-only mode.' });
 });
 
