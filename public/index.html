@@ -1,1166 +1,306 @@
-<!doctype html>
-<html>
-  <body>
-  <div style="background:#1e3a5f;color:#94a3b8;text-align:center;padding:8px;font-size:12px;position:fixed;top:0;left:0;right:0;z-index:9999;">🔒 View-only mode — template site</div>
-  </body>
-  <head>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN50NC7RV"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-WLN50NC7RV');
-</script>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- OG tags: values should match town config -->
-    <meta property="og:title" content="Sebastian, Florida — Local Community Platform">
-    <meta property="og:description" content="Buy, sell, chat, enter giveaways, discover local businesses. Free to join.">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://sebastian-florida.com">
-    <meta property="og:image" content="https://sebastian-florida.com/og-image.jpg">
-    <!-- TODO: OG tags should be server-rendered from town config -->
-    <meta name="description" content="Sebastian, Florida's local community platform. Marketplace, giveaways, events, local business directory. Free to join.">
-    <title>Sebastian Digital Town</title>
-    <script>(function(){var t=window.__TOWN_CONFIG__?.pageTitles?.main;if(t)document.title=t;})();</script>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Sora:wght@400;600;800&display=swap" />
-    <link rel="stylesheet" href="/ui-kit.css?v=1">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-    <link rel="stylesheet" href="/ui_v2.css?v=4">
-    <style>
-      .pulse-card:hover { background: rgba(47,164,185,0.1) !important; border-color: rgba(47,164,185,0.3) !important; }
-      .hero-scene {
-        background: #0a0a14;
-        border-radius: 12px;
-        overflow: hidden;
-        margin: 12px;
-      }
-      .hero-top-label {
-        text-align: center;
-        padding: 14px;
-        color: #f0c040;
-        font-family: monospace;
-        font-size: 12px;
-        letter-spacing: 3px;
-        border-bottom: 1px solid #1e293b;
-      }
-      .hero-text {
-        text-align: center;
-        padding: 20px 24px 28px;
-        background: linear-gradient(to bottom, transparent, #0a0a14);
-      }
-      .hero-headline {
-        font-size: clamp(24px, 5vw, 42px);
-        font-weight: 800;
-        color: #ffffff;
-        margin-bottom: 10px;
-        text-shadow: 0 2px 20px rgba(0,0,0,0.8);
-        font-family: Georgia, serif;
-      }
-      .hero-sub {
-        font-size: clamp(14px, 2.5vw, 18px);
-        color: #e2e8f0;
-        margin-bottom: 18px;
-        font-style: italic;
-      }
-      .hero-cta {
-        display: inline-block;
-        background: #991b1b;
-        color: #fecaca;
-        border: 1px solid #ef4444;
-        padding: 10px 24px;
-        font-family: monospace;
-        font-size: 12px;
-        letter-spacing: 2px;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      .landlord-reviews {
-        background: #0a0e1a;
-        border-top: 1px solid #1e293b;
-        padding: 24px 20px;
-      }
-      .lr-title {
-        font-size: 18px;
-        font-weight: 700;
-        color: #e2e8f0;
-        margin-bottom: 16px;
-      }
-      .lr-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-      .lr-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        background: #111827;
-        border: 1px solid #1e293b;
-        border-radius: 10px;
-        padding: 14px 16px;
-      }
-      .lr-num {
-        color: #64748b;
-        font-size: 14px;
-        font-weight: 600;
-        min-width: 20px;
-      }
-      .lr-address {
-        color: #e2e8f0;
-        font-size: 14px;
-        font-weight: 500;
-        flex: 1;
-      }
-      .lr-status.loading {
-        color: #f0c040;
-        font-size: 12px;
-        font-family: monospace;
-        animation: pulse 1.5s ease-in-out infinite;
-      }
-      @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.4; }
-      }
-    </style>
-  </head>
-  <body data-town="sebastian" class="theme-light">
-    <div id="welcomeBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:99999; background:linear-gradient(135deg,#0f1923,#1a2332); border-bottom:2px solid #2dd4bf; padding:16px 20px; text-align:center; font-family:system-ui,sans-serif;">
-      <div style="max-width:600px; margin:0 auto;">
-        <div style="font-size:18px; font-weight:700; color:#f0f0f0; margin-bottom:6px;">Welcome to Sebastian, Florida</div>
-        <div style="font-size:14px; color:rgba(240,240,240,0.6); margin-bottom:12px;">Your local community platform — buy, sell, chat, win giveaways.</div>
-        <a href="/signup" style="display:inline-block; background:linear-gradient(135deg,#2dd4bf,#14b8a6); color:#0a1018; padding:10px 28px; border-radius:10px; font-weight:700; font-size:15px; text-decoration:none; margin-right:12px;">Join Free</a>
-        <a href="/login" style="color:#2dd4bf; font-size:13px; text-decoration:underline;">Already a member? Log in</a>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Digital Towns — Staging</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: #070b10;
+      color: #e8eef6;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 220px;
+      background: #0c1219;
+      border-right: 1px solid #1e293b;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 10;
+    }
+    .sidebar-logo {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0ea5e9;
+      margin-bottom: 4px;
+      letter-spacing: -0.5px;
+    }
+    .sidebar-sub {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+    .nav-item {
+      display: block;
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+    }
+    .nav-item:hover { background: #1e293b; color: #e2e8f0; }
+    .nav-item.active { background: #0ea5e9; color: #fff; }
+    .nav-icon { margin-right: 10px; }
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid #1e293b;
+      font-size: 11px;
+      color: #475569;
+      line-height: 1.5;
+    }
+
+    /* Main content */
+    .main {
+      margin-left: 220px;
+      flex: 1;
+      padding: 40px;
+      max-width: 900px;
+    }
+
+    /* Warning banner */
+    .warning-banner {
+      background: #1a1505;
+      border: 1px solid #f59e0b;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-size: 13px;
+      color: #fbbf24;
+      font-weight: 600;
+      margin-bottom: 32px;
+    }
+
+    /* Header */
+    .page-title {
+      font-size: 36px;
+      font-weight: 700;
+      color: #0ea5e9;
+      letter-spacing: -1px;
+      margin-bottom: 6px;
+    }
+    .page-subtitle {
+      font-size: 16px;
+      color: #64748b;
+      margin-bottom: 36px;
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+    .stat-card {
+      background: #0f1722;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 24px 20px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stat-value.c1 { color: #0ea5e9; }
+    .stat-value.c2 { color: #a855f7; }
+    .stat-value.c3 { color: #10b981; }
+    .stat-value.c4 { color: #f59e0b; }
+    .stat-loading { color: #334155; }
+
+    /* CTA */
+    .cta-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 48px;
+    }
+    .btn-primary {
+      display: inline-block;
+      padding: 14px 28px;
+      background: #0ea5e9;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: #0284c7; }
+    .btn-secondary {
+      display: inline-block;
+      padding: 14px 28px;
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      text-decoration: none;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-secondary:hover { border-color: #64748b; color: #e2e8f0; }
+
+    /* Module status */
+    .module-status {
+      background: #0f1722;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .module-status h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 16px;
+    }
+    .module-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #1e293b;
+      font-size: 14px;
+    }
+    .module-row:last-child { border-bottom: none; }
+    .module-name { color: #cbd5e1; }
+    .module-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .badge-active { background: #064e3b; color: #10b981; }
+    .badge-pending { background: #1e293b; color: #64748b; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 20px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">Digital Towns</div>
+    <div class="sidebar-sub">Module Workshop<br>Staging Environment</div>
+    <a href="/" class="nav-item active"><span class="nav-icon">&#9632;</span>Dashboard</a>
+    <a href="/admin-modules.html" class="nav-item"><span class="nav-icon">&#9881;</span>Module Registry</a>
+    <a href="/communities.html" class="nav-item"><span class="nav-icon">&#127760;</span>Communities</a>
+    <a href="/users.html" class="nav-item"><span class="nav-icon">&#128100;</span>Users</a>
+    <a href="/docs/" class="nav-item"><span class="nav-icon">&#128196;</span>Docs</a>
+    <div class="sidebar-footer">
+      digitaltowns.app<br>
+      tampa-bay-florida &middot; Render
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="warning-banner">&#9888;&#65039; Staging Only — Not for public use</div>
+
+    <div class="page-title">Digital Towns</div>
+    <div class="page-subtitle">Module Workshop — Staging Environment</div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value c1 stat-loading" id="statCommunities">—</div>
+        <div class="stat-label">Communities</div>
       </div>
-      <button onclick="document.getElementById('welcomeBanner').style.display='none'" style="position:absolute; top:8px; right:12px; background:none; border:none; color:rgba(240,240,240,0.4); font-size:20px; cursor:pointer;">✕</button>
-    </div>
-    <div class="ui-shell">
-      <aside class="sidebar ui-sidebar">
-        <div class="ui-sidebar-header">
-          <div class="brand">
-            <span class="brandMark"></span>
-            <div>
-              <div class="brandTitle">Sebastian <span class="beta-badge">BETA</span></div>
-              <div class="brandSub">Digital Town</div>
-            </div>
-          </div>
-          <div class="user-card">
-            <div class="user-avatar">👤</div>
-            <div>
-              <div class="user-name" id="sidebarUserName">Hi, neighbor</div>
-              <div class="user-meta">Welcome back</div>
-            </div>
-          </div>
-        </div>
-
-        <div style="padding:8px 16px;">
-          <a href="https://treasurecoast-fl.com" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#10b981;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;width:100%;justify-content:center;">🌊 Visit Treasure Coast →</a>
-        </div>
-
-        <div class="ui-sidebar-section">
-          <div class="section-label">Navigation</div>
-          <nav class="nav">
-            <button class="navItem active" data-view="map"><span class="navIcon">🗺️</span><span>Map</span></button>
-            <button class="navItem" data-view="services"><span class="navIcon">🧰</span><span>Featured Local Businesses</span></button>
-            <button class="navItem" data-view="scheduled"><span class="navIcon">📡</span><span>Live Shows</span></button>
-            <button class="navItem" data-view="auctions"><span class="navIcon">⚖️</span><span>Auctions</span></button>
-            <button class="navItem" data-view="marketplace"><span class="navIcon">🛍️</span><span>Marketplace</span></button>
-            <!-- HIDDEN: <button class="navItem" data-view="localbiz"><span class="navIcon">🏪</span><span>Sebastian Store or Service Signup</span></button> -->
-            <button class="navItem" data-view="channels"><span class="navIcon">📺</span><span>Channels</span></button>
-            <button class="navItem" data-view="pulse"><span class="navIcon">📊</span><span>Sebastian Pulse</span></button>
-            <button class="navItem" data-view="events"><span class="navIcon">🗓️</span><span>Events</span></button>
-            <!-- HIDDEN: <button class="navItem" data-view="archive"><span class="navIcon">🗃️</span><span>Archive</span></button> -->
-            <button class="navItem" data-view="support"><span class="navIcon">🐛</span><span>Support / Report Bug</span></button>
-          </nav>
-        </div>
-
-        <div class="ui-sidebar-footer">
-          <div class="section-label">System</div>
-          <div class="system-row">
-            <span class="pill" id="apiStatus">API: …</span>
-            <span class="pill">Sweep: <span id="sweepBal">0</span></span>
-          </div>
-          <div class="system-row">
-            <span class="pill" id="trustBadge">Tier 0: Visitor</span>
-          </div>
-          <div class="system-row" id="navLoggedOut">
-            <a class="pill" id="navLoginLink" href="/login">Login</a>
-          </div>
-          <div class="system-row" style="display:none;" id="navLoggedIn">
-            <a class="pill" href="/dashboard" style="background:#10b981;color:#fff;">📊 Seller Dashboard</a>
-            <a class="pill" id="navStoreLink" href="/me/store">Store Profile</a>
-            <a class="pill" id="navMyProfileLink" href="/me/profile">My Profile</a>
-            <a class="pill" id="navOrdersLink" href="/me/orders">My Orders</a>
-            <a class="pill" id="navSubscriptionLink" href="/me/subscription">My Subscription</a>
-            <a class="pill" id="navLiveLink" href="#scheduled">Live Shows</a>
-          </div>
-          <div class="system-row" style="margin-top:12px;">
-            <a class="muted" href="/privacy" style="font-size:11px;">Privacy</a>
-            <span class="muted" style="font-size:11px;">•</span>
-            <a class="muted" href="/terms" style="font-size:11px;">Terms</a>
-          </div>
-        </div>
-      </aside>
-
-      <main class="main ui-main">
-        <header class="topbar ui-topbar">
-          <div class="route-block">
-            <div class="routeTitle">Route View</div>
-            <div class="routePath" id="routeView">/ui</div>
-          </div>
-          <div class="topbar-actions">
-            <a class="pill" id="liveNowPill" href="#" style="display:none;">LIVE Now</a>
-            <a class="pill" id="topJoinLink" href="/signup">Join / Signup</a>
-            <a class="pill" id="topAdminLink" href="/admin/login">Admin</a>
-            <button class="pill" id="themeToggleBtn" type="button" style="display:none;">Dark / Light</button>
-            <button class="pill" id="topAuthBtn" type="button">Logout</button>
-          </div>
-        </header>
-
-        <div class="views" id="routeViews">
-          <section class="view active" data-view="map">
-            <div class="layout">
-              <div class="map-hero">
-                <div class="map-hero-left">
-                  <div class="map-hero-icon">🗺️</div>
-                  <div>
-                    <h2 class="map-hero-title">Sebastian Map</h2>
-                    <p class="map-hero-subtitle"></p>
-                  </div>
-                </div>
-                <div class="map-hero-badges">
-                  <span class="pill">Interactive</span>
-                  <span class="pill">Live</span>
-                </div>
-              </div>
-
-              <div class="panel map-panel" id="panelMap">
-                <div class="panelBody" style="padding:0;">
-
-                  <div class="hero-scene">
-                    <div class="hero-top-label">THE RENTAL SYSTEM IS BROKEN</div>
-
-                    <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:480px;display:block;">
-                      <!-- Background glow -->
-                      <defs>
-                        <radialGradient id="bgGlow" cx="50%" cy="50%">
-                          <stop offset="0%" stop-color="#1a0a0a" stop-opacity="1"/>
-                          <stop offset="100%" stop-color="#0a0a0a" stop-opacity="1"/>
-                        </radialGradient>
-                      </defs>
-                      <rect width="800" height="460" fill="url(#bgGlow)"/>
-
-                      <!-- Fulcrum/pivot point -->
-                      <polygon points="400,280 380,320 420,320" fill="#475569"/>
-                      <rect x="360" y="318" width="80" height="8" rx="4" fill="#334155"/>
-
-                      <!-- Balance beam - tilted left down, right up -->
-                      <line x1="100" y1="260" x2="700" y2="160" stroke="#94a3b8" stroke-width="6" stroke-linecap="round"/>
-
-                      <!-- Pivot circle -->
-                      <circle cx="400" cy="213" r="10" fill="#ef4444"/>
-
-                      <!-- LEFT SIDE — Landlord platform -->
-                      <rect x="60" y="258" width="80" height="8" rx="4" fill="#475569"/>
-
-                      <!-- Landlord figure -->
-                      <circle cx="100" cy="210" r="22" fill="#1e3a5f"/>
-                      <circle cx="100" cy="178" r="16" fill="#fbbf24"/>
-                      <path d="M93,182 Q100,188 107,182" stroke="#1e3a5f" stroke-width="2" fill="none" stroke-linecap="round"/>
-                      <circle cx="95" cy="176" r="2" fill="#1e3a5f"/>
-                      <circle cx="105" cy="176" r="2" fill="#1e3a5f"/>
-                      <!-- Key -->
-                      <circle cx="132" cy="172" r="7" stroke="#f0c040" stroke-width="3" fill="none"/>
-                      <line x1="137" y1="172" x2="150" y2="172" stroke="#f0c040" stroke-width="3"/>
-                      <line x1="146" y1="172" x2="146" y2="178" stroke="#f0c040" stroke-width="2"/>
-                      <line x1="150" y1="172" x2="150" y2="178" stroke="#f0c040" stroke-width="2"/>
-                      <!-- Legs -->
-                      <line x1="93" y1="230" x2="87" y2="258" stroke="#1e3a5f" stroke-width="5" stroke-linecap="round"/>
-                      <line x1="107" y1="230" x2="113" y2="258" stroke="#1e3a5f" stroke-width="5" stroke-linecap="round"/>
-
-                      <!-- LANDLORD label -->
-                      <text x="100" y="285" text-anchor="middle" fill="#f0c040" font-size="13" font-weight="700" font-family="monospace" letter-spacing="1">LANDLORD</text>
-                      <text x="100" y="300" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="monospace">Just... a key.</text>
-
-                      <!-- RIGHT SIDE — Renter platform -->
-                      <rect x="660" y="158" width="80" height="8" rx="4" fill="#475569"/>
-
-                      <!-- Renter figure standing ON the platform -->
-                      <!-- Body -->
-                      <ellipse cx="700" cy="138" rx="18" ry="14" fill="#1e40af"/>
-                      <!-- Head -->
-                      <circle cx="700" cy="118" r="14" fill="#93c5fd"/>
-                      <!-- Eyes -->
-                      <circle cx="695" cy="116" r="2" fill="#1e3a5f"/>
-                      <circle cx="705" cy="116" r="2" fill="#1e3a5f"/>
-                      <!-- Worried mouth -->
-                      <path d="M695,122 Q700,119 705,122" stroke="#1e3a5f" stroke-width="2" fill="none" stroke-linecap="round"/>
-                      <!-- Sweat drop -->
-                      <ellipse cx="712" cy="112" rx="3" ry="4" fill="#60a5fa" opacity="0.7"/>
-                      <!-- Arms raised -->
-                      <line x1="684" y1="132" x2="670" y2="120" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
-                      <line x1="716" y1="132" x2="730" y2="120" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
-                      <!-- Legs standing on platform -->
-                      <line x1="694" y1="150" x2="690" y2="158" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
-                      <line x1="706" y1="150" x2="710" y2="158" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
-
-                      <!-- RENTER label just below figure -->
-                      <text x="700" y="175" text-anchor="middle" fill="#60a5fa" font-size="13" font-weight="700" font-family="monospace" letter-spacing="1">RENTER</text>
-
-                      <!-- Chain from platform down to boxes -->
-                      <line x1="700" y1="166" x2="700" y2="190" stroke="#475569" stroke-width="2" stroke-dasharray="4,3"/>
-
-                      <!-- Requirement boxes hanging BELOW platform -->
-                      <!-- Box 1 — REFERENCES REQ'D -->
-                      <rect x="635" y="190" width="110" height="22" rx="3" fill="#292524" stroke="#a8a29e" stroke-width="1"/>
-                      <text x="690" y="205" text-anchor="middle" fill="#e7e5e4" font-size="9" font-family="monospace">&#128203; REFERENCES REQ'D</text>
-
-                      <!-- Box 2 — CLEAN RECORD -->
-                      <rect x="635" y="214" width="110" height="22" rx="3" fill="#7f1d1d" stroke="#ef4444" stroke-width="1"/>
-                      <text x="690" y="229" text-anchor="middle" fill="#fca5a5" font-size="9" font-family="monospace" font-weight="700">&#127963; CLEAN RECORD</text>
-
-                      <!-- Box 3 — CREDIT SCORE -->
-                      <rect x="635" y="238" width="110" height="22" rx="3" fill="#1e1b4b" stroke="#6366f1" stroke-width="1"/>
-                      <text x="690" y="253" text-anchor="middle" fill="#a5b4fc" font-size="9" font-family="monospace">&#128179; CREDIT SCORE</text>
-
-                      <!-- Box 4 — EARN 3× RENT -->
-                      <rect x="635" y="262" width="110" height="22" rx="3" fill="#052e16" stroke="#10b981" stroke-width="1"/>
-                      <text x="690" y="277" text-anchor="middle" fill="#6ee7b7" font-size="9" font-family="monospace">&#128176; EARN 3&#215; RENT</text>
-
-                      <!-- Box 5 — STABLE JOB -->
-                      <rect x="635" y="286" width="110" height="22" rx="3" fill="#1c1917" stroke="#78716c" stroke-width="1"/>
-                      <text x="690" y="301" text-anchor="middle" fill="#d6d3d1" font-size="9" font-family="monospace">&#128188; STABLE JOB</text>
-
-                      <!-- Corner brackets -->
-                      <path d="M20,20 L20,50 M20,20 L50,20" stroke="#f0c040" stroke-width="2" fill="none"/>
-                      <path d="M780,20 L780,50 M780,20 L750,20" stroke="#f0c040" stroke-width="2" fill="none"/>
-                      <path d="M20,440 L20,410 M20,440 L50,440" stroke="#f0c040" stroke-width="2" fill="none"/>
-                      <path d="M780,440 L780,410 M780,440 L750,440" stroke="#f0c040" stroke-width="2" fill="none"/>
-                    </svg>
-
-                    <div class="hero-text">
-                      <h1 class="hero-headline">The System Needs a New Key.</h1>
-                      <p class="hero-sub">Renters carry everything. Landlords answer to no one.</p>
-                      <div class="hero-cta">INTRODUCING FAIR RENTER MARKETPLACE &#8212; COMING SOON</div>
-                    </div>
-                  </div>
-
-                  <div class="mapWrap" style="margin:12px;">
-                    <div id="map"></div>
-                  </div>
-                </div>
-              </div>
-
-              <section class="landlord-reviews">
-                <h2 class="lr-title">&#127968; Sebastian Landlord Reviews</h2>
-                <div class="lr-list">
-                  <div class="lr-item">
-                    <span class="lr-num">1.</span>
-                    <span class="lr-address">274 Columbia Avenue</span>
-                    <span class="lr-status loading">LOADING.........</span>
-                  </div>
-                  <div class="lr-item">
-                    <span class="lr-num">2.</span>
-                    <span class="lr-address">763 Carnation DR</span>
-                    <span class="lr-status loading">LOADING.........</span>
-                  </div>
-                </div>
-              </section>
-
-              <div class="panel sweep-panel" id="panelSweepstake">
-                <div class="panelHead">
-                  <div>
-                    <strong>Town Sweepstake</strong>
-                    <div class="muted" id="sweepTime">Check back soon for exciting prizes</div>
-                  </div>
-                  <div class="pill sweep-status" id="sweepStatus">Inactive</div>
-                </div>
-                <div class="panelBody">
-                  <div class="sweep-status-block">
-                    <div class="contextTitle" id="sweepPrize">No active sweepstake</div>
-                    <div class="muted" id="sweepMeta">Stay tuned for upcoming opportunities to win!</div>
-                  </div>
-
-                  <div class="sweep-stats">
-                    <div class="sweep-stat">
-                      <div class="sweep-stat-value" id="sweepTotalEntries">0</div>
-                      <div class="muted">Total Entries</div>
-                    </div>
-                    <div class="sweep-stat">
-                      <div class="sweep-stat-value" id="sweepUserEntries">0</div>
-                      <div class="muted">Your Entries</div>
-                    </div>
-                    <div class="sweep-stat">
-                      <div class="sweep-stat-value" id="sweepUserBalance">0</div>
-                      <div class="muted">Your Balance</div>
-                    </div>
-                  </div>
-
-                  <div class="sweep-entry">
-                    <input id="sweepEntryAmount" class="input max-w-120" type="number" min="1" value="1" />
-                    <button id="sweepEnterBtn">Enter Sweepstake</button>
-                    <span class="muted" id="sweepEnterMsg"></span>
-                  </div>
-
-                  <div class="sweep-prize-cta">
-                    <button id="sweepPrizeSubmitBtn" class="pill" style="display:none;">Submit Prize Offer</button>
-                    <span class="muted" id="sweepPrizeSubmitHint">Preferred donor tier</span>
-                  </div>
-
-                  <div class="sweep-prize-list">
-                    <div class="item muted" id="sweepPrizesList">No active prizes.</div>
-                  </div>
-
-                  <div class="sweep-winner">
-                    <span class="pill" id="sweepWinner">Winner: —</span>
-                  </div>
-
-                  <div id="prizeOfferModal" class="panel" style="display:none; margin-top:12px;">
-                    <div class="panelHead"><strong>Submit Prize Offer</strong></div>
-                    <div class="panelBody">
-                      <input id="prizeTitle" placeholder="Prize title" />
-                      <textarea id="prizeDescription" placeholder="Describe the prize"></textarea>
-                      <input id="prizeValue" type="number" min="0" placeholder="Value (USD)" />
-                      <select id="prizeType">
-                        <option value="physical">physical</option>
-                        <option value="service">service</option>
-                        <option value="giftcard">giftcard</option>
-                        <option value="experience">experience</option>
-                      </select>
-                      <select id="prizeFulfillment">
-                        <option value="pickup">pickup</option>
-                        <option value="meetup">meetup</option>
-                        <option value="shipping">shipping</option>
-                      </select>
-                      <textarea id="prizeFulfillmentNotes" placeholder="Fulfillment notes"></textarea>
-                      <input id="prizeExpiresAt" type="datetime-local" />
-                      <input id="prizeImageFile" type="file" accept="image/*" />
-                      <label><input id="prizeConfirm" type="checkbox" /> I confirm I will fulfill this prize</label>
-                      <div class="row" style="margin-top:8px;">
-                        <button id="prizeSubmitBtn">Submit</button>
-                        <button id="prizeCancelBtn" class="pill" type="button">Cancel</button>
-                        <span class="muted" id="prizeSubmitMsg"></span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="panel" id="panelFeatured" style="display:none;">
-                <div class="panelHead">
-                  <div>
-                    <strong>Featured Stores</strong>
-                    <div class="muted">Stores with active giveaways</div>
-                  </div>
-                </div>
-                <div class="panelBody">
-                  <div class="list" id="featuredStoresList"></div>
-                </div>
-              </div>
-
-
-              <div class="panel" id="panelControl" style="display:none;">
-                <div class="panelHead">
-                  <div>
-                    <strong>Control Panel</strong>
-                    <div class="muted" id="metricsTime">—</div>
-                  </div>
-                </div>
-                <div class="panelBody">
-                  <div class="authBanner">
-                    <div>
-                      <div class="authTitle" id="authTitle">Checking login…</div>
-                    <div class="muted" id="authTag">—</div>
-                    </div>
-                    <div class="row">
-                      <a id="logoutBtn" class="pill" href="/auth/logout">Logout</a>
-                      <a class="pill" href="/admin">Admin</a>
-                    </div>
-                  </div>
-
-                  <div class="item" id="welcomeCard" style="display:none; margin-top:10px;">
-                    <div><strong>Welcome to the Town</strong></div>
-                    <div class="muted">Join to unlock listings, messages, and local services.</div>
-                    <div class="row" style="margin-top:8px;">
-                      <a class="btn" href="/login">Login</a>
-                    </div>
-                  </div>
-
-                  <div class="item" style="margin-top:10px;">
-                    <div class="contextTitle" id="contextPlaceName">No place selected</div>
-                    <div class="muted" id="contextPlaceMeta">Select a place on the map to see details.</div>
-                    <div class="row" style="margin-top:10px;">
-                      <a class="btn" id="contextStoreBtn" href="#" aria-disabled="true">Open Storefront</a>
-                    </div>
-                  </div>
-
-                  <div class="item">
-                    <div class="contextTitle" id="eventDetailTitle">No event selected</div>
-                    <div class="muted" id="eventDetailMeta">Select an event to see details.</div>
-                    <div class="row" style="margin-top:10px;">
-                      <button id="eventShowMapBtn" disabled>Show on Map</button>
-                      <button id="eventRsvpBtn" disabled>RSVP</button>
-                    </div>
-                  </div>
-
-                  <details class="debugBox debugToggle">
-                    <summary>Status</summary>
-                    <div class="mono" id="debug">(ready)</div>
-                  </details>
-
-                  <hr />
-
-                  <h4>Places</h4>
-                  <div class="list" id="places"></div>
-
-                  <hr />
-
-                  <h4>Place Settings</h4>
-                  <div class="twoCol" style="margin-top:8px;">
-                    <div>
-                      <label class="muted">Seller Type</label>
-                      <select id="sellerType">
-                        <option value="individual">individual</option>
-                        <option value="business">business</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="muted">Visibility</label>
-                      <select id="visibilityLevel">
-                        <option value="town_only">town_only</option>
-                        <option value="zone">zone</option>
-                        <option value="exact_address">exact_address</option>
-                        <option value="meetup_only">meetup_only</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div style="margin-top:8px;"><input id="pickupZone" placeholder="Pickup Zone (optional)" /></div>
-                  <div style="margin-top:8px;"><input id="addressPublic" placeholder="Public Address (optional)" /></div>
-                  <div style="margin-top:8px;"><input id="meetupInstructions" placeholder="Meetup Instructions (optional)" /></div>
-                  <div style="margin-top:8px;"><input id="hours" placeholder="Hours (optional)" /></div>
-                  <div class="row" style="margin-top:8px;"><button id="savePlaceSettings">Save Place Settings</button></div>
-
-                  <hr />
-
-                  <h4 id="panelListings">Listings</h4>
-                  <div class="list" id="listings"></div>
-
-                  <h4>Create Listing</h4>
-                  <div class="muted">Eligible users only.</div>
-                  <input id="newTitle" placeholder="Title" />
-                  <input id="newDesc" placeholder="Description" />
-                  <input id="newQty" value="1" />
-                  <input id="newPrice" value="99" />
-                  <button id="createListingBtn">Create Listing</button>
-
-                  <hr />
-
-                  <h4>Conversations</h4>
-                  <div class="row">
-                    <button id="viewerBuyer">Viewer: buyer</button>
-                    <button id="viewerSeller">Viewer: seller</button>
-                    <button id="markReadBtn">Mark Read</button>
-                  </div>
-                  <div class="muted" id="viewerLabel"></div>
-                  <div class="list" id="conversations"></div>
-
-                  <h4 id="panelMessages">Messages</h4>
-                  <div class="list" id="messages"></div>
-                  <input id="sender" value="buyer" />
-                  <textarea id="msgText"></textarea>
-                  <button id="sendMsg">Send Message</button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="view" data-view="scheduled">
-            <div class="panel">
-              <div class="panelHead">
-                <div>
-                  <strong>Scheduled Live Shows</strong>
-                  <div class="muted">Upcoming live sessions</div>
-                </div>
-              </div>
-              <div class="panelBody">
-                <div class="list" id="scheduledShowList"></div>
-                <div class="item" id="scheduledDetail" style="display:none;margin-top:10px;"></div>
-              </div>
-            </div>
-          </section>
-
-          <section class="view" data-view="auctions">
-            <div class="panel">
-              <div class="panelHead">
-                <div>
-                  <strong>Auctions</strong>
-                  <div class="muted">Live auctions across the town</div>
-                </div>
-              </div>
-              <div class="panelBody">
-                <div class="tabRow">
-                  <button class="tabBtn active" id="auctionTabActive">Active</button>
-                  <button class="tabBtn" id="auctionTabEnded">Ended</button>
-                </div>
-                <div id="auctionPanelActive">
-                  <div class="muted" id="auctionEmptyActive" style="display:none;">No active auctions right now.</div>
-                  <div class="grid" id="auctionGrid" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:10px;"></div>
-                </div>
-                <div id="auctionPanelEnded" class="hidden">
-                  <div class="muted" id="auctionEmptyEnded" style="display:none;">No ended auctions yet.</div>
-                  <div class="grid" id="auctionGridEnded" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:10px;"></div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="view" data-view="marketplace">
-            <style>
-              .marketCatCard { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:12px; overflow:hidden; cursor:pointer; transition:border-color 0.15s; }
-              .marketCatCard:hover { border-color:rgba(34,211,238,0.4); }
-              .marketCatCard img { width:100%; height:140px; object-fit:cover; }
-              .marketCatCard .catInfo { padding:10px 12px; background:rgba(0,0,0,0.3); }
-              .marketCatCard .catName { font-weight:700; font-size:16px; color:#f1f5f9; }
-              .marketCatCard .catCount { font-size:12px; color:#cbd5e1; margin-top:2px; }
-            </style>
-            <div class="panel">
-              <div class="panelHead">
-                <div>
-                  <strong>Organic Food Ingredients</strong>
-                  <div class="muted">Browse by category — nuts, seeds, grains, spices, teas &amp; more</div>
-                </div>
-              </div>
-              <div class="panelBody">
-                <div id="marketBackBar" style="display:none;margin-bottom:12px;">
-                  <button class="btn" id="marketBackBtn" style="font-size:13px;">&#8592; Back to Categories</button>
-                </div>
-                <div class="muted" id="marketEmpty" style="display:none;">No listings yet.</div>
-                <div class="grid" id="marketItems" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px;"></div>
-                <div id="marketShowMore" style="text-align:center;margin-top:12px;display:none;">
-                  <button class="btn" id="marketShowMoreBtn">Show More</button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="view" data-view="services">
-            <div class="panel">
-              <div class="panelHead">
-                <div>
-                  <strong>Featured Local Businesses</strong>
-                  <div class="muted">Find trusted service providers in Sebastian.</div>
-                </div>
-              </div>
-              <div class="panelBody">
-                <div id="featuredBusinessesList" class="list">
-                  <div class="muted">Loading featured businesses...</div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="view" data-view="localbiz">
-            <div class="panel">
-              <div class="panelHead">
-                <div>
-                  <strong>Local Sebastian Businesses</strong>
-                  <div class="muted">This is a curated directory of businesses physically located in Sebastian. Apply below.</div>
-                </div>
-              </div>
-              <div class="panelBody">
-                <div class="item">
-                  <div class="muted">
-                    This is a curated directory of businesses physically located in Sebastian. Apply below.
-                  </div>
-                </div>
-
-                <form class="item eventsForm" id="localBizForm" style="margin-top:10px;">
-                  <label>Business Name (required)</label>
-                  <input id="localBizName" />
-
-                  <label>Owner Full Name (required)</label>
-                  <input id="localBizOwner" />
-
-                  <div class="twoCol">
-                    <div>
-                      <label>Email (required)</label>
-                      <input id="localBizEmail" />
-                    </div>
-                    <div>
-                      <label>Phone (optional)</label>
-                      <input id="localBizPhone" />
-                    </div>
-                  </div>
-
-                  <label>Street Address (required)</label>
-                  <input id="localBizAddress" />
-
-                  <div class="twoCol">
-                    <div>
-                      <label>City (required)</label>
-                      <input id="localBizCity" value="Sebastian" />
-                    </div>
-                    <div>
-                      <label>State (required)</label>
-                      <input id="localBizState" value="FL" />
-                    </div>
-                  </div>
-
-                  <label>ZIP (required)</label>
-                  <input id="localBizZip" />
-
-                  <label>Category</label>
-                  <select id="localBizCategory">
-                    <option value="Producer">Producer</option>
-                    <option value="Crafter">Crafter</option>
-                    <option value="Retail">Retail</option>
-                    <option value="Restaurant/Food">Restaurant/Food</option>
-                    <option value="Service">Service</option>
-                    <option value="Wellness">Wellness</option>
-                    <option value="Other">Other</option>
-                  </select>
-
-                  <div class="twoCol">
-                    <div>
-                      <label>Website (optional)</label>
-                      <input id="localBizWebsite" />
-                    </div>
-                    <div>
-                      <label>Instagram (optional)</label>
-                      <input id="localBizInstagram" />
-                    </div>
-                  </div>
-
-                  <label>Short Description (required, 1–3 sentences)</label>
-                  <textarea id="localBizDescription"></textarea>
-
-                  <label>Sustainability Notes (optional)</label>
-                  <textarea id="localBizSustainability"></textarea>
-
-                  <label class="row">
-                    <input id="localBizConfirm" type="checkbox" style="width:auto;" />
-                    <span class="muted">I confirm this business is physically located in Sebastian, FL</span>
-                  </label>
-
-                  <div class="row" style="justify-content:space-between;">
-                    <button id="localBizSubmitBtn" type="submit">Submit Application</button>
-                    <div class="muted" id="localBizSubmitMsg"></div>
-                  </div>
-                  <div class="muted" id="localBizStatus"></div>
-                </form>
-
-                <hr />
-
-                <div class="contextTitle">Your Applications</div>
-                <div class="muted" id="localBizLoginMsg">Log in to track your application.</div>
-                <div class="list" id="localBizMyList" style="display:none;"></div>
-              </div>
-            </div>
-          </section>
-          <section class="view" data-view="channels">
-            <div class="channels-v0">
-              <div class="channels-v0-main">
-                <!-- Channel grid -->
-                <div class="sidebar-card">
-                  <div class="sidebar-card-title">Channels</div>
-                  <div class="channels-grid" id="channelsGrid"></div>
-                  <!-- Legacy list (populated by app.js renderChannelsList) -->
-                  <div class="list" id="channelsList" style="display:none;"></div>
-                  <!-- Placeholder cards (hidden; app.js binds click handlers) -->
-                  <div id="channelsStack" style="display:none;">
-                    <div class="item" id="channelsCard1">Sebastian Neighbors & Friends</div>
-                    <div class="item" id="channelsCard2">Sebastian Community Chat</div>
-                    <div class="item" id="channelsCard3">Fun Activities & Events</div>
-                    <div class="item" id="channelsCard4">Sebastian Lifestyle & Wellness</div>
-                    <div class="item" id="channelsCard5">Local Meetups & Walking Groups</div>
-                    <div class="item" id="channelsCard6">Sebastian Culture & Memories</div>
-                    <div class="item" id="channelsCard7">County Events & Happenings</div>
-                    <div class="item" id="channelsCard8">Ladies Social Club</div>
-                    <div class="item" id="channelsCard9">Reflections on the River</div>
-                  </div>
-                </div>
-
-                <!-- Placeholder (shown on first visit to unregistered channel) -->
-                <div class="sidebar-card" id="channelsPlaceholder" style="display:none;">
-                  <div class="contextTitle" id="channelsPlaceholderTitle">Welcome</div>
-                  <div class="muted" id="channelsPlaceholderBody">Welcome to — posts load here.</div>
-                  <div class="activity-item" id="channelsPlaceholderPost" style="margin-top:10px;">(First post goes here)</div>
-                </div>
-
-                <!-- Selected channel thread -->
-                <div class="sidebar-card">
-                  <div class="contextTitle" id="channelTitle">Select a channel</div>
-                  <div class="channel-card-meta" id="channelMeta">—</div>
-                  <div id="fishingDashboard" class="sidebar-card" style="display:none; margin-bottom:12px;"></div>
-                  <div id="safetyDashboard" class="sidebar-card" style="display:none; margin-bottom:12px;"></div>
-                  <div class="activity-feed" id="channelMessages" style="margin-top:10px;"></div>
-
-                  <!-- Reply bar -->
-                  <div id="replyToBar" style="display:none; margin-top:10px; padding:8px 12px; border-radius:10px; border:1px solid var(--ch-accent-border); background:var(--ch-accent-dim);">
-                    <div class="row" style="justify-content:space-between;">
-                      <div class="muted" id="replyToText">Replying…</div>
-                      <button id="clearReplyBtn" class="composer-btn" style="padding:4px 10px;">Clear</button>
-                    </div>
-                  </div>
-
-                  <!-- Composer -->
-                  <div class="composer">
-                    <textarea id="channelMessageInput" placeholder="Write a message…"></textarea>
-                    <div class="composer-actions">
-                      <input id="channelsImageInput" type="file" accept="image/png,image/jpeg,image/webp" style="display:none;" />
-                      <button id="channelsUploadBtn" class="composer-btn" type="button">Upload Photo</button>
-                      <button id="channelSendBtn" class="composer-btn composer-btn-send">Send</button>
-                    </div>
-                    <div id="channelsImagePreview" style="display:none; margin-top:8px;">
-                      <div class="muted">Photo attached</div>
-                      <img id="channelsImageThumb" alt="" style="max-width:180px;border-radius:10px;border:1px solid var(--ch-border);margin-top:6px;" />
-                      <div class="row" style="margin-top:6px;">
-                        <button id="channelsImageClear" class="composer-btn" type="button">Remove</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Sidebar -->
-              <aside class="channels-v0-sidebar">
-                <div class="sidebar-card">
-                  <div class="sidebar-card-title">Online Now</div>
-                  <div id="channelOnlineUsers">
-                    <div class="channel-empty">
-                      <div class="channel-empty-icon">👥</div>
-                      <div class="channel-empty-text">Online status coming soon</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="sidebar-card">
-                  <div class="sidebar-card-title">Recent Activity</div>
-                  <div id="activityFeed">
-                    <div class="channel-empty">
-                      <div class="channel-empty-icon">💬</div>
-                      <div class="channel-empty-text">No recent activity</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="sidebar-card">
-                  <div class="sidebar-card-title">Community Stats</div>
-                  <div class="stats-grid" id="channelStats">
-                    <div class="stats-grid-item">
-                      <div class="stats-grid-value" id="statChannels">0</div>
-                      <div class="stats-grid-label">Channels</div>
-                    </div>
-                    <div class="stats-grid-item">
-                      <div class="stats-grid-value" id="statMembers">0</div>
-                      <div class="stats-grid-label">Members</div>
-                    </div>
-                    <div class="stats-grid-item">
-                      <div class="stats-grid-value" id="statMessages">0</div>
-                      <div class="stats-grid-label">Messages</div>
-                    </div>
-                  </div>
-                </div>
-              </aside>
-            </div>
-          </section>
-
-          <section class="view" data-view="pulse">
-            <div style="padding:20px; max-height:calc(100vh - 80px); overflow-y:auto;">
-              <div style="margin-bottom:16px;">
-                <h2 style="margin:0; font-size:1.5rem; font-weight:700; color:var(--text);">📊 The Sebastian Pulse</h2>
-                <p style="margin:4px 0 0; font-size:0.9rem; color:var(--muted);">Live community dashboards at a glance</p>
-              </div>
-              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 1fr)); gap:20px;">
-                <div id="pulseFishingDash"></div>
-                <div id="pulseSafetyDash"></div>
-              </div>
-            </div>
-          </section>
-
-          <section class="view" data-view="events">
-            <div class="panel">
-              <div class="panelHead">
-                <div>
-                  <strong>Community Events</strong>
-                  <div class="muted">Discover what's happening locally</div>
-                </div>
-                <div class="row">
-                  <button id="eventsMonthBtn">Month</button>
-                  <button id="eventsOpenSubmit">Submit Event</button>
-                </div>
-              </div>
-              <div class="panelBody">
-
-                <!-- Submit form (hidden until toggled) -->
-                <form class="item eventsForm" id="eventsSubmitWrap" style="display:none;">
-                  <div class="row" style="justify-content:space-between;">
-                    <div class="contextTitle">Submit an Event</div>
-                    <button class="btnGhost" id="eventsSubmitClose" type="button">Close</button>
-                  </div>
-                  <div class="muted">All events are reviewed before appearing publicly.</div>
-
-                  <label>Event Title (required)</label>
-                  <input id="eventsTitle" placeholder="Event title" />
-
-                  <label>Category</label>
-                  <select id="eventsCategory">
-                    <option value="community">community</option>
-                    <option value="market">market</option>
-                    <option value="music">music</option>
-                    <option value="outdoors">outdoors</option>
-                    <option value="education">education</option>
-                    <option value="charity">charity</option>
-                    <option value="sports">sports</option>
-                    <option value="kids">kids</option>
-                    <option value="other">other</option>
-                  </select>
-
-                  <label>Description (required)</label>
-                  <textarea id="eventsDescription" placeholder="Tell us about the event"></textarea>
-
-                  <div class="twoCol">
-                    <div>
-                      <label>Start Date/Time (required)</label>
-                      <input id="eventsStartAt" type="datetime-local" />
-                    </div>
-                    <div>
-                      <label>End Date/Time (required)</label>
-                      <input id="eventsEndAt" type="datetime-local" />
-                    </div>
-                  </div>
-
-                  <label>Location Name (optional)</label>
-                  <input id="eventsLocationName" placeholder="Venue or location name" />
-
-                  <label>Address (optional)</label>
-                  <input id="eventsAddress" placeholder="Street address" />
-
-                  <div class="twoCol">
-                    <div>
-                      <label>Website (optional)</label>
-                      <input id="eventsWebsite" placeholder="https://..." />
-                    </div>
-                    <div>
-                      <label>Image URL (optional)</label>
-                      <input id="eventsImageUrl" placeholder="https://..." />
-                    </div>
-                  </div>
-
-                  <div class="twoCol">
-                    <div>
-                      <label>Organizer Name (required)</label>
-                      <input id="eventsOrganizerName" placeholder="Organizer name" />
-                    </div>
-                    <div>
-                      <label>Organizer Email (required)</label>
-                      <input id="eventsOrganizerEmail" placeholder="organizer@email.com" />
-                    </div>
-                  </div>
-
-                  <label>Organizer Phone (optional)</label>
-                  <input id="eventsOrganizerPhone" placeholder="(555) 555-5555" />
-
-                  <label>Notes to Admin (optional)</label>
-                  <textarea id="eventsNotesToAdmin" placeholder="Anything else for review?"></textarea>
-
-                  <div class="row" style="justify-content:space-between;">
-                    <button id="eventsSubmitBtn" type="submit">Submit Event</button>
-                    <div class="muted" id="eventsSubmitMsg"></div>
-                  </div>
-                </form>
-
-                <!-- V0 Events Layout -->
-                <div class="events-v0">
-                  <div class="events-v0-main">
-
-                    <!-- Featured event (populated by JS) -->
-                    <div id="featuredEvent"></div>
-
-                    <!-- Category chips (populated by JS) -->
-                    <div class="event-chips" id="eventChips"></div>
-
-                    <!-- Event list (V0 cards rendered by JS) -->
-                    <div class="event-list" id="eventsList"></div>
-
-                    <!-- Event detail (shown when an event is selected) -->
-                    <div class="event-detail" id="eventDetail"></div>
-
-                    <!-- Legacy calendar (hidden, kept for existing app.js compat) -->
-                    <div class="calendarGrid" id="eventsCalendar" style="display:none;"></div>
-
-                  </div>
-
-                  <aside class="events-v0-sidebar">
-
-                    <!-- V0 Calendar -->
-                    <div class="event-calendar" id="calGrid">
-                      <div class="event-calendar-header">
-                        <span class="event-calendar-title" id="calTitle"></span>
-                        <div class="event-calendar-nav">
-                          <button type="button" id="calPrev">&#8249;</button>
-                          <button type="button" id="calNext">&#8250;</button>
-                        </div>
-                      </div>
-                      <div class="event-calendar-grid" id="calDays"></div>
-                    </div>
-
-                    <!-- Upcoming events -->
-                    <div class="event-sidebar-card">
-                      <div class="event-sidebar-card-header">Upcoming</div>
-                      <div class="event-sidebar-card-body">
-                        <div class="event-upcoming-list" id="upcomingEventsList"></div>
-                      </div>
-                    </div>
-
-                    <!-- Stats -->
-                    <div class="event-sidebar-card">
-                      <div class="event-sidebar-card-header">Community Stats</div>
-                      <div class="event-sidebar-card-body">
-                        <div class="event-stats" id="eventStats">
-                          <div class="event-stat">
-                            <div class="event-stat-value" id="statTotalEvents">0</div>
-                            <div class="event-stat-label">Events</div>
-                          </div>
-                          <div class="event-stat">
-                            <div class="event-stat-value" id="statThisWeek">0</div>
-                            <div class="event-stat-label">New This Week</div>
-                          </div>
-                          <div class="event-stat">
-                            <div class="event-stat-value" id="statCategories">0</div>
-                            <div class="event-stat-label">Categories</div>
-                          </div>
-                          <div class="event-stat">
-                            <div class="event-stat-value" id="statRsvps">0</div>
-                            <div class="event-stat-label">RSVPs</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                  </aside>
-                </div>
-
-              </div>
-            </div>
-          </section>
-
-          <section class="view" data-view="archive">
-            <div class="panel">
-              <div class="panelHead"><strong>Daily Pulse</strong></div>
-              <div class="panelBody">
-                <div id="archivePulseBody"></div>
-                <div class="muted" id="archivePulseEmpty" style="display:none;">No pulse published yet.</div>
-              </div>
-            </div>
-            <div class="panel">
-              <div class="panelHead"><strong>Past Daily Pulses</strong></div>
-              <div class="panelBody">
-                <div class="list" id="pulseHistoryList"></div>
-                <div class="muted" id="pulseHistoryEmpty" style="display:none;">No past pulses available.</div>
-              </div>
-            </div>
-            <div class="panel" id="pulseDetailPanel" style="display:none;">
-              <div class="panelHead">
-                <strong>Pulse Details</strong>
-                <button class="pill" id="closePulseDetailBtn" style="cursor:pointer;">Close</button>
-              </div>
-              <div class="panelBody">
-                <div id="pulseDetailBody"></div>
-              </div>
-            </div>
-            <div class="panel">
-              <div class="panelHead"><strong>Archive</strong></div>
-              <div class="panelBody">
-                <div id="archivePinned"></div>
-                <div class="list" id="archiveList" style="margin-top:12px;"></div>
-                <div class="muted" id="archiveEmpty" style="display:none;">No archive entries yet.</div>
-              </div>
-            </div>
-          </section>
-
-          <section class="view" data-view="admin">
-            <div class="panel">
-              <div class="panelHead"><strong>Admin</strong></div>
-              <div class="panelBody">
-                <div class="muted">Admin view placeholder.</div>
-              </div>
-            </div>
-          </section>
-
-          <section class="view" data-view="support">
-            <div class="panel">
-              <div class="panelHead">
-                <div>
-                  <strong>Support / Report a Bug</strong>
-                  <div class="muted">Help us improve Sebastian Digital Town</div>
-                </div>
-              </div>
-              <div class="panelBody">
-                <div class="item">
-                  <div class="muted">
-                    Found something not working? Have a suggestion? Let us know! Your feedback helps us make the platform better for everyone.
-                  </div>
-                </div>
-
-                <form class="item eventsForm" id="supportForm" style="margin-top:10px;">
-                  <label>Type of Request</label>
-                  <select id="supportType">
-                    <option value="bug">🐛 Bug Report - Something isn't working</option>
-                    <option value="feature">💡 Feature Request - Suggestion for improvement</option>
-                    <option value="question">❓ Question - Need help with something</option>
-                    <option value="other">📝 Other</option>
-                  </select>
-
-                  <label>Your Name (optional)</label>
-                  <input id="supportName" placeholder="Your name" />
-
-                  <label>Your Email (optional, for follow-up)</label>
-                  <input id="supportEmail" type="email" placeholder="you@example.com" />
-
-                  <label>Subject (required)</label>
-                  <input id="supportSubject" placeholder="Brief description of the issue" />
-
-                  <label>Details (required)</label>
-                  <textarea id="supportDetails" placeholder="Please describe what happened, what you expected, and any steps to reproduce the issue..."></textarea>
-
-                  <label>Page/Feature where this occurred (optional)</label>
-                  <input id="supportPage" placeholder="e.g., Channels, Marketplace, Login page" />
-
-                  <label>Browser/Device (optional)</label>
-                  <input id="supportDevice" placeholder="e.g., Chrome on iPhone, Safari on Mac" />
-
-                  <div class="row" style="justify-content:space-between; margin-top:12px;">
-                    <button id="supportSubmitBtn" type="submit">Submit Report</button>
-                    <div class="muted" id="supportSubmitMsg"></div>
-                  </div>
-                </form>
-
-                <div class="item" style="margin-top:16px;">
-                  <div class="contextTitle">Your Previous Reports</div>
-                  <div class="muted" id="supportLoginMsg">Log in to see your submitted reports.</div>
-                  <div class="list" id="supportMyList" style="display:none;"></div>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-      </main>
+      <div class="stat-card">
+        <div class="stat-value c2 stat-loading" id="statUsers">—</div>
+        <div class="stat-label">Users</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value c3 stat-loading" id="statTables">—</div>
+        <div class="stat-label">Tables</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value c4 stat-loading" id="statModules">—</div>
+        <div class="stat-label">Modules Installed</div>
+      </div>
     </div>
 
-    <footer class="beta-footer">
-      Digital Towns Beta v0.1 - Built with &#10084; for local communities
-    </footer>
+    <!-- CTA -->
+    <div class="cta-row">
+      <a href="/admin-modules.html" class="btn-primary">Go to Module Registry</a>
+      <a href="/docs/ARCHITECTURE.mmd" class="btn-secondary">Architecture Docs</a>
+    </div>
 
-    <script src="/theme.js?v=1"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-    <script src="/sweep_wheel_v2.js?v=2"></script>
-    <script src="/share_modal.js?v=1"></script>
-    <script src="/sweep_section_v2.js?v=12"></script>
-    <script src="/app.js?v=clean_cards_1"></script>
-    <script src="/ui_v2.js?v=1"></script>
-    <script src="/js/beta-banner.js?v=1"></script>
-    <script>(function(){var tc=window.__TOWN_CONFIG__;if(!tc)return;var n=tc.name,fn=tc.fullName,lb=tc.localBiz||{},v=tc.verification||{};document.querySelectorAll('.brandTitle').forEach(function(el){if(el.innerHTML.includes('Sebastian'))el.innerHTML=n+' <span class="beta-badge">BETA</span>';});document.querySelectorAll('.navItem span').forEach(function(el){if(el.textContent==='Sebastian Pulse')el.textContent=n+' Pulse';});document.querySelectorAll('.map-hero-title').forEach(function(el){if(el.textContent.includes('Sebastian'))el.textContent=n+' Map';});document.querySelectorAll('.mapImage').forEach(function(el){if(el.alt&&el.alt.includes('Sebastian'))el.alt=n+' Map';});document.querySelectorAll('.muted').forEach(function(el){if(el.textContent==='Find trusted service providers in Sebastian.'&&lb.serviceProvidersDescription)el.textContent=lb.serviceProvidersDescription;if(el.textContent.includes('physically located in Sebastian')&&lb.directoryDescription)el.textContent=lb.directoryDescription;if(el.textContent==='Help us improve Sebastian Digital Town')el.textContent='Help us improve '+fn;});document.querySelectorAll('strong').forEach(function(el){if(el.textContent==='Local Sebastian Businesses'&&lb.directoryTitle)el.textContent=lb.directoryTitle;});document.querySelectorAll('span.muted').forEach(function(el){if(el.textContent.includes('physically located in Sebastian')&&v.confirmBusinessLabel)el.textContent=v.confirmBusinessLabel;});var h2s=document.querySelectorAll('h2');h2s.forEach(function(el){if(el.textContent.includes('The Sebastian Pulse'))el.innerHTML=el.innerHTML.replace('The Sebastian Pulse','The '+n+' Pulse');});var hero=document.querySelector('[style*="font-size:18px"]');if(hero&&hero.textContent.includes('Welcome to Sebastian'))hero.textContent='Welcome to '+n+', '+(tc.address?.state||'FL');})();</script>
-  </body>
+    <!-- Module Status -->
+    <div class="module-status" id="moduleStatusPanel">
+      <h3>Installed Modules</h3>
+      <div id="moduleList" style="color:#475569;font-size:13px;">Loading...</div>
+    </div>
+  </div>
+
+  <script>
+    // Fetch staging stats
+    fetch('/api/staging/stats')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        document.getElementById('statCommunities').textContent = d.communities;
+        document.getElementById('statUsers').textContent = d.users;
+        document.getElementById('statTables').textContent = d.tables;
+        document.getElementById('statModules').textContent = d.modules;
+
+        document.getElementById('statCommunities').classList.remove('stat-loading');
+        document.getElementById('statUsers').classList.remove('stat-loading');
+        document.getElementById('statTables').classList.remove('stat-loading');
+        document.getElementById('statModules').classList.remove('stat-loading');
+      })
+      .catch(function() {
+        document.getElementById('statCommunities').textContent = '?';
+        document.getElementById('statUsers').textContent = '?';
+        document.getElementById('statTables').textContent = '?';
+        document.getElementById('statModules').textContent = '?';
+      });
+
+    // Fetch installed modules from migrations table
+    fetch('/api/staging/stats')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var el = document.getElementById('moduleList');
+        // For now show core + any modules from feature_flags
+        var html = '';
+        html += '<div class="module-row"><span class="module-name">core</span><span class="module-badge badge-active">ACTIVE</span></div>';
+        if (d.modules > 0) {
+          html += '<div class="module-row"><span class="module-name">tags</span><span class="module-badge badge-active">ACTIVE</span></div>';
+        }
+        el.innerHTML = html;
+      })
+      .catch(function() {
+        document.getElementById('moduleList').textContent = 'Could not load modules';
+      });
+  </script>
+</body>
 </html>

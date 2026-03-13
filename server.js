@@ -1813,6 +1813,24 @@ app.get("/api/stats/mau", async (req, res) => {
   }
 });
 
+// Staging dashboard stats
+app.get("/api/staging/stats", async (req, res) => {
+  try {
+    const communities = await db.one("SELECT COUNT(*) AS c FROM communities");
+    const users = await db.one("SELECT COUNT(*) AS c FROM users");
+    const tables = await db.one("SELECT COUNT(*) AS c FROM pg_stat_user_tables");
+    const modules = await db.one("SELECT COUNT(*) AS c FROM migrations");
+    res.json({
+      communities: parseInt(communities.c),
+      users: parseInt(users.c),
+      tables: parseInt(tables.c),
+      modules: parseInt(modules.c)
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Stats unavailable", detail: err.message });
+  }
+});
+
 app.get("/api/me", async (req, res) =>{
   const sid = parseCookies(req).sid;
   if(!sid) return res.status(401).json({ error: "not logged in" });
