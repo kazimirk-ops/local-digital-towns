@@ -1,0 +1,8 @@
+{
+  "id": "places",
+  "name": "Places & Geographic Hierarchy",
+  "version": "1.0.0",
+  "layer": 0,
+  "dependencies": ["core"],
+  "description": "Towns, regions, states, countries. Self-referencing hierarchy. Domain routing. Geo-filtering."
+}

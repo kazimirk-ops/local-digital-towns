@@ -291,11 +291,21 @@ try {
   console.error("Auth module failed to load:", err?.message);
 }
 
+// ─── Mount places module (before view-only lockdown so POST/PUT/DELETE endpoints work) ───
+try {
+  const mountPlaces = require("./modules/places/routes");
+  mountPlaces(app, db);
+} catch (err) {
+  console.error("Places module failed to load:", err?.message);
+}
+
 // ─── View-only lockdown ───
 app.use(function(req, res, next) {
   if (req.method === 'GET') return next();
   // Allow auth POST endpoints through
   if (req.path.startsWith('/api/auth/') || req.path.startsWith('/auth/')) return next();
+  // Allow places POST/PUT/DELETE endpoints through
+  if (req.path.startsWith('/api/places') || req.path.startsWith('/api/place-requests') || req.path.startsWith('/api/admin/place')) return next();
   return res.status(403).json({ error: 'This site is in view-only mode.' });
 });
 
@@ -1965,6 +1975,11 @@ app.get("/api/modules", async (req, res) => {
 // ─── Consolidated Admin Shell ───
 app.get("/admin/console", async (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin", "index.html"));
+});
+
+// ─── Places Admin Page ───
+app.get("/places-admin", async (req, res) => {
+  res.sendFile(path.join(__dirname, "modules", "places", "public", "places-admin.html"));
 });
 
 // GET /api/admin/users — list all users
