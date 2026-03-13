@@ -272,6 +272,35 @@ async function main() {
   }
   console.log("  Upserted: " + upserted + " zip_clusters");
 
+  // ── Geocode ZIP clusters (known US ZIP centroids) ──
+  console.log("\nGeocoding zip_clusters...");
+  var ZIP_COORDS = {
+    "32958": [27.8164, -80.4706], "67220": [37.7625, -97.2545], "19149": [40.0504, -75.0254],
+    "27609": [35.8127, -78.6323], "28677": [35.7826, -80.8873], "32738": [28.9005, -81.2137],
+    "35759": [34.8603, -86.5672], "39563": [30.4116, -88.5345], "44107": [41.4842, -81.7982],
+    "60803": [41.6689, -87.7384], "70706": [30.4866, -90.9568], "11433": [40.6981, -73.7868],
+    "13145": [43.6481, -76.0782], "78602": [30.1105, -97.3150], "97352": [44.7182, -123.0040],
+    "19015": [39.8684, -75.3840], "29720": [34.7204, -80.7712], "01535": [42.2159, -72.0828],
+    "60088": [42.3253, -87.8412], "72715": [36.4806, -94.2713], "93230": [36.3275, -119.6457],
+    "76182": [32.8340, -97.2289], "98626": [46.1468, -122.9084], "03054": [42.8584, -71.4934],
+    // Major US cities fallback
+    "100": [40.7128, -74.0060], "191": [39.9526, -75.1652], "900": [34.0522, -118.2437],
+    "606": [41.8781, -87.6298], "770": [29.7604, -95.3698], "852": [33.4484, -112.0740],
+    "782": [29.4241, -98.4936], "922": [32.7157, -117.1611], "752": [32.7767, -96.7970],
+    "951": [33.9425, -117.2297]
+  };
+  var geocoded = 0;
+  var needGeocode = await staging.query("SELECT zip FROM zip_clusters WHERE lat IS NULL");
+  for (var row of needGeocode.rows) {
+    var z = row.zip;
+    var coords = ZIP_COORDS[z] || ZIP_COORDS[z.replace(/[^0-9]/g, "").slice(0, 5)] || ZIP_COORDS[z.slice(0, 3)];
+    if (coords) {
+      await staging.query("UPDATE zip_clusters SET lat=$1, lng=$2 WHERE zip=$3", [coords[0], coords[1], z]);
+      geocoded++;
+    }
+  }
+  console.log("  Geocoded: " + geocoded + " zip_clusters");
+
   // ── Match known ZIPs to places ──
   console.log("\nMatching ZIPs to existing places...");
   try {
@@ -282,12 +311,12 @@ async function main() {
     console.log("  Matched " + matchResult.rowCount + " zip_clusters to places");
   } catch (e) { console.error("  Place matching error:", e.message); }
 
-  // ── Mark genesis-eligible clusters ──
+  // ── Mark genesis-eligible clusters (threshold: 3 signals, no existing place) ──
   console.log("\nMarking genesis-eligible clusters...");
   try {
     var eligibleResult = await staging.query(
       "UPDATE zip_clusters SET genesis_eligible = true " +
-      "WHERE signal_count >= 10 AND place_id IS NULL"
+      "WHERE signal_count >= 3 AND place_id IS NULL"
     );
     console.log("  Genesis-eligible clusters: " + eligibleResult.rowCount);
   } catch (e) { console.error("  Genesis eligible error:", e.message); }
@@ -296,8 +325,8 @@ async function main() {
   console.log("Creating genesis candidates...");
   try {
     var candidateResult = await staging.query(
-      "INSERT INTO genesis_candidates (name, zip, city, state, signal_count, threshold, progress_pct, status, created_at, updated_at) " +
-      "SELECT city || ', ' || state, zip, city, state, signal_count, 50, " +
+      "INSERT INTO genesis_candidates (name, zip, city, state, lat, lng, signal_count, threshold, progress_pct, status, created_at, updated_at) " +
+      "SELECT city || ', ' || state, zip, city, state, lat, lng, signal_count, 50, " +
       "LEAST(100, (signal_count * 100 / 50)), 'forming', NOW(), NOW() " +
       "FROM zip_clusters " +
       "WHERE genesis_eligible = true " +
@@ -305,6 +334,14 @@ async function main() {
     );
     console.log("  Genesis candidates created: " + candidateResult.rowCount);
   } catch (e) { console.error("  Genesis candidates error:", e.message); }
+
+  // ── Propagate lat/lng to genesis candidates missing coordinates ──
+  try {
+    await staging.query(
+      "UPDATE genesis_candidates gc SET lat = zc.lat, lng = zc.lng " +
+      "FROM zip_clusters zc WHERE gc.zip = zc.zip AND gc.lat IS NULL AND zc.lat IS NOT NULL"
+    );
+  } catch (e) {}
 
   // ══════════════════════════════════════
   // SUMMARY
