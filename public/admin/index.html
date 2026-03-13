@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin — Digital Towns</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: #070b10;
+      color: #e8eef6;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 220px;
+      background: #0c1219;
+      border-right: 1px solid #1e293b;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: fixed;
+      top: 0; bottom: 0; left: 0;
+      z-index: 10;
+      overflow-y: auto;
+    }
+    .sidebar-logo { font-size: 18px; font-weight: 700; color: #0ea5e9; margin-bottom: 4px; letter-spacing: -0.5px; }
+    .sidebar-sub { font-size: 11px; color: #64748b; margin-bottom: 16px; line-height: 1.4; }
+    .nav-item {
+      display: block; padding: 9px 14px; border-radius: 8px;
+      color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+    }
+    .nav-item:hover { background: #1e293b; color: #e2e8f0; }
+    .nav-item.active { background: #0ea5e9; color: #fff; }
+    .nav-icon { margin-right: 8px; font-size: 14px; }
+    .sidebar-footer {
+      margin-top: auto; padding-top: 12px; border-top: 1px solid #1e293b;
+      font-size: 11px; color: #475569; line-height: 1.5;
+    }
+    .sidebar-footer a { color: #64748b; text-decoration: none; }
+    .sidebar-footer a:hover { color: #94a3b8; }
+
+    /* Main */
+    .main { margin-left: 220px; flex: 1; padding: 32px 40px; max-width: 1100px; }
+
+    /* Cards */
+    .card {
+      background: #0f1722; border: 1px solid #1e293b; border-radius: 12px;
+      padding: 24px; margin-bottom: 20px;
+    }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+    .card-title { font-size: 15px; font-weight: 700; color: #e2e8f0; }
+    .card-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+    /* Stat grid */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .stat-card {
+      background: #0a0f1a; border: 1px solid #1e293b; border-radius: 10px;
+      padding: 20px 16px; text-align: center;
+    }
+    .stat-value { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+    .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-sub { font-size: 11px; color: #475569; margin-top: 2px; }
+    .c1 { color: #0ea5e9; } .c2 { color: #a855f7; } .c3 { color: #10b981; }
+    .c4 { color: #f59e0b; } .c5 { color: #ec4899; } .c6 { color: #6366f1; }
+
+    /* Tables */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px 10px; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #1e293b; }
+    td { padding: 10px; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #0a0f1a; }
+
+    /* Buttons */
+    .btn { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; border: none; transition: background 0.15s; }
+    .btn-primary { background: #0ea5e9; color: #fff; }
+    .btn-primary:hover { background: #0284c7; }
+    .btn-outline { background: transparent; color: #94a3b8; border: 1px solid #334155; }
+    .btn-outline:hover { border-color: #64748b; color: #e2e8f0; }
+    .btn-green { background: #064e3b; color: #10b981; }
+    .btn-green:hover { background: #065f46; }
+    .btn-red { background: #450a0a; color: #ef4444; }
+    .btn-red:hover { background: #7f1d1d; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Forms */
+    select, input[type=text], input[type=email], input[type=number], textarea {
+      background: #0a0f1a; border: 1px solid #334155; border-radius: 8px;
+      color: #e8eef6; padding: 8px 12px; font-size: 13px; font-family: inherit; outline: none;
+    }
+    select:focus, input:focus, textarea:focus { border-color: #0ea5e9; }
+    select { cursor: pointer; }
+
+    /* Pills / badges */
+    .pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .pill-green { background: #064e3b; color: #10b981; }
+    .pill-yellow { background: #422006; color: #f59e0b; }
+    .pill-red { background: #450a0a; color: #ef4444; }
+    .pill-gray { background: #1e293b; color: #64748b; }
+    .pill-blue { background: #0c2d48; color: #0ea5e9; }
+
+    /* Range tabs */
+    .range-tabs { display: flex; gap: 4px; }
+    .range-tab { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; background: transparent; color: #64748b; border: 1px solid #1e293b; font-family: inherit; }
+    .range-tab.active { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+
+    /* Toggle */
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #1e293b; }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-label { font-size: 13px; color: #cbd5e1; }
+    .toggle { width: 40px; height: 22px; border-radius: 12px; background: #334155; cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0; }
+    .toggle.on { background: #0ea5e9; }
+    .toggle::after { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: left 0.2s; }
+    .toggle.on::after { left: 21px; }
+
+    /* Panels */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Message */
+    .msg { font-size: 12px; color: #64748b; min-height: 16px; margin-top: 8px; }
+    .msg.ok { color: #10b981; }
+    .msg.err { color: #ef4444; }
+
+    /* Row */
+    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+    /* Export links */
+    .export-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .export-btn {
+      display: flex; align-items: center; gap: 8px; padding: 16px;
+      background: #0a0f1a; border: 1px solid #1e293b; border-radius: 10px;
+      color: #cbd5e1; text-decoration: none; font-size: 14px; font-weight: 500;
+      transition: border-color 0.15s;
+    }
+    .export-btn:hover { border-color: #0ea5e9; color: #e2e8f0; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 16px; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">Digital Towns</div>
+    <div class="sidebar-sub">Admin Console</div>
+    <a class="nav-item active" data-panel="dashboard"><span class="nav-icon">&#9632;</span>Dashboard</a>
+    <a class="nav-item" data-panel="communities"><span class="nav-icon">&#127760;</span>Communities</a>
+    <a class="nav-item" data-panel="users"><span class="nav-icon">&#128100;</span>Users</a>
+    <a href="/admin-modules.html" class="nav-item"><span class="nav-icon">&#9881;</span>Modules</a>
+    <a class="nav-item" data-panel="analytics"><span class="nav-icon">&#128200;</span>Analytics</a>
+    <a class="nav-item" data-panel="applications"><span class="nav-icon">&#128203;</span>Applications</a>
+    <a class="nav-item" data-panel="flags"><span class="nav-icon">&#9873;</span>Feature Flags</a>
+    <a class="nav-item" data-panel="channels"><span class="nav-icon">&#128172;</span>Channels</a>
+    <a class="nav-item" data-panel="trust"><span class="nav-icon">&#128737;</span>Trust &amp; Safety</a>
+    <a class="nav-item" data-panel="support"><span class="nav-icon">&#128233;</span>Support</a>
+    <a class="nav-item" data-panel="pulse"><span class="nav-icon">&#128161;</span>Pulse</a>
+    <a class="nav-item" data-panel="exports"><span class="nav-icon">&#128229;</span>Exports</a>
+    <div class="sidebar-footer">
+      <a href="/">&#8592; Back to Dashboard</a><br>
+      digitaltowns.app
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+
+    <!-- ============ PANEL 1: DASHBOARD ============ -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="card-header">
+        <div><div class="card-title" style="font-size:24px;">Admin Dashboard</div><div class="card-sub">Platform overview</div></div>
+        <div class="range-tabs" id="dashRangeTabs">
+          <button class="range-tab" data-range="today">Today</button>
+          <button class="range-tab active" data-range="7d">7D</button>
+          <button class="range-tab" data-range="30d">30D</button>
+        </div>
+      </div>
+      <div class="stat-grid" id="dashStats">
+        <div class="stat-card"><div class="stat-value c1" id="dUsers">--</div><div class="stat-label">Users</div><div class="stat-sub" id="dUsersNew"></div></div>
+        <div class="stat-card"><div class="stat-value c2" id="dCommunities">--</div><div class="stat-label">Communities</div></div>
+        <div class="stat-card"><div class="stat-value c3" id="dTables">--</div><div class="stat-label">Tables</div></div>
+        <div class="stat-card"><div class="stat-value c4" id="dModules">--</div><div class="stat-label">Modules</div></div>
+        <div class="stat-card"><div class="stat-value c5" id="dOrders">--</div><div class="stat-label">Orders</div><div class="stat-sub" id="dRevenue"></div></div>
+        <div class="stat-card"><div class="stat-value c6" id="dListings">--</div><div class="stat-label">Active Listings</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Quick Links</div>
+        <div class="row" style="margin-top:12px;">
+          <a href="/admin-modules.html" class="btn btn-outline">Module Registry</a>
+          <a href="/login.html" class="btn btn-outline">Login Page</a>
+          <button class="btn btn-outline" onclick="switchPanel('exports')">Export Data</button>
+          <button class="btn btn-outline" onclick="switchPanel('analytics')">Full Analytics</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 2: COMMUNITIES ============ -->
+    <div class="panel" id="panel-communities">
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Communities</div><div class="card-sub">All registered communities</div></div>
+          <button class="btn btn-outline" onclick="loadCommunities()">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Slug</th><th>Name</th><th>Domain</th><th>Status</th><th>Feature Flags</th></tr></thead>
+          <tbody id="commRows"></tbody></table>
+        </div>
+        <div class="msg" id="commMsg">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 3: USERS ============ -->
+    <div class="panel" id="panel-users">
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Users</div><div class="card-sub">All registered users</div></div>
+          <button class="btn btn-outline" onclick="loadUsers()">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>ID</th><th>Email</th><th>Display Name</th><th>Trust Tier</th><th>Admin</th><th>Created</th><th>Last Active</th><th>Actions</th></tr></thead>
+          <tbody id="userRows"></tbody></table>
+        </div>
+        <div class="msg" id="userMsg">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 4: ANALYTICS ============ -->
+    <div class="panel" id="panel-analytics">
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Platform Analytics</div><div class="card-sub">Admin-only snapshot of platform activity</div></div>
+          <div class="row">
+            <select id="analyticsRange" style="width:130px;">
+              <option value="today">Today</option>
+              <option value="7d" selected>Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+            </select>
+            <span class="pill pill-gray" id="apiHealth">API: --</span>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-value c1" id="anUsersTotal">--</div><div class="stat-label">Total Users</div></div>
+          <div class="stat-card"><div class="stat-value c1" id="anUsersNew">--</div><div class="stat-label">New Users (range)</div></div>
+          <div class="stat-card"><div class="stat-value c2" id="anPlacesTotal">--</div><div class="stat-label">Total Places</div></div>
+          <div class="stat-card"><div class="stat-value c3" id="anBuyNow">--</div><div class="stat-label">Active Listings</div></div>
+          <div class="stat-card"><div class="stat-value c4" id="anAuctionsActive">--</div><div class="stat-label">Active Auctions</div></div>
+          <div class="stat-card"><div class="stat-value c4" id="anAuctionsEnded">--</div><div class="stat-label">Ended Auctions</div></div>
+          <div class="stat-card"><div class="stat-value c5" id="anOrdersTotal">--</div><div class="stat-label">Total Orders</div></div>
+          <div class="stat-card"><div class="stat-value c5" id="anOrdersRange">--</div><div class="stat-label">Orders (range)</div></div>
+          <div class="stat-card"><div class="stat-value c3" id="anRevenueTotal">--</div><div class="stat-label">Total Revenue</div></div>
+          <div class="stat-card"><div class="stat-value c3" id="anRevenueRange">--</div><div class="stat-label">Revenue (range)</div></div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-value c6" id="anLiveActive">--</div><div class="stat-label">Active Live Rooms</div></div>
+          <div class="stat-card"><div class="stat-value c6" id="anLiveScheduled">--</div><div class="stat-label">Scheduled Shows</div></div>
+          <div class="stat-card"><div class="stat-value c4" id="anSweepStatus">--</div><div class="stat-label">Sweep Status</div></div>
+          <div class="stat-card"><div class="stat-value c4" id="anSweepEntries">--</div><div class="stat-label">Sweep Entries</div></div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-value c2" id="anTrustPending">--</div><div class="stat-label">Trust Apps Pending</div></div>
+          <div class="stat-card"><div class="stat-value c2" id="anResidentPending">--</div><div class="stat-label">Resident Apps Pending</div></div>
+          <div class="stat-card"><div class="stat-value c2" id="anBusinessPending">--</div><div class="stat-label">Business Apps Pending</div></div>
+          <div class="stat-card"><div class="stat-value c2" id="anPlacesPending">--</div><div class="stat-label">Store Approvals Pending</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 5: APPLICATIONS ============ -->
+    <div class="panel" id="panel-applications">
+      <!-- Waitlist -->
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Waitlist Signups</div><div class="card-sub">Filter by status, then approve or reject</div></div>
+          <select id="waitlistStatus" onchange="loadWaitlist()"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Submitted</th><th>Name</th><th>Email</th><th>Interests</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="waitlistRows"></tbody></table>
+        </div>
+        <div class="msg" id="waitlistMsg">Loading...</div>
+      </div>
+      <!-- Business Apps -->
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Business / Service Applications</div></div>
+          <select id="businessStatus" onchange="loadBusiness()"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Submitted</th><th>Contact</th><th>Business</th><th>Type</th><th>Category</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="businessRows"></tbody></table>
+        </div>
+        <div class="msg" id="businessMsg">Loading...</div>
+      </div>
+      <!-- Resident Apps -->
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Resident Applications</div></div>
+          <select id="residentStatus" onchange="loadResident()"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Submitted</th><th>Name</th><th>Email</th><th>City</th><th>Years</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="residentRows"></tbody></table>
+        </div>
+        <div class="msg" id="residentMsg">Loading...</div>
+      </div>
+      <!-- Buyer Verify -->
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Buyer Verification Requests</div></div>
+          <select id="buyerStatus" onchange="loadBuyers()"><option value="pending">Pending</option><option value="approved">Approved</option></select>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Submitted</th><th>Name</th><th>Email</th><th>City</th><th>Address</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="buyerRows"></tbody></table>
+        </div>
+        <div class="msg" id="buyerMsg">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 6: FEATURE FLAGS ============ -->
+    <div class="panel" id="panel-flags">
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Feature Flags</div><div class="card-sub">Toggle features per community</div></div>
+          <select id="flagCommunity" onchange="loadFlags()"></select>
+        </div>
+        <div id="flagToggles"></div>
+        <div class="msg" id="flagMsg"></div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 7: CHANNELS ============ -->
+    <div class="panel" id="panel-channels">
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Channels</div></div>
+          <button class="btn btn-outline" onclick="loadChannels()">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Channel</th><th>Description</th><th>Messages</th><th>Public</th><th>Actions</th></tr></thead>
+          <tbody id="channelRows"></tbody></table>
+        </div>
+        <div class="msg" id="channelMsg">Loading...</div>
+      </div>
+      <!-- Create Channel -->
+      <div class="card">
+        <div class="card-title">Create Channel</div>
+        <div class="row" style="margin-top:12px;">
+          <input type="text" id="newChannelName" placeholder="Channel name" style="flex:1;">
+          <input type="text" id="newChannelDesc" placeholder="Description" style="flex:2;">
+          <button class="btn btn-primary" onclick="createChannel()">Create</button>
+        </div>
+        <div class="msg" id="createChannelMsg"></div>
+      </div>
+      <!-- Channel Requests -->
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Channel Requests</div><div class="card-sub">Pending channel creation requests from users</div></div>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Channel Name</th><th>Description</th><th>Requested By</th><th>Reason</th><th>Actions</th></tr></thead>
+          <tbody id="channelRequestRows"></tbody></table>
+        </div>
+        <div class="msg" id="channelRequestMsg">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 8: TRUST & SAFETY ============ -->
+    <div class="panel" id="panel-trust">
+      <div class="card">
+        <div class="card-title">Disputes</div>
+        <div id="trustDisputes" style="margin-top:12px;color:#64748b;font-size:13px;">Loading...</div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Trust Applications</div><div class="card-sub">Pending requests (auto-approved tiers still logged)</div></div>
+        </div>
+        <div id="trustApps" style="margin-top:4px;color:#64748b;font-size:13px;">Loading...</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Reviews</div>
+        <div id="trustReviews" style="margin-top:12px;color:#64748b;font-size:13px;">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 9: SUPPORT ============ -->
+    <div class="panel" id="panel-support">
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Support Requests</div></div>
+          <button class="btn btn-outline" onclick="loadSupport()">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Type</th><th>Subject</th><th>User</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody id="supportRows"></tbody></table>
+        </div>
+        <div class="msg" id="supportMsg">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 10: PULSE ============ -->
+    <div class="panel" id="panel-pulse">
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Daily Pulse</div><div class="card-sub">Generate community stats for social posting</div></div>
+          <button class="btn btn-primary" id="pulseGenBtn" onclick="generatePulse()">Generate Pulse Now</button>
+        </div>
+        <div id="pulseContent" style="font-size:13px;color:#94a3b8;">Loading pulse data...</div>
+        <div class="msg" id="pulseMsg"></div>
+        <div id="pulsePreview" style="display:none;margin-top:16px;">
+          <div class="card-sub" style="margin-bottom:8px;">Facebook Post Preview:</div>
+          <pre id="pulseText" style="background:#0a0f1a;padding:16px;border-radius:8px;font-size:12px;color:#cbd5e1;white-space:pre-wrap;font-family:inherit;border:1px solid #1e293b;"></pre>
+          <button class="btn btn-outline" style="margin-top:8px;" onclick="copyPulse()">Copy to Clipboard</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ PANEL 11: EXPORTS ============ -->
+    <div class="panel" id="panel-exports">
+      <div class="card">
+        <div class="card-title">Data Exports</div>
+        <div class="card-sub" style="margin-bottom:16px;">Download CSV files of platform data</div>
+        <div class="export-grid">
+          <a href="/api/admin/export/users.csv" class="export-btn">&#128100; Users CSV</a>
+          <a href="/api/admin/export/orders.csv" class="export-btn">&#128230; Orders CSV</a>
+          <a href="/api/admin/export/places.csv" class="export-btn">&#127760; Places CSV</a>
+          <a href="/api/admin/export/tags.csv" class="export-btn">&#127991; Tags CSV</a>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+
+  <script>
+    // ========== UTILITIES (extracted from Sebastian admin.js) ==========
+    function esc(s) { return (s || '').toString().replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    function api(url, opts) {
+      return fetch(url, Object.assign({ credentials: 'include', headers: { 'Content-Type': 'application/json' } }, opts || {}))
+        .then(function(r) {
+          if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || r.statusText); });
+          var ct = r.headers.get('content-type') || '';
+          return ct.includes('json') ? r.json() : r.text();
+        });
+    }
+
+    function formatNum(v) { return v != null && Number.isFinite(Number(v)) ? Number(v).toLocaleString() : '--'; }
+    function formatCents(v) { return v != null ? '$' + (Number(v) / 100).toFixed(2) : '--'; }
+    function shortDate(d) { if (!d) return '--'; var dt = new Date(d); return dt.toLocaleDateString(); }
+
+    // ========== PANEL SWITCHING ==========
+    var currentPanel = 'dashboard';
+    var panelLoaded = {};
+
+    function switchPanel(name) {
+      document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+      document.querySelectorAll('.nav-item[data-panel]').forEach(function(n) { n.classList.remove('active'); });
+      var panel = document.getElementById('panel-' + name);
+      if (panel) panel.classList.add('active');
+      var nav = document.querySelector('.nav-item[data-panel="' + name + '"]');
+      if (nav) nav.classList.add('active');
+      currentPanel = name;
+      if (!panelLoaded[name]) { panelLoaded[name] = true; loadPanel(name); }
+    }
+
+    document.querySelectorAll('.nav-item[data-panel]').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        e.preventDefault();
+        switchPanel(el.getAttribute('data-panel'));
+      });
+    });
+
+    function loadPanel(name) {
+      var loaders = {
+        dashboard: loadDashboard,
+        communities: loadCommunities,
+        users: loadUsers,
+        analytics: loadAnalytics,
+        applications: function() { loadWaitlist(); loadBusiness(); loadResident(); loadBuyers(); },
+        flags: loadFlagsCommunities,
+        channels: function() { loadChannels(); loadChannelRequests(); },
+        trust: loadTrust,
+        support: loadSupport,
+        pulse: loadPulse,
+        exports: function() {}
+      };
+      if (loaders[name]) loaders[name]();
+    }
+
+    // ========== PANEL 1: DASHBOARD ==========
+    var dashRange = '7d';
+
+    document.getElementById('dashRangeTabs').addEventListener('click', function(e) {
+      if (!e.target.classList.contains('range-tab')) return;
+      dashRange = e.target.getAttribute('data-range');
+      document.querySelectorAll('#dashRangeTabs .range-tab').forEach(function(t) { t.classList.remove('active'); });
+      e.target.classList.add('active');
+      loadDashboard();
+    });
+
+    function loadDashboard() {
+      // Basic stats from /api/stats
+      api('/api/stats').then(function(d) {
+        document.getElementById('dCommunities').textContent = formatNum(d.communities);
+        document.getElementById('dTables').textContent = formatNum(d.tables);
+        document.getElementById('dModules').textContent = formatNum(d.modules);
+      }).catch(function() {});
+
+      // Detailed stats from analytics summary
+      api('/api/admin/analytics/summary?range=' + dashRange).then(function(d) {
+        document.getElementById('dUsers').textContent = formatNum(d.users ? d.users.total : null);
+        document.getElementById('dUsersNew').textContent = d.users ? '+' + formatNum(d.users.new) + ' new' : '';
+        document.getElementById('dOrders').textContent = formatNum(d.orders ? d.orders.total : null);
+        document.getElementById('dRevenue').textContent = d.orders ? formatCents(d.orders.totalRevenueCents) : '';
+        document.getElementById('dListings').textContent = formatNum(d.listings ? d.listings.buyNowActive : null);
+      }).catch(function() {
+        // Fallback to basic stats
+        api('/api/stats').then(function(d) {
+          document.getElementById('dUsers').textContent = formatNum(d.users);
+        }).catch(function() {});
+      });
+    }
+
+    // ========== PANEL 2: COMMUNITIES ==========
+    function loadCommunities() {
+      document.getElementById('commMsg').textContent = 'Loading...';
+      api('/api/admin/communities').then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : (rows.communities || [rows]);
+        var el = document.getElementById('commRows');
+        if (!arr.length) { el.innerHTML = ''; document.getElementById('commMsg').textContent = 'No communities found'; return; }
+        el.innerHTML = arr.map(function(c) {
+          var flags = c.feature_flags || c.featureFlags || {};
+          if (typeof flags === 'string') try { flags = JSON.parse(flags); } catch(e) { flags = {}; }
+          var flagPills = Object.keys(flags).map(function(k) {
+            return '<span class="pill ' + (flags[k] ? 'pill-green' : 'pill-gray') + '">' + esc(k) + '</span>';
+          }).join(' ');
+          return '<tr><td>' + esc(c.slug) + '</td><td>' + esc(c.name) + '</td><td>' + esc(c.domain) + '</td>'
+            + '<td><span class="pill ' + (c.status === 'active' ? 'pill-green' : 'pill-gray') + '">' + esc(c.status) + '</span></td>'
+            + '<td>' + (flagPills || '--') + '</td></tr>';
+        }).join('');
+        document.getElementById('commMsg').textContent = arr.length + ' communities';
+      }).catch(function(e) { document.getElementById('commMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    // ========== PANEL 3: USERS ==========
+    var TIER_LABELS = { 0: 'Visitor', 1: 'Individual', 2: 'Moderator', 3: 'Local Business', 4: 'Admin' };
+
+    function loadUsers() {
+      document.getElementById('userMsg').textContent = 'Loading...';
+      api('/api/admin/users').then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : (rows.users || []);
+        var el = document.getElementById('userRows');
+        if (!arr.length) { el.innerHTML = ''; document.getElementById('userMsg').textContent = 'No users found'; return; }
+        el.innerHTML = arr.map(function(u) {
+          var tier = Number(u.trust_tier_num || u.trustTier || u.trusttier || 0);
+          var isAdmin = Number(u.is_admin || u.isAdmin || u.isadmin || 0);
+          var tierOpts = [0,1,2,3,4].map(function(t) {
+            return '<option value="' + t + '"' + (t === tier ? ' selected' : '') + '>' + t + ' - ' + TIER_LABELS[t] + '</option>';
+          }).join('');
+          return '<tr><td>' + u.id + '</td><td>' + esc(u.email) + '</td><td>' + esc(u.display_name || u.displayName || u.displayname || '') + '</td>'
+            + '<td><select onchange="setTier(' + u.id + ', this.value)" style="width:160px;">' + tierOpts + '</select></td>'
+            + '<td>' + (isAdmin ? '<span class="pill pill-blue">Admin</span>' : '--') + '</td>'
+            + '<td>' + shortDate(u.created_at || u.createdAt || u.createdat) + '</td>'
+            + '<td>' + shortDate(u.last_active_at || u.lastActiveAt) + '</td>'
+            + '<td>--</td></tr>';
+        }).join('');
+        document.getElementById('userMsg').textContent = arr.length + ' users';
+      }).catch(function(e) { document.getElementById('userMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    function setTier(userId, tier) {
+      api('/api/admin/trust/tiers', { method: 'POST', body: JSON.stringify({ userId: userId, trustTier: Number(tier) }) })
+        .then(function() { document.getElementById('userMsg').className = 'msg ok'; document.getElementById('userMsg').textContent = 'Tier updated for user ' + userId; })
+        .catch(function(e) { document.getElementById('userMsg').className = 'msg err'; document.getElementById('userMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    // ========== PANEL 4: ANALYTICS (extracted from admin_analytics.js) ==========
+    function loadAnalytics() {
+      // Health check
+      fetch('/health').then(function(r) { return r.json(); }).then(function(d) {
+        var el = document.getElementById('apiHealth');
+        el.textContent = 'API: ' + (d.status || 'ok');
+        el.className = 'pill pill-green';
+      }).catch(function() {
+        document.getElementById('apiHealth').textContent = 'API: down';
+        document.getElementById('apiHealth').className = 'pill pill-red';
+      });
+      loadAnalyticsSummary();
+    }
+
+    document.getElementById('analyticsRange').addEventListener('change', function() { loadAnalyticsSummary(); });
+
+    function loadAnalyticsSummary() {
+      var range = document.getElementById('analyticsRange').value;
+      api('/api/admin/analytics/summary?range=' + range).then(function(d) {
+        document.getElementById('anUsersTotal').textContent = formatNum(d.users ? d.users.total : null);
+        document.getElementById('anUsersNew').textContent = formatNum(d.users ? d.users.new : null);
+        document.getElementById('anPlacesTotal').textContent = formatNum(d.places ? d.places.total : null);
+        document.getElementById('anPlacesPending').textContent = formatNum(d.places ? d.places.pending : null);
+        document.getElementById('anBuyNow').textContent = formatNum(d.listings ? d.listings.buyNowActive : null);
+        document.getElementById('anAuctionsActive').textContent = formatNum(d.listings ? d.listings.auctionsActive : null);
+        document.getElementById('anAuctionsEnded').textContent = formatNum(d.listings ? d.listings.auctionsEnded : null);
+        document.getElementById('anOrdersTotal').textContent = formatNum(d.orders ? d.orders.total : null);
+        document.getElementById('anOrdersRange').textContent = formatNum(d.orders ? d.orders.rangeOrders : null);
+        document.getElementById('anRevenueTotal').textContent = formatCents(d.orders ? d.orders.totalRevenueCents : null);
+        document.getElementById('anRevenueRange').textContent = formatCents(d.orders ? d.orders.rangeRevenueCents : null);
+        document.getElementById('anLiveActive').textContent = formatNum(d.live ? d.live.activeRooms : null);
+        document.getElementById('anLiveScheduled').textContent = formatNum(d.live ? d.live.scheduledShows : null);
+        document.getElementById('anSweepStatus').textContent = d.sweep ? d.sweep.status : '--';
+        document.getElementById('anSweepEntries').textContent = formatNum(d.sweep ? d.sweep.totalEntries : null);
+        document.getElementById('anTrustPending').textContent = formatNum(d.approvals ? d.approvals.trustPending : null);
+        document.getElementById('anResidentPending').textContent = formatNum(d.approvals ? d.approvals.residentPending : null);
+        document.getElementById('anBusinessPending').textContent = formatNum(d.approvals ? d.approvals.businessPending : null);
+      }).catch(function(e) {
+        // Fallback for staging where not all data methods exist
+        document.getElementById('anUsersTotal').textContent = '?';
+      });
+    }
+
+    // ========== PANEL 5: APPLICATIONS (extracted from admin_applications.js) ==========
+    function loadWaitlist() {
+      var status = document.getElementById('waitlistStatus').value;
+      document.getElementById('waitlistMsg').textContent = 'Loading...';
+      api('/api/admin/waitlist?status=' + status).then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : [];
+        document.getElementById('waitlistRows').innerHTML = arr.map(function(r) {
+          var actions = status === 'pending' ? '<button class="btn btn-green btn-sm" onclick="appAction(\'waitlist\',' + r.id + ',\'approved\')">Approve</button> <button class="btn btn-red btn-sm" onclick="appAction(\'waitlist\',' + r.id + ',\'rejected\')">Reject</button>' : '--';
+          return '<tr><td>' + shortDate(r.createdAt || r.created_at) + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.email) + '</td><td>' + esc(r.interests || '') + '</td><td><span class="pill pill-gray">' + esc(r.status || status) + '</span></td><td>' + actions + '</td></tr>';
+        }).join('');
+        document.getElementById('waitlistMsg').textContent = arr.length + ' entries';
+      }).catch(function(e) { document.getElementById('waitlistMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    function loadBusiness() {
+      var status = document.getElementById('businessStatus').value;
+      document.getElementById('businessMsg').textContent = 'Loading...';
+      api('/api/admin/applications/business?status=' + status).then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : [];
+        document.getElementById('businessRows').innerHTML = arr.map(function(r) {
+          var actions = status === 'pending' ? '<button class="btn btn-green btn-sm" onclick="appAction(\'business\',' + r.id + ',\'approved\')">Approve</button> <button class="btn btn-red btn-sm" onclick="appAction(\'business\',' + r.id + ',\'rejected\')">Reject</button>' : '--';
+          return '<tr><td>' + shortDate(r.createdAt || r.created_at) + '</td><td>' + esc(r.contactName || r.contact_name || '') + '</td><td>' + esc(r.businessName || r.business_name || '') + '</td><td>' + esc(r.type || '') + '</td><td>' + esc(r.category || '') + '</td><td><span class="pill pill-gray">' + esc(r.status || status) + '</span></td><td>' + actions + '</td></tr>';
+        }).join('');
+        document.getElementById('businessMsg').textContent = arr.length + ' entries';
+      }).catch(function(e) { document.getElementById('businessMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    function loadResident() {
+      var status = document.getElementById('residentStatus').value;
+      document.getElementById('residentMsg').textContent = 'Loading...';
+      api('/api/admin/applications/resident?status=' + status).then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : [];
+        document.getElementById('residentRows').innerHTML = arr.map(function(r) {
+          var actions = status === 'pending' ? '<button class="btn btn-green btn-sm" onclick="appAction(\'resident\',' + r.id + ',\'approved\')">Approve</button> <button class="btn btn-red btn-sm" onclick="appAction(\'resident\',' + r.id + ',\'rejected\')">Reject</button>' : '--';
+          return '<tr><td>' + shortDate(r.createdAt || r.created_at) + '</td><td>' + esc(r.name || '') + '</td><td>' + esc(r.email || '') + '</td><td>' + esc(r.city || '') + '</td><td>' + esc(r.yearsInTown || r.years_in_town || '') + '</td><td><span class="pill pill-gray">' + esc(r.status || status) + '</span></td><td>' + actions + '</td></tr>';
+        }).join('');
+        document.getElementById('residentMsg').textContent = arr.length + ' entries';
+      }).catch(function(e) { document.getElementById('residentMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    function loadBuyers() {
+      var status = document.getElementById('buyerStatus').value;
+      document.getElementById('buyerMsg').textContent = 'Loading...';
+      api('/api/admin/pending-buyers').then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : [];
+        document.getElementById('buyerRows').innerHTML = arr.map(function(r) {
+          var actions = '<button class="btn btn-green btn-sm" onclick="verifyBuyer(' + (r.id || r.userId) + ')">Approve</button> <button class="btn btn-red btn-sm" onclick="rejectBuyer(' + (r.id || r.userId) + ')">Reject</button>';
+          return '<tr><td>' + shortDate(r.createdAt || r.created_at) + '</td><td>' + esc(r.displayName || r.display_name || '') + '</td><td>' + esc(r.email || '') + '</td><td>' + esc(r.city || '') + '</td><td>' + esc(r.address || '') + '</td><td><span class="pill pill-gray">' + esc(status) + '</span></td><td>' + actions + '</td></tr>';
+        }).join('');
+        document.getElementById('buyerMsg').textContent = arr.length + ' entries';
+      }).catch(function(e) { document.getElementById('buyerMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    function appAction(type, id, status) {
+      var urls = { waitlist: '/api/admin/waitlist/', business: '/api/admin/applications/business/', resident: '/api/admin/applications/resident/' };
+      var suffix = type === 'waitlist' ? '/status' : '/status';
+      api(urls[type] + id + suffix, { method: 'POST', body: JSON.stringify({ status: status }) })
+        .then(function() {
+          var loaders = { waitlist: loadWaitlist, business: loadBusiness, resident: loadResident };
+          loaders[type]();
+        })
+        .catch(function(e) { alert('Error: ' + e.message); });
+    }
+
+    function verifyBuyer(userId) {
+      api('/admin/verify/buyer', { method: 'POST', body: JSON.stringify({ userId: userId }) })
+        .then(function() { loadBuyers(); })
+        .catch(function(e) { alert('Error: ' + e.message); });
+    }
+
+    function rejectBuyer(userId) {
+      api('/api/admin/reject-buyer', { method: 'POST', body: JSON.stringify({ userId: userId }) })
+        .then(function() { loadBuyers(); })
+        .catch(function(e) { alert('Error: ' + e.message); });
+    }
+
+    // ========== PANEL 6: FEATURE FLAGS ==========
+    var ALL_FLAGS = ['core', 'tags', 'auth', 'listings', 'orders', 'payments', 'sweepstakes', 'live-shows', 'referrals', 'pulse', 'channels', 'gigs'];
+
+    function loadFlagsCommunities() {
+      api('/api/admin/communities').then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : (rows.communities || [rows]);
+        var sel = document.getElementById('flagCommunity');
+        sel.innerHTML = arr.map(function(c) {
+          return '<option value="' + esc(c.slug) + '">' + esc(c.name || c.slug) + '</option>';
+        }).join('');
+        loadFlags();
+      }).catch(function(e) { document.getElementById('flagMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    function loadFlags() {
+      var slug = document.getElementById('flagCommunity').value;
+      if (!slug) return;
+      api('/api/admin/communities').then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : (rows.communities || [rows]);
+        var comm = arr.find(function(c) { return c.slug === slug; });
+        var flags = comm ? (comm.feature_flags || comm.featureFlags || {}) : {};
+        if (typeof flags === 'string') try { flags = JSON.parse(flags); } catch(e) { flags = {}; }
+        var el = document.getElementById('flagToggles');
+        el.innerHTML = ALL_FLAGS.map(function(f) {
+          var on = !!flags[f];
+          return '<div class="toggle-row"><span class="toggle-label">' + esc(f) + '</span>'
+            + '<div class="toggle' + (on ? ' on' : '') + '" onclick="toggleFlag(\'' + esc(slug) + '\',\'' + esc(f) + '\',' + !on + ',this)"></div></div>';
+        }).join('');
+        document.getElementById('flagMsg').textContent = '';
+      }).catch(function(e) { document.getElementById('flagMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    function toggleFlag(slug, feature, enabled, el) {
+      api('/api/admin/feature-flags', { method: 'PUT', body: JSON.stringify({ slug: slug, feature: feature, enabled: enabled }) })
+        .then(function() {
+          if (enabled) el.classList.add('on'); else el.classList.remove('on');
+          document.getElementById('flagMsg').className = 'msg ok';
+          document.getElementById('flagMsg').textContent = feature + ' ' + (enabled ? 'enabled' : 'disabled');
+        })
+        .catch(function(e) {
+          document.getElementById('flagMsg').className = 'msg err';
+          document.getElementById('flagMsg').textContent = 'Error: ' + e.message;
+        });
+    }
+
+    // ========== PANEL 7: CHANNELS (extracted from admin.js) ==========
+    function loadChannels() {
+      document.getElementById('channelMsg').textContent = 'Loading...';
+      api('/api/admin/channels').then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : [];
+        document.getElementById('channelRows').innerHTML = arr.map(function(c) {
+          return '<tr><td>' + esc(c.name || c.channelName) + '</td><td>' + esc(c.description || '') + '</td>'
+            + '<td>' + (c.messageCount || c.message_count || 0) + '</td>'
+            + '<td>' + (Number(c.isPublic || c.is_public || 0) ? 'Yes' : 'No') + '</td>'
+            + '<td><button class="btn btn-red btn-sm" onclick="deleteChannel(' + c.id + ',\'' + esc(c.name || '') + '\')">Delete</button></td></tr>';
+        }).join('');
+        document.getElementById('channelMsg').textContent = arr.length + ' channels';
+      }).catch(function(e) { document.getElementById('channelMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    function createChannel() {
+      var name = document.getElementById('newChannelName').value.trim();
+      var desc = document.getElementById('newChannelDesc').value.trim();
+      if (!name) return;
+      api('/api/admin/channels', { method: 'POST', body: JSON.stringify({ name: name, description: desc }) })
+        .then(function() {
+          document.getElementById('newChannelName').value = '';
+          document.getElementById('newChannelDesc').value = '';
+          document.getElementById('createChannelMsg').className = 'msg ok';
+          document.getElementById('createChannelMsg').textContent = 'Channel created';
+          loadChannels();
+        })
+        .catch(function(e) { document.getElementById('createChannelMsg').className = 'msg err'; document.getElementById('createChannelMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    function deleteChannel(id, name) {
+      if (!confirm('Delete channel "' + name + '"? This cannot be undone.')) return;
+      api('/api/admin/channels/' + id, { method: 'DELETE' })
+        .then(function() { document.getElementById('channelMsg').className = 'msg ok'; document.getElementById('channelMsg').textContent = 'Deleted'; loadChannels(); })
+        .catch(function(e) { document.getElementById('channelMsg').className = 'msg err'; document.getElementById('channelMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    function loadChannelRequests() {
+      document.getElementById('channelRequestMsg').textContent = 'Loading...';
+      api('/api/admin/channel-requests?status=pending').then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : [];
+        document.getElementById('channelRequestRows').innerHTML = arr.map(function(r) {
+          return '<tr><td>' + esc(r.name || r.channelName || '') + '</td><td>' + esc(r.description || '') + '</td>'
+            + '<td>' + esc(r.requestedBy || r.requested_by || '') + '</td><td>' + esc(r.reason || '') + '</td>'
+            + '<td><button class="btn btn-green btn-sm" onclick="approveChannelReq(' + r.id + ')">Approve</button> '
+            + '<button class="btn btn-red btn-sm" onclick="denyChannelReq(' + r.id + ')">Deny</button></td></tr>';
+        }).join('');
+        document.getElementById('channelRequestMsg').textContent = arr.length ? arr.length + ' pending' : 'No pending requests';
+      }).catch(function(e) { document.getElementById('channelRequestMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    function approveChannelReq(id) {
+      api('/api/admin/channel-requests/' + id + '/approve', { method: 'POST' })
+        .then(function() { loadChannelRequests(); loadChannels(); })
+        .catch(function(e) { alert('Error: ' + e.message); });
+    }
+
+    function denyChannelReq(id) {
+      api('/api/admin/channel-requests/' + id + '/deny', { method: 'POST' })
+        .then(function() { loadChannelRequests(); })
+        .catch(function(e) { alert('Error: ' + e.message); });
+    }
+
+    // ========== PANEL 8: TRUST (extracted from admin_trust.js) ==========
+    function loadTrust() {
+      // Disputes
+      api('/api/admin/trust/disputes').then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : [];
+        var el = document.getElementById('trustDisputes');
+        if (!arr.length) { el.textContent = 'No disputes'; return; }
+        el.innerHTML = arr.map(function(d) {
+          return '<div style="padding:10px 0;border-bottom:1px solid #1e293b;"><strong>' + esc(d.type || 'Dispute') + '</strong> — '
+            + esc(d.subject || d.reason || '') + '<br><span style="color:#475569;">' + shortDate(d.createdAt || d.created_at) + '</span></div>';
+        }).join('');
+      }).catch(function() { document.getElementById('trustDisputes').textContent = 'Could not load disputes'; });
+
+      // Trust Apps
+      api('/api/admin/trust/apps?status=pending').then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : [];
+        var el = document.getElementById('trustApps');
+        if (!arr.length) { el.textContent = 'No pending trust applications'; return; }
+        el.innerHTML = arr.map(function(a) {
+          return '<div style="padding:12px 0;border-bottom:1px solid #1e293b;">'
+            + '<strong>' + esc(a.email || '') + '</strong> requested tier ' + (a.requestedTier || a.requested_tier || '?') + '<br>'
+            + '<span style="color:#475569;">' + shortDate(a.createdAt || a.created_at) + '</span><br>'
+            + '<div style="margin-top:8px;">'
+            + '<button class="btn btn-green btn-sm" onclick="approveTrustApp(' + a.id + ')">Approve</button> '
+            + '<button class="btn btn-red btn-sm" onclick="rejectTrustApp(' + a.id + ')">Reject</button></div></div>';
+        }).join('');
+      }).catch(function() { document.getElementById('trustApps').textContent = 'Could not load trust apps'; });
+
+      // Reviews
+      api('/api/admin/trust/reviews').then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : [];
+        var el = document.getElementById('trustReviews');
+        if (!arr.length) { el.textContent = 'No reviews'; return; }
+        el.innerHTML = arr.map(function(r) {
+          return '<div style="padding:10px 0;border-bottom:1px solid #1e293b;">'
+            + '<strong>' + esc(r.reviewerName || r.reviewer_name || 'User ' + (r.reviewerUserId || r.reviewer_user_id || '')) + '</strong> &rarr; '
+            + esc(r.targetName || r.target_name || 'User ' + (r.targetUserId || r.target_user_id || ''))
+            + ' — ' + (r.rating || '?') + '/5<br>'
+            + '<span style="color:#94a3b8;">' + esc(r.comment || r.body || '') + '</span><br>'
+            + '<span style="color:#475569;">' + shortDate(r.createdAt || r.created_at) + '</span></div>';
+        }).join('');
+      }).catch(function() { document.getElementById('trustReviews').textContent = 'Could not load reviews'; });
+    }
+
+    function approveTrustApp(id) {
+      api('/api/admin/trust/apps/' + id + '/approve', { method: 'POST', body: '{}' })
+        .then(function() { loadTrust(); })
+        .catch(function(e) { alert('Error: ' + e.message); });
+    }
+
+    function rejectTrustApp(id) {
+      var reason = prompt('Rejection reason (optional):') || '';
+      api('/api/admin/trust/apps/' + id + '/reject', { method: 'POST', body: JSON.stringify({ reason: reason }) })
+        .then(function() { loadTrust(); })
+        .catch(function(e) { alert('Error: ' + e.message); });
+    }
+
+    // ========== PANEL 9: SUPPORT (extracted from admin.js) ==========
+    function loadSupport() {
+      document.getElementById('supportMsg').textContent = 'Loading...';
+      api('/api/admin/support').then(function(rows) {
+        var arr = Array.isArray(rows) ? rows : [];
+        document.getElementById('supportRows').innerHTML = arr.map(function(r) {
+          var statusPill = r.status === 'resolved' ? 'pill-green' : r.status === 'closed' ? 'pill-gray' : 'pill-yellow';
+          return '<tr><td>' + esc(r.type || '') + '</td><td>' + esc(r.subject || '') + '</td>'
+            + '<td>' + esc(r.email || r.userEmail || '') + '</td>'
+            + '<td><span class="pill ' + statusPill + '">' + esc(r.status || 'open') + '</span></td>'
+            + '<td>' + shortDate(r.createdAt || r.created_at) + '</td>'
+            + '<td><button class="btn btn-green btn-sm" onclick="updateSupport(' + r.id + ',\'resolved\')">Resolve</button> '
+            + '<button class="btn btn-outline btn-sm" onclick="updateSupport(' + r.id + ',\'closed\')">Close</button></td></tr>';
+        }).join('');
+        document.getElementById('supportMsg').textContent = arr.length + ' requests';
+      }).catch(function(e) { document.getElementById('supportMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    function updateSupport(id, status) {
+      api('/api/admin/support/' + id, { method: 'PATCH', body: JSON.stringify({ status: status }) })
+        .then(function() { document.getElementById('supportMsg').className = 'msg ok'; document.getElementById('supportMsg').textContent = 'Updated'; loadSupport(); })
+        .catch(function(e) { document.getElementById('supportMsg').className = 'msg err'; document.getElementById('supportMsg').textContent = 'Error: ' + e.message; });
+    }
+
+    // ========== PANEL 10: PULSE ==========
+    function loadPulse() {
+      api('/api/admin/pulse?hours=24').then(function(d) {
+        var el = document.getElementById('pulseContent');
+        el.innerHTML = '<strong>Sessions (24h):</strong> ' + formatNum(d.sessions) + '<br>'
+          + '<strong>Since:</strong> ' + (d.since || '--') + '<br>'
+          + '<strong>Event counts:</strong> ' + JSON.stringify(d.counts || {});
+      }).catch(function() {
+        document.getElementById('pulseContent').textContent = 'Pulse data not available (endpoint may not be configured yet)';
+      });
+    }
+
+    function generatePulse() {
+      var btn = document.getElementById('pulseGenBtn');
+      btn.disabled = true; btn.textContent = 'Generating...';
+      api('/api/admin/pulse/generate', { method: 'POST', body: '{}' })
+        .then(function(d) {
+          document.getElementById('pulseMsg').className = 'msg ok';
+          document.getElementById('pulseMsg').textContent = 'Pulse generated';
+          if (d && (d.facebookPost || d.text || d.body)) {
+            document.getElementById('pulsePreview').style.display = 'block';
+            document.getElementById('pulseText').textContent = d.facebookPost || d.text || d.body || JSON.stringify(d, null, 2);
+          }
+          loadPulse();
+        })
+        .catch(function(e) {
+          document.getElementById('pulseMsg').className = 'msg err';
+          document.getElementById('pulseMsg').textContent = 'Error: ' + e.message;
+        })
+        .finally(function() { btn.disabled = false; btn.textContent = 'Generate Pulse Now'; });
+    }
+
+    function copyPulse() {
+      var text = document.getElementById('pulseText').textContent;
+      navigator.clipboard.writeText(text).then(function() {
+        document.getElementById('pulseMsg').className = 'msg ok';
+        document.getElementById('pulseMsg').textContent = 'Copied to clipboard';
+      });
+    }
+
+    // ========== INIT ==========
+    panelLoaded.dashboard = true;
+    loadDashboard();
+  </script>
+</body>
+</html>

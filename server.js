@@ -1962,6 +1962,160 @@ app.get("/api/modules", async (req, res) => {
   }
 });
 
+// ─── Consolidated Admin Shell ───
+app.get("/admin/console", async (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin", "index.html"));
+});
+
+// GET /api/admin/users — list all users
+app.get("/api/admin/users", async (req, res) => {
+  const admin = await requireAdmin(req, res); if (!admin) return;
+  try {
+    const result = await db.query("SELECT id, email, display_name, trust_tier, trust_tier_num, is_admin, avatar_url, google_id, fb_id, created_at, last_active_at FROM users ORDER BY id DESC");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load users", detail: err.message });
+  }
+});
+
+// GET /api/admin/communities — list all communities
+app.get("/api/admin/communities", async (req, res) => {
+  const admin = await requireAdmin(req, res); if (!admin) return;
+  try {
+    const result = await db.query("SELECT id, slug, name, domain, status, feature_flags, created_at FROM communities ORDER BY id");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load communities", detail: err.message });
+  }
+});
+
+// GET /api/admin/analytics/summary — platform analytics (extracted from Sebastian)
+app.get("/api/admin/analytics/summary", async (req, res) => {
+  const admin = await requireAdmin(req, res); if (!admin) return;
+  try {
+    const range = (req.query.range || "7d").toString();
+    let fromDate;
+    if (range === "today") fromDate = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+    else if (range === "30d") fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    else fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const usersTotal = await db.one("SELECT COUNT(*)::integer AS c FROM users");
+    const usersNew = await db.one("SELECT COUNT(*)::integer AS c FROM users WHERE created_at >= $1", [fromDate]);
+
+    // Places/stores (if table exists)
+    let placesTotal = 0, placesPending = 0;
+    try {
+      const pt = await db.one("SELECT COUNT(*)::integer AS c FROM places");
+      placesTotal = pt.c;
+      const pp = await db.one("SELECT COUNT(*)::integer AS c FROM places WHERE status = 'pending'");
+      placesPending = pp.c;
+    } catch (e) {}
+
+    // Listings (if table exists)
+    let buyNowActive = 0, auctionsActive = 0, auctionsEnded = 0;
+    try {
+      const ln = await db.one("SELECT COUNT(*)::integer AS c FROM listings WHERE status = 'active'");
+      buyNowActive = ln.c;
+    } catch (e) {}
+
+    // Orders (if table exists)
+    let ordersTotal = 0, ordersRange = 0, revenueTotalCents = 0, revenueRangeCents = 0;
+    try {
+      const ot = await db.one("SELECT COUNT(*)::integer AS c FROM orders");
+      ordersTotal = ot.c;
+      const or2 = await db.one("SELECT COUNT(*)::integer AS c FROM orders WHERE created_at >= $1", [fromDate]);
+      ordersRange = or2.c;
+      const rv = await db.one("SELECT COALESCE(SUM(total_cents), 0)::integer AS c FROM orders");
+      revenueTotalCents = rv.c;
+      const rr = await db.one("SELECT COALESCE(SUM(total_cents), 0)::integer AS c FROM orders WHERE created_at >= $1", [fromDate]);
+      revenueRangeCents = rr.c;
+    } catch (e) {}
+
+    // Approval queues (if tables exist)
+    let trustPending = 0, residentPending = 0, businessPending = 0;
+    try { trustPending = (await db.one("SELECT COUNT(*)::integer AS c FROM trust_applications WHERE status = 'pending'")).c; } catch (e) {}
+    try { residentPending = (await db.one("SELECT COUNT(*)::integer AS c FROM resident_applications WHERE status = 'pending'")).c; } catch (e) {}
+    try { businessPending = (await db.one("SELECT COUNT(*)::integer AS c FROM business_applications WHERE status = 'pending'")).c; } catch (e) {}
+
+    res.json({
+      range,
+      from: fromDate,
+      users: { total: usersTotal.c, new: usersNew.c },
+      places: { total: placesTotal, pending: placesPending },
+      approvals: { trustPending, residentPending, businessPending },
+      listings: { buyNowActive, auctionsActive, auctionsEnded },
+      orders: { total: ordersTotal, rangeOrders: ordersRange, totalRevenueCents: revenueTotalCents, rangeRevenueCents: revenueRangeCents },
+      live: { activeRooms: 0, scheduledShows: 0 },
+      sweep: { status: "inactive", totalEntries: 0 }
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Analytics unavailable", detail: err.message });
+  }
+});
+
+// PUT /api/admin/feature-flags — update community feature_flags
+app.put("/api/admin/feature-flags", async (req, res) => {
+  const admin = await requireAdmin(req, res); if (!admin) return;
+  try {
+    const { slug, feature, enabled } = req.body || {};
+    if (!slug || !feature) return res.status(400).json({ error: "slug and feature required" });
+    const comm = await db.one("SELECT id, feature_flags FROM communities WHERE slug = $1", [slug]);
+    if (!comm) return res.status(404).json({ error: "Community not found" });
+    const flags = typeof comm.feature_flags === "string" ? JSON.parse(comm.feature_flags || "{}") : (comm.feature_flags || {});
+    flags[feature] = !!enabled;
+    await db.query("UPDATE communities SET feature_flags = $1 WHERE slug = $2", [JSON.stringify(flags), slug]);
+    res.json({ ok: true, feature, enabled: !!enabled, flags });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update flags", detail: err.message });
+  }
+});
+
+// GET /api/admin/export/users.csv (extracted from Sebastian)
+app.get("/api/admin/export/users.csv", async (req, res) => {
+  const admin = await requireAdmin(req, res); if (!admin) return;
+  try {
+    const result = await db.query("SELECT id, email, display_name, trust_tier, trust_tier_num, is_admin, created_at, last_active_at FROM users ORDER BY id");
+    const header = "id,email,display_name,trust_tier,trust_tier_num,is_admin,created_at,last_active_at";
+    const csv = result.rows.map(u => [
+      u.id,
+      JSON.stringify(u.email || ""),
+      JSON.stringify(u.display_name || ""),
+      JSON.stringify(u.trust_tier || ""),
+      u.trust_tier_num || 0,
+      u.is_admin || 0,
+      u.created_at || "",
+      u.last_active_at || ""
+    ].join(","));
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=users_export.csv");
+    res.send([header, ...csv].join("\n"));
+  } catch (err) {
+    res.status(500).json({ error: "Export failed", detail: err.message });
+  }
+});
+
+// GET /api/admin/export/tags.csv
+app.get("/api/admin/export/tags.csv", async (req, res) => {
+  const admin = await requireAdmin(req, res); if (!admin) return;
+  try {
+    const result = await db.query("SELECT id, slug, label, category, description, created_at FROM tags ORDER BY id");
+    const header = "id,slug,label,category,description,created_at";
+    const csv = result.rows.map(t => [
+      t.id,
+      JSON.stringify(t.slug || ""),
+      JSON.stringify(t.label || ""),
+      JSON.stringify(t.category || ""),
+      JSON.stringify(t.description || ""),
+      t.created_at || ""
+    ].join(","));
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=tags_export.csv");
+    res.send([header, ...csv].join("\n"));
+  } catch (err) {
+    res.status(500).json({ error: "Export failed", detail: err.message });
+  }
+});
+
 app.get("/api/me", async (req, res) =>{
   const sid = parseCookies(req).sid;
   if(!sid) return res.status(401).json({ error: "not logged in" });
