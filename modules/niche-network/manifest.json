@@ -1,0 +1,12 @@
+{
+  "id": "niche-network",
+  "name": "Niche Network",
+  "layer": 3,
+  "dependencies": ["core","places","tags"],
+  "submodules": [
+    {"id":"niche-network.inbound-webhooks","name":"Inbound Webhooks","default":true},
+    {"id":"niche-network.platform-registry","name":"Platform Registry","default":true},
+    {"id":"niche-network.buyer-linkage","name":"Buyer Linkage","default":true},
+    {"id":"niche-network.sale-events","name":"Sale Events","default":true}
+  ]
+}

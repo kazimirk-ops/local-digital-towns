@@ -340,6 +340,12 @@ try { require('./modules/referrals/routes')(app, db); } catch(e) { console.error
 try { require('./modules/live-shows/routes')(app, db); } catch(e) { console.error('live-shows:', e.message); }
 try { require('./modules/achievements/routes')(app, db); } catch(e) { console.error('achievements:', e.message); }
 
+// ─── Mount L3 Network modules (before view-only lockdown) ───
+try { require('./modules/niche-network/routes')(app, db); } catch(e) { console.error('niche-network:', e.message); }
+try { require('./modules/location-graph/routes')(app, db); } catch(e) { console.error('location-graph:', e.message); }
+try { require('./modules/town-genesis/routes')(app, db); } catch(e) { console.error('town-genesis:', e.message); }
+try { require('./modules/broadcast/routes')(app, db); } catch(e) { console.error('broadcast:', e.message); }
+
 // ─── View-only lockdown ───
 app.use(function(req, res, next) {
   if (req.method === 'GET') return next();
@@ -364,6 +370,11 @@ app.use(function(req, res, next) {
   if (req.path.startsWith('/api/referrals')) return next();
   if (req.path.startsWith('/api/live') || req.path.startsWith('/api/admin/live')) return next();
   if (req.path.startsWith('/api/share') || req.path.startsWith('/api/leaderboard') || req.path.startsWith('/api/admin/leaderboard')) return next();
+  // Allow L3 Network module POST/PUT/DELETE endpoints through
+  if (req.path.startsWith('/api/webhooks/niche-sale') || req.path.startsWith('/api/niche-platforms') || req.path.startsWith('/api/niche-sale-events')) return next();
+  if (req.path.startsWith('/api/location-graph') || req.path.startsWith('/api/admin/location-graph')) return next();
+  if (req.path.startsWith('/api/genesis') || req.path.startsWith('/genesis')) return next();
+  if (req.path.startsWith('/api/broadcast')) return next();
   return res.status(403).json({ error: 'This site is in view-only mode.' });
 });
 

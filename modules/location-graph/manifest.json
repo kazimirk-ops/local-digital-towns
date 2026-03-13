@@ -1,0 +1,12 @@
+{
+  "id": "location-graph",
+  "name": "Location Graph",
+  "layer": 3,
+  "dependencies": ["core","places","niche-network"],
+  "submodules": [
+    {"id":"location-graph.signals","name":"Location Signals","default":true},
+    {"id":"location-graph.clustering","name":"ZIP Clustering","default":true},
+    {"id":"location-graph.thresholds","name":"Genesis Thresholds","default":true},
+    {"id":"location-graph.auto-request","name":"Auto Town Request","default":false}
+  ]
+}

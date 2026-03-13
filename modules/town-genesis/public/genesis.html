@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Town Genesis Map — Digital Towns</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Space Grotesk', system-ui, sans-serif; background: #070b10; color: #e8eef6; min-height: 100vh; display: flex; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    .sidebar { width: 220px; background: #0c1219; border-right: 1px solid #1e293b; padding: 24px 16px; display: flex; flex-direction: column; gap: 6px; position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; }
+    .sidebar-logo { font-size: 18px; font-weight: 700; color: #0ea5e9; margin-bottom: 4px; letter-spacing: -0.5px; }
+    .sidebar-sub { font-size: 11px; color: #64748b; margin-bottom: 20px; line-height: 1.4; }
+    .nav-item { display: block; padding: 10px 14px; border-radius: 8px; color: #94a3b8; text-decoration: none; font-size: 14px; font-weight: 500; transition: background 0.15s, color 0.15s; }
+    .nav-item:hover { background: #1e293b; color: #e2e8f0; }
+    .nav-item.active { background: #0ea5e9; color: #fff; }
+    .nav-icon { margin-right: 10px; }
+    .sidebar-footer { margin-top: auto; padding-top: 16px; border-top: 1px solid #1e293b; font-size: 11px; color: #475569; line-height: 1.5; }
+
+    /* ── Main content ── */
+    .main { margin-left: 220px; flex: 1; position: relative; height: 100vh; }
+
+    /* ── Map ── */
+    #map { width: 100%; height: 100%; }
+    .leaflet-container { background: #070b10 !important; }
+    .leaflet-tile-pane { opacity: 0.9; }
+
+    /* ── Stats panel ── */
+    .stats-panel {
+      position: absolute; top: 16px; right: 16px; z-index: 500;
+      background: #0f1623; border: 1px solid #1e293b; border-radius: 12px;
+      padding: 20px; display: flex; gap: 24px; min-width: 420px;
+    }
+    .stat-item { text-align: center; flex: 1; }
+    .stat-value { font-size: 24px; font-weight: 700; margin-bottom: 2px; }
+    .stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value.c-cyan { color: #06b6d4; }
+    .stat-value.c-green { color: #10b981; }
+    .stat-value.c-purple { color: #a855f7; }
+    .stat-value.c-orange { color: #f59e0b; }
+
+    /* ── Legend ── */
+    .legend {
+      position: absolute; bottom: 24px; right: 16px; z-index: 500;
+      background: #0f1623; border: 1px solid #1e293b; border-radius: 10px;
+      padding: 14px 18px; font-size: 12px;
+    }
+    .legend-title { font-weight: 700; color: #e2e8f0; margin-bottom: 8px; font-size: 13px; }
+    .legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: #94a3b8; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .legend-dot.cyan { background: #06b6d4; }
+    .legend-dot.orange { background: #f59e0b; opacity: 0.7; }
+    .legend-dot.purple { background: rgba(168, 85, 247, 0.3); border: 2px solid #a855f7; }
+
+    /* ── Page header overlay ── */
+    .page-header {
+      position: absolute; top: 16px; left: 16px; z-index: 500;
+      background: #0f1623; border: 1px solid #1e293b; border-radius: 12px;
+      padding: 16px 24px;
+    }
+    .page-title { font-size: 22px; font-weight: 700; color: #06b6d4; letter-spacing: -0.5px; margin-bottom: 2px; }
+    .page-subtitle { font-size: 12px; color: #64748b; }
+
+    /* ── Genesis pulse animation ── */
+    .genesis-pulse {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: rgba(168, 85, 247, 0.3);
+      border: 2px solid #a855f7;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.5); opacity: 0.5; }
+    }
+
+    /* ── Popup styling ── */
+    .leaflet-popup-content-wrapper {
+      background: #0f1623 !important;
+      color: #e8eef6 !important;
+      border: 1px solid #1e293b !important;
+      border-radius: 10px !important;
+      font-family: 'Space Grotesk', system-ui, sans-serif !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+    }
+    .leaflet-popup-tip { background: #0f1623 !important; border: 1px solid #1e293b !important; }
+    .leaflet-popup-content { font-size: 13px; line-height: 1.5; margin: 12px 16px !important; }
+    .leaflet-popup-close-button { color: #64748b !important; }
+    .leaflet-popup-close-button:hover { color: #e8eef6 !important; }
+
+    .popup-title { font-size: 15px; font-weight: 700; color: #e2e8f0; margin-bottom: 6px; }
+    .popup-detail { font-size: 12px; color: #94a3b8; margin-bottom: 3px; }
+    .popup-detail span { color: #e2e8f0; }
+    .popup-link { display: inline-block; margin-top: 8px; padding: 5px 12px; background: #06b6d4; color: #fff; border-radius: 6px; font-size: 11px; font-weight: 600; text-decoration: none; }
+    .popup-link:hover { background: #0891b2; }
+
+    /* ── Progress bar ── */
+    .progress-bar-bg {
+      width: 100%; height: 8px; background: #1e293b; border-radius: 4px; margin: 6px 0; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, #06b6d4, #10b981);
+      transition: width 0.3s ease;
+    }
+    .popup-signals { font-size: 11px; color: #64748b; margin-top: 4px; }
+
+    /* ── Candidate list panel ── */
+    .candidates-panel {
+      position: absolute; bottom: 24px; left: 16px; z-index: 500;
+      background: #0f1623; border: 1px solid #1e293b; border-radius: 12px;
+      padding: 16px 18px; max-width: 320px; max-height: 300px; overflow-y: auto;
+    }
+    .candidates-panel::-webkit-scrollbar { width: 4px; }
+    .candidates-panel::-webkit-scrollbar-track { background: transparent; }
+    .candidates-panel::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+    .candidates-title { font-size: 13px; font-weight: 700; color: #a855f7; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .candidate-row {
+      display: flex; align-items: center; gap: 10px; padding: 8px 0;
+      border-bottom: 1px solid #1e293b; cursor: pointer; transition: opacity 0.15s;
+    }
+    .candidate-row:last-child { border-bottom: none; }
+    .candidate-row:hover { opacity: 0.8; }
+    .candidate-name { font-size: 13px; font-weight: 600; color: #e2e8f0; flex: 1; }
+    .candidate-pct { font-size: 12px; font-weight: 700; color: #a855f7; }
+    .candidate-bar { width: 60px; height: 4px; background: #1e293b; border-radius: 2px; overflow: hidden; }
+    .candidate-bar-fill { height: 100%; background: linear-gradient(90deg, #a855f7, #06b6d4); border-radius: 2px; }
+
+    /* ── Refresh indicator ── */
+    .refresh-indicator {
+      position: absolute; top: 80px; right: 16px; z-index: 500;
+      font-size: 10px; color: #475569; text-align: right;
+    }
+
+    /* ── Attribution override ── */
+    .leaflet-control-attribution { background: rgba(15, 22, 35, 0.8) !important; color: #475569 !important; font-size: 10px !important; }
+    .leaflet-control-attribution a { color: #64748b !important; }
+
+    /* ── Zoom controls ── */
+    .leaflet-control-zoom a {
+      background: #0f1623 !important; color: #e8eef6 !important;
+      border-color: #1e293b !important;
+    }
+    .leaflet-control-zoom a:hover { background: #1e293b !important; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .stats-panel { top: 8px; right: 8px; left: 8px; min-width: 0; gap: 12px; padding: 12px; }
+      .stat-value { font-size: 18px; }
+      .page-header { display: none; }
+      .candidates-panel { left: 8px; right: 8px; max-width: none; }
+      .legend { bottom: 8px; right: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-logo">Digital Towns</div>
+    <div class="sidebar-sub">Module Workshop<br>Staging Environment</div>
+    <a href="/" class="nav-item"><span class="nav-icon">&#9632;</span>Dashboard</a>
+    <a href="/admin-modules.html" class="nav-item"><span class="nav-icon">&#9881;</span>Module Registry</a>
+    <a href="/communities.html" class="nav-item"><span class="nav-icon">&#127760;</span>Communities</a>
+    <a href="/genesis" class="nav-item active"><span class="nav-icon">&#127758;</span>Town Genesis Map</a>
+    <a href="/users.html" class="nav-item"><span class="nav-icon">&#128100;</span>Users</a>
+    <a href="/docs.html" class="nav-item"><span class="nav-icon">&#128196;</span>Docs</a>
+    <div class="sidebar-footer">digitaltowns.app<br>tampa-bay-florida</div>
+  </nav>
+
+  <div class="main">
+    <div id="map"></div>
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div class="page-title">Town Genesis Map</div>
+      <div class="page-subtitle">Towns forming from location signals across the network</div>
+    </div>
+
+    <!-- Stats panel -->
+    <div class="stats-panel">
+      <div class="stat-item">
+        <div class="stat-value c-orange" id="statSignals">-</div>
+        <div class="stat-label">Total Signals</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value c-cyan" id="statTowns">-</div>
+        <div class="stat-label">Active Towns</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value c-purple" id="statForming">-</div>
+        <div class="stat-label">Forming Towns</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value c-green" id="statBuyers">-</div>
+        <div class="stat-label">Total Buyers</div>
+      </div>
+    </div>
+
+    <div class="refresh-indicator" id="refreshTimer">Auto-refresh in 30s</div>
+
+    <!-- Candidates list -->
+    <div class="candidates-panel" id="candidatesPanel" style="display:none;">
+      <div class="candidates-title">Forming Towns</div>
+      <div id="candidatesList"></div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-title">Map Legend</div>
+      <div class="legend-row"><div class="legend-dot cyan"></div> Active Towns</div>
+      <div class="legend-row"><div class="legend-dot orange"></div> ZIP Clusters (unmapped signals)</div>
+      <div class="legend-row"><div class="legend-dot purple"></div> Genesis Candidates (forming)</div>
+    </div>
+  </div>
+
+<script>
+(function() {
+  // ── Initialize Map ──
+  var map = L.map("map", {
+    center: [39.8283, -98.5795],
+    zoom: 4,
+    zoomControl: true
+  });
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: "abcd",
+    maxZoom: 19
+  }).addTo(map);
+
+  // Layer groups for managing markers
+  var townLayer = L.layerGroup().addTo(map);
+  var clusterLayer = L.layerGroup().addTo(map);
+  var candidateLayer = L.layerGroup().addTo(map);
+
+  // ── Helper: escape HTML ──
+  function esc(s) {
+    if (!s) return "";
+    var d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ── Helper: compute circle radius from value ──
+  function scaleRadius(value, min, max, minR, maxR) {
+    if (value <= min) return minR;
+    if (value >= max) return maxR;
+    return minR + (maxR - minR) * (Math.sqrt(value - min) / Math.sqrt(max - min));
+  }
+
+  // ── Render towns ──
+  function renderTowns(towns) {
+    townLayer.clearLayers();
+    var maxMembers = 1;
+    towns.forEach(function(t) { if (t.member_count > maxMembers) maxMembers = t.member_count; });
+
+    towns.forEach(function(t) {
+      if (!t.lat || !t.lng) return;
+      var radius = scaleRadius(t.member_count, 0, maxMembers, 6, 20);
+      var marker = L.circleMarker([parseFloat(t.lat), parseFloat(t.lng)], {
+        radius: radius,
+        color: "#06b6d4",
+        fillColor: "#06b6d4",
+        fillOpacity: 0.7,
+        weight: 2,
+        opacity: 0.9
+      });
+
+      var levelLabel = t.level !== null && t.level !== undefined ? t.level : 0;
+      var statusLabel = t.status || "unknown";
+      marker.bindPopup(
+        '<div class="popup-title">' + esc(t.name) + '</div>' +
+        '<div class="popup-detail">Level: <span>' + levelLabel + '</span></div>' +
+        '<div class="popup-detail">Members: <span>' + (t.member_count || 0) + '</span></div>' +
+        '<div class="popup-detail">Status: <span>' + esc(statusLabel) + '</span></div>' +
+        '<a href="/communities.html" class="popup-link">View Town</a>'
+      );
+      townLayer.addLayer(marker);
+    });
+  }
+
+  // ── Render zip clusters ──
+  function renderClusters(clusters) {
+    clusterLayer.clearLayers();
+    var maxSignals = 1;
+    clusters.forEach(function(c) { if (c.signal_count > maxSignals) maxSignals = c.signal_count; });
+
+    clusters.forEach(function(c) {
+      // Only show unmapped clusters (no place_id)
+      if (c.place_id) return;
+      if (!c.lat || !c.lng) return;
+
+      var radius = scaleRadius(c.signal_count, 0, maxSignals, 4, 15);
+      var marker = L.circleMarker([parseFloat(c.lat), parseFloat(c.lng)], {
+        radius: radius,
+        color: "#f59e0b",
+        fillColor: "#f59e0b",
+        fillOpacity: 0.5,
+        weight: 1.5,
+        opacity: 0.8
+      });
+
+      marker.bindPopup(
+        '<div class="popup-title">ZIP ' + esc(c.zip) + '</div>' +
+        '<div class="popup-detail">' + (c.signal_count || 0) + ' sales, ' + (c.unique_buyers || 0) + ' buyers</div>'
+      );
+      clusterLayer.addLayer(marker);
+    });
+  }
+
+  // ── Render genesis candidates ──
+  function renderCandidates(candidates) {
+    candidateLayer.clearLayers();
+
+    candidates.forEach(function(c) {
+      if (!c.lat || !c.lng) return;
+
+      // Scale pulse size by progress
+      var size = Math.max(16, Math.min(36, 16 + (c.progress_pct || 0) * 0.2));
+      var icon = L.divIcon({
+        className: "",
+        html: '<div class="genesis-pulse" style="width:' + size + 'px;height:' + size + 'px;"></div>',
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+      });
+
+      var marker = L.marker([parseFloat(c.lat), parseFloat(c.lng)], { icon: icon });
+
+      var pct = c.progress_pct || 0;
+      var signalsNeeded = Math.max(0, (c.threshold || 50) - (c.signal_count || 0));
+
+      marker.bindPopup(
+        '<div class="popup-title">' + esc(c.name) + '</div>' +
+        '<div class="popup-detail">' + esc(c.city) + ', ' + esc(c.state) + '</div>' +
+        '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="popup-detail"><span>' + pct + '%</span> complete</div>' +
+        '<div class="popup-signals">' + signalsNeeded + ' more signals needed</div>'
+      );
+      candidateLayer.addLayer(marker);
+    });
+  }
+
+  // ── Render candidates list panel ──
+  function renderCandidatesList(candidates) {
+    var panel = document.getElementById("candidatesPanel");
+    var list = document.getElementById("candidatesList");
+
+    if (!candidates || !candidates.length) {
+      panel.style.display = "none";
+      return;
+    }
+
+    panel.style.display = "block";
+    list.innerHTML = candidates.map(function(c) {
+      var pct = c.progress_pct || 0;
+      return '<div class="candidate-row" data-lat="' + c.lat + '" data-lng="' + c.lng + '">' +
+        '<div class="candidate-name">' + esc(c.name) + '</div>' +
+        '<div class="candidate-bar"><div class="candidate-bar-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="candidate-pct">' + pct + '%</div>' +
+        '</div>';
+    }).join("");
+
+    // Click-to-fly
+    var rows = list.querySelectorAll(".candidate-row");
+    rows.forEach(function(row) {
+      row.addEventListener("click", function() {
+        var lat = parseFloat(row.getAttribute("data-lat"));
+        var lng = parseFloat(row.getAttribute("data-lng"));
+        if (lat && lng) map.flyTo([lat, lng], 10, { duration: 1 });
+      });
+    });
+  }
+
+  // ── Update stats ──
+  function updateStats(data) {
+    var towns = data.towns || [];
+    var clusters = data.clusters || [];
+    var candidates = data.candidates || [];
+
+    var totalSignals = 0;
+    clusters.forEach(function(c) { totalSignals += (c.signal_count || 0); });
+    candidates.forEach(function(c) { totalSignals += (c.signal_count || 0); });
+
+    var totalBuyers = 0;
+    clusters.forEach(function(c) { totalBuyers += (c.unique_buyers || 0); });
+
+    var activeTowns = towns.filter(function(t) { return t.status === "active"; }).length;
+    var formingCount = candidates.length;
+
+    document.getElementById("statSignals").textContent = totalSignals.toLocaleString();
+    document.getElementById("statTowns").textContent = activeTowns;
+    document.getElementById("statForming").textContent = formingCount;
+    document.getElementById("statBuyers").textContent = totalBuyers.toLocaleString();
+  }
+
+  // ── Fetch and render all data ──
+  function loadMapData() {
+    fetch("/api/genesis/map-data")
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) {
+          console.error("Map data error:", data.error);
+          return;
+        }
+        renderTowns(data.towns || []);
+        renderClusters(data.clusters || []);
+        renderCandidates(data.candidates || []);
+        renderCandidatesList(data.candidates || []);
+        updateStats(data);
+      })
+      .catch(function(err) {
+        console.error("Failed to load map data:", err);
+      });
+  }
+
+  // ── Initial load ──
+  loadMapData();
+
+  // ── Auto-refresh every 30 seconds ──
+  var refreshCountdown = 30;
+  var timerEl = document.getElementById("refreshTimer");
+
+  setInterval(function() {
+    refreshCountdown--;
+    if (refreshCountdown <= 0) {
+      refreshCountdown = 30;
+      loadMapData();
+    }
+    timerEl.textContent = "Auto-refresh in " + refreshCountdown + "s";
+  }, 1000);
+
+})();
+</script>
+</body>
+</html>

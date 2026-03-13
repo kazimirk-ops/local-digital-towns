@@ -1,0 +1,12 @@
+{
+  "id": "broadcast",
+  "name": "Broadcast",
+  "layer": 3,
+  "dependencies": ["core","auth","notifications"],
+  "submodules": [
+    {"id":"broadcast.admin-blast","name":"Admin Blast","default":true},
+    {"id":"broadcast.seller-broadcast","name":"Seller Broadcast","default":true},
+    {"id":"broadcast.facebook","name":"Facebook Page Post","default":false},
+    {"id":"broadcast.scheduled","name":"Scheduled Broadcasts","default":false}
+  ]
+}

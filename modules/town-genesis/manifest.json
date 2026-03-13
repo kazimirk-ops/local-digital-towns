@@ -1,0 +1,12 @@
+{
+  "id": "town-genesis",
+  "name": "Town Genesis",
+  "layer": 3,
+  "dependencies": ["core","places","location-graph"],
+  "submodules": [
+    {"id":"town-genesis.map","name":"Genesis Map","default":true},
+    {"id":"town-genesis.thresholds","name":"Genesis Thresholds","default":true},
+    {"id":"town-genesis.auto-provision","name":"Auto-Provision Towns","default":false},
+    {"id":"town-genesis.progress-bars","name":"Progress Bars","default":true}
+  ]
+}
