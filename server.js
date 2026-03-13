@@ -283,9 +283,19 @@ app.use(async (req,res,next)=>{
   if(req.path === "/api/webhooks/uber") return next();
   return jsonParser(req,res,next);
 });
+// ─── Mount auth module (before view-only lockdown so POST endpoints work) ───
+try {
+  const mountAuth = require("./modules/auth/routes");
+  mountAuth(app, db);
+} catch (err) {
+  console.error("Auth module failed to load:", err?.message);
+}
+
 // ─── View-only lockdown ───
 app.use(function(req, res, next) {
   if (req.method === 'GET') return next();
+  // Allow auth POST endpoints through
+  if (req.path.startsWith('/api/auth/') || req.path.startsWith('/auth/')) return next();
   return res.status(403).json({ error: 'This site is in view-only mode.' });
 });
 

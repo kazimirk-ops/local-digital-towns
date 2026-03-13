@@ -1,0 +1,14 @@
+{
+  "id": "auth",
+  "name": "Authentication & Trust",
+  "version": "1.0.0",
+  "layer": 1,
+  "dependencies": ["core"],
+  "submodules": [
+    "email-otp",
+    "google-oauth",
+    "facebook-oauth",
+    "trust-tiers",
+    "sessions"
+  ]
+}
