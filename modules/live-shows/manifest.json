@@ -1,0 +1,13 @@
+{
+  "id": "live-shows",
+  "name": "Live Shows",
+  "layer": 2,
+  "dependencies": ["core", "auth", "listings"],
+  "submodules": [
+    { "id": "live-shows.video", "name": "Video Streaming", "default": true },
+    { "id": "live-shows.schedule", "name": "Show Schedule", "default": true },
+    { "id": "live-shows.chat", "name": "Live Chat", "default": true },
+    { "id": "live-shows.bookmarks", "name": "Bookmarks", "default": true },
+    { "id": "live-shows.in-stream-buy", "name": "In-Stream Purchases", "default": false }
+  ]
+}

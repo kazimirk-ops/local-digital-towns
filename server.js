@@ -334,6 +334,12 @@ try { require('./modules/payments/routes')(app, db); } catch(e) { console.error(
 try { require('./modules/shipping/routes')(app, db); } catch(e) { console.error('shipping:', e.message); }
 try { require('./modules/notifications/routes')(app, db); } catch(e) { console.error('notifications:', e.message); }
 
+// ─── Mount L2 Game Engine modules (before view-only lockdown) ───
+try { require('./modules/sweepstakes/routes')(app, db); } catch(e) { console.error('sweepstakes:', e.message); }
+try { require('./modules/referrals/routes')(app, db); } catch(e) { console.error('referrals:', e.message); }
+try { require('./modules/live-shows/routes')(app, db); } catch(e) { console.error('live-shows:', e.message); }
+try { require('./modules/achievements/routes')(app, db); } catch(e) { console.error('achievements:', e.message); }
+
 // ─── View-only lockdown ───
 app.use(function(req, res, next) {
   if (req.method === 'GET') return next();
@@ -353,6 +359,11 @@ app.use(function(req, res, next) {
   if (req.path.startsWith('/api/payments') || req.path.startsWith('/api/webhooks/stripe') || req.path.startsWith('/api/wallet')) return next();
   if (req.path.startsWith('/api/shipping') || req.path.startsWith('/api/shipments') || req.path.startsWith('/api/webhooks/shippo')) return next();
   if (req.path.startsWith('/api/notifications')) return next();
+  // Allow L2 Game Engine module POST/PUT/DELETE endpoints through
+  if (req.path.startsWith('/api/sweep') || req.path.startsWith('/api/admin/sweep') || req.path.startsWith('/api/admin/prize')) return next();
+  if (req.path.startsWith('/api/referrals')) return next();
+  if (req.path.startsWith('/api/live') || req.path.startsWith('/api/admin/live')) return next();
+  if (req.path.startsWith('/api/share') || req.path.startsWith('/api/leaderboard') || req.path.startsWith('/api/admin/leaderboard')) return next();
   return res.status(403).json({ error: 'This site is in view-only mode.' });
 });
 

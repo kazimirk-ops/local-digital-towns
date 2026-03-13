@@ -1,0 +1,13 @@
+{
+  "id": "sweepstakes",
+  "name": "Sweepstakes",
+  "layer": 2,
+  "dependencies": ["core", "auth", "notifications"],
+  "submodules": [
+    { "id": "sweepstakes.wheel", "name": "Spin Wheel", "default": true },
+    { "id": "sweepstakes.prize-offers", "name": "Prize Offers", "default": true },
+    { "id": "sweepstakes.daily-cap", "name": "Daily Point Cap", "default": true },
+    { "id": "sweepstakes.social-bonus", "name": "Social Sharing Bonus", "default": true },
+    { "id": "sweepstakes.admin-draw", "name": "Admin Draw Tool", "default": true }
+  ]
+}
