@@ -148,11 +148,24 @@ module.exports = function mountChannels(app, db) {
       var imageUrl = (b.image_url || "").toString().trim();
       if (!text && !imageUrl) return res.status(400).json({ error: "text or image_url required" });
 
+      // ── Cross-module: word filter check ──
+      try { var mod = require('../moderation/routes');
+        if (mod.checkWordFilter) {
+          var wfResult = await mod.checkWordFilter(db, text);
+          if (wfResult.blocked) return res.status(400).json({ error: "Message blocked by word filter", matches: wfResult.matches });
+        }
+      } catch(e) { console.error('word filter channel:', e.message); }
+
       var result = await db.query(
         "INSERT INTO channel_messages (channel_id, user_id, text, image_url, reply_to_id, thread_id, created_at) " +
         "VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *",
         [req.params.id, uid, text, imageUrl, b.reply_to_id || null, b.thread_id || null]
       );
+      // ── Cross-module: sweeps (fire-and-forget) ──
+      try { var sweeps = require('../sweepstakes/routes');
+        if (sweeps.tryAwardSweepPoints) sweeps.tryAwardSweepPoints(db, uid, 'channel_message', 'chanmsg-' + result.rows[0].id, { channel_id: req.params.id }).catch(function(e) { console.error('sweeps chanmsg:', e.message); });
+      } catch(e) {}
+
       res.status(201).json(result.rows[0]);
     } catch (err) {
       res.status(500).json({ error: err.message });

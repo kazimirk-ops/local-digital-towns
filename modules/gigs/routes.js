@@ -169,6 +169,17 @@ module.exports = function mountGigs(app, db) {
         params
       );
       if (!result.rows.length) return res.status(404).json({ error: "Booking not found" });
+
+      // ── Cross-module: sweeps, achievements on completion (fire-and-forget) ──
+      if (b.status === 'completed' && result.rows[0]) {
+        try { var sweeps = require('../sweepstakes/routes');
+          if (sweeps.tryAwardSweepPoints) sweeps.tryAwardSweepPoints(db, uid, 'gig_complete', 'gig-' + req.params.id, { price_cents: result.rows[0].price_cents }).catch(function(e) { console.error('sweeps gig:', e.message); });
+        } catch(e) {}
+        try { var ach = require('../achievements/routes');
+          if (ach.recordActivity) ach.recordActivity(db, uid, 'gig_complete', { booking_id: req.params.id }).catch(function(e) { console.error('ach gig:', e.message); });
+        } catch(e) {}
+      }
+
       res.json(result.rows[0]);
     } catch (err) {
       res.status(500).json({ error: err.message });

@@ -161,6 +161,15 @@ module.exports = function mountBstGroups(app, db) {
         [group.id, uid]
       );
       await db.query("UPDATE bst_groups SET member_count = member_count + 1 WHERE id=$1", [group.id]);
+
+      // ── Cross-module: sweeps, achievements (fire-and-forget) ──
+      try { var sweeps = require('../sweepstakes/routes');
+        if (sweeps.tryAwardSweepPoints) sweeps.tryAwardSweepPoints(db, uid, 'bst_join', 'bstjoin-' + group.id + '-' + uid, {}).catch(function(e) { console.error('sweeps bstjoin:', e.message); });
+      } catch(e) {}
+      try { var ach = require('../achievements/routes');
+        if (ach.recordActivity) ach.recordActivity(db, uid, 'bst_join', { group_id: group.id }).catch(function(e) { console.error('ach bstjoin:', e.message); });
+      } catch(e) {}
+
       res.json({ ok: true, status: "joined" });
     } catch (err) {
       res.status(500).json({ error: err.message });

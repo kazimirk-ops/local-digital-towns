@@ -376,7 +376,7 @@ app.use(function(req, res, next) {
   if (req.path.startsWith('/api/live') || req.path.startsWith('/api/admin/live')) return next();
   if (req.path.startsWith('/api/share') || req.path.startsWith('/api/leaderboard') || req.path.startsWith('/api/admin/leaderboard')) return next();
   // Allow L3 Network module POST/PUT/DELETE endpoints through
-  if (req.path.startsWith('/api/webhooks/niche-sale') || req.path.startsWith('/api/niche-platforms') || req.path.startsWith('/api/niche-sale-events')) return next();
+  if (req.path.startsWith('/api/webhooks/niche-sale') || req.path.startsWith('/api/webhooks/niche-signup') || req.path.startsWith('/api/niche-platforms') || req.path.startsWith('/api/niche-sale-events')) return next();
   if (req.path.startsWith('/api/location-graph') || req.path.startsWith('/api/admin/location-graph')) return next();
   if (req.path.startsWith('/api/genesis') || req.path.startsWith('/genesis')) return next();
   if (req.path.startsWith('/api/broadcast')) return next();

@@ -143,6 +143,102 @@ module.exports = function mountNicheNetwork(app, db) {
     }
   });
 
+  // ── POST /api/webhooks/niche-signup ──
+  // Receives signup events from niche platforms (no auth, secret in body).
+  // Same validation pattern as niche-sale.
+  app.post("/api/webhooks/niche-signup", async function(req, res) {
+    try {
+      if (!(await checkFlag(req, "niche-network.inbound-webhooks"))) return denyIfDisabled(res);
+
+      var b = req.body || {};
+      if (!b.platform || !b.secret) {
+        return res.status(400).json({ error: "platform and secret required" });
+      }
+
+      // Validate platform slug exists, secret matches, and platform is active
+      var platR = await db.query(
+        "SELECT id, slug, webhook_secret, active FROM niche_platforms WHERE slug=$1",
+        [b.platform]
+      );
+      if (!platR.rows.length) {
+        return res.status(404).json({ error: "Platform not found" });
+      }
+      var plat = platR.rows[0];
+      if (!plat.active) {
+        return res.status(403).json({ error: "Platform is inactive" });
+      }
+      if (plat.webhook_secret !== b.secret) {
+        return res.status(401).json({ error: "Invalid secret" });
+      }
+
+      // Deduplicate via UNIQUE(platform_slug, external_ref)
+      if (b.external_ref) {
+        var dupR = await db.query(
+          "SELECT id FROM niche_signup_events WHERE platform_slug=$1 AND external_ref=$2",
+          [b.platform, b.external_ref]
+        );
+        if (dupR.rows.length) {
+          return res.json({ ok: true, event_id: dupR.rows[0].id, duplicate: true });
+        }
+      }
+
+      // Try to match ZIP to place_id
+      var placeId = null;
+      if (b.user_zip) {
+        var zipR = await db.query(
+          "SELECT id FROM places WHERE $1 = ANY(zip_codes) LIMIT 1",
+          [b.user_zip]
+        );
+        if (zipR.rows.length) placeId = zipR.rows[0].id;
+      }
+
+      // Fallback: match by city name
+      if (!placeId && b.user_city) {
+        var cityR = await db.query(
+          "SELECT id FROM places WHERE lower(name) LIKE lower($1) AND type = 'town' LIMIT 1",
+          ["%" + b.user_city + "%"]
+        );
+        if (cityR.rows.length) placeId = cityR.rows[0].id;
+      }
+
+      // Insert signup event
+      var insertR = await db.query(
+        "INSERT INTO niche_signup_events (platform_id, platform_slug, external_ref, user_email, user_name, " +
+        "user_zip, user_city, user_state, place_id, raw) " +
+        "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id",
+        [plat.id, b.platform, b.external_ref || null, b.user_email || null, b.user_name || null,
+         b.user_zip || null, b.user_city || null, b.user_state || null,
+         placeId, JSON.stringify(b.raw || {})]
+      );
+      var eventId = insertR.rows[0].id;
+
+      // Fire location tag event (may not match, that's ok)
+      if (b.user_state) {
+        try {
+          await db.query(
+            "INSERT INTO tag_events (user_id, tag_id, event_type, source_table, source_id) " +
+            "SELECT null, t.id, 'location-signal', 'niche_signup_events', $1 " +
+            "FROM tags t WHERE t.name = 'location-' || lower($2)",
+            [eventId, b.user_state]
+          );
+        } catch (tagErr) {
+          // Tag may not exist — that's expected
+        }
+      }
+
+      // Update platform stats
+      await db.query(
+        "UPDATE niche_platforms SET buyer_count = buyer_count + 1, last_event_at = NOW() WHERE slug=$1",
+        [b.platform]
+      );
+
+      res.json({ ok: true, event_id: eventId, place_id: placeId, place_matched: !!placeId });
+    } catch (err) {
+      console.error("[niche-network] signup webhook error:", err.message);
+      res.status(500).json({ error: "Internal error" });
+    }
+  });
+
   // ══════════════════════════════════════
   // Platform Registry (admin)
   // ══════════════════════════════════════

@@ -135,6 +135,14 @@ module.exports = function mountListings(app, db) {
       var b = req.body || {};
       if (!b.title) return res.status(400).json({ error: "Title required" });
 
+      // ── Cross-module: word filter check ──
+      try { var mod = require('../moderation/routes');
+        if (mod.checkWordFilter) {
+          var wfResult = await mod.checkWordFilter(db, (b.title || '') + ' ' + (b.description || ''));
+          if (wfResult.blocked) return res.status(400).json({ error: "Content blocked by word filter", matches: wfResult.matches });
+        }
+      } catch(e) { console.error('word filter listing:', e.message); }
+
       var result = await db.query(
         "INSERT INTO listings (seller_id, place_id, title, description, price_cents, currency, category, niche, " +
         "condition, listing_type, shipping_enabled, pickup_enabled, delivery_enabled, quantity, tags, meta) " +
@@ -146,6 +154,14 @@ module.exports = function mountListings(app, db) {
          b.delivery_enabled === true, parseInt(b.quantity) || 1,
          JSON.stringify(b.tags || []), JSON.stringify(b.meta || {})]
       );
+
+      // ── Cross-module: sweeps, achievements (fire-and-forget) ──
+      try { var sweeps = require('../sweepstakes/routes');
+        if (sweeps.tryAwardSweepPoints) sweeps.tryAwardSweepPoints(db, uid, 'listing', 'listing-' + result.rows[0].id, { place_id: b.place_id }).catch(function(e) { console.error('sweeps listing:', e.message); });
+      } catch(e) {}
+      try { var ach = require('../achievements/routes');
+        if (ach.recordActivity) ach.recordActivity(db, uid, 'listing', { listing_id: result.rows[0].id }).catch(function(e) { console.error('ach listing:', e.message); });
+      } catch(e) {}
 
       res.status(201).json(result.rows[0]);
     } catch (err) {

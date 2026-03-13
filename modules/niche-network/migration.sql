@@ -44,6 +44,26 @@ CREATE INDEX IF NOT EXISTS idx_sale_events_platform ON niche_sale_events(platfor
 CREATE INDEX IF NOT EXISTS idx_sale_events_zip ON niche_sale_events(ship_to_zip);
 CREATE INDEX IF NOT EXISTS idx_sale_events_place ON niche_sale_events(place_id);
 
+-- All signup events received from niche platforms
+CREATE TABLE IF NOT EXISTS niche_signup_events (
+  id SERIAL PRIMARY KEY,
+  platform_id INTEGER REFERENCES niche_platforms(id),
+  platform_slug TEXT NOT NULL,
+  external_ref TEXT,
+  user_email TEXT,
+  user_name TEXT,
+  user_zip TEXT,
+  user_city TEXT,
+  user_state TEXT,
+  place_id INTEGER REFERENCES places(id),
+  raw JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(platform_slug, external_ref)
+);
+
+CREATE INDEX IF NOT EXISTS idx_signup_events_platform ON niche_signup_events(platform_slug, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_signup_events_place ON niche_signup_events(place_id);
+
 -- Add zip_codes array column to places table
 ALTER TABLE places ADD COLUMN IF NOT EXISTS zip_codes TEXT[] DEFAULT '{}';
 

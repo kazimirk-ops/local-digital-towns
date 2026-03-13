@@ -109,6 +109,17 @@ module.exports = function mountOrders(app, db) {
          JSON.stringify(b.shipping_address || {}), b.notes || null]
       );
 
+      // ── Cross-module: sweeps, achievements, referrals (fire-and-forget) ──
+      try { var sweeps = require('../sweepstakes/routes');
+        if (sweeps.tryAwardSweepPoints) sweeps.tryAwardSweepPoints(db, uid, 'purchase', 'order-' + result.rows[0].id, { amount_cents: subtotal, place_id: l.place_id }).catch(function(e) { console.error('sweeps order:', e.message); });
+      } catch(e) {}
+      try { var ach = require('../achievements/routes');
+        if (ach.recordActivity) ach.recordActivity(db, uid, 'purchase', { amount_cents: subtotal, listing_id: b.listing_id }).catch(function(e) { console.error('ach order:', e.message); });
+      } catch(e) {}
+      try { var ref = require('../referrals/routes');
+        if (ref.fireReferralEvent) ref.fireReferralEvent(db, uid, 'purchase', subtotal, null, 'Order #' + result.rows[0].id).catch(function(e) { console.error('ref order:', e.message); });
+      } catch(e) {}
+
       res.status(201).json(result.rows[0]);
     } catch (err) {
       console.error("order create error:", err.message);
@@ -436,6 +447,17 @@ module.exports = function mountOrders(app, db) {
         "UPDATE invoices SET status=$1, amount_paid_cents=amount_paid_cents+$2, paid_at=NOW(), updated_at=NOW() WHERE id=$3",
         [newStatus, amountPaid, req.params.id]
       );
+
+      // ── Cross-module: sweeps, achievements, referrals on invoice paid (fire-and-forget) ──
+      try { var sweeps2 = require('../sweepstakes/routes');
+        if (sweeps2.tryAwardSweepPoints) sweeps2.tryAwardSweepPoints(db, i.seller_id, 'sale', 'invoice-' + req.params.id, { amount_cents: amountPaid }).catch(function(e) { console.error('sweeps invoice:', e.message); });
+      } catch(e) {}
+      try { var ach2 = require('../achievements/routes');
+        if (ach2.recordActivity) ach2.recordActivity(db, i.seller_id, 'sale', { amount_cents: amountPaid, invoice_id: req.params.id }).catch(function(e) { console.error('ach invoice:', e.message); });
+      } catch(e) {}
+      try { var ref2 = require('../referrals/routes');
+        if (ref2.fireReferralEvent) ref2.fireReferralEvent(db, i.seller_id, 'sale', amountPaid, null, 'Invoice #' + req.params.id).catch(function(e) { console.error('ref invoice:', e.message); });
+      } catch(e) {}
 
       res.json({ ok: true, status: newStatus, amount_paid_cents: amountPaid });
     } catch (err) {

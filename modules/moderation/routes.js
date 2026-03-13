@@ -4,6 +4,24 @@
  * Extracted from Sebastian server.js moderation patterns.
  */
 
+// ── Cross-module export: checkWordFilter(db, text) ──
+async function checkWordFilter(db, text) {
+  if (!text) return { flagged: false, matches: [] };
+  var filters = await db.query("SELECT word, severity FROM word_filters WHERE active=true");
+  var lower = text.toLowerCase();
+  var matches = [];
+  for (var f of filters.rows) {
+    if (lower.includes(f.word)) {
+      matches.push({ word: f.word, severity: f.severity });
+    }
+  }
+  return {
+    flagged: matches.length > 0,
+    blocked: matches.some(function(m) { return m.severity === "block"; }),
+    matches: matches
+  };
+}
+
 module.exports = function mountModeration(app, db) {
 
   function parseCookies(req) {
@@ -255,25 +273,9 @@ module.exports = function mountModeration(app, db) {
     }
   });
 
-  // ── Cross-module export: checkWordFilter ──
-  async function checkWordFilter(text) {
-    if (!text) return { flagged: false, matches: [] };
-    var filters = await db.query("SELECT word, severity FROM word_filters WHERE active=true");
-    var lower = text.toLowerCase();
-    var matches = [];
-    for (var f of filters.rows) {
-      if (lower.includes(f.word)) {
-        matches.push({ word: f.word, severity: f.severity });
-      }
-    }
-    return {
-      flagged: matches.length > 0,
-      blocked: matches.some(function(m) { return m.severity === "block"; }),
-      matches: matches
-    };
-  }
-
-  // Expose for cross-module use
-  app._moderation = { checkWordFilter };
+  // Expose for cross-module use (backward compat wrapper)
+  app._moderation = { checkWordFilter: function(text) { return checkWordFilter(db, text); } };
 
 };
+
+module.exports.checkWordFilter = checkWordFilter;
