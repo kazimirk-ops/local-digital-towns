@@ -97,7 +97,7 @@ try {
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https:", "blob:"],
-        connectSrc: ["'self'", "https://api.stripe.com", "https://graph.facebook.com", "https://api.tidesandcurrents.noaa.gov", "wss:", "https://accounts.google.com", "https://oauth2.googleapis.com", "https://www.googleapis.com", "https://www.googletagmanager.com", "https://www.google-analytics.com"],
+        connectSrc: ["'self'", "https://api.stripe.com", "https://graph.facebook.com", "https://api.tidesandcurrents.noaa.gov", "wss:", "https://accounts.google.com", "https://oauth2.googleapis.com", "https://www.googleapis.com", "https://www.googletagmanager.com", "https://www.google-analytics.com", "https://*.basemaps.cartocdn.com"],
         frameSrc: ["'self'", "https://js.stripe.com", "https://www.facebook.com"],
       }
     },
