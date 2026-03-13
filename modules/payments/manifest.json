@@ -1,0 +1,13 @@
+{
+  "id": "payments",
+  "name": "Payments",
+  "layer": 1,
+  "dependencies": ["core", "orders", "auth"],
+  "submodules": [
+    { "id": "payments.stripe-connect", "name": "Stripe Connect", "default": true },
+    { "id": "payments.wallet", "name": "Wallet & Credits", "default": false },
+    { "id": "payments.deposits", "name": "Deposit Payments", "default": true },
+    { "id": "payments.cash", "name": "Cash/Venmo/PayPal", "default": true },
+    { "id": "payments.refunds", "name": "Refunds", "default": true }
+  ]
+}

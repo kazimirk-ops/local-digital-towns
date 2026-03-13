@@ -281,7 +281,28 @@ const urlencodedParser = express.urlencoded({ extended: false });
 app.use(async (req,res,next)=>{
   if(req.path === "/api/stripe/webhook") return next();
   if(req.path === "/api/webhooks/uber") return next();
+  if(req.path === "/api/webhooks/stripe") return next();
+  if(req.path === "/api/webhooks/shippo") return next();
   return jsonParser(req,res,next);
+});
+
+// ─── Community resolution middleware (for feature flag enforcement) ───
+app.use(async (req, res, next) => {
+  try {
+    var host = req.hostname;
+    var r = await db.query(
+      "SELECT slug, feature_flags FROM communities WHERE domain = $1 OR slug = 'digitaltowns' LIMIT 1",
+      [host]
+    );
+    var comm = r.rows[0] || { slug: "digitaltowns", feature_flags: {} };
+    if (typeof comm.feature_flags === "string") {
+      try { comm.feature_flags = JSON.parse(comm.feature_flags || "{}"); } catch(e) { comm.feature_flags = {}; }
+    }
+    req.community = comm;
+  } catch(e) {
+    req.community = { slug: "digitaltowns", feature_flags: {} };
+  }
+  next();
 });
 // ─── Mount auth module (before view-only lockdown so POST endpoints work) ───
 try {
@@ -306,6 +327,13 @@ try { require('./modules/channels/routes')(app, db); } catch(e) { console.error(
 try { require('./modules/gigs/routes')(app, db); } catch(e) { console.error('gigs:', e.message); }
 try { require('./modules/pulse/routes')(app, db); } catch(e) { console.error('pulse:', e.message); }
 
+// ─── Mount L1 Commerce modules (before view-only lockdown) ───
+try { require('./modules/listings/routes')(app, db); } catch(e) { console.error('listings:', e.message); }
+try { require('./modules/orders/routes')(app, db); } catch(e) { console.error('orders:', e.message); }
+try { require('./modules/payments/routes')(app, db); } catch(e) { console.error('payments:', e.message); }
+try { require('./modules/shipping/routes')(app, db); } catch(e) { console.error('shipping:', e.message); }
+try { require('./modules/notifications/routes')(app, db); } catch(e) { console.error('notifications:', e.message); }
+
 // ─── View-only lockdown ───
 app.use(function(req, res, next) {
   if (req.method === 'GET') return next();
@@ -319,6 +347,12 @@ app.use(function(req, res, next) {
   if (req.path.startsWith('/api/channels') || req.path.startsWith('/api/channel-requests') || req.path.startsWith('/api/dm/') || req.path.startsWith('/api/admin/channel-requests')) return next();
   if (req.path.startsWith('/api/gigs') || req.path.startsWith('/api/service-inquiries') || req.path.startsWith('/api/admin/gig')) return next();
   if (req.path.startsWith('/api/pulse') || req.path.startsWith('/api/admin/pulse')) return next();
+  // Allow L1 Commerce module POST/PUT/DELETE endpoints through
+  if (req.path.startsWith('/api/listings') || req.path.startsWith('/api/auctions') || req.path.startsWith('/api/admin/listings')) return next();
+  if (req.path.startsWith('/api/orders') || req.path.startsWith('/api/invoices') || req.path.startsWith('/api/buyer-profile')) return next();
+  if (req.path.startsWith('/api/payments') || req.path.startsWith('/api/webhooks/stripe') || req.path.startsWith('/api/wallet')) return next();
+  if (req.path.startsWith('/api/shipping') || req.path.startsWith('/api/shipments') || req.path.startsWith('/api/webhooks/shippo')) return next();
+  if (req.path.startsWith('/api/notifications')) return next();
   return res.status(403).json({ error: 'This site is in view-only mode.' });
 });
 

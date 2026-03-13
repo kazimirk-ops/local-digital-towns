@@ -1,0 +1,13 @@
+{
+  "id": "shipping",
+  "name": "Shipping",
+  "layer": 1,
+  "dependencies": ["core", "orders", "auth"],
+  "submodules": [
+    { "id": "shipping.shippo", "name": "Shippo", "default": true },
+    { "id": "shipping.rates", "name": "Rate Quotes", "default": true },
+    { "id": "shipping.labels", "name": "Label Generation", "default": true },
+    { "id": "shipping.tracking", "name": "Tracking", "default": true },
+    { "id": "shipping.local-delivery", "name": "Local Delivery", "default": false }
+  ]
+}

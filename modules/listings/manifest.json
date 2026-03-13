@@ -1,0 +1,14 @@
+{
+  "id": "listings",
+  "name": "Listings",
+  "layer": 1,
+  "dependencies": ["core", "places", "auth", "tags"],
+  "submodules": [
+    { "id": "listings.auctions", "name": "Auctions", "default": true },
+    { "id": "listings.buy-now", "name": "Buy Now", "default": true },
+    { "id": "listings.digital", "name": "Digital Items", "default": false },
+    { "id": "listings.delivery", "name": "Local Delivery", "default": true },
+    { "id": "listings.moderation", "name": "Moderation Queue", "default": true },
+    { "id": "listings.variants", "name": "Variants & Options", "default": false }
+  ]
+}
