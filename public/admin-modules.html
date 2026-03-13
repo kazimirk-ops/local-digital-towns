@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Module Registry — Digital Towns</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: #070b10;
+      color: #e8eef6;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 220px;
+      background: #0c1219;
+      border-right: 1px solid #1e293b;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: fixed;
+      top: 0; bottom: 0; left: 0;
+      z-index: 10;
+    }
+    .sidebar-logo { font-size: 18px; font-weight: 700; color: #0ea5e9; margin-bottom: 4px; letter-spacing: -0.5px; }
+    .sidebar-sub { font-size: 11px; color: #64748b; margin-bottom: 20px; line-height: 1.4; }
+    .nav-item {
+      display: block; padding: 10px 14px; border-radius: 8px;
+      color: #94a3b8; text-decoration: none; font-size: 14px; font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+    }
+    .nav-item:hover { background: #1e293b; color: #e2e8f0; }
+    .nav-item.active { background: #0ea5e9; color: #fff; }
+    .nav-icon { margin-right: 10px; }
+    .sidebar-footer {
+      margin-top: auto; padding-top: 16px; border-top: 1px solid #1e293b;
+      font-size: 11px; color: #475569; line-height: 1.5;
+    }
+
+    /* Main */
+    .main { margin-left: 220px; flex: 1; padding: 40px; max-width: 900px; }
+    .page-title { font-size: 28px; font-weight: 700; color: #0ea5e9; letter-spacing: -0.5px; margin-bottom: 6px; }
+    .page-subtitle { font-size: 15px; color: #64748b; margin-bottom: 32px; }
+
+    /* Module cards */
+    .module-grid { display: flex; flex-direction: column; gap: 12px; }
+    .module-card {
+      background: #0f1722;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .module-info { flex: 1; }
+    .module-name { font-size: 16px; font-weight: 600; color: #e2e8f0; margin-bottom: 4px; }
+    .module-meta { font-size: 12px; color: #64748b; }
+    .module-meta span { margin-right: 14px; }
+    .module-deps { color: #475569; }
+
+    .badge {
+      font-size: 11px; font-weight: 700; padding: 4px 12px;
+      border-radius: 20px; white-space: nowrap;
+    }
+    .badge-active { background: #064e3b; color: #10b981; }
+    .badge-inactive { background: #1e293b; color: #64748b; }
+
+    .btn-install {
+      padding: 8px 18px; border-radius: 8px; border: 1px solid #334155;
+      background: transparent; color: #94a3b8; font-size: 13px; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-install:hover { border-color: #0ea5e9; color: #0ea5e9; }
+    .btn-install:disabled { opacity: 0.3; cursor: not-allowed; }
+    .btn-installed {
+      padding: 8px 18px; border-radius: 8px; border: 1px solid #064e3b;
+      background: transparent; color: #10b981; font-size: 13px; font-weight: 600;
+      font-family: inherit; cursor: default;
+    }
+
+    .loading { color: #475569; font-size: 14px; padding: 40px 0; text-align: center; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="sidebar">
+    <div class="sidebar-logo">Digital Towns</div>
+    <div class="sidebar-sub">Module Workshop<br>Staging Environment</div>
+    <a href="/" class="nav-item"><span class="nav-icon">&#9632;</span>Dashboard</a>
+    <a href="/admin-modules.html" class="nav-item active"><span class="nav-icon">&#9881;</span>Module Registry</a>
+    <a href="/communities.html" class="nav-item"><span class="nav-icon">&#127760;</span>Communities</a>
+    <a href="/users.html" class="nav-item"><span class="nav-icon">&#128100;</span>Users</a>
+    <a href="/docs/" class="nav-item"><span class="nav-icon">&#128196;</span>Docs</a>
+    <div class="sidebar-footer">
+      digitaltowns.app<br>
+      tampa-bay-florida &middot; Render
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="page-title">Module Registry</div>
+    <div class="page-subtitle">Installed and available modules for this staging environment</div>
+
+    <div class="module-grid" id="moduleGrid">
+      <div class="loading">Loading modules...</div>
+    </div>
+  </div>
+
+  <script>
+    function renderModules(modules) {
+      var grid = document.getElementById('moduleGrid');
+      if (!modules || modules.length === 0) {
+        grid.innerHTML = '<div class="loading">No modules found</div>';
+        return;
+      }
+      var html = '';
+      modules.sort(function(a, b) { return (a.layer || 0) - (b.layer || 0); });
+      modules.forEach(function(m) {
+        var isActive = m.status === 'ACTIVE';
+        var badgeClass = isActive ? 'badge-active' : 'badge-inactive';
+        var deps = (m.dependencies && m.dependencies.length) ? m.dependencies.join(', ') : 'none';
+        var actionBtn = isActive
+          ? '<button class="btn-installed" disabled>Installed</button>'
+          : '<button class="btn-install" onclick="installModule(\'' + m.id + '\', this)">Install</button>';
+
+        html += '<div class="module-card">'
+          + '<div class="module-info">'
+          + '<div class="module-name">' + m.name + '</div>'
+          + '<div class="module-meta">'
+          + '<span>ID: ' + m.id + '</span>'
+          + (m.version ? '<span>v' + m.version + '</span>' : '')
+          + '<span>Layer ' + (m.layer || 0) + '</span>'
+          + '<span class="module-deps">Deps: ' + deps + '</span>'
+          + '</div></div>'
+          + '<span class="badge ' + badgeClass + '">' + m.status + '</span>'
+          + actionBtn
+          + '</div>';
+      });
+      grid.innerHTML = html;
+    }
+
+    function installModule(id, btn) {
+      btn.disabled = true;
+      btn.textContent = 'Installing...';
+      // POST to install endpoint (placeholder — currently view-only mode)
+      fetch('/api/modules/' + id + '/install', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.ok) {
+            btn.textContent = 'Installed';
+            btn.className = 'btn-installed';
+            loadModules();
+          } else {
+            btn.textContent = d.error || 'Failed';
+            setTimeout(function() { btn.textContent = 'Install'; btn.disabled = false; }, 2000);
+          }
+        })
+        .catch(function() {
+          btn.textContent = 'Error';
+          setTimeout(function() { btn.textContent = 'Install'; btn.disabled = false; }, 2000);
+        });
+    }
+
+    function loadModules() {
+      fetch('/api/modules')
+        .then(function(r) { return r.json(); })
+        .then(function(d) { renderModules(d.modules || []); })
+        .catch(function() {
+          document.getElementById('moduleGrid').innerHTML = '<div class="loading">Failed to load modules</div>';
+        });
+    }
+
+    loadModules();
+  </script>
+</body>
+</html>

@@ -264,15 +264,14 @@
   </div>
 
   <script>
-    // Fetch staging stats
-    fetch('/api/staging/stats')
+    // Fetch dashboard stats
+    fetch('/api/stats')
       .then(function(r) { return r.json(); })
       .then(function(d) {
         document.getElementById('statCommunities').textContent = d.communities;
         document.getElementById('statUsers').textContent = d.users;
         document.getElementById('statTables').textContent = d.tables;
         document.getElementById('statModules').textContent = d.modules;
-
         document.getElementById('statCommunities').classList.remove('stat-loading');
         document.getElementById('statUsers').classList.remove('stat-loading');
         document.getElementById('statTables').classList.remove('stat-loading');
@@ -285,18 +284,17 @@
         document.getElementById('statModules').textContent = '?';
       });
 
-    // Fetch installed modules from migrations table
-    fetch('/api/staging/stats')
+    // Fetch installed modules list
+    fetch('/api/modules')
       .then(function(r) { return r.json(); })
       .then(function(d) {
         var el = document.getElementById('moduleList');
-        // For now show core + any modules from feature_flags
         var html = '';
-        html += '<div class="module-row"><span class="module-name">core</span><span class="module-badge badge-active">ACTIVE</span></div>';
-        if (d.modules > 0) {
-          html += '<div class="module-row"><span class="module-name">tags</span><span class="module-badge badge-active">ACTIVE</span></div>';
-        }
-        el.innerHTML = html;
+        (d.modules || []).forEach(function(m) {
+          var badge = m.status === 'ACTIVE' ? 'badge-active' : 'badge-pending';
+          html += '<div class="module-row"><span class="module-name">' + m.name + '</span><span class="module-badge ' + badge + '">' + m.status + '</span></div>';
+        });
+        el.innerHTML = html || '<div style="color:#475569">No modules found</div>';
       })
       .catch(function() {
         document.getElementById('moduleList').textContent = 'Could not load modules';

@@ -1902,6 +1902,66 @@ app.get("/api/staging/stats", async (req, res) => {
   }
 });
 
+// GET /api/stats — dashboard stats
+app.get("/api/stats", async (req, res) => {
+  try {
+    const communities = await db.one("SELECT COUNT(*) AS c FROM communities");
+    const users = await db.one("SELECT COUNT(*) AS c FROM users");
+    const tables = await db.one("SELECT COUNT(*) AS c FROM pg_stat_user_tables");
+    const modules = await db.one("SELECT COUNT(*) AS c FROM migrations");
+    res.json({
+      communities: parseInt(communities.c),
+      users: parseInt(users.c),
+      tables: parseInt(tables.c),
+      modules: parseInt(modules.c)
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Stats unavailable", detail: err.message });
+  }
+});
+
+// GET /api/modules — list all modules with install status
+app.get("/api/modules", async (req, res) => {
+  try {
+    const nodePath = require("path");
+    const nodeFs = require("fs");
+    const modulesDir = nodePath.join(__dirname, "modules");
+    const installed = await db.many("SELECT module_name, applied_at FROM migrations ORDER BY applied_at");
+    const installedMap = {};
+    for (const row of installed) {
+      installedMap[row.module_name] = row.applied_at;
+    }
+
+    const result = [];
+    // Core is always present
+    result.push({ id: "core", name: "Core Infrastructure", status: "ACTIVE", installed_at: null, layer: 0 });
+
+    // Scan modules directory for manifests
+    const dirs = nodeFs.readdirSync(modulesDir).filter(d => {
+      return d !== "core" && nodeFs.statSync(nodePath.join(modulesDir, d)).isDirectory();
+    });
+    for (const dir of dirs) {
+      const manifestPath = nodePath.join(modulesDir, dir, "manifest.json");
+      if (!nodeFs.existsSync(manifestPath)) continue;
+      const manifest = JSON.parse(nodeFs.readFileSync(manifestPath, "utf8"));
+      const isInstalled = !!installedMap[manifest.id];
+      result.push({
+        id: manifest.id,
+        name: manifest.name,
+        version: manifest.version,
+        layer: manifest.layer,
+        dependencies: manifest.dependencies || [],
+        status: isInstalled ? "ACTIVE" : "INACTIVE",
+        installed_at: installedMap[manifest.id] || null
+      });
+    }
+
+    res.json({ modules: result });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load modules", detail: err.message });
+  }
+});
+
 app.get("/api/me", async (req, res) =>{
   const sid = parseCookies(req).sid;
   if(!sid) return res.status(401).json({ error: "not logged in" });
