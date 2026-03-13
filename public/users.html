@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Users — Digital Towns</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Space Grotesk', system-ui, sans-serif; background: #070b10; color: #e8eef6; min-height: 100vh; display: flex; }
+    .sidebar { width: 220px; background: #0c1219; border-right: 1px solid #1e293b; padding: 24px 16px; display: flex; flex-direction: column; gap: 6px; position: fixed; top: 0; bottom: 0; left: 0; z-index: 10; }
+    .sidebar-logo { font-size: 18px; font-weight: 700; color: #0ea5e9; margin-bottom: 4px; letter-spacing: -0.5px; }
+    .sidebar-sub { font-size: 11px; color: #64748b; margin-bottom: 20px; line-height: 1.4; }
+    .nav-item { display: block; padding: 10px 14px; border-radius: 8px; color: #94a3b8; text-decoration: none; font-size: 14px; font-weight: 500; transition: background 0.15s, color 0.15s; }
+    .nav-item:hover { background: #1e293b; color: #e2e8f0; }
+    .nav-item.active { background: #0ea5e9; color: #fff; }
+    .nav-icon { margin-right: 10px; }
+    .sidebar-footer { margin-top: auto; padding-top: 16px; border-top: 1px solid #1e293b; font-size: 11px; color: #475569; line-height: 1.5; }
+
+    .main { margin-left: 220px; flex: 1; padding: 40px; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 6px; }
+    .page-title { font-size: 36px; font-weight: 700; color: #06b6d4; letter-spacing: -1px; }
+    .page-subtitle { font-size: 16px; color: #64748b; margin-bottom: 36px; }
+    .search-input { padding: 10px 14px; background: #0f1623; border: 1px solid #1e293b; border-radius: 8px; color: #e2e8f0; font-size: 14px; font-family: inherit; width: 260px; }
+    .search-input:focus { outline: none; border-color: #06b6d4; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px; }
+    .stat-card { background: #0f1623; border: 1px solid #1e293b; border-radius: 12px; padding: 24px 20px; text-align: center; }
+    .stat-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+    .stat-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value.c1 { color: #06b6d4; }
+    .stat-value.c2 { color: #10b981; }
+    .stat-value.c3 { color: #a855f7; }
+    .stat-value.c4 { color: #f59e0b; }
+
+    .filters-row { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
+    .filter-select { padding: 8px 12px; background: #0f1623; border: 1px solid #1e293b; border-radius: 6px; color: #e2e8f0; font-size: 13px; font-family: inherit; cursor: pointer; }
+    .filter-select:focus { outline: none; border-color: #06b6d4; }
+    .filter-label { font-size: 12px; color: #64748b; font-weight: 600; }
+
+    .table-wrap { background: #0f1623; border: 1px solid #1e293b; border-radius: 12px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 14px; border-bottom: 1px solid #1e293b; background: #0c1219; }
+    td { padding: 10px 14px; border-bottom: 1px solid #0f172a; font-size: 13px; vertical-align: middle; }
+    tr:hover td { background: rgba(30,41,59,0.4); }
+    .user-email { color: #cbd5e1; }
+    .user-name { color: #94a3b8; }
+
+    .tier-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+    .tier-0 { background: #1e293b; color: #64748b; }
+    .tier-1 { background: #1e3a5f; color: #38bdf8; }
+    .tier-2 { background: #2e1065; color: #c084fc; }
+    .tier-3 { background: #431407; color: #fb923c; }
+    .tier-4 { background: #064e3b; color: #34d399; }
+    .tier-5 { background: #422006; color: #fbbf24; }
+
+    .action-select { padding: 4px 8px; background: #070b10; border: 1px solid #1e293b; border-radius: 4px; color: #e2e8f0; font-size: 11px; font-family: inherit; cursor: pointer; }
+    .action-select:focus { outline: none; border-color: #06b6d4; }
+    .btn-sm { padding: 4px 10px; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.15s; }
+    .btn-sm:hover { opacity: 0.85; }
+    .btn-sm:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-red { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .btn-green { background: rgba(16,185,129,0.15); color: #10b981; }
+
+    .pagination { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 20px; }
+    .page-btn { padding: 8px 16px; background: #0f1623; border: 1px solid #1e293b; border-radius: 6px; color: #94a3b8; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+    .page-btn:hover { background: #1e293b; color: #e2e8f0; }
+    .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .page-info { font-size: 13px; color: #64748b; }
+
+    .msg { font-size: 13px; margin-top: 10px; text-align: center; }
+    .msg.ok { color: #10b981; }
+    .msg.err { color: #ef4444; }
+    .loading-text { color: #475569; font-size: 13px; padding: 20px; text-align: center; }
+    .suspended-row td { opacity: 0.5; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 20px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .search-input { width: 100%; }
+      .hide-mobile { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-logo">Digital Towns</div>
+    <div class="sidebar-sub">Module Workshop<br>Staging Environment</div>
+    <a href="/" class="nav-item"><span class="nav-icon">&#9632;</span>Dashboard</a>
+    <a href="/admin-modules.html" class="nav-item"><span class="nav-icon">&#9881;</span>Module Registry</a>
+    <a href="/communities.html" class="nav-item"><span class="nav-icon">&#127760;</span>Communities</a>
+    <a href="/users.html" class="nav-item active"><span class="nav-icon">&#128100;</span>Users</a>
+    <a href="/docs.html" class="nav-item"><span class="nav-icon">&#128196;</span>Docs</a>
+    <div class="sidebar-footer">digitaltowns.app<br>tampa-bay-florida &middot; Render</div>
+  </nav>
+
+  <div class="main">
+    <div class="page-header">
+      <div class="page-title">Users</div>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search by email or name..." oninput="applyFilters()">
+    </div>
+    <div class="page-subtitle">User management and trust tiers</div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value c1" id="statTotal">-</div><div class="stat-label">Total Users</div></div>
+      <div class="stat-card"><div class="stat-value c2" id="statActive">-</div><div class="stat-label">Active (7d)</div></div>
+      <div class="stat-card"><div class="stat-value c3" id="statVerified">-</div><div class="stat-label">Verified (Tier 1+)</div></div>
+      <div class="stat-card"><div class="stat-value c4" id="statAdmins">-</div><div class="stat-label">Admins</div></div>
+    </div>
+
+    <div class="filters-row">
+      <span class="filter-label">Trust Tier:</span>
+      <select class="filter-select" id="filterTier" onchange="applyFilters()">
+        <option value="all">All</option>
+        <option value="0">0 — Visitor</option>
+        <option value="1">1 — Verified</option>
+        <option value="2">2 — Phone</option>
+        <option value="3">3 — Identity</option>
+        <option value="4">4 — Local</option>
+        <option value="5">5 — Admin</option>
+      </select>
+      <span class="filter-label">Sort:</span>
+      <select class="filter-select" id="filterSort" onchange="applyFilters()">
+        <option value="newest">Newest</option>
+        <option value="active">Last Active</option>
+        <option value="trust">Trust Level</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Email</th><th>Display Name</th><th>Trust Tier</th><th class="hide-mobile">Joined</th><th class="hide-mobile">Last Active</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="userRows"></tbody>
+      </table>
+    </div>
+    <div class="loading-text" id="userMsg">Loading...</div>
+
+    <div class="pagination">
+      <button class="page-btn" id="prevBtn" onclick="prevPage()" disabled>Prev</button>
+      <span class="page-info" id="pageInfo">-</span>
+      <button class="page-btn" id="nextBtn" onclick="nextPage()" disabled>Next</button>
+    </div>
+  </div>
+
+<script>
+(function() {
+  var allUsers = [];
+  var filteredUsers = [];
+  var page = 0;
+  var perPage = 25;
+
+  var TIER_LABELS = { 0: 'Visitor', 1: 'Verified', 2: 'Phone', 3: 'Identity', 4: 'Local', 5: 'Admin' };
+
+  function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function fmtDate(d) {
+    if (!d) return '-';
+    var dt = new Date(d);
+    if (isNaN(dt)) return '-';
+    return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function api(url, opts) {
+    opts = opts || {};
+    opts.credentials = 'include';
+    if (opts.body) opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+    return fetch(url, opts).then(function(r) { return r.json(); });
+  }
+
+  // Load users
+  api('/api/admin/users').then(function(data) {
+    allUsers = Array.isArray(data) ? data : (data.users || []);
+    updateStats();
+    applyFilters();
+    document.getElementById('userMsg').textContent = '';
+  }).catch(function(e) {
+    document.getElementById('userMsg').textContent = 'Failed to load users. Admin login required.';
+    document.getElementById('userMsg').className = 'loading-text';
+  });
+
+  function updateStats() {
+    var now = Date.now();
+    var sevenDays = 7 * 24 * 60 * 60 * 1000;
+    document.getElementById('statTotal').textContent = allUsers.length;
+    document.getElementById('statActive').textContent = allUsers.filter(function(u) {
+      return u.last_active_at && (now - new Date(u.last_active_at).getTime()) < sevenDays;
+    }).length;
+    document.getElementById('statVerified').textContent = allUsers.filter(function(u) {
+      var t = u.trust_tier_num || u.trust_tier || 0;
+      return (typeof t === 'number' ? t : parseInt(t, 10) || 0) >= 1;
+    }).length;
+    document.getElementById('statAdmins').textContent = allUsers.filter(function(u) { return u.is_admin; }).length;
+  }
+
+  window.applyFilters = function() {
+    var search = (document.getElementById('searchInput').value || '').toLowerCase();
+    var tierFilter = document.getElementById('filterTier').value;
+    var sort = document.getElementById('filterSort').value;
+
+    filteredUsers = allUsers.filter(function(u) {
+      if (search) {
+        var email = (u.email || '').toLowerCase();
+        var name = (u.display_name || '').toLowerCase();
+        if (email.indexOf(search) === -1 && name.indexOf(search) === -1) return false;
+      }
+      if (tierFilter !== 'all') {
+        var t = u.trust_tier_num || u.trust_tier || 0;
+        if (typeof t !== 'number') t = parseInt(t, 10) || 0;
+        if (t !== parseInt(tierFilter, 10)) return false;
+      }
+      return true;
+    });
+
+    filteredUsers.sort(function(a, b) {
+      if (sort === 'newest') return (new Date(b.created_at || 0)) - (new Date(a.created_at || 0));
+      if (sort === 'active') return (new Date(b.last_active_at || 0)) - (new Date(a.last_active_at || 0));
+      if (sort === 'trust') {
+        var ta = a.trust_tier_num || a.trust_tier || 0;
+        var tb = b.trust_tier_num || b.trust_tier || 0;
+        return (typeof tb === 'number' ? tb : 0) - (typeof ta === 'number' ? ta : 0);
+      }
+      return 0;
+    });
+
+    page = 0;
+    renderTable();
+  };
+
+  function renderTable() {
+    var start = page * perPage;
+    var end = start + perPage;
+    var slice = filteredUsers.slice(start, end);
+    var totalPages = Math.ceil(filteredUsers.length / perPage) || 1;
+
+    var body = document.getElementById('userRows');
+    if (!slice.length) {
+      body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:24px;">No users found</td></tr>';
+    } else {
+      body.innerHTML = slice.map(function(u, i) {
+        var tier = u.trust_tier_num || u.trust_tier || 0;
+        if (typeof tier !== 'number') tier = parseInt(tier, 10) || 0;
+        var tierLabel = TIER_LABELS[tier] || 'Tier ' + tier;
+        var isSuspended = !!u.suspended;
+        var rowClass = isSuspended ? ' class="suspended-row"' : '';
+
+        return '<tr' + rowClass + '>'
+          + '<td>' + (start + i + 1) + '</td>'
+          + '<td class="user-email">' + esc(u.email) + '</td>'
+          + '<td class="user-name">' + esc(u.display_name || '-') + '</td>'
+          + '<td><span class="tier-badge tier-' + tier + '">' + tierLabel + '</span></td>'
+          + '<td class="hide-mobile">' + fmtDate(u.created_at) + '</td>'
+          + '<td class="hide-mobile">' + fmtDate(u.last_active_at) + '</td>'
+          + '<td style="white-space:nowrap;">'
+          + '<select class="action-select" onchange="setTier(' + u.id + ', this.value, this)" style="margin-right:4px;">'
+          + [0,1,2,3,4,5].map(function(t) { return '<option value="' + t + '"' + (t === tier ? ' selected' : '') + '>' + t + '</option>'; }).join('')
+          + '</select>'
+          + '<button class="btn-sm ' + (isSuspended ? 'btn-green' : 'btn-red') + '" onclick="toggleSuspend(' + u.id + ',' + !isSuspended + ',this)">'
+          + (isSuspended ? 'Unsuspend' : 'Suspend') + '</button>'
+          + '</td></tr>';
+      }).join('');
+    }
+
+    document.getElementById('pageInfo').textContent = 'Page ' + (page + 1) + ' of ' + totalPages + ' (' + filteredUsers.length + ' users)';
+    document.getElementById('prevBtn').disabled = page === 0;
+    document.getElementById('nextBtn').disabled = end >= filteredUsers.length;
+  }
+
+  window.prevPage = function() { if (page > 0) { page--; renderTable(); } };
+  window.nextPage = function() { if ((page + 1) * perPage < filteredUsers.length) { page++; renderTable(); } };
+
+  window.setTier = function(userId, tier, el) {
+    api('/api/admin/users/' + userId + '/trust-tier', {
+      method: 'PUT',
+      body: JSON.stringify({ trust_tier: parseInt(tier, 10) })
+    }).then(function(d) {
+      if (d.ok) {
+        var u = allUsers.find(function(u) { return u.id === userId; });
+        if (u) { u.trust_tier = parseInt(tier, 10); u.trust_tier_num = parseInt(tier, 10); }
+        renderTable();
+      } else {
+        alert(d.error || 'Failed');
+        el.value = (allUsers.find(function(u) { return u.id === userId; }) || {}).trust_tier_num || 0;
+      }
+    }).catch(function() { alert('Network error'); });
+  };
+
+  window.toggleSuspend = function(userId, suspended, btn) {
+    btn.disabled = true;
+    api('/api/admin/users/' + userId + '/suspend', {
+      method: 'PUT',
+      body: JSON.stringify({ suspended: suspended })
+    }).then(function(d) {
+      btn.disabled = false;
+      if (d.ok) {
+        var u = allUsers.find(function(u) { return u.id === userId; });
+        if (u) u.suspended = suspended;
+        renderTable();
+      } else { alert(d.error || 'Failed'); }
+    }).catch(function() { btn.disabled = false; alert('Network error'); });
+  };
+})();
+</script>
+</body>
+</html>

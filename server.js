@@ -2015,10 +2015,40 @@ app.get("/places-admin", async (req, res) => {
 app.get("/api/admin/users", async (req, res) => {
   const admin = await requireAdmin(req, res); if (!admin) return;
   try {
-    const result = await db.query("SELECT id, email, display_name, trust_tier, trust_tier_num, is_admin, avatar_url, google_id, fb_id, created_at, last_active_at FROM users ORDER BY id DESC");
+    // Ensure suspended column exists
+    await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended BOOLEAN DEFAULT false");
+    const result = await db.query("SELECT id, email, display_name, trust_tier, trust_tier_num, is_admin, avatar_url, google_id, fb_id, suspended, created_at, last_active_at FROM users ORDER BY id DESC");
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: "Failed to load users", detail: err.message });
+  }
+});
+
+// PUT /api/admin/users/:id/trust-tier — set user trust tier
+app.put("/api/admin/users/:id/trust-tier", async (req, res) => {
+  const admin = await requireAdmin(req, res); if (!admin) return;
+  try {
+    const tier = parseInt((req.body || {}).trust_tier, 10);
+    if (isNaN(tier) || tier < 0 || tier > 5) return res.status(400).json({ error: "trust_tier must be 0-5" });
+    const result = await db.query("UPDATE users SET trust_tier = $1, trust_tier_num = $1 WHERE id = $2 RETURNING id, email, display_name, trust_tier", [tier, req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ error: "User not found" });
+    res.json({ ok: true, user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update trust tier", detail: err.message });
+  }
+});
+
+// PUT /api/admin/users/:id/suspend — suspend/unsuspend user
+app.put("/api/admin/users/:id/suspend", async (req, res) => {
+  const admin = await requireAdmin(req, res); if (!admin) return;
+  try {
+    await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended BOOLEAN DEFAULT false");
+    const suspended = !!(req.body || {}).suspended;
+    const result = await db.query("UPDATE users SET suspended = $1 WHERE id = $2 RETURNING id, email, suspended", [suspended, req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ error: "User not found" });
+    res.json({ ok: true, user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update suspension", detail: err.message });
   }
 });
 

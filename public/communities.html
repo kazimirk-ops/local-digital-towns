@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Communities — Digital Towns</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Space Grotesk', system-ui, sans-serif; background: #070b10; color: #e8eef6; min-height: 100vh; display: flex; }
+    .sidebar { width: 220px; background: #0c1219; border-right: 1px solid #1e293b; padding: 24px 16px; display: flex; flex-direction: column; gap: 6px; position: fixed; top: 0; bottom: 0; left: 0; z-index: 10; }
+    .sidebar-logo { font-size: 18px; font-weight: 700; color: #0ea5e9; margin-bottom: 4px; letter-spacing: -0.5px; }
+    .sidebar-sub { font-size: 11px; color: #64748b; margin-bottom: 20px; line-height: 1.4; }
+    .nav-item { display: block; padding: 10px 14px; border-radius: 8px; color: #94a3b8; text-decoration: none; font-size: 14px; font-weight: 500; transition: background 0.15s, color 0.15s; }
+    .nav-item:hover { background: #1e293b; color: #e2e8f0; }
+    .nav-item.active { background: #0ea5e9; color: #fff; }
+    .nav-icon { margin-right: 10px; }
+    .sidebar-footer { margin-top: auto; padding-top: 16px; border-top: 1px solid #1e293b; font-size: 11px; color: #475569; line-height: 1.5; }
+
+    .main { margin-left: 220px; flex: 1; padding: 40px; max-width: 1000px; }
+    .page-title { font-size: 36px; font-weight: 700; color: #06b6d4; letter-spacing: -1px; margin-bottom: 6px; }
+    .page-subtitle { font-size: 16px; color: #64748b; margin-bottom: 36px; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px; }
+    .stat-card { background: #0f1623; border: 1px solid #1e293b; border-radius: 12px; padding: 24px 20px; text-align: center; }
+    .stat-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+    .stat-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value.c1 { color: #06b6d4; }
+    .stat-value.c2 { color: #10b981; }
+    .stat-value.c3 { color: #a855f7; }
+    .stat-value.c4 { color: #f59e0b; }
+
+    .section { margin-bottom: 40px; }
+    .section-title { font-size: 20px; font-weight: 700; color: #e2e8f0; margin-bottom: 16px; }
+
+    /* Tree */
+    .tree { background: #0f1623; border: 1px solid #1e293b; border-radius: 12px; padding: 20px; }
+    .tree-node { padding: 0; margin: 0; }
+    .tree-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background 0.1s; }
+    .tree-item:hover { background: #1e293b; }
+    .tree-toggle { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #64748b; flex-shrink: 0; transition: transform 0.15s; }
+    .tree-toggle.open { transform: rotate(90deg); }
+    .tree-toggle.leaf { visibility: hidden; }
+    .tree-name { color: #e2e8f0; font-weight: 500; }
+    .tree-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+    .badge-country { background: #1e3a5f; color: #38bdf8; }
+    .badge-state { background: #312e81; color: #a78bfa; }
+    .badge-region { background: #164e3e; color: #34d399; }
+    .badge-town { background: #422006; color: #fbbf24; }
+    .badge-neighborhood { background: #3b1219; color: #f87171; }
+    .tree-meta { font-size: 11px; color: #64748b; }
+    .tree-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-active { background: #10b981; }
+    .dot-inactive { background: #475569; }
+    .tree-children { padding-left: 24px; display: none; }
+    .tree-children.open { display: block; }
+
+    /* Town grid */
+    .town-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .town-card { background: #0f1623; border: 1px solid #1e293b; border-radius: 12px; padding: 20px; transition: border-color 0.15s; }
+    .town-card:hover { border-color: #06b6d4; }
+    .town-name { font-size: 18px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
+    .town-region { font-size: 13px; color: #64748b; margin-bottom: 12px; }
+    .town-detail { font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+    .town-detail span { color: #e2e8f0; }
+    .town-actions { display: flex; gap: 8px; margin-top: 14px; }
+    .btn-sm { padding: 7px 14px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.15s; text-decoration: none; display: inline-block; }
+    .btn-sm:hover { opacity: 0.85; }
+    .btn-cyan { background: #06b6d4; color: #fff; }
+    .btn-outline { background: transparent; color: #94a3b8; border: 1px solid #334155; }
+    .btn-outline:hover { border-color: #64748b; color: #e2e8f0; }
+    .town-expanded { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #1e293b; }
+    .town-expanded.open { display: block; }
+
+    /* Status badge */
+    .status-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+    .status-active { background: #064e3b; color: #10b981; }
+    .status-inactive { background: #1e293b; color: #64748b; }
+
+    /* Request form */
+    .form-card { background: #0f1623; border: 1px solid #1e293b; border-radius: 12px; padding: 24px; max-width: 500px; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 13px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; }
+    .form-input { width: 100%; padding: 10px 12px; background: #070b10; border: 1px solid #1e293b; border-radius: 8px; color: #e2e8f0; font-size: 14px; font-family: inherit; }
+    .form-input:focus { outline: none; border-color: #06b6d4; }
+    textarea.form-input { resize: vertical; min-height: 80px; }
+    .btn-primary { display: inline-block; padding: 12px 24px; background: #06b6d4; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background 0.15s; }
+    .btn-primary:hover { background: #0891b2; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .msg { font-size: 13px; margin-top: 10px; }
+    .msg.ok { color: #10b981; }
+    .msg.err { color: #ef4444; }
+    .loading-text { color: #475569; font-size: 13px; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 20px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .town-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-logo">Digital Towns</div>
+    <div class="sidebar-sub">Module Workshop<br>Staging Environment</div>
+    <a href="/" class="nav-item"><span class="nav-icon">&#9632;</span>Dashboard</a>
+    <a href="/admin-modules.html" class="nav-item"><span class="nav-icon">&#9881;</span>Module Registry</a>
+    <a href="/communities.html" class="nav-item active"><span class="nav-icon">&#127760;</span>Communities</a>
+    <a href="/users.html" class="nav-item"><span class="nav-icon">&#128100;</span>Users</a>
+    <a href="/docs.html" class="nav-item"><span class="nav-icon">&#128196;</span>Docs</a>
+    <div class="sidebar-footer">digitaltowns.app<br>tampa-bay-florida &middot; Render</div>
+  </nav>
+
+  <div class="main">
+    <div class="page-title">Communities</div>
+    <div class="page-subtitle">Geographic hierarchy across the network</div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value c1" id="statTotal">-</div><div class="stat-label">Total Places</div></div>
+      <div class="stat-card"><div class="stat-value c2" id="statTowns">-</div><div class="stat-label">Active Towns</div></div>
+      <div class="stat-card"><div class="stat-value c3" id="statRegions">-</div><div class="stat-label">Regions</div></div>
+      <div class="stat-card"><div class="stat-value c4" id="statCountries">-</div><div class="stat-label">Countries</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Hierarchy Tree</div>
+      <div class="tree" id="treeContainer">
+        <div class="loading-text">Loading places...</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Towns</div>
+      <div class="town-grid" id="townGrid">
+        <div class="loading-text">Loading towns...</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Request a Town</div>
+      <div class="form-card">
+        <form id="requestForm" onsubmit="submitRequest(event)">
+          <div class="form-group">
+            <label class="form-label">Your Name</label>
+            <input type="text" class="form-input" id="reqName" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-input" id="reqEmail" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Town Name</label>
+            <input type="text" class="form-input" id="reqTown" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">State</label>
+            <input type="text" class="form-input" id="reqState" placeholder="e.g. Florida">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Message (optional)</label>
+            <textarea class="form-input" id="reqMessage"></textarea>
+          </div>
+          <button type="submit" class="btn-primary" id="reqBtn">Submit Request</button>
+          <div class="msg" id="reqMsg"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function() {
+  var allPlaces = [];
+
+  function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function badgeClass(type) {
+    return 'badge-' + (type || 'town');
+  }
+
+  // Fetch all places
+  fetch('/api/places').then(function(r) { return r.json(); }).then(function(d) {
+    allPlaces = d.places || [];
+    updateStats();
+    buildTree();
+    buildTownGrid();
+  }).catch(function() {
+    document.getElementById('treeContainer').innerHTML = '<div class="loading-text" style="color:#ef4444;">Failed to load places</div>';
+  });
+
+  function updateStats() {
+    document.getElementById('statTotal').textContent = allPlaces.length;
+    document.getElementById('statTowns').textContent = allPlaces.filter(function(p) { return p.type === 'town' && p.status === 'active'; }).length;
+    document.getElementById('statRegions').textContent = allPlaces.filter(function(p) { return p.type === 'region'; }).length;
+    document.getElementById('statCountries').textContent = allPlaces.filter(function(p) { return p.type === 'country'; }).length;
+  }
+
+  function buildTree() {
+    var byId = {};
+    var roots = [];
+    allPlaces.forEach(function(p) { byId[p.id] = p; p._children = []; });
+    allPlaces.forEach(function(p) {
+      if (p.parent_id && byId[p.parent_id]) {
+        byId[p.parent_id]._children.push(p);
+      } else {
+        roots.push(p);
+      }
+    });
+
+    var container = document.getElementById('treeContainer');
+    container.innerHTML = '';
+    roots.forEach(function(root) {
+      container.appendChild(renderNode(root));
+    });
+  }
+
+  function renderNode(place) {
+    var div = document.createElement('div');
+    div.className = 'tree-node';
+    var hasChildren = place._children && place._children.length > 0;
+    var childCount = place._children ? place._children.length : 0;
+    var isActive = place.status === 'active';
+
+    var item = document.createElement('div');
+    item.className = 'tree-item';
+    item.innerHTML =
+      '<div class="tree-toggle ' + (hasChildren ? '' : 'leaf') + '">&#9654;</div>' +
+      '<div class="tree-dot ' + (isActive ? 'dot-active' : 'dot-inactive') + '"></div>' +
+      '<span class="tree-badge ' + badgeClass(place.type) + '">' + esc(place.type) + '</span>' +
+      '<span class="tree-name">' + esc(place.name) + '</span>' +
+      (place.domain ? '<span class="tree-meta">' + esc(place.domain) + '</span>' : '') +
+      (childCount > 0 ? '<span class="tree-meta">(' + childCount + ')</span>' : '');
+    div.appendChild(item);
+
+    if (hasChildren) {
+      var childDiv = document.createElement('div');
+      childDiv.className = 'tree-children';
+      place._children.forEach(function(child) {
+        childDiv.appendChild(renderNode(child));
+      });
+      div.appendChild(childDiv);
+
+      item.addEventListener('click', function() {
+        var toggle = item.querySelector('.tree-toggle');
+        var open = childDiv.classList.contains('open');
+        if (open) {
+          childDiv.classList.remove('open');
+          toggle.classList.remove('open');
+        } else {
+          childDiv.classList.add('open');
+          toggle.classList.add('open');
+        }
+      });
+    }
+
+    return div;
+  }
+
+  function buildTownGrid() {
+    var towns = allPlaces.filter(function(p) { return p.type === 'town'; });
+    var byId = {};
+    allPlaces.forEach(function(p) { byId[p.id] = p; });
+    var grid = document.getElementById('townGrid');
+
+    if (!towns.length) {
+      grid.innerHTML = '<div class="loading-text">No towns found</div>';
+      return;
+    }
+
+    grid.innerHTML = towns.map(function(t, i) {
+      var parent = t.parent_id && byId[t.parent_id] ? byId[t.parent_id] : null;
+      var parentName = parent ? parent.name : '';
+      var isActive = t.status === 'active';
+      var statusClass = isActive ? 'status-active' : 'status-inactive';
+      var statusText = isActive ? 'Active' : 'Inactive';
+      var memberCount = t.member_count || 0;
+      var visitBtn = t.domain
+        ? '<a href="https://' + esc(t.domain) + '" target="_blank" class="btn-sm btn-cyan">Visit Town</a>'
+        : '';
+
+      return '<div class="town-card">'
+        + '<div style="display:flex;align-items:center;gap:8px;">'
+        + '<div class="town-name">' + esc(t.name) + '</div>'
+        + '<span class="status-badge ' + statusClass + '">' + statusText + '</span>'
+        + '</div>'
+        + '<div class="town-region">' + esc(parentName) + '</div>'
+        + (t.domain ? '<div class="town-detail">Domain: <span>' + esc(t.domain) + '</span></div>' : '')
+        + '<div class="town-detail">Members: <span>' + memberCount + '</span></div>'
+        + '<div class="town-actions">'
+        + visitBtn
+        + '<button class="btn-sm btn-outline" onclick="toggleDetails(' + i + ')">View Details</button>'
+        + '</div>'
+        + '<div class="town-expanded" id="townDetail' + i + '">'
+        + (t.lat ? '<div class="town-detail">Lat/Lng: <span>' + t.lat + ', ' + t.lng + '</span></div>' : '')
+        + (t.timezone ? '<div class="town-detail">Timezone: <span>' + esc(t.timezone) + '</span></div>' : '')
+        + (t.county ? '<div class="town-detail">County: <span>' + esc(t.county) + '</span></div>' : '')
+        + '<div class="town-detail">Slug: <span>' + esc(t.slug) + '</span></div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  window.toggleDetails = function(idx) {
+    var el = document.getElementById('townDetail' + idx);
+    if (el) el.classList.toggle('open');
+  };
+
+  window.submitRequest = function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('reqBtn');
+    var msg = document.getElementById('reqMsg');
+    btn.disabled = true;
+    msg.textContent = '';
+
+    fetch('/api/place-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        name: document.getElementById('reqName').value,
+        email: document.getElementById('reqEmail').value,
+        place_name: document.getElementById('reqTown').value,
+        state: document.getElementById('reqState').value,
+        message: document.getElementById('reqMessage').value
+      })
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      btn.disabled = false;
+      if (d.ok) {
+        msg.className = 'msg ok';
+        msg.textContent = 'Request submitted! We will review it shortly.';
+        document.getElementById('requestForm').reset();
+      } else {
+        msg.className = 'msg err';
+        msg.textContent = d.error || 'Failed to submit';
+      }
+    }).catch(function(err) {
+      btn.disabled = false;
+      msg.className = 'msg err';
+      msg.textContent = 'Network error: ' + err.message;
+    });
+  };
+})();
+</script>
+</body>
+</html>

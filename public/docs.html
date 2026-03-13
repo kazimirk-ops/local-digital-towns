@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture Docs — Digital Towns</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Space Grotesk', system-ui, sans-serif; background: #070b10; color: #e8eef6; min-height: 100vh; display: flex; }
+
+    /* Global sidebar */
+    .sidebar { width: 220px; background: #0c1219; border-right: 1px solid #1e293b; padding: 24px 16px; display: flex; flex-direction: column; gap: 6px; position: fixed; top: 0; bottom: 0; left: 0; z-index: 10; }
+    .sidebar-logo { font-size: 18px; font-weight: 700; color: #0ea5e9; margin-bottom: 4px; letter-spacing: -0.5px; }
+    .sidebar-sub { font-size: 11px; color: #64748b; margin-bottom: 20px; line-height: 1.4; }
+    .nav-item { display: block; padding: 10px 14px; border-radius: 8px; color: #94a3b8; text-decoration: none; font-size: 14px; font-weight: 500; transition: background 0.15s, color 0.15s; }
+    .nav-item:hover { background: #1e293b; color: #e2e8f0; }
+    .nav-item.active { background: #0ea5e9; color: #fff; }
+    .nav-icon { margin-right: 10px; }
+    .sidebar-footer { margin-top: auto; padding-top: 16px; border-top: 1px solid #1e293b; font-size: 11px; color: #475569; line-height: 1.5; }
+
+    /* Layout */
+    .page-wrap { margin-left: 220px; display: flex; flex: 1; }
+
+    /* Docs sidebar */
+    .docs-nav { width: 220px; background: #0a0f16; border-right: 1px solid #1e293b; padding: 24px 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0; }
+    .docs-nav-title { font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
+    .docs-link { display: block; padding: 8px 12px; border-radius: 6px; color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 500; margin-bottom: 2px; transition: background 0.15s, color 0.15s; cursor: pointer; }
+    .docs-link:hover { background: #1e293b; color: #e2e8f0; }
+    .docs-link.active { background: rgba(6,182,212,0.12); color: #06b6d4; }
+
+    /* Main content */
+    .docs-main { flex: 1; padding: 40px; max-width: 800px; }
+    .doc-section { margin-bottom: 48px; display: none; }
+    .doc-section.active { display: block; }
+    .doc-title { font-size: 32px; font-weight: 700; color: #06b6d4; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .doc-subtitle { font-size: 15px; color: #64748b; margin-bottom: 24px; line-height: 1.6; }
+
+    h2 { font-size: 22px; font-weight: 700; color: #e2e8f0; margin: 24px 0 12px; }
+    h3 { font-size: 17px; font-weight: 700; color: #cbd5e1; margin: 20px 0 8px; }
+    p { font-size: 14px; color: #94a3b8; line-height: 1.7; margin-bottom: 12px; }
+    ul, ol { margin: 0 0 16px 20px; font-size: 14px; color: #94a3b8; line-height: 1.8; }
+    li { margin-bottom: 4px; }
+    strong { color: #e2e8f0; }
+
+    /* Cards */
+    .module-card { background: #0f1623; border: 1px solid #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .module-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .module-card-name { font-size: 16px; font-weight: 700; color: #e2e8f0; }
+    .layer-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #1e3a5f; color: #38bdf8; }
+    .status-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+    .status-active { background: #064e3b; color: #10b981; }
+    .status-inactive { background: #1e293b; color: #64748b; }
+    .module-desc { font-size: 13px; color: #94a3b8; margin-bottom: 8px; }
+    .module-deps { font-size: 12px; color: #64748b; margin-bottom: 8px; }
+    .sub-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sub-pill { font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 600; }
+    .sub-on { background: rgba(16,185,129,0.12); color: #10b981; }
+    .sub-off { background: rgba(100,116,139,0.15); color: #64748b; }
+
+    /* Coming soon */
+    .coming-soon { background: #0f1623; border: 1px solid #1e293b; border-radius: 12px; padding: 32px; text-align: center; color: #475569; font-size: 14px; margin-bottom: 16px; }
+    .coming-soon strong { color: #94a3b8; display: block; margin-bottom: 8px; font-size: 16px; }
+
+    /* API ref */
+    .endpoint { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #0f172a; font-size: 13px; flex-wrap: wrap; }
+    .endpoint:last-child { border-bottom: none; }
+    .method-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; width: 48px; text-align: center; flex-shrink: 0; }
+    .method-get { background: #064e3b; color: #10b981; }
+    .method-post { background: #1e3a5f; color: #38bdf8; }
+    .method-put { background: #422006; color: #fbbf24; }
+    .method-delete { background: #3b1219; color: #f87171; }
+    .endpoint-path { color: #e2e8f0; font-family: monospace; font-size: 12px; }
+    .endpoint-desc { color: #64748b; font-size: 12px; }
+    .api-section { background: #0f1623; border: 1px solid #1e293b; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; }
+    .api-section-title { font-size: 14px; font-weight: 700; color: #e2e8f0; margin-bottom: 10px; }
+
+    /* Code blocks */
+    pre { background: #0a0f16; border: 1px solid #1e293b; border-radius: 8px; padding: 16px; overflow-x: auto; margin-bottom: 16px; }
+    code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; color: #e2e8f0; line-height: 1.6; }
+    p code { background: #1e293b; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .page-wrap { margin-left: 0; }
+      .docs-nav { display: none; }
+      .docs-main { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-logo">Digital Towns</div>
+    <div class="sidebar-sub">Module Workshop<br>Staging Environment</div>
+    <a href="/" class="nav-item"><span class="nav-icon">&#9632;</span>Dashboard</a>
+    <a href="/admin-modules.html" class="nav-item"><span class="nav-icon">&#9881;</span>Module Registry</a>
+    <a href="/communities.html" class="nav-item"><span class="nav-icon">&#127760;</span>Communities</a>
+    <a href="/users.html" class="nav-item"><span class="nav-icon">&#128100;</span>Users</a>
+    <a href="/docs.html" class="nav-item active"><span class="nav-icon">&#128196;</span>Docs</a>
+    <div class="sidebar-footer">digitaltowns.app<br>tampa-bay-florida &middot; Render</div>
+  </nav>
+
+  <div class="page-wrap">
+    <nav class="docs-nav">
+      <div class="docs-nav-title">Documentation</div>
+      <a class="docs-link active" data-section="overview">Overview</a>
+      <a class="docs-link" data-section="layer0">Layer 0 — Town Infrastructure</a>
+      <a class="docs-link" data-section="layer1">Layer 1 — Commerce</a>
+      <a class="docs-link" data-section="layer2">Layer 2 — Game Engine</a>
+      <a class="docs-link" data-section="layer3">Layer 3 — Network</a>
+      <a class="docs-link" data-section="layer4">Layer 4 — Trust & Safety</a>
+      <a class="docs-link" data-section="api">API Reference</a>
+      <a class="docs-link" data-section="build">Build a Module</a>
+    </nav>
+
+    <div class="docs-main">
+
+      <!-- OVERVIEW -->
+      <div class="doc-section active" id="sec-overview">
+        <div class="doc-title">Architecture Docs</div>
+        <div class="doc-subtitle">Digital Towns Module System</div>
+
+        <h2>What is Digital Towns?</h2>
+        <p>Digital Towns is a multi-community digital marketplace platform that gives every town its own digital infrastructure. Each community gets channels, local services, buy/sell/trade groups, and a daily pulse — all running on a shared module system with per-community feature flags.</p>
+
+        <h2>The Module System</h2>
+        <p>Everything is built as a module. Each module lives in <code>modules/[name]/</code> with three files: a <code>manifest.json</code> declaring metadata and dependencies, a <code>migration.sql</code> creating its database tables, and a <code>routes.js</code> mounting its API endpoints.</p>
+        <p>Modules are organized into <strong>layers</strong>:</p>
+        <ul>
+          <li><strong>Layer 0</strong> — Town Infrastructure: core, auth, places, businesses, BST groups, channels, gigs, pulse, tags</li>
+          <li><strong>Layer 1</strong> — Commerce: listings, orders, payments, shipping (planned)</li>
+          <li><strong>Layer 2</strong> — Game Engine: sweepstakes, live shows, rewards (planned)</li>
+          <li><strong>Layer 3</strong> — Network: town genesis, federation, cross-town features (planned)</li>
+          <li><strong>Layer 4</strong> — Trust &amp; Safety: moderation, reporting, content review (planned)</li>
+        </ul>
+
+        <h2>Sub-modules &amp; Feature Flags</h2>
+        <p>Each module can declare <strong>sub-modules</strong> — granular features that can be toggled on/off per community. For example, the <code>auth</code> module has sub-modules for Facebook OAuth, Google OAuth, Email OTP, Phone Verification, ID Scan, and GPS Presence. Each community's <code>feature_flags</code> JSONB column controls which modules and sub-modules are active.</p>
+
+        <h2>The Tag System</h2>
+        <p>Tags are the universal data layer. Content tags drive niche routing, behavioral tags are auto-applied by the system, interest tags are built from user actions, and location tags come from addresses. The <code>tag_events</code> table accumulates all tag interactions for analytics.</p>
+
+        <h2>Geographic Hierarchy</h2>
+        <p>The <code>places</code> table uses a self-referencing <code>parent_id</code> to model: country &rarr; state &rarr; region &rarr; town &rarr; neighborhood. Each place has its own domain, coordinates for Haversine geo-filtering, and a member count. The hierarchy is browsable at <a href="/communities.html" style="color:#06b6d4;">/communities.html</a>.</p>
+      </div>
+
+      <!-- LAYER 0 -->
+      <div class="doc-section" id="sec-layer0">
+        <div class="doc-title">Layer 0 — Town Infrastructure</div>
+        <div class="doc-subtitle">Core modules that every community needs</div>
+        <div id="layer0Modules"><p style="color:#475569;">Loading modules...</p></div>
+      </div>
+
+      <!-- LAYER 1 -->
+      <div class="doc-section" id="sec-layer1">
+        <div class="doc-title">Layer 1 — Commerce</div>
+        <div class="doc-subtitle">Buy, sell, and transact within your community</div>
+        <div class="coming-soon"><strong>Listings Module</strong>Product listings with photos, categories, and search. Extracted from DT/PP marketplace.</div>
+        <div class="coming-soon"><strong>Orders Module</strong>Shopping cart, checkout flow, order tracking, and buyer/seller messaging.</div>
+        <div class="coming-soon"><strong>Payments Module</strong>Stripe Connect for marketplace payments, platform fees, and payouts.</div>
+        <div class="coming-soon"><strong>Shipping Module</strong>Uber Direct integration for local delivery, shipping label generation.</div>
+      </div>
+
+      <!-- LAYER 2 -->
+      <div class="doc-section" id="sec-layer2">
+        <div class="doc-title">Layer 2 — Game Engine</div>
+        <div class="doc-subtitle">Engagement and retention through gamification</div>
+        <div class="coming-soon"><strong>Sweepstakes Module</strong>Time-limited prize draws with entry rules and winner selection.</div>
+        <div class="coming-soon"><strong>Live Shows Module</strong>Real-time video selling with Cloudflare Calls integration.</div>
+        <div class="coming-soon"><strong>Rewards Module</strong>Points, badges, streaks, and leaderboards for community engagement.</div>
+      </div>
+
+      <!-- LAYER 3 -->
+      <div class="doc-section" id="sec-layer3">
+        <div class="doc-title">Layer 3 — Network</div>
+        <div class="doc-subtitle">Cross-town features and federation</div>
+        <div class="coming-soon"><strong>Town Genesis Module</strong>Interactive map showing all towns, their levels, and network growth.</div>
+        <div class="coming-soon"><strong>Federation Module</strong>Cross-town messaging, shared listings, and inter-community trade.</div>
+        <div class="coming-soon"><strong>Referral Module</strong>Town-to-town referral system with rewards for network growth.</div>
+      </div>
+
+      <!-- LAYER 4 -->
+      <div class="doc-section" id="sec-layer4">
+        <div class="doc-title">Layer 4 — Trust & Safety</div>
+        <div class="doc-subtitle">Moderation, reporting, and content review</div>
+        <div class="coming-soon"><strong>Moderation Queue</strong>Flagged content review, auto-moderation rules, and ban management.</div>
+        <div class="coming-soon"><strong>Reporting Module</strong>User-to-user and content reporting with admin review workflow.</div>
+        <div class="coming-soon"><strong>Identity Verification</strong>Stripe Identity integration for document scanning and liveness checks.</div>
+      </div>
+
+      <!-- API REFERENCE -->
+      <div class="doc-section" id="sec-api">
+        <div class="doc-title">API Reference</div>
+        <div class="doc-subtitle">All Layer 0 endpoints</div>
+
+        <div class="api-section">
+          <div class="api-section-title">Core</div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/stats</span><span class="endpoint-desc">Dashboard statistics</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/modules</span><span class="endpoint-desc">List all modules with status</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/admin/communities</span><span class="endpoint-desc">List all communities</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/admin/users</span><span class="endpoint-desc">List all users</span></div>
+          <div class="endpoint"><span class="method-badge method-put">PUT</span><span class="endpoint-path">/api/admin/users/:id/trust-tier</span><span class="endpoint-desc">Set user trust tier</span></div>
+          <div class="endpoint"><span class="method-badge method-put">PUT</span><span class="endpoint-path">/api/admin/users/:id/suspend</span><span class="endpoint-desc">Suspend/unsuspend user</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/admin/feature-flags</span><span class="endpoint-desc">Get feature flags for community</span></div>
+          <div class="endpoint"><span class="method-badge method-put">PUT</span><span class="endpoint-path">/api/admin/feature-flags</span><span class="endpoint-desc">Toggle a feature flag</span></div>
+        </div>
+
+        <div class="api-section">
+          <div class="api-section-title">Auth</div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/auth/me</span><span class="endpoint-desc">Current user session</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/auth/email/send</span><span class="endpoint-desc">Send email OTP</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/auth/email/verify</span><span class="endpoint-desc">Verify email OTP</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/auth/logout</span><span class="endpoint-desc">Destroy session</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/auth/google</span><span class="endpoint-desc">Google OAuth redirect</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/auth/google/callback</span><span class="endpoint-desc">Google OAuth callback</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/auth/facebook</span><span class="endpoint-desc">Facebook OAuth redirect</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/auth/facebook/callback</span><span class="endpoint-desc">Facebook OAuth callback</span></div>
+        </div>
+
+        <div class="api-section">
+          <div class="api-section-title">Places</div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/places</span><span class="endpoint-desc">List places (filterable by type, status)</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/places/resolve-domain</span><span class="endpoint-desc">Resolve domain to place</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/places/network</span><span class="endpoint-desc">All places grouped by type</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/places/:slug</span><span class="endpoint-desc">Single place + parent chain</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/places/:slug/context</span><span class="endpoint-desc">Place + parent + children + stats</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/places/:slug/children</span><span class="endpoint-desc">Direct children</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/places/:slug/nearby</span><span class="endpoint-desc">Haversine geo-filtered nearby</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/places</span><span class="endpoint-desc">Create place (admin)</span></div>
+          <div class="endpoint"><span class="method-badge method-put">PUT</span><span class="endpoint-path">/api/places/:id</span><span class="endpoint-desc">Update place (admin)</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/places/:slug/join</span><span class="endpoint-desc">Join a place</span></div>
+          <div class="endpoint"><span class="method-badge method-delete">DEL</span><span class="endpoint-path">/api/places/:slug/leave</span><span class="endpoint-desc">Leave a place</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/place-requests</span><span class="endpoint-desc">Request a new town</span></div>
+        </div>
+
+        <div class="api-section">
+          <div class="api-section-title">Businesses</div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/businesses</span><span class="endpoint-desc">List businesses (Haversine geo filter)</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/businesses/:id</span><span class="endpoint-desc">Single business</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/businesses</span><span class="endpoint-desc">Create business (auth)</span></div>
+          <div class="endpoint"><span class="method-badge method-put">PUT</span><span class="endpoint-path">/api/businesses/:id/claim</span><span class="endpoint-desc">Claim with share_token</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/localbiz/apply</span><span class="endpoint-desc">Apply to list business</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/admin/businesses/seed</span><span class="endpoint-desc">Seed business pin (admin)</span></div>
+        </div>
+
+        <div class="api-section">
+          <div class="api-section-title">BST Groups</div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/bst-groups</span><span class="endpoint-desc">List groups</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/bst-groups/:slug</span><span class="endpoint-desc">Single group</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/bst-groups/:slug/members</span><span class="endpoint-desc">Group members</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/bst-groups</span><span class="endpoint-desc">Create group (admin)</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/bst-groups/:slug/join</span><span class="endpoint-desc">Join group</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/bst-groups/apply</span><span class="endpoint-desc">Apply to create group</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/bst-groups/:slug/analytics</span><span class="endpoint-desc">Group analytics (mod)</span></div>
+          <div class="endpoint"><span class="method-badge method-delete">DEL</span><span class="endpoint-path">/api/bst-groups/:slug/members/:userId</span><span class="endpoint-desc">Remove member (mod)</span></div>
+        </div>
+
+        <div class="api-section">
+          <div class="api-section-title">Channels</div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/channels</span><span class="endpoint-desc">List channels</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/channels/:id</span><span class="endpoint-desc">Single channel</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/channels</span><span class="endpoint-desc">Create channel (admin)</span></div>
+          <div class="endpoint"><span class="method-badge method-delete">DEL</span><span class="endpoint-path">/api/channels/:id</span><span class="endpoint-desc">Delete channel (admin)</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/channels/:id/messages</span><span class="endpoint-desc">Channel messages (cursor pagination)</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/channels/:id/messages</span><span class="endpoint-desc">Post message (mute check)</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/dm/conversations</span><span class="endpoint-desc">User's DM conversations</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/dm/conversations</span><span class="endpoint-desc">Start DM conversation</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/dm/conversations/:id/messages</span><span class="endpoint-desc">DM messages</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/dm/conversations/:id/messages</span><span class="endpoint-desc">Send DM</span></div>
+        </div>
+
+        <div class="api-section">
+          <div class="api-section-title">Gigs</div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/gigs/categories</span><span class="endpoint-desc">List gig categories</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/gigs/providers</span><span class="endpoint-desc">List providers (filterable)</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/gigs/providers/:id</span><span class="endpoint-desc">Provider + reviews</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/gigs/applications</span><span class="endpoint-desc">Apply to be provider</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/gigs/bookings</span><span class="endpoint-desc">User's bookings</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/gigs/bookings</span><span class="endpoint-desc">Create booking</span></div>
+          <div class="endpoint"><span class="method-badge method-put">PUT</span><span class="endpoint-path">/api/gigs/bookings/:id/status</span><span class="endpoint-desc">Update booking status</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/gigs/reviews</span><span class="endpoint-desc">Leave review</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/service-inquiries</span><span class="endpoint-desc">Submit service inquiry</span></div>
+        </div>
+
+        <div class="api-section">
+          <div class="api-section-title">Pulse</div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/pulse</span><span class="endpoint-desc">Latest daily pulse</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/pulse/posts</span><span class="endpoint-desc">Activity feed posts</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/pulse/posts</span><span class="endpoint-desc">Create pulse post</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/admin/pulse/generate</span><span class="endpoint-desc">Generate daily pulse</span></div>
+          <div class="endpoint"><span class="method-badge method-post">POST</span><span class="endpoint-path">/api/admin/pulse/export</span><span class="endpoint-desc">Track Facebook export</span></div>
+          <div class="endpoint"><span class="method-badge method-get">GET</span><span class="endpoint-path">/api/admin/pulse/exports</span><span class="endpoint-desc">Export history</span></div>
+        </div>
+      </div>
+
+      <!-- BUILD A MODULE -->
+      <div class="doc-section" id="sec-build">
+        <div class="doc-title">Build a Module</div>
+        <div class="doc-subtitle">Step-by-step guide to adding a new module</div>
+
+        <h2>1. Create the module directory</h2>
+        <pre><code>mkdir -p modules/my-module/public</code></pre>
+
+        <h2>2. manifest.json</h2>
+        <p>Declares metadata, layer, dependencies, and sub-modules.</p>
+        <pre><code>{
+  "id": "my-module",
+  "name": "My Module",
+  "version": "1.0.0",
+  "layer": 0,
+  "dependencies": ["core", "places"],
+  "description": "What this module does.",
+  "submodules": [
+    {
+      "id": "my-module.feature-a",
+      "name": "Feature A",
+      "description": "What feature A does",
+      "default": true
+    },
+    {
+      "id": "my-module.feature-b",
+      "name": "Feature B",
+      "description": "What feature B does",
+      "default": false
+    }
+  ]
+}</code></pre>
+
+        <h2>3. migration.sql</h2>
+        <p>Use <code>IF NOT EXISTS</code> so migrations are idempotent.</p>
+        <pre><code>-- My Module migration
+CREATE TABLE IF NOT EXISTS my_things (
+  id SERIAL PRIMARY KEY,
+  place_id INTEGER REFERENCES places(id),
+  name TEXT NOT NULL,
+  data JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_my_things_place
+  ON my_things(place_id);</code></pre>
+
+        <h2>4. routes.js</h2>
+        <p>Export a function that receives <code>app</code> and <code>db</code>.</p>
+        <pre><code>module.exports = function mountMyModule(app, db) {
+
+  // Cookie-based auth helpers (same pattern as other modules)
+  function parseCookies(req) {
+    var obj = {}; var header = req.headers.cookie || "";
+    header.split(";").forEach(function(p) {
+      var i = p.indexOf("="); if (i &lt; 0) return;
+      obj[p.slice(0,i).trim()] = p.slice(i+1).trim();
+    });
+    return obj;
+  }
+  async function getUserId(req) {
+    var sid = parseCookies(req).sid; if (!sid) return null;
+    var r = await db.query(
+      "SELECT user_id FROM sessions WHERE sid=$1 AND expires_at > NOW()", [sid]
+    );
+    return r.rows.length ? r.rows[0].user_id : null;
+  }
+  async function requireLogin(req, res) {
+    var uid = await getUserId(req);
+    if (!uid) { res.status(401).json({ error: "Login required" }); return null; }
+    return uid;
+  }
+
+  // GET /api/my-module
+  app.get("/api/my-module", async function(req, res) {
+    try {
+      var result = await db.query("SELECT * FROM my_things ORDER BY created_at DESC LIMIT 50");
+      res.json({ items: result.rows });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/my-module
+  app.post("/api/my-module", async function(req, res) {
+    var uid = await requireLogin(req, res); if (!uid) return;
+    try {
+      var b = req.body || {};
+      var result = await db.query(
+        "INSERT INTO my_things (place_id, name, data) VALUES ($1,$2,$3) RETURNING *",
+        [b.place_id || null, b.name || "", JSON.stringify(b.data || {})]
+      );
+      res.status(201).json(result.rows[0]);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+};</code></pre>
+
+        <h2>5. Wire in server.js</h2>
+        <p>Add before the view-only lockdown middleware:</p>
+        <pre><code>try { require('./modules/my-module/routes')(app, db); }
+catch(e) { console.error('my-module:', e.message); }</code></pre>
+        <p>Update the lockdown to allow your module's paths:</p>
+        <pre><code>if (req.path.startsWith('/api/my-module'))
+  return next();</code></pre>
+
+        <h2>6. Update feature_flags</h2>
+        <p>Add your module and sub-module flags to the community:</p>
+        <pre><code>UPDATE communities SET feature_flags = feature_flags || '{
+  "my-module": true,
+  "my-module.feature-a": true,
+  "my-module.feature-b": false
+}'::jsonb
+WHERE slug = 'digitaltowns';</code></pre>
+        <p>Record the migration:</p>
+        <pre><code>INSERT INTO migrations (module_name) VALUES ('my-module');</code></pre>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+(function() {
+  // Section navigation
+  document.querySelectorAll('.docs-link').forEach(function(link) {
+    link.addEventListener('click', function() {
+      document.querySelectorAll('.docs-link').forEach(function(l) { l.classList.remove('active'); });
+      document.querySelectorAll('.doc-section').forEach(function(s) { s.classList.remove('active'); });
+      link.classList.add('active');
+      var sec = document.getElementById('sec-' + link.dataset.section);
+      if (sec) sec.classList.add('active');
+    });
+  });
+
+  function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  // Load live module data for Layer 0
+  fetch('/api/modules').then(function(r) { return r.json(); }).then(function(d) {
+    var modules = d.modules || [];
+    var el = document.getElementById('layer0Modules');
+    if (!modules.length) { el.innerHTML = '<p style="color:#64748b;">No modules found</p>'; return; }
+
+    el.innerHTML = modules.map(function(m) {
+      var statusClass = m.status === 'ACTIVE' ? 'status-active' : 'status-inactive';
+      var deps = (m.dependencies || []).length ? 'Depends on: ' + m.dependencies.join(', ') : 'No dependencies';
+      var subs = (m.submodules || []);
+      var subHtml = subs.length ? '<div style="margin-top:8px;"><div style="font-size:12px;color:#64748b;margin-bottom:6px;">Sub-modules:</div><div class="sub-list">'
+        + subs.map(function(s) {
+          var cls = s.enabled ? 'sub-on' : 'sub-off';
+          return '<span class="sub-pill ' + cls + '">' + esc(s.name) + '</span>';
+        }).join('')
+        + '</div></div>' : '';
+
+      return '<div class="module-card">'
+        + '<div class="module-card-header">'
+        + '<span class="module-card-name">' + esc(m.name) + '</span>'
+        + '<span class="layer-badge">L' + (m.layer || 0) + '</span>'
+        + '<span class="status-badge ' + statusClass + '">' + m.status + '</span>'
+        + '</div>'
+        + '<div class="module-deps">' + esc(deps) + '</div>'
+        + subHtml
+        + '</div>';
+    }).join('');
+  }).catch(function() {
+    document.getElementById('layer0Modules').innerHTML = '<p style="color:#ef4444;">Failed to load modules</p>';
+  });
+})();
+</script>
+</body>
+</html>
