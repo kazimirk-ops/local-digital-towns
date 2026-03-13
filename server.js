@@ -346,6 +346,11 @@ try { require('./modules/location-graph/routes')(app, db); } catch(e) { console.
 try { require('./modules/town-genesis/routes')(app, db); } catch(e) { console.error('town-genesis:', e.message); }
 try { require('./modules/broadcast/routes')(app, db); } catch(e) { console.error('broadcast:', e.message); }
 
+// ─── Mount L4 Trust & Safety modules (before view-only lockdown) ───
+try { require('./modules/trust/routes')(app, db); } catch(e) { console.error('trust:', e.message); }
+try { require('./modules/disputes/routes')(app, db); } catch(e) { console.error('disputes:', e.message); }
+try { require('./modules/moderation/routes')(app, db); } catch(e) { console.error('moderation:', e.message); }
+
 // ─── View-only lockdown ───
 app.use(function(req, res, next) {
   if (req.method === 'GET') return next();
@@ -375,6 +380,14 @@ app.use(function(req, res, next) {
   if (req.path.startsWith('/api/location-graph') || req.path.startsWith('/api/admin/location-graph')) return next();
   if (req.path.startsWith('/api/genesis') || req.path.startsWith('/genesis')) return next();
   if (req.path.startsWith('/api/broadcast')) return next();
+  // Allow L4 Trust & Safety module POST/PUT/DELETE endpoints through
+  if (req.path.startsWith('/api/trust') || req.path.startsWith('/api/admin/trust')) return next();
+  if (req.path.startsWith('/api/disputes') || req.path.startsWith('/api/admin/disputes')) return next();
+  if (req.path.startsWith('/api/ghost-reports') || req.path.startsWith('/api/admin/ghost-reports')) return next();
+  if (req.path.startsWith('/api/admin/bidding-suspend') || req.path.startsWith('/api/admin/bidding-unsuspend')) return next();
+  if (req.path.startsWith('/api/admin/trust-events') || req.path.startsWith('/api/admin/moderation-actions')) return next();
+  if (req.path.startsWith('/api/reports') || req.path.startsWith('/api/admin/reports')) return next();
+  if (req.path.startsWith('/api/admin/word-filters') || req.path.startsWith('/api/admin/moderation-log')) return next();
   return res.status(403).json({ error: 'This site is in view-only mode.' });
 });
 

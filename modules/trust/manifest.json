@@ -1,0 +1,14 @@
+{
+  "name": "trust",
+  "version": "1.0.0",
+  "layer": "L4",
+  "description": "Trust tiers, identity verification, resident verification, business subscriptions, trust gates",
+  "dependencies": ["core", "auth", "places"],
+  "submodules": [
+    "trust.tiers",
+    "trust.identity",
+    "trust.resident",
+    "trust.business",
+    "trust.gates"
+  ]
+}

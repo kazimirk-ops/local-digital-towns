@@ -1,0 +1,14 @@
+{
+  "name": "moderation",
+  "version": "1.0.0",
+  "layer": "L4",
+  "description": "Content reports, moderation queue, word filters, audit log, appeals",
+  "dependencies": ["core", "auth", "channels", "trust"],
+  "submodules": [
+    "moderation.reports",
+    "moderation.queue",
+    "moderation.filter",
+    "moderation.log",
+    "moderation.appeals"
+  ]
+}

@@ -105,6 +105,11 @@ module.exports = function mountAuth(app, db) {
       res.status(401).json({ error: "Login required" });
       return null;
     }
+    var susp = await db.query("SELECT suspended FROM users WHERE id=$1", [userId]);
+    if (susp.rows.length && susp.rows[0].suspended) {
+      res.status(403).json({ error: "Account suspended" });
+      return null;
+    }
     return userId;
   }
 

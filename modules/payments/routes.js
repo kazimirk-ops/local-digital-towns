@@ -18,7 +18,10 @@ module.exports = function mountPayments(app, db) {
     return r.rows.length ? r.rows[0].user_id : null;
   }
   async function requireLogin(req, res) {
-    var uid = await getUserId(req); if (!uid) { res.status(401).json({ error: "Login required" }); return null; } return uid;
+    var uid = await getUserId(req); if (!uid) { res.status(401).json({ error: "Login required" }); return null; }
+    var susp = await db.query("SELECT suspended FROM users WHERE id=$1", [uid]);
+    if (susp.rows.length && susp.rows[0].suspended) { res.status(403).json({ error: "Account suspended" }); return null; }
+    return uid;
   }
   async function requireAdmin(req, res) {
     var uid = await requireLogin(req, res); if (!uid) return null;

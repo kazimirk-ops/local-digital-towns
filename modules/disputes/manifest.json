@@ -1,0 +1,14 @@
+{
+  "name": "disputes",
+  "version": "1.0.0",
+  "layer": "L4",
+  "description": "Order disputes, ghost reports, bidding suspension, trust events, admin resolution",
+  "dependencies": ["core", "auth", "orders", "trust"],
+  "submodules": [
+    "disputes.orders",
+    "disputes.ghost",
+    "disputes.bidding",
+    "disputes.admin",
+    "disputes.events"
+  ]
+}
