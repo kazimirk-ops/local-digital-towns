@@ -133,11 +133,11 @@
       <div class="section-title">Login</div>
       <div class="card">
         <div class="btn-row">
-          <a href="/api/auth/google" class="btn btn-google">
+          <a href="/api/auth/google?redirect=/test" class="btn btn-google">
             <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
             Login with Google
           </a>
-          <a href="/auth/facebook" class="btn btn-facebook">
+          <a href="/api/auth/facebook/start?redirect=/test" class="btn btn-facebook">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
             Login with Facebook
           </a>
@@ -247,22 +247,7 @@
 
 <script>
 (function() {
-  var token = localStorage.getItem('tc_token');
-
-  // Pick up token from URL (after OAuth redirect)
-  var params = new URLSearchParams(window.location.search);
-  var fbtoken = params.get('fbtoken') || params.get('token');
-  if (fbtoken) {
-    token = fbtoken;
-    localStorage.setItem('tc_token', token);
-    window.history.replaceState({}, '', '/test');
-  }
-
-  function authHeaders() {
-    var h = { 'Content-Type': 'application/json' };
-    if (token) h['Authorization'] = 'Bearer ' + token;
-    return h;
-  }
+  var loggedIn = false;
 
   function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
@@ -272,33 +257,27 @@
     el.className = 'status-bar' + (type === 'ok' ? ' ok' : type === 'err' ? ' err' : '');
   }
 
-  // ── Auth state ──
+  // ── Auth state (cookie-based — sid cookie sent automatically) ──
   function checkAuth() {
-    if (!token) {
-      document.getElementById('loggedOutSection').style.display = 'block';
-      document.getElementById('loggedInSection').style.display = 'none';
-      setStatus('Not logged in');
-      return;
-    }
-    fetch('/api/auth/me', { headers: authHeaders() })
+    fetch('/api/auth/me', { credentials: 'same-origin' })
       .then(function(r) { return r.ok ? r.json() : Promise.reject(r); })
       .then(function(user) {
+        loggedIn = true;
         document.getElementById('loggedOutSection').style.display = 'none';
         document.getElementById('loggedInSection').style.display = 'block';
-        document.getElementById('userName').textContent = user.name || user.email || 'User #' + user.id;
+        document.getElementById('userName').textContent = user.display_name || user.email || 'User #' + user.id;
         var meta = user.email || '';
         if (user.trust_tier) meta += ' | Trust: ' + user.trust_tier;
         if (user.is_admin) meta += ' | Admin';
         document.getElementById('userMeta').textContent = meta;
-        document.getElementById('userAvatar').textContent = (user.name || 'U')[0].toUpperCase();
-        setStatus('Logged in as ' + (user.name || user.email), 'ok');
+        document.getElementById('userAvatar').textContent = (user.display_name || user.email || 'U')[0].toUpperCase();
+        setStatus('Logged in as ' + (user.display_name || user.email), 'ok');
       })
       .catch(function() {
-        token = null;
-        localStorage.removeItem('tc_token');
+        loggedIn = false;
         document.getElementById('loggedOutSection').style.display = 'block';
         document.getElementById('loggedInSection').style.display = 'none';
-        setStatus('Token expired or invalid', 'err');
+        setStatus('Not logged in');
       });
   }
 
@@ -309,7 +288,9 @@
     if (!email) return;
     otpEmail = email;
     fetch('/api/auth/request-code', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify({ email: email })
     })
     .then(function(r) { return r.json(); })
@@ -326,34 +307,36 @@
     var code = document.getElementById('otpCode').value.trim();
     if (!code || code.length !== 6) return;
     fetch('/api/auth/verify-code', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify({ email: otpEmail, code: code })
     })
     .then(function(r) { return r.json(); })
     .then(function(d) {
       if (d.error) { setStatus('Verify error: ' + d.error, 'err'); return; }
-      if (d.token) {
-        token = d.token;
-        localStorage.setItem('tc_token', token);
-        checkAuth();
-      }
+      // sid cookie is set by the server — just re-check auth
+      checkAuth();
     })
     .catch(function(e) { setStatus('Verify failed: ' + e.message, 'err'); });
   };
 
   window.logout = function() {
-    token = null;
-    localStorage.removeItem('tc_token');
-    document.getElementById('loggedOutSection').style.display = 'block';
-    document.getElementById('loggedInSection').style.display = 'none';
-    setStatus('Logged out');
+    fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' })
+      .catch(function() {})
+      .then(function() {
+        loggedIn = false;
+        document.getElementById('loggedOutSection').style.display = 'block';
+        document.getElementById('loggedInSection').style.display = 'none';
+        setStatus('Logged out');
+      });
   };
 
   // ── Sweep Balance ──
   window.loadSweepBalance = function() {
     var el = document.getElementById('sweepResult');
     el.textContent = 'Loading...';
-    fetch('/api/sweep/balance', { headers: authHeaders() })
+    fetch('/api/sweep/balance', { credentials: 'same-origin' })
       .then(function(r) { return r.json(); })
       .then(function(d) { el.textContent = JSON.stringify(d, null, 2); })
       .catch(function(e) { el.textContent = 'Error: ' + e.message; });
@@ -361,12 +344,14 @@
 
   // ── Post Listing ──
   window.postListing = function() {
-    if (!token) { setStatus('Login required to post', 'err'); return; }
+    if (!loggedIn) { setStatus('Login required to post', 'err'); return; }
     var el = document.getElementById('postResult');
     el.textContent = 'Posting...';
     var priceCents = Math.round(parseFloat(document.getElementById('listPrice').value || '0') * 100);
     fetch('/api/listings', {
-      method: 'POST', headers: authHeaders(),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: JSON.stringify({
         title: document.getElementById('listTitle').value || 'Test Listing',
         description: document.getElementById('listDesc').value || 'Test description',
@@ -387,7 +372,7 @@
     var raw = document.getElementById('listingsResult');
     container.innerHTML = '<div style="color:var(--muted);font-size:13px;">Loading...</div>';
     raw.textContent = '';
-    fetch('/api/listings', { headers: authHeaders() })
+    fetch('/api/listings', { credentials: 'same-origin' })
       .then(function(r) { return r.json(); })
       .then(function(d) {
         var items = d.listings || d.items || d || [];
@@ -412,7 +397,7 @@
     var raw = document.getElementById('leaderboardResult');
     container.innerHTML = '<div style="color:var(--muted);font-size:13px;">Loading...</div>';
     raw.textContent = '';
-    fetch('/api/leaderboard/treasure-coast', { headers: authHeaders() })
+    fetch('/api/leaderboard/treasure-coast', { credentials: 'same-origin' })
       .then(function(r) { return r.json(); })
       .then(function(d) {
         var entries = d.leaderboard || d.entries || d || [];
