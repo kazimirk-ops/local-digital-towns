@@ -2177,6 +2177,7 @@ app.post("/api/admin/modules/:id/install", async (req, res) => {
     await db.query("INSERT INTO migrations (module_name, applied_at) VALUES ($1, now()) ON CONFLICT (module_name) DO NOTHING", [moduleId]);
     res.json({ ok: true, flags_enabled: Object.keys(flags) });
   } catch (err) {
+    console.error("MODULE_INSTALL_ERROR", req.params.id, err.message, err.stack);
     res.status(500).json({ error: "Install failed", detail: err.message });
   }
 });
@@ -2184,6 +2185,7 @@ app.post("/api/admin/modules/:id/install", async (req, res) => {
 // POST /api/admin/modules/:id/uninstall — disable module + all sub-module flags
 app.post("/api/admin/modules/:id/uninstall", async (req, res) => {
   const cookies = parseCookies(req);
+  console.log("UNINSTALL_DEBUG", { moduleId: req.params.id, hasStagingCookie: cookies.staging_access === "true", body: req.body });
   if (cookies.staging_access !== "true") {
     return res.status(403).json({ error: "Access denied", detail: "No staging access cookie found" });
   }
@@ -2205,6 +2207,7 @@ app.post("/api/admin/modules/:id/uninstall", async (req, res) => {
     await db.query("UPDATE communities SET feature_flags = feature_flags || $1::jsonb WHERE slug = $2", [JSON.stringify(flags), slug]);
     res.json({ ok: true, flags_disabled: Object.keys(flags) });
   } catch (err) {
+    console.error("MODULE_UNINSTALL_ERROR", req.params.id, err.message, err.stack);
     res.status(500).json({ error: "Uninstall failed", detail: err.message });
   }
 });
