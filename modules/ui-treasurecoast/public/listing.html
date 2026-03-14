@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Listing — Treasure Coast</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0f1a;
+      --surface: #111827;
+      --border: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --blue: #0ea5e9;
+      --danger: #ef4444;
+      --radius: 12px;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Top bar */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,15,26,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .topbar-back {
+      background: none; border: none; color: var(--muted); font-size: 20px;
+      cursor: pointer; padding: 4px 8px; border-radius: 8px;
+    }
+    .topbar-back:hover { color: var(--text); background: var(--surface); }
+    .topbar-title {
+      font-size: 15px; font-weight: 600; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
+    }
+    .topbar-share {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer;
+    }
+    .topbar-share:hover { color: var(--text); border-color: var(--muted); }
+
+    /* Layout */
+    .page { max-width: 640px; margin: 0 auto; padding: 0 0 100px; }
+
+    /* Photo gallery */
+    .gallery {
+      width: 100%; aspect-ratio: 4/3; background: var(--surface);
+      position: relative; overflow: hidden;
+    }
+    .gallery img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .gallery-placeholder {
+      width: 100%; height: 100%; display: flex; align-items: center;
+      justify-content: center; font-size: 64px; color: var(--muted);
+    }
+    .gallery-nav {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(0,0,0,0.6); color: #fff; border: none;
+      width: 36px; height: 36px; border-radius: 50%; font-size: 18px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .gallery-nav:hover { background: rgba(0,0,0,0.8); }
+    .gallery-prev { left: 10px; }
+    .gallery-next { right: 10px; }
+    .gallery-dots {
+      position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 6px;
+    }
+    .gallery-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(255,255,255,0.4); transition: background 0.2s;
+    }
+    .gallery-dot.active { background: #fff; }
+    .gallery-counter {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(0,0,0,0.6); color: #fff; padding: 4px 10px;
+      border-radius: 12px; font-size: 12px; font-weight: 600;
+    }
+
+    /* Content sections */
+    .section { padding: 16px; border-bottom: 1px solid var(--border); }
+
+    /* Title area */
+    .listing-niche {
+      display: inline-block; font-size: 11px; font-weight: 600;
+      color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .listing-title { font-size: 22px; font-weight: 700; line-height: 1.3; }
+    .listing-price {
+      font-size: 28px; font-weight: 800; color: var(--accent); margin-top: 8px;
+    }
+    .listing-condition {
+      font-size: 13px; color: var(--muted); margin-top: 4px;
+    }
+    .listing-views {
+      font-size: 12px; color: var(--muted); margin-top: 6px;
+    }
+
+    /* Badges row */
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; border-radius: 20px;
+      font-size: 12px; font-weight: 600;
+    }
+    .badge-local { background: #1e3a5f; color: #38bdf8; }
+    .badge-ship { background: #3b1764; color: #c084fc; }
+    .badge-delivery { background: #064e3b; color: #10b981; }
+    .size-pills { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+    .size-pill { border:1px solid #334155; background:#0f172a; color:#94a3b8; padding:6px 14px; border-radius:20px; cursor:pointer; font-size:13px; transition:border-color .15s,background .15s,color .15s; }
+    .size-pill:hover { border-color:#10b981; }
+    .size-pill.active { border-color:#10b981; background:#10b981; color:#fff; }
+    .qty-row { display:flex; align-items:center; gap:10px; margin:10px 0; }
+    .qty-input { width:60px; padding:6px 10px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; border-radius:8px; font-size:14px; text-align:center; }
+
+    /* Deposit callout */
+    .deposit-callout {
+      margin-top: 12px; padding: 10px 14px;
+      background: rgba(240,192,64,0.1); border: 1px solid rgba(240,192,64,0.3);
+      border-radius: 8px; font-size: 13px; color: #f0c040;
+    }
+
+    /* Payment methods */
+    .payment-methods {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;
+    }
+    .pay-badge {
+      padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+    }
+
+    /* Description */
+    .description {
+      font-size: 15px; line-height: 1.6; color: #cbd5e1;
+      white-space: pre-wrap; word-break: break-word;
+    }
+
+    /* Seller card */
+    .seller-card {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .seller-avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--border); display: flex; align-items: center;
+      justify-content: center; font-size: 20px; font-weight: 700;
+      color: var(--accent); overflow: hidden; flex-shrink: 0;
+    }
+    .seller-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .seller-name { font-size: 15px; font-weight: 600; }
+    .seller-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* CTA buttons */
+    .cta-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(10,15,26,0.95); backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      padding: 12px 16px; z-index: 100;
+      display: flex; gap: 10px; justify-content: center;
+      max-width: 640px; margin: 0 auto;
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 12px 20px; border-radius: 10px;
+      font-size: 14px; font-weight: 600; border: none; cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-accent { background: var(--accent); color: #fff; flex: 1; }
+    .btn-accent:hover { background: var(--accent-hover); }
+    .btn-secondary {
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); flex: 1;
+    }
+    .btn-secondary:hover { border-color: var(--muted); }
+
+    /* Loading / Error states */
+    .loading-state, .error-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 60vh; text-align: center;
+      padding: 40px 20px;
+    }
+    .loading-spinner {
+      width: 32px; height: 32px; border: 3px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-state h2 { font-size: 20px; margin-top: 16px; }
+    .error-state p { color: var(--muted); margin-top: 8px; font-size: 14px; }
+    .error-state a {
+      margin-top: 16px; padding: 10px 20px; background: var(--accent);
+      color: #fff; border-radius: 8px; font-weight: 600; font-size: 14px;
+    }
+    .badge-local { display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 8px;border-radius:100px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3); }
+    .badge-visitor { display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 8px;border-radius:100px;background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid rgba(148,163,184,0.2); }
+
+    /* Roadie tracking animations */
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.95)} }
+    @keyframes slideRight { 0%{transform:translateX(-4px)} 100%{transform:translateX(4px)} }
+    @keyframes celebrateIn { 0%{transform:scale(0);opacity:0} 60%{transform:scale(1.2)} 100%{transform:scale(1);opacity:1} }
+    .roadie-pulse { animation: pulse 2s ease-in-out infinite; }
+    .roadie-slide { animation: slideRight 0.8s ease-in-out infinite alternate; }
+    .roadie-celebrate { animation: celebrateIn 0.6s ease-out forwards; }
+    .roadie-skeleton { background:linear-gradient(90deg,#1a2636 25%,#243447 50%,#1a2636 75%); background-size:200% 100%; animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .roadie-timeline { display:flex; align-items:center; gap:0; margin-top:16px; }
+    .roadie-step { display:flex; flex-direction:column; align-items:center; flex:1; position:relative; }
+    .roadie-step-dot { width:20px; height:20px; border-radius:50%; border:2px solid #334155; background:#0a0f1a; z-index:2; display:flex; align-items:center; justify-content:center; font-size:10px; }
+    .roadie-step-dot.done { border-color:#10b981; background:#10b981; color:#fff; }
+    .roadie-step-dot.current { border-color:#0ea5e9; background:#0ea5e9; color:#fff; animation: pulse 2s ease-in-out infinite; }
+    .roadie-step-label { font-size:10px; color:#64748b; margin-top:4px; text-align:center; }
+    .roadie-step-label.done { color:#10b981; }
+    .roadie-step-label.current { color:#0ea5e9; font-weight:600; }
+    .roadie-step-line { flex:1; height:2px; background:#334155; min-width:10px; }
+    .roadie-step-line.done { background:#10b981; }
+    .roadie-driver-card { background:#0f1722; border:1px solid #1a2636; border-radius:10px; padding:12px 16px; margin-top:12px; animation: celebrateIn 0.4s ease-out; }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <button class="topbar-back" onclick="history.length > 1 ? history.back() : window.location.href='/'" title="Back">&#8592;</button>
+    <span class="topbar-title" id="topbarTitle">Loading...</span>
+    <button class="topbar-share" id="shareBtn" style="display:none;" title="Share">Share</button>
+  </div>
+
+  <!-- Page content -->
+  <div class="page" id="pageContent">
+    <div class="loading-state" id="loadingState">
+      <div class="loading-spinner"></div>
+      <p style="margin-top:12px;color:var(--muted);font-size:14px;">Loading listing...</p>
+    </div>
+  </div>
+
+  <!-- CTA bar (hidden until loaded, populated dynamically) -->
+  <div class="cta-bar" id="ctaBar" style="display:none;"></div>
+
+  <script src="/auth-gate.js"></script>
+  <script>
+    var listingId = null;
+    var listingData = null;
+
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+      listingId = params.get('id');
+      // Support path-based URLs: /listing/:id
+      if (!listingId) {
+        var parts = window.location.pathname.split('/');
+        if (parts.length >= 3 && parts[1] === 'listing' && parts[2]) {
+          listingId = parts[2];
+        }
+      }
+
+      if (!listingId) {
+        showError('No listing specified', 'This link is missing a listing ID.');
+        return;
+      }
+
+      fetch('/api/listings/' + encodeURIComponent(listingId))
+        .then(function(r) {
+          if (!r.ok) throw new Error(r.status === 404 ? 'not_found' : 'server_error');
+          return r.json();
+        })
+        .then(function(listing) {
+          renderListing(listing);
+          // Track listing view (Session 3)
+          var viewOpts = { method: 'POST' };
+          var tk = localStorage.getItem('tc_token');
+          if (tk) viewOpts.headers = { 'Authorization': 'Bearer ' + tk };
+          fetch('/api/listings/' + encodeURIComponent(listingId) + '/view', viewOpts).catch(function(){});
+        })
+        .catch(function(err) {
+          if (err.message === 'not_found') {
+            showError('Listing not found', 'This listing may have been removed or the link is invalid.');
+          } else {
+            showError('Something went wrong', 'Could not load this listing. Please try again.');
+          }
+        });
+
+      async function renderListing(l) {
+        var sellerStripeReady = l.seller_stripe_onboarded === true;
+        console.log('LISTING_RENDER_DEBUG', {
+          id: l.id,
+          accepts_cash: l.accepts_cash, accepts_stripe: l.accepts_stripe,
+          accepts_venmo: l.accepts_venmo, accepts_paypal: l.accepts_paypal,
+          roadie_eligible: l.roadie_eligible, seller_roadie_enabled: l.seller_roadie_enabled,
+          seller_stripe_onboarded: sellerStripeReady
+        });
+        document.title = l.title + ' — Treasure Coast';
+        document.getElementById('topbarTitle').textContent = l.title;
+
+        var shareBtn = document.getElementById('shareBtn');
+        shareBtn.style.display = 'inline-flex';
+        shareBtn.onclick = async function() {
+          var tk = localStorage.getItem('tc_token');
+          if (tk) {
+            try {
+              var sr = await fetch('/api/share', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tk },
+                body: JSON.stringify({ type: 'listing', id: l.id })
+              });
+              var sd = await sr.json();
+              if (sd.share_url) {
+                if (navigator.share) {
+                  navigator.share({ title: l.title, url: sd.share_url }).catch(function() {});
+                } else if (navigator.clipboard) {
+                  navigator.clipboard.writeText(sd.share_url).then(function() {
+                    shareBtn.textContent = 'Copied!';
+                    setTimeout(function() { shareBtn.textContent = 'Share'; }, 2000);
+                  });
+                }
+                return;
+              }
+            } catch(e) { console.error('SHARE_LISTING_ERROR', e); }
+          }
+          var url = window.location.href;
+          if (navigator.share) {
+            navigator.share({ title: l.title, url: url }).catch(function() {});
+          } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(function() {
+              shareBtn.textContent = 'Copied!';
+              setTimeout(function() { shareBtn.textContent = 'Share'; }, 2000);
+            });
+          }
+        };
+
+        // Build page HTML
+        var photos = l.photos || [];
+        var html = '';
+
+        // Photo gallery
+        html += '<div class="gallery" id="gallery">';
+        if (photos.length > 0) {
+          html += '<img id="galleryImg" src="' + esc(photos[0]) + '" alt="' + esc(l.title) + '" onerror="this.style.background=\'#1e293b\';this.style.opacity=\'0.5\';this.onerror=null;">';
+          if (photos.length > 1) {
+            html += '<button class="gallery-nav gallery-prev" onclick="galleryNav(-1)">&#8249;</button>';
+            html += '<button class="gallery-nav gallery-next" onclick="galleryNav(1)">&#8250;</button>';
+            html += '<div class="gallery-counter" id="galleryCounter">1 / ' + photos.length + '</div>';
+            html += '<div class="gallery-dots" id="galleryDots">';
+            for (var i = 0; i < photos.length; i++) {
+              html += '<div class="gallery-dot' + (i === 0 ? ' active' : '') + '"></div>';
+            }
+            html += '</div>';
+          }
+        } else {
+          html += '<div class="gallery-placeholder">&#128230;</div>';
+        }
+        html += '</div>';
+
+        // Title / price / condition section
+        html += '<div class="section">';
+        if (l.niche) html += '<div class="listing-niche">' + esc(l.niche) + '</div>';
+        html += '<div class="listing-title">' + esc(l.title) + '</div>';
+        html += '<div class="listing-price" id="listingPrice">$' + parseFloat(l.price || 0).toFixed(2) + '</div>';
+        if (l.condition) html += '<div class="listing-condition">Condition: ' + capitalize(l.condition) + '</div>';
+        if (l.views) html += '<div class="listing-views">' + l.views + ' view' + (l.views !== 1 ? 's' : '') + '</div>';
+
+        // Badges
+        var hasBadges = l.list_locally || l.ship_nationally || l.delivery_available || (l.roadie_eligible && l.seller_roadie_enabled);
+        if (hasBadges) {
+          html += '<div class="badges">';
+          if (l.list_locally) html += '<span class="badge badge-local">&#128205; Local Pickup</span>';
+          if (l.ship_nationally) html += '<span class="badge badge-ship">&#128230; Ships Nationally</span>';
+          if (l.delivery_available) html += '<span class="badge badge-delivery">&#128663; Uber Delivery</span>';
+          if (l.roadie_eligible && l.seller_roadie_enabled) html += '<span class="badge" style="background:rgba(100,116,139,0.15);color:#94a3b8;border:1px solid #334155;font-size:11px;">&#128663; Roadie &mdash; Coming Soon</span>';
+          html += '</div>';
+        }
+
+        // Variant selector
+        var variants = l.variants || [];
+        if (variants.length > 0) {
+          var hasVariantPrices = typeof variants[0] === 'object' && variants[0].price;
+          html += '<div id="sizeSelector" class="size-pills">';
+          variants.forEach(function(opt, i) {
+            var title = hasVariantPrices ? opt.title : opt;
+            var priceAttr = hasVariantPrices ? ' data-price="' + Number(opt.price).toFixed(2) + '"' : '';
+            var priceLabel = hasVariantPrices ? ' \u2014 $' + Number(opt.price).toFixed(2) : '';
+            var activeClass = i === 0 ? ' active' : '';
+            html += '<button type="button" class="size-pill' + activeClass + '" data-size="' + esc(title) + '"' + priceAttr + ' onclick="(function(el){document.querySelectorAll(\'.size-pill\').forEach(function(p){p.classList.remove(\'active\')});el.classList.add(\'active\');window._selectedSize=el.dataset.size;if(el.dataset.price){window._listingPrice=Number(el.dataset.price);}tcUpdateBuyButtons();})(this)">' + esc(title) + priceLabel + '</button>';
+          });
+          html += '</div>';
+        }
+
+        // Quantity selector
+        var stockQty = parseInt(l.quantity) || 1;
+        if (stockQty > 1) {
+          html += '<div class="qty-row" id="qtyRow">';
+          html += '<label style="font-size:13px;color:#94a3b8;font-weight:600;">Qty:</label>';
+          html += '<input type="number" class="qty-input" id="qtyInput" min="1" max="' + stockQty + '" value="1" oninput="tcUpdateBuyButtons()" onchange="tcUpdateBuyButtons()">';
+          html += '<span style="font-size:12px;color:#64748b;">' + stockQty + ' available</span>';
+          html += '</div>';
+        }
+
+        // Share buttons
+        html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
+        html += '<button onclick="shareToFacebook()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:#1877f2;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Share on Facebook</button>';
+        html += '<button onclick="shareToWhatsApp()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:#25d366;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">WhatsApp</button>';
+        html += '<button onclick="copyListingLink()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Copy Link</button>';
+        html += '<button onclick="openQuickListFromListing()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:#0f1722;color:#0ea5e9;border:1px solid #1e3a5f;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">+ List Similar Item</button>';
+        html += '</div>';
+
+        // Buyer-only sections (hidden for seller's own listing)
+        html += '<div id="buyerActions">';
+
+        // Delivery quote section — Uber Direct
+        if (l.delivery_available) {
+          html += '<div id="deliverySection" style="margin-top:16px;background:#0f1722;border:1px solid #f97316;border-radius:12px;padding:16px;">';
+          html += '<div style="font-size:14px;font-weight:700;color:#f97316;margin-bottom:8px;">&#128663; Local Delivery via Uber Direct</div>';
+          html += '<div style="font-size:13px;color:#94a3b8;margin-bottom:8px;">Get this delivered to your door via Uber Direct. Same-day delivery available.</div>';
+          // Show seller pickup availability
+          var availWindows = l.seller_availability || [];
+          if (availWindows.length > 0) {
+            var dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            var windowStrs = [];
+            var i = 0;
+            while (i < availWindows.length) {
+              var start = i;
+              var st = availWindows[i].start_time.substring(0, 5);
+              var et = availWindows[i].end_time.substring(0, 5);
+              while (i + 1 < availWindows.length && availWindows[i + 1].start_time.substring(0, 5) === st && availWindows[i + 1].end_time.substring(0, 5) === et && availWindows[i + 1].day_of_week === availWindows[i].day_of_week + 1) { i++; }
+              var rangeLabel = start === i ? dayNames[availWindows[start].day_of_week] : dayNames[availWindows[start].day_of_week] + '-' + dayNames[availWindows[i].day_of_week];
+              var fmtTime = function(t) { var p = t.split(':'); var h = parseInt(p[0]); var m = p[1]; return (h > 12 ? h - 12 : h || 12) + (m !== '00' ? ':' + m : '') + (h >= 12 ? 'PM' : 'AM'); };
+              windowStrs.push(rangeLabel + ' ' + fmtTime(st) + '-' + fmtTime(et));
+              i++;
+            }
+            html += '<div style="font-size:12px;color:#f97316;margin-bottom:12px;padding:8px;background:rgba(249,115,22,0.08);border-radius:8px;">&#128197; Seller available for pickup: ' + windowStrs.join(', ') + '</div>';
+          } else {
+            html += '<div style="font-size:12px;color:#94a3b8;margin-bottom:12px;padding:8px;background:rgba(148,163,184,0.08);border-radius:8px;">Contact seller to confirm pickup window before ordering</div>';
+          }
+          html += '<input type="text" id="dropoffAddress" placeholder="Your delivery address (street, city, zip)" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #1a2636;background:#0a0f1a;color:#e8eef6;font-size:13px;margin-bottom:8px;box-sizing:border-box;">';
+          html += '<button onclick="getDeliveryQuote()" style="width:100%;padding:12px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Get Delivery Quote &#8594;</button>';
+          html += '<div id="deliveryQuoteResult" style="margin-top:10px;font-size:13px;"></div>';
+          html += '</div>';
+        }
+
+        // Roadie delivery — Coming Soon (UI hidden)
+
+        // Delivery quote request — only show if listing is roadie-eligible
+        if (l.roadie_eligible) {
+          html += '<div style="margin-top:16px;">';
+          html += '<button onclick="requestDeliveryQuote()" style="width:100%;padding:14px;background:#10b981;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;">&#128230; Request Long Distance or Bulky Delivery Quote &mdash; Up to 100 Miles</button>';
+          html += '</div>';
+        }
+
+        // Deposit callout — only show if seller has Stripe onboarded (deposits go through Stripe)
+        var depCents = parseInt(l.deposit_amount_cents) || 0;
+        if (sellerStripeReady && depCents > 0 && l.list_locally && (l.accepts_cash || l.accepts_venmo || l.accepts_paypal)) {
+          html += '<div class="deposit-callout">&#128176; $' + (depCents / 100).toFixed(2) + ' refundable deposit to hold this item (cash/Venmo/PayPal pickup)</div>';
+        }
+        html += '</div>'; // close buyerActions
+        html += '</div>';
+
+        // Payment methods — hide Card if seller has no Stripe
+        var showCard = l.accepts_stripe && sellerStripeReady;
+        var hasPay = l.accepts_cash || showCard || l.accepts_venmo || l.accepts_paypal;
+        if (hasPay) {
+          html += '<div class="section">';
+          html += '<div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px;">Accepted Payment</div>';
+          html += '<div class="payment-methods">';
+          if (l.accepts_cash) html += '<span class="pay-badge">&#128181; Cash</span>';
+          if (showCard) html += '<span class="pay-badge">&#128179; Card</span>';
+          if (l.accepts_venmo) html += '<span class="pay-badge">Venmo</span>';
+          if (l.accepts_paypal) html += '<span class="pay-badge">PayPal</span>';
+          html += '</div></div>';
+        }
+
+        // Description
+        if (l.description) {
+          html += '<div class="section">';
+          html += '<div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px;">Description</div>';
+          html += '<div class="description">' + esc(l.description) + '</div>';
+          html += '</div>';
+        }
+
+        // Seller card
+        html += '<div class="section">';
+        html += '<div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px;">Seller</div>';
+        html += '<a href="/profile/' + (l.seller_id || '') + '" style="text-decoration:none;color:inherit;">';
+        html += '<div class="seller-card">';
+        html += '<div class="seller-avatar">';
+        if (l.seller_avatar) {
+          html += '<img src="' + esc(l.seller_avatar) + '" alt="" onerror="this.style.background=\'#1e293b\';this.style.opacity=\'0.5\';this.onerror=null;">';
+        } else {
+          html += (l.seller_name || '?').charAt(0).toUpperCase();
+        }
+        html += '</div>';
+        html += '<div>';
+        html += '<div class="seller-name">' + esc(l.seller_name || 'Seller') + ' <span id="sellerCommunityBadge"></span></div>';
+        html += '<div class="seller-label">View Profile &rarr;</div>';
+        html += '</div></div></a></div>';
+
+        document.getElementById('pageContent').innerHTML = html;
+
+        // ── Variant & quantity price logic ──
+        window._listingPrice = parseFloat(l.price || 0);
+        window._shippingCents = parseInt(l.delivery_fee_cents) || 0;
+
+        // Auto-select first priced variant
+        var variantData = l.variants || [];
+        if (variantData.length > 0 && typeof variantData[0] === 'object' && variantData[0].price) {
+          window._listingPrice = Number(variantData[0].price);
+          window._selectedSize = variantData[0].title;
+        }
+
+        // Seller community badge
+        if (l.seller_id) {
+          fetch('/api/users/' + l.seller_id + '/community-status')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              var el = document.getElementById('sellerCommunityBadge');
+              if (!el) return;
+              el.className = data.status === 'local' ? 'badge-local' : 'badge-visitor';
+              el.textContent = data.status === 'local' ? '\uD83D\uDCCD Local' : '\u2708\uFE0F Visitor';
+            })
+            .catch(function() {});
+        }
+
+        // Delivery quote form submit handler is below
+
+        // Show CTA bar with fulfillment options
+        listingData = l;
+        var ctaBar = document.getElementById('ctaBar');
+        ctaBar.style.display = 'flex';
+        ctaBar.style.flexDirection = 'column';
+        ctaBar.style.gap = '8px';
+        ctaBar.innerHTML = '';
+
+        // Check if this is the current user's own listing
+        var token = getToken() || localStorage.getItem('tc_token');
+        var isOwnListing = false;
+        if (token) {
+          try {
+            var meRes = await fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
+            if (meRes.ok) {
+              var meData = await meRes.json();
+              if (meData.id && meData.id === l.seller_id) isOwnListing = true;
+            }
+          } catch(e) {}
+        }
+
+        if (isOwnListing) {
+          var buyerEl = document.getElementById('buyerActions');
+          if (buyerEl) buyerEl.style.display = 'none';
+          ctaBar.innerHTML = '<div style="text-align:center;color:#64748b;font-size:14px;padding:8px;">This is your listing</div>'
+            + '<a href="/dashboard#listings" style="display:block;width:100%;padding:12px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:10px;font-size:14px;font-weight:700;text-align:center;text-decoration:none;">Manage Listing</a>';
+        } else {
+          var priceStr = '$' + parseFloat(l.price || 0).toFixed(2);
+
+          if (l.list_locally) {
+            var pickupBtn = document.createElement('button');
+            pickupBtn.id = 'btnBuyPickup';
+            pickupBtn.className = 'btn btn-accent';
+            pickupBtn.style.cssText = 'width:100%;';
+            pickupBtn.innerHTML = '&#128205; Buy &mdash; Local Pickup ' + priceStr;
+            pickupBtn.onclick = function() { expandPaymentSelector(this, 'pickup'); };
+            ctaBar.appendChild(pickupBtn);
+          }
+
+          if (l.ship_nationally) {
+            var shipBtn = document.createElement('button');
+            shipBtn.id = 'btnBuyShip';
+            shipBtn.className = 'btn btn-accent';
+            shipBtn.style.cssText = 'width:100%;';
+            shipBtn.textContent = 'Buy & Ship \u2014 ' + priceStr;
+            shipBtn.onclick = function() { expandPaymentSelector(this, 'ship'); };
+            ctaBar.appendChild(shipBtn);
+          }
+
+          // If no fulfillment options, show generic Buy Now
+          if (!l.list_locally && !l.ship_nationally && !l.delivery_available) {
+            var buyBtn = document.createElement('button');
+            buyBtn.className = 'btn btn-accent';
+            buyBtn.style.cssText = 'width:100%;';
+            buyBtn.textContent = 'Buy Now \u2014 ' + priceStr;
+            buyBtn.onclick = function() { expandPaymentSelector(this, 'buy'); };
+            ctaBar.appendChild(buyBtn);
+          }
+
+          // Add to Cart button for seeded listings
+          if (l.is_seeded) {
+            var cartBtn = document.createElement('button');
+            cartBtn.id = 'btnAddToCart';
+            cartBtn.className = 'btn';
+            cartBtn.style.cssText = 'width:100%;background:#3b82f6;color:#fff;border:none;padding:12px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;';
+            cartBtn.textContent = '\uD83D\uDED2 Add to Cart';
+            cartBtn.onclick = function() {
+              var tk = localStorage.getItem('tc_token');
+              if (!tk) { if (window.showAuthModal) window.showAuthModal(); else alert('Please sign in first'); return; }
+              var qty = parseInt((document.getElementById('qtyInput') || {}).value) || 1;
+              var unitPriceCents = Math.round((window._listingPrice || parseFloat(l.price || 0)) * 100);
+              fetch('/api/cart', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + tk, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  listing_id: l.id,
+                  quantity: qty,
+                  selected_variant: window._selectedSize || null,
+                  unit_price_cents: unitPriceCents
+                })
+              }).then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                .then(function(res) {
+                  if (!res.ok) throw new Error(res.data.error || 'Failed');
+                  cartBtn.textContent = '\u2705 Added to Cart!';
+                  cartBtn.style.background = '#059669';
+                  setTimeout(function() { cartBtn.textContent = '\uD83D\uDED2 Add to Cart'; cartBtn.style.background = '#3b82f6'; }, 2000);
+                })
+                .catch(function(e) { alert(e.message || 'Failed to add to cart'); });
+            };
+            ctaBar.appendChild(cartBtn);
+          }
+
+          // Message Seller always shown for non-owners
+          var msgBtn = document.createElement('button');
+          msgBtn.className = 'btn btn-secondary';
+          msgBtn.style.cssText = 'width:100%;';
+          msgBtn.textContent = 'Message Seller';
+          msgBtn.onclick = function() {
+            if (!token) { window.showAuthModal(); return; }
+            if (l.seller_id) {
+              window.location.href = '/messages?recipientId=' + encodeURIComponent(l.seller_id) + '&listingId=' + encodeURIComponent(l.id);
+            } else {
+              alert('Seller contact not available.');
+            }
+          };
+          ctaBar.appendChild(msgBtn);
+        }
+
+        // "Notify me of local deals" for non-logged-in users
+        if (!token && !isOwnListing) {
+          var notifyWrap = document.createElement('div');
+          notifyWrap.id = 'notifyLocalDeals';
+          notifyWrap.style.cssText = 'margin-top:4px;';
+          notifyWrap.innerHTML = '<button onclick="document.getElementById(\'notifyForm\').style.display=\'flex\';this.style.display=\'none\';" style="width:100%;padding:12px;background:transparent;border:1px solid #1e293b;border-radius:10px;color:#94a3b8;font-size:13px;cursor:pointer;font-weight:600;">&#128276; Notify me of local deals</button>'
+            + '<div id="notifyForm" style="display:none;gap:8px;margin-top:8px;">'
+            + '<input type="email" id="notifyEmailInput" placeholder="you@email.com" style="flex:1;padding:10px 12px;background:#0a0f1a;border:1px solid #1e293b;border-radius:8px;color:#e2e8f0;font-size:13px;outline:none;">'
+            + '<button onclick="submitNotifyEmail()" style="padding:10px 16px;background:#10b981;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;">Notify Me</button>'
+            + '</div>'
+            + '<div id="notifyMsg" style="margin-top:8px;font-size:13px;display:none;"></div>';
+          ctaBar.appendChild(notifyWrap);
+        }
+
+        // Store listing data globally for payment selector
+        window._listingData = l;
+
+        // Update CTA button prices after they've been created
+        tcUpdateBuyButtons();
+
+        // Gallery state
+        window._galleryPhotos = photos;
+        window._galleryIdx = 0;
+      }
+
+      // Gallery navigation
+      window.galleryNav = function(dir) {
+        var photos = window._galleryPhotos || [];
+        if (photos.length <= 1) return;
+        var idx = window._galleryIdx + dir;
+        if (idx < 0) idx = photos.length - 1;
+        if (idx >= photos.length) idx = 0;
+        window._galleryIdx = idx;
+
+        var img = document.getElementById('galleryImg');
+        if (img) img.src = photos[idx];
+
+        var counter = document.getElementById('galleryCounter');
+        if (counter) counter.textContent = (idx + 1) + ' / ' + photos.length;
+
+        var dots = document.querySelectorAll('.gallery-dot');
+        dots.forEach(function(d, i) {
+          d.classList.toggle('active', i === idx);
+        });
+      };
+
+      // ─── Share Functions ────────────────────────────────
+      window.shareToFacebook = function() {
+        var url = encodeURIComponent(window.location.href);
+        var title = encodeURIComponent(document.title);
+        window.open('https://www.facebook.com/sharer/sharer.php?u=' + url + '&quote=' + title, '_blank', 'width=600,height=400');
+      };
+
+      window.shareToWhatsApp = function() {
+        var text = encodeURIComponent(document.title + ' \u2014 ' + window.location.href);
+        window.open('https://wa.me/?text=' + text, '_blank');
+      };
+
+      window.copyListingLink = function() {
+        var href = window.location.href;
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(href).then(function() {
+            showListingToast('Link copied!');
+          }).catch(function() { fallbackCopy(href); });
+        } else {
+          fallbackCopy(href);
+        }
+      };
+
+      function fallbackCopy(text) {
+        var el = document.createElement('textarea');
+        el.value = text;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        showListingToast('Link copied!');
+      }
+
+      function showListingToast(msg) {
+        var t = document.createElement('div');
+        t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:200;padding:14px 24px;border-radius:10px;font-size:14px;font-weight:600;color:#fff;background:#059669;animation:fadeIn .3s;';
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(function() { t.remove(); }, 3000);
+      }
+
+      window.openQuickListFromListing = function() {
+        if (!listingData) return;
+        var l = listingData;
+        window.location.href = '/dashboard?quicklist=1'
+          + '&title=' + encodeURIComponent(l.title || '')
+          + '&price=' + encodeURIComponent(l.price || '')
+          + '&description=' + encodeURIComponent(l.description || '')
+          + '&condition=' + encodeURIComponent(l.condition || '');
+      };
+
+      // ─── Delivery Functions ────────────────────────────
+      window.getDeliveryQuote = async function() {
+        var address = document.getElementById('dropoffAddress');
+        if (!address || !address.value.trim()) {
+          showListingToast('Enter your delivery address first');
+          return;
+        }
+        var btn = document.querySelector('[onclick="getDeliveryQuote()"]');
+        if (btn) { btn.textContent = 'Getting quote...'; btn.disabled = true; }
+
+        var resultEl = document.getElementById('deliveryQuoteResult');
+
+        try {
+          var lid = listingId || new URLSearchParams(window.location.search).get('id');
+
+          var token = getToken() || localStorage.getItem('tc_token');
+          var headers = { 'Content-Type': 'application/json' };
+          if (token) headers['Authorization'] = 'Bearer ' + token;
+
+          var res = await fetch('/api/delivery/quote', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
+              listingId: lid,
+              dropoffAddress: address.value.trim()
+            })
+          });
+
+          var data = await res.json();
+
+          if (!res.ok) {
+            var errMsg = data.error || 'Unable to get quote';
+            if (data.details) errMsg += ': ' + (data.details.message || JSON.stringify(data.details));
+            resultEl.innerHTML = '<span style="color:#ef4444;">' + errMsg + '</span>';
+            return;
+          }
+
+          var fee = (data.feeCents / 100).toFixed(2);
+          var itemPrice = parseFloat(listingData.price || 0);
+          var totalPrice = (itemPrice + data.feeCents / 100).toFixed(2);
+          var eta = data.estimatedMinutes
+            ? data.estimatedMinutes + ' min estimated' : '';
+
+          // Store quote data in window variable to avoid inline JS injection
+          window._deliveryQuoteData = {
+            quoteId: data.quoteId,
+            address: address.value.trim(),
+            feeCents: data.feeCents,
+            expires: data.expires
+          };
+
+          // Build time slot picker from seller availability
+          var slotsHtml = '';
+          var sellerAvail = (listingData && listingData.seller_availability) || [];
+          if (sellerAvail.length > 0) {
+            var dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            var now = new Date();
+            var slots = [];
+            for (var dayOffset = 0; dayOffset < 7; dayOffset++) {
+              var date = new Date(now.getTime() + dayOffset * 86400000);
+              var dow = date.getDay();
+              var avail = sellerAvail.find(function(a) { return a.day_of_week === dow; });
+              if (!avail) continue;
+              var startParts = avail.start_time.split(':');
+              var endParts = avail.end_time.split(':');
+              var startHour = parseInt(startParts[0]);
+              var endHour = parseInt(endParts[0]);
+              for (var h = startHour; h < endHour; h++) {
+                var slotDate = new Date(date);
+                slotDate.setHours(h, 0, 0, 0);
+                if (slotDate.getTime() < now.getTime() + 3600000) continue; // at least 1 hour from now
+                var label = dayNames[dow].substring(0, 3) + ' ' + date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                  + ' ' + (h > 12 ? h - 12 : h || 12) + ':00' + (h >= 12 ? ' PM' : ' AM')
+                  + ' - ' + (h + 1 > 12 ? h + 1 - 12 : h + 1) + ':00' + (h + 1 >= 12 ? ' PM' : ' AM');
+                slots.push({ value: slotDate.toISOString(), label: label });
+              }
+            }
+            if (slots.length > 0) {
+              slotsHtml = '<div style="margin-top:10px;">'
+                + '<label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:4px;">Select Pickup Time (Eastern Time):</label>'
+                + '<select id="deliveryTimeSlot" style="width:100%;padding:8px;border-radius:8px;border:1px solid #1a2636;background:#0a0f1a;color:#e8eef6;font-size:13px;">';
+              for (var si = 0; si < slots.length; si++) {
+                slotsHtml += '<option value="' + slots[si].value + '">' + slots[si].label + '</option>';
+              }
+              slotsHtml += '</select></div>';
+            }
+          }
+          if (!slotsHtml) {
+            slotsHtml = '<div style="margin-top:10px;">'
+              + '<label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:4px;">Preferred Pickup Date &amp; Time:</label>'
+              + '<input type="datetime-local" id="deliveryTimeCustom" style="width:100%;padding:8px;border-radius:8px;border:1px solid #1a2636;background:#0a0f1a;color:#e8eef6;font-size:13px;box-sizing:border-box;">'
+              + '<div style="font-size:11px;color:#f59e0b;margin-top:4px;">Confirm with the seller that they will be available at this time.</div>'
+              + '</div>';
+          }
+
+          resultEl.innerHTML = '<div style="background:#0a1628;border:1px solid #f97316;border-radius:8px;padding:12px;">'
+            + '<div style="font-size:16px;font-weight:800;color:#f97316;">Delivery Fee: $' + fee + '</div>'
+            + '<div style="font-size:13px;color:#94a3b8;margin-top:4px;">Item $' + itemPrice.toFixed(2) + ' + Delivery $' + fee + ' = <span style="color:#f97316;font-weight:700;">$' + totalPrice + '</span></div>'
+            + (eta ? '<div style="font-size:12px;color:#64748b;margin-top:4px;">&#9201; ' + eta + '</div>' : '')
+            + slotsHtml
+            + '<button onclick="placeDeliveryOrder()" '
+            + 'style="width:100%;margin-top:10px;padding:10px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">'
+            + 'Confirm Delivery Order &mdash; $' + totalPrice + ' &#8594;</button>'
+            + '<div style="font-size:11px;color:#64748b;margin-top:6px;text-align:center;">&#128179; Paid securely via Stripe &bull; Driver dispatched when seller is ready</div>'
+            + '</div>';
+
+        } catch(e) {
+          resultEl.innerHTML = '<span style="color:#ef4444;">Failed to get quote. Try again.</span>';
+        } finally {
+          if (btn) { btn.textContent = 'Get Delivery Quote \u2192'; btn.disabled = false; }
+        }
+      };
+
+      window.placeDeliveryOrder = async function() {
+        var quoteData = window._deliveryQuoteData;
+        if (!quoteData) {
+          showListingToast('No delivery quote found. Please get a quote first.');
+          return;
+        }
+
+        var lid = listingId || new URLSearchParams(window.location.search).get('id');
+        var token = getToken() || localStorage.getItem('tc_token');
+        if (!token) {
+          window.showAuthModal();
+          return;
+        }
+
+        var resultEl = document.getElementById('deliveryQuoteResult');
+        var btn = resultEl.querySelector('button');
+        if (btn) { btn.textContent = 'Placing order...'; btn.disabled = true; }
+
+        try {
+          var res = await fetch('/api/delivery/order', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+              listingId: lid,
+              quoteId: quoteData.quoteId,
+              deliveryAddress: quoteData.address,
+              deliveryFeeCents: quoteData.feeCents,
+              paymentMethod: 'stripe',
+              scheduledPickupTime: (function() {
+                var sel = document.getElementById('deliveryTimeSlot');
+                if (sel) return sel.value;
+                var custom = document.getElementById('deliveryTimeCustom');
+                if (custom && custom.value) return new Date(custom.value).toISOString();
+                return null;
+              })()
+            })
+          });
+
+          var data = await res.json();
+
+          if (!res.ok) {
+            console.error('DELIVERY_ORDER_FAIL', data);
+            resultEl.innerHTML = '<div style="background:#7f1d1d;border:1px solid #dc2626;border-radius:8px;padding:12px;">'
+              + '<div style="color:#fca5a5;font-weight:600;margin-bottom:4px;">Order failed</div>'
+              + '<div style="color:#fca5a5;font-size:13px;">' + esc(data.error || 'Failed to place order') + '</div>'
+              + '<button onclick="placeDeliveryOrder()" style="margin-top:8px;padding:8px 16px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Try Again</button>'
+              + '</div>';
+            return;
+          }
+
+          console.log('DELIVERY_ORDER_RESPONSE', res.status, data);
+          if (data.url) {
+            // Redirect to Stripe Checkout
+            window.location.href = data.url;
+          } else {
+            showListingToast('Delivery order placed!');
+            resultEl.innerHTML = '<div style="background:#065f46;border:1px solid #10b981;border-radius:8px;padding:12px;color:#6ee7b7;">'
+              + '<div style="font-weight:700;">&#10003; Order placed!</div>'
+              + '<div style="font-size:13px;margin-top:4px;">You will be contacted with delivery details.</div>'
+              + '</div>';
+          }
+        } catch(e) {
+          console.error('DELIVERY_ORDER_ERROR', e);
+          resultEl.innerHTML = '<div style="background:#7f1d1d;border:1px solid #dc2626;border-radius:8px;padding:12px;">'
+            + '<div style="color:#fca5a5;font-weight:600;margin-bottom:4px;">Something went wrong</div>'
+            + '<div style="color:#fca5a5;font-size:13px;">' + esc(e.message || 'Network error') + '</div>'
+            + '<button onclick="placeDeliveryOrder()" style="margin-top:8px;padding:8px 16px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Try Again</button>'
+            + '</div>';
+        }
+      };
+
+      // ─── Delivery Quote Request — navigate to dedicated page ────────────────────────
+      window.requestDeliveryQuote = function() {
+        var token = getToken() || localStorage.getItem('tc_token');
+        if (!token) { window.showAuthModal(); return; }
+        var lid = listingId || new URLSearchParams(window.location.search).get('id');
+        var dest = '/delivery-quote?listing_id=' + encodeURIComponent(lid);
+        window.history.replaceState(null, '', window.location.href);
+        window.location.replace(dest);
+      };
+
+      // ─── Roadie Delivery Functions ────────────────────────
+      var currentRoadieEstimate = null;
+      var roadieEstimateCache = {};
+      var roadieDebounceTimer = null;
+      var roadieTrackingPollInterval = null;
+
+      window.getRoadieEstimate = async function() {
+        var street = document.getElementById('roadieStreet');
+        var city = document.getElementById('roadieCity');
+        var state = document.getElementById('roadieState');
+        var zip = document.getElementById('roadieZip');
+        if (!street || !city || !zip) return;
+        if (!street.value.trim() || !city.value.trim() || !zip.value.trim()) {
+          showListingToast('Please fill in street, city, and ZIP');
+          return;
+        }
+
+        var addr = { street1: street.value.trim(), city: city.value.trim(), state: state.value, zip: zip.value.trim() };
+        var cacheKey = addr.street1 + '|' + addr.city + '|' + addr.state + '|' + addr.zip;
+        if (roadieEstimateCache[cacheKey]) {
+          currentRoadieEstimate = roadieEstimateCache[cacheKey];
+          showRoadieEstimateResult(currentRoadieEstimate);
+          return;
+        }
+
+        var btn = document.getElementById('roadieQuoteBtn');
+        var resultEl = document.getElementById('roadieEstimateResult');
+        if (btn) { btn.textContent = 'Getting quote...'; btn.disabled = true; }
+        resultEl.innerHTML = '<div class="roadie-skeleton" style="height:20px;border-radius:6px;width:60%;"></div>';
+
+        try {
+          var token = getToken() || localStorage.getItem('tc_token');
+          var headers = { 'Content-Type': 'application/json' };
+          if (token) headers['Authorization'] = 'Bearer ' + token;
+
+          var res = await fetch('/api/roadie/estimate', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ listing_id: listingId, delivery_address: addr })
+          });
+          var data = await res.json();
+          if (!res.ok) {
+            var errMsg = 'Unable to get delivery quote. Try again.';
+            if (data.error) {
+              if (data.error.indexOf('1004') !== -1 || data.error.indexOf('not found') !== -1) {
+                errMsg = "We couldn't find that address. Please check and try again.";
+              } else if (data.error.indexOf('1005') !== -1 || data.error.indexOf('route') !== -1) {
+                errMsg = "Roadie doesn't currently service this delivery area.";
+              } else if (data.error.indexOf('not enabled') !== -1 || data.error.indexOf('not configured') !== -1) {
+                var sec = document.getElementById('roadieDeliverySection');
+                if (sec) sec.style.display = 'none';
+                return;
+              } else {
+                errMsg = data.error;
+              }
+            }
+            resultEl.innerHTML = '<span style="color:#ef4444;font-size:13px;">' + esc(errMsg) + '</span>';
+            return;
+          }
+          currentRoadieEstimate = data;
+          roadieEstimateCache[cacheKey] = data;
+          showRoadieEstimateResult(data);
+        } catch (err) {
+          resultEl.innerHTML = '<span style="color:#ef4444;font-size:13px;">Unable to get delivery quote. Try again.</span>';
+        } finally {
+          if (btn) { btn.textContent = 'Get Roadie Quote \u2192'; btn.disabled = false; }
+        }
+      };
+
+      function showRoadieEstimateResult(data) {
+        var resultEl = document.getElementById('roadieEstimateResult');
+        var windowHtml = '';
+        if (data.delivery_window) {
+          var startD = new Date(data.delivery_window.start);
+          var endD = new Date(data.delivery_window.end);
+          windowHtml = '<div style="font-size:12px;color:#9fb0c3;margin-top:4px;">&#128337; Estimated delivery: Today ' + formatTimeLocal(startD) + ' \u2013 ' + formatTimeLocal(endD) + '</div>';
+        }
+        var distHtml = data.estimated_distance_miles
+          ? '<div style="font-size:12px;color:#64748b;margin-top:2px;">~' + data.estimated_distance_miles.toFixed(1) + ' miles</div>' : '';
+        resultEl.innerHTML = '<div style="background:#0a1628;border:1px solid #10b981;border-radius:8px;padding:12px;">'
+          + '<div style="font-size:16px;font-weight:800;color:#10b981;">Delivery Fee: ' + data.price_display + '</div>'
+          + windowHtml + distHtml
+          + '<div style="font-size:11px;color:#64748b;margin-top:4px;">Driver dispatched when seller marks order ready</div>'
+          + '<button onclick="placeRoadieOrder()" style="width:100%;margin-top:10px;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Confirm Roadie Delivery Order &#8594;</button>'
+          + '</div>';
+      }
+
+      function formatTimeLocal(d) {
+        var h = d.getHours(); var m = d.getMinutes();
+        var ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
+      }
+
+      // Debounced auto-estimate when all fields filled
+      function roadieAddressChanged() {
+        if (roadieDebounceTimer) clearTimeout(roadieDebounceTimer);
+        var street = document.getElementById('roadieStreet');
+        var city = document.getElementById('roadieCity');
+        var zip = document.getElementById('roadieZip');
+        if (street && city && zip && street.value.trim() && city.value.trim() && zip.value.trim()) {
+          roadieDebounceTimer = setTimeout(function() { getRoadieEstimate(); }, 800);
+        }
+      }
+      // Attach listeners after render
+      setTimeout(function() {
+        ['roadieStreet','roadieCity','roadieZip'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.addEventListener('input', roadieAddressChanged);
+        });
+        var stateEl = document.getElementById('roadieState');
+        if (stateEl) stateEl.addEventListener('change', roadieAddressChanged);
+      }, 500);
+
+      window.placeRoadieOrder = async function() {
+        if (!currentRoadieEstimate) { showListingToast('Get a quote first'); return; }
+        var street = document.getElementById('roadieStreet').value.trim();
+        var city = document.getElementById('roadieCity').value.trim();
+        var state = document.getElementById('roadieState').value;
+        var zip = document.getElementById('roadieZip').value.trim();
+
+        var orderResult = document.getElementById('roadieOrderResult');
+        orderResult.innerHTML = '<div style="color:#64748b;font-size:12px;">Placing order...</div>';
+
+        try {
+          var token = getToken() || localStorage.getItem('tc_token');
+          if (!token) { window.showAuthModal(); return; }
+          var headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+
+          var res = await fetch('/api/delivery/order', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
+              listingId: listingId,
+              deliveryAddress: street + ', ' + city + ', ' + state + ' ' + zip,
+              deliveryFeeCents: currentRoadieEstimate.price_cents,
+              paymentMethod: 'stripe',
+              delivery_type: 'roadie',
+              delivery_address_street1: street,
+              delivery_address_city: city,
+              delivery_address_state: state,
+              delivery_address_zip: zip
+            })
+          });
+          var data = await res.json();
+          if (!res.ok) {
+            orderResult.innerHTML = '<span style="color:#ef4444;">' + esc(data.error || 'Failed to place order') + '</span>';
+            return;
+          }
+
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            orderResult.innerHTML = '<div style="background:#065f46;border:1px solid #10b981;border-radius:8px;padding:14px;color:#6ee7b7;">'
+              + '<div style="font-weight:700;margin-bottom:4px;">&#10003; Order placed!</div>'
+              + '<div style="font-size:13px;">Your seller will dispatch a Roadie driver when your order is ready. '
+              + "You'll receive email updates on delivery progress. Tracking number will be sent when driver is assigned.</div>"
+              + '</div>';
+            // Check for tracking after a delay
+            setTimeout(function() {
+              var tk = getToken() || localStorage.getItem('tc_token');
+              if (tk) checkRoadieBuyerOrder(listingId, tk);
+            }, 3000);
+          }
+        } catch (err) {
+          orderResult.innerHTML = '<span style="color:#ef4444;">Failed to place order. Try again.</span>';
+        }
+      };
+
+      // ─── Roadie Tracking ────────────────────────────
+      async function checkRoadieBuyerOrder(lid, token) {
+        try {
+          var res = await fetch('/api/roadie/buyer-order/' + encodeURIComponent(lid), {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          if (!res.ok) return;
+          var data = await res.json();
+          if (!data.found) return;
+          var order = data.order;
+          if (order.roadie_delivery_id || order.roadie_delivery_status) {
+            showRoadieTracking(order);
+            startRoadiePolling(order.order_id, token);
+          }
+        } catch (err) {
+          console.error('checkRoadieBuyerOrder error:', err);
+        }
+      }
+
+      function showRoadieTracking(order) {
+        var sec = document.getElementById('roadieTrackingSection');
+        if (!sec) return;
+        sec.style.display = 'block';
+
+        // Tracking number
+        var numEl = document.getElementById('roadieTrackingNum');
+        if (numEl && order.roadie_tracking_number) {
+          numEl.textContent = '#' + order.roadie_tracking_number;
+          numEl.title = 'Click to copy';
+        }
+
+        // Status hero
+        var statusConfig = {
+          'scheduled':          { icon: '&#9203;', cls: 'roadie-pulse', color: '#3b82f6', label: 'Finding your driver...' },
+          'assigned':           { icon: '&#128663;', cls: 'roadie-pulse', color: '#3b82f6', label: 'Driver assigned \u2014 heading to pickup' },
+          'en_route_to_pickup': { icon: '&#128663;', cls: 'roadie-slide', color: '#f59e0b', label: 'Driver is on the way to the seller' },
+          'at_pickup':          { icon: '&#128276;', cls: '', color: '#f59e0b', label: 'Driver is at the pickup location' },
+          'pickup_confirmed':   { icon: '&#9989;', cls: '', color: '#10b981', label: 'Your order has been picked up!' },
+          'en_route':           { icon: '&#128663;', cls: 'roadie-slide', color: '#10b981', label: 'Your order is out for delivery!' },
+          'at_delivery':        { icon: '&#128205;', cls: 'roadie-pulse', color: '#10b981', label: 'Driver is at your door!' },
+          'delivered':          { icon: '&#9989;', cls: 'roadie-celebrate', color: '#10b981', label: 'Delivered!' },
+          'attempted':          { icon: '&#9888;&#65039;', cls: '', color: '#f59e0b', label: 'Delivery attempted \u2014 seller has been notified' },
+          'returned':           { icon: '&#8617;', cls: '', color: '#f59e0b', label: 'Order returned to seller' },
+          'canceled':           { icon: '&#10007;', cls: '', color: '#64748b', label: 'Delivery canceled' },
+          'expired':            { icon: '&#9200;', cls: '', color: '#64748b', label: 'Delivery expired \u2014 contact seller' }
+        };
+        var st = statusConfig[order.roadie_delivery_status] || { icon: '&#128230;', cls: '', color: '#64748b', label: 'Order placed' };
+        var heroEl = document.getElementById('roadieStatusHero');
+        heroEl.innerHTML = '<div class="' + st.cls + '" style="font-size:48px;margin-bottom:8px;">' + st.icon + '</div>'
+          + '<div style="font-size:18px;font-weight:700;color:' + st.color + ';">' + st.label + '</div>';
+
+        // Deliver by time
+        if (order.roadie_deliver_end && ['scheduled','assigned','en_route_to_pickup','at_pickup','pickup_confirmed','en_route','at_delivery'].indexOf(order.roadie_delivery_status) !== -1) {
+          var endD = new Date(order.roadie_deliver_end);
+          heroEl.innerHTML += '<div style="font-size:12px;color:#64748b;margin-top:4px;">Estimated by ' + formatTimeLocal(endD) + '</div>';
+        }
+
+        // Driver info
+        var driverEl = document.getElementById('roadieDriverInfo');
+        if (order.roadie_driver_name) {
+          var vehicleEmoji = { sedan: '&#128663;', suv: '&#128665;', truck: '&#128667;', van: '&#128656;' };
+          var vEmoji = vehicleEmoji[order.roadie_driver_vehicle] || '&#128663;';
+          driverEl.innerHTML = '<div class="roadie-driver-card">'
+            + '<div style="font-size:12px;color:#64748b;margin-bottom:4px;">YOUR DRIVER</div>'
+            + '<div style="display:flex;align-items:center;gap:8px;">'
+            + '<span style="font-size:24px;">' + vEmoji + '</span>'
+            + '<div><div style="font-size:14px;font-weight:600;color:#e2e8f0;">' + esc(order.roadie_driver_name) + '</div>'
+            + (order.roadie_driver_vehicle ? '<div style="font-size:12px;color:#9fb0c3;">' + esc(order.roadie_driver_vehicle) + '</div>' : '')
+            + '</div></div></div>';
+        } else {
+          driverEl.innerHTML = '';
+        }
+
+        // Progress timeline
+        var steps = ['Order Ready', 'Driver Assigned', 'Picked Up', 'Out for Delivery', 'Delivered'];
+        var stateToStep = {
+          'scheduled': 0, 'assigned': 1, 'en_route_to_pickup': 1, 'at_pickup': 1,
+          'pickup_confirmed': 2, 'en_route': 3, 'at_delivery': 3, 'delivered': 4
+        };
+        var currentStep = stateToStep[order.roadie_delivery_status];
+        if (currentStep === undefined) currentStep = -1;
+
+        var timelineEl = document.getElementById('roadieTimeline');
+        if (['attempted','returned','canceled','expired'].indexOf(order.roadie_delivery_status) !== -1) {
+          timelineEl.innerHTML = '';
+          return;
+        }
+        var tlHtml = '<div class="roadie-timeline">';
+        for (var i = 0; i < steps.length; i++) {
+          var dotCls = 'roadie-step-dot';
+          var lblCls = 'roadie-step-label';
+          if (i < currentStep) { dotCls += ' done'; lblCls += ' done'; }
+          else if (i === currentStep) { dotCls += ' current'; lblCls += ' current'; }
+          tlHtml += '<div class="roadie-step"><div class="' + dotCls + '">' + (i < currentStep ? '&#10003;' : (i === currentStep ? '&#9679;' : '')) + '</div><div class="' + lblCls + '">' + steps[i] + '</div></div>';
+          if (i < steps.length - 1) {
+            tlHtml += '<div class="roadie-step-line' + (i < currentStep ? ' done' : '') + '"></div>';
+          }
+        }
+        tlHtml += '</div>';
+        timelineEl.innerHTML = tlHtml;
+      }
+
+      function startRoadiePolling(orderId, token) {
+        if (roadieTrackingPollInterval) clearInterval(roadieTrackingPollInterval);
+        roadieTrackingPollInterval = setInterval(async function() {
+          try {
+            var res = await fetch('/api/roadie/shipment/' + encodeURIComponent(orderId), {
+              headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!res.ok) return;
+            var data = await res.json();
+            showRoadieTracking({
+              roadie_delivery_id: data.roadie_delivery_id,
+              roadie_delivery_status: data.status,
+              roadie_tracking_number: data.tracking_number,
+              roadie_driver_name: data.driver_name,
+              roadie_driver_phone: data.driver_phone,
+              roadie_driver_vehicle: data.driver_vehicle,
+              roadie_deliver_start: data.deliver_start,
+              roadie_deliver_end: data.deliver_end
+            });
+            // Stop polling on terminal states
+            if (['delivered','canceled','expired'].indexOf(data.status) !== -1) {
+              clearInterval(roadieTrackingPollInterval);
+              roadieTrackingPollInterval = null;
+            }
+          } catch (err) {
+            console.error('Roadie poll error:', err);
+          }
+        }, 30000);
+      }
+
+      window.copyRoadieTracking = function() {
+        var el = document.getElementById('roadieTrackingNum');
+        if (!el || !el.textContent) return;
+        var num = el.textContent.replace('#', '');
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(num).then(function() { showListingToast('Tracking number copied!'); });
+        }
+      };
+
+      // Touch swipe support for gallery
+      (function() {
+        var startX = 0;
+        var threshold = 50;
+        document.addEventListener('touchstart', function(e) {
+          var gallery = document.getElementById('gallery');
+          if (gallery && gallery.contains(e.target)) {
+            startX = e.touches[0].clientX;
+          }
+        }, { passive: true });
+        document.addEventListener('touchend', function(e) {
+          var gallery = document.getElementById('gallery');
+          if (gallery && gallery.contains(e.target) && startX) {
+            var diff = e.changedTouches[0].clientX - startX;
+            if (Math.abs(diff) > threshold) {
+              window.galleryNav(diff < 0 ? 1 : -1);
+            }
+            startX = 0;
+          }
+        }, { passive: true });
+      })();
+
+      function showError(title, message) {
+        document.getElementById('topbarTitle').textContent = 'Error';
+        document.getElementById('pageContent').innerHTML =
+          '<div class="error-state">'
+          + '<div style="font-size:48px;">&#128533;</div>'
+          + '<h2>' + esc(title) + '</h2>'
+          + '<p>' + esc(message) + '</p>'
+          + '<a href="/">&#8592; Back to Treasure Coast</a>'
+          + '</div>';
+      }
+
+      function capitalize(s) {
+        return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+      }
+    })();
+
+    // Shared utilities — accessible from all scopes
+    function getToken() {
+      try {
+        var match = document.cookie.match(/(?:^|;\s*)token=([^;]*)/);
+        return match ? match[1] : null;
+      } catch(e) { return null; }
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(str));
+      return div.innerHTML;
+    }
+
+    // ─── Inline Payment Method Selector ────────────────────────────
+    function expandPaymentSelector(triggerBtn, fulfillmentType) {
+      var l = window._listingData;
+      if (!l) return;
+
+      var token = getToken() || localStorage.getItem('tc_token');
+      if (!token) { window.showAuthModal(); return; }
+
+      // Collapse if already open
+      var existing = document.getElementById('inlinePaySelector');
+      if (existing) { existing.remove(); return; }
+
+      var price = parseFloat(l.price || 0);
+      var priceStr = '$' + price.toFixed(2);
+      var isPickup = (fulfillmentType === 'pickup');
+      var stripeReady = l.seller_stripe_onboarded === true;
+      var depAmt = stripeReady ? (parseInt(l.deposit_amount_cents) || 0) : 0; // deposits require seller Stripe
+      var depStr = '$' + (depAmt / 100).toFixed(2);
+
+      var methods = [];
+      if (l.accepts_cash) {
+        var cashDesc = (isPickup && depAmt > 0) ? 'Pay cash at pickup &mdash; ' + depStr + ' refundable deposit required to hold item' : 'Pay cash in person';
+        methods.push({ id: 'cash', icon: '&#128181;', label: 'Cash', desc: cashDesc });
+      }
+      if (l.accepts_stripe && stripeReady) {
+        methods.push({ id: 'stripe', icon: '&#128179;', label: 'Card', desc: 'Pay full ' + priceStr + ' now via card &mdash; no deposit needed' });
+      }
+      if (l.accepts_venmo && l.seller_venmo_handle) {
+        var venmoDesc = (isPickup && depAmt > 0) ? 'Pay via Venmo at pickup &mdash; ' + depStr + ' refundable deposit required' : 'Send payment to @' + esc(l.seller_venmo_handle);
+        methods.push({ id: 'venmo', icon: '<span style="font-weight:900;color:#3b82f6;">V</span>', label: 'Venmo', desc: venmoDesc });
+      }
+      if (l.accepts_paypal && l.seller_paypal_handle) {
+        var paypalDesc = (isPickup && depAmt > 0) ? 'Pay via PayPal at pickup &mdash; ' + depStr + ' refundable deposit required' : 'Pay via PayPal';
+        methods.push({ id: 'paypal', icon: '<span style="font-weight:900;color:#f59e0b;">P</span>', label: 'PayPal', desc: paypalDesc });
+      }
+
+      if (methods.length === 0) {
+        window.location.href = '/messages?recipientId=' + encodeURIComponent(l.seller_id) + '&listingId=' + encodeURIComponent(l.id);
+        return;
+      }
+
+      // If only one method, go straight to payment
+      if (methods.length === 1) {
+        window._selectedPayMethod = methods[0].id;
+        confirmPayment(fulfillmentType);
+        return;
+      }
+
+      // Build inline selector panel below the trigger button
+      var panel = document.createElement('div');
+      panel.id = 'inlinePaySelector';
+      panel.style.cssText = 'background:#111827;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-top:8px;';
+
+      var html = '<div style="font-size:13px;font-weight:600;color:#94a3b8;margin-bottom:10px;">Choose payment method</div>';
+      html += '<div id="payMethodCards" style="display:flex;flex-direction:column;gap:6px;">';
+      for (var i = 0; i < methods.length; i++) {
+        var m = methods[i];
+        html += '<div class="pay-method-card" data-method="' + m.id + '" style="padding:12px;border:2px solid #1e293b;border-radius:10px;cursor:pointer;transition:border-color .2s;" onclick="selectPayMethod(this)">';
+        html += '<div style="display:flex;align-items:center;gap:10px;">';
+        html += '<span style="font-size:18px;width:24px;text-align:center;">' + m.icon + '</span>';
+        html += '<div><div style="font-size:14px;font-weight:600;color:#e2e8f0;">' + m.label + '</div>';
+        html += '<div style="font-size:12px;color:#94a3b8;line-height:1.4;">' + m.desc + '</div></div></div></div>';
+      }
+      html += '</div>';
+      html += '<div id="paymentResult" style="margin-top:8px;"></div>';
+      html += '<button id="confirmPayBtn" onclick="confirmPayment(\'' + fulfillmentType + '\')" disabled style="width:100%;padding:12px;background:#334155;color:#64748b;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:not-allowed;margin-top:10px;">Select a payment method</button>';
+
+      panel.innerHTML = html;
+      triggerBtn.parentNode.insertBefore(panel, triggerBtn.nextSibling);
+
+      // Close when clicking outside
+      function closeOnOutsideClick(e) {
+        if (!panel.contains(e.target) && e.target !== triggerBtn && !triggerBtn.contains(e.target)) {
+          panel.remove();
+          document.removeEventListener('click', closeOnOutsideClick, true);
+        }
+      }
+      setTimeout(function() { document.addEventListener('click', closeOnOutsideClick, true); }, 0);
+    }
+
+    window.selectPayMethod = function(el) {
+      var cards = document.querySelectorAll('.pay-method-card');
+      cards.forEach(function(c) { c.style.borderColor = '#1e293b'; c.style.background = 'transparent'; });
+      el.style.borderColor = '#10b981';
+      el.style.background = 'rgba(16,185,129,0.08)';
+      window._selectedPayMethod = el.dataset.method;
+      var btn = document.getElementById('confirmPayBtn');
+      if (btn) {
+        btn.disabled = false;
+        btn.style.background = '#10b981';
+        btn.style.color = '#fff';
+        btn.style.cursor = 'pointer';
+        btn.textContent = 'Confirm Payment';
+      }
+    };
+
+    window.confirmPayment = async function(fulfillmentType) {
+      var method = window._selectedPayMethod;
+      if (!method) return;
+
+      var l = window._listingData;
+      var token = getToken() || localStorage.getItem('tc_token');
+      if (!token) { window.showAuthModal(); return; }
+
+      var btn = document.getElementById('confirmPayBtn');
+      var resultEl = document.getElementById('paymentResult');
+      if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
+
+      try {
+        var price = parseFloat(l.price || 0);
+        var headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+
+        // RULE 1 & 2: Stripe/Card → always full Stripe checkout, no deposit
+        if (method === 'stripe') {
+          var panel = document.getElementById('inlinePaySelector');
+          if (panel) panel.remove();
+          await handleStripeCheckout(fulfillmentType);
+          return;
+        }
+
+        // RULE 1 & 2: Cash/Venmo/PayPal + Local Pickup → seller-configured refundable deposit via Stripe
+        var isLocalPickup = (fulfillmentType === 'pickup');
+        var sellerDepositCents = parseInt(l.deposit_amount_cents) || 0;
+
+        if (method === 'cash' && isLocalPickup && sellerDepositCents > 0) {
+          // Deposit to hold item, pay remainder in person
+          var res = await fetch('/api/delivery/order', {
+            method: 'POST', headers: headers,
+            body: JSON.stringify({ listingId: l.id, paymentMethod: 'stripe', depositCents: sellerDepositCents, delivery_type: 'pickup' })
+          });
+          var data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Order failed');
+          if (data.url) window.location.href = data.url;
+          return;
+        }
+
+        if ((method === 'venmo' || method === 'paypal') && isLocalPickup && sellerDepositCents > 0) {
+          // Deposit to hold item, pay remainder via venmo/paypal in person
+          var res = await fetch('/api/delivery/order', {
+            method: 'POST', headers: headers,
+            body: JSON.stringify({ listingId: l.id, paymentMethod: 'stripe', depositCents: sellerDepositCents, delivery_type: 'pickup', offline_method: method })
+          });
+          var data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Order failed');
+          if (data.url) window.location.href = data.url;
+          return;
+        }
+
+        // Non-pickup flows for cash/venmo/paypal (e.g. ship) — no deposit, create order
+        if (method === 'cash') {
+          var res = await fetch('/api/delivery/order', {
+            method: 'POST', headers: headers,
+            body: JSON.stringify({ listingId: l.id, paymentMethod: 'cash', delivery_type: fulfillmentType })
+          });
+          var data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Order failed');
+          if (resultEl) {
+            resultEl.innerHTML = '<div style="background:#065f46;border:1px solid #10b981;border-radius:8px;padding:14px;color:#6ee7b7;">'
+              + '<div style="font-weight:700;margin-bottom:4px;">&#10003; Order placed!</div>'
+              + '<div style="font-size:13px;">Contact the seller to arrange payment and pickup.</div></div>';
+          }
+          if (btn) { btn.textContent = 'Message Seller'; btn.disabled = false; btn.style.background = '#0ea5e9';
+            btn.onclick = function() { window.location.href = '/messages?recipientId=' + encodeURIComponent(l.seller_id) + '&listingId=' + encodeURIComponent(l.id); }; }
+          return;
+        }
+
+        if (method === 'venmo') {
+          var res = await fetch('/api/delivery/order', {
+            method: 'POST', headers: headers,
+            body: JSON.stringify({ listingId: l.id, paymentMethod: 'venmo', delivery_type: fulfillmentType })
+          });
+          var data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Order failed');
+          var handle = l.seller_venmo_handle;
+          var amount = price.toFixed(2);
+          var deepLink = 'venmo://paycharge?txn=pay&recipients=' + encodeURIComponent(handle) + '&amount=' + amount + '&note=' + encodeURIComponent('TreasureCoast Order');
+          if (resultEl) {
+            resultEl.innerHTML = '<div style="background:#0f1722;border:1px solid #3b82f6;border-radius:8px;padding:14px;">'
+              + '<div style="font-weight:700;color:#e2e8f0;margin-bottom:6px;">Send $' + amount + ' to @' + esc(handle) + ' on Venmo</div>'
+              + '<div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">Then message the seller to confirm.</div>'
+              + '<a href="' + deepLink + '" style="display:block;text-align:center;padding:10px;background:#3b82f6;color:#fff;border-radius:8px;font-weight:600;text-decoration:none;">Open Venmo</a></div>';
+          }
+          if (btn) { btn.textContent = 'Message Seller'; btn.disabled = false; btn.style.background = '#0ea5e9';
+            btn.onclick = function() { window.location.href = '/messages?recipientId=' + encodeURIComponent(l.seller_id) + '&listingId=' + encodeURIComponent(l.id); }; }
+          return;
+        }
+
+        if (method === 'paypal') {
+          var res = await fetch('/api/delivery/order', {
+            method: 'POST', headers: headers,
+            body: JSON.stringify({ listingId: l.id, paymentMethod: 'paypal', delivery_type: fulfillmentType })
+          });
+          var data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Order failed');
+          var handle = l.seller_paypal_handle;
+          var amount = price.toFixed(2);
+          var paypalUrl = handle.indexOf('paypal.me') !== -1
+            ? 'https://' + handle.replace(/^https?:\/\//, '') + '/' + amount
+            : 'https://paypal.me/' + encodeURIComponent(handle) + '/' + amount;
+          if (resultEl) {
+            resultEl.innerHTML = '<div style="background:#0f1722;border:1px solid #f59e0b;border-radius:8px;padding:14px;">'
+              + '<div style="font-weight:700;color:#e2e8f0;margin-bottom:6px;">Send $' + amount + ' via PayPal</div>'
+              + '<div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">Then message the seller to confirm.</div>'
+              + '<a href="' + paypalUrl + '" target="_blank" style="display:block;text-align:center;padding:10px;background:#f59e0b;color:#000;border-radius:8px;font-weight:600;text-decoration:none;">Pay on PayPal</a></div>';
+          }
+          if (btn) { btn.textContent = 'Message Seller'; btn.disabled = false; btn.style.background = '#0ea5e9';
+            btn.onclick = function() { window.location.href = '/messages?recipientId=' + encodeURIComponent(l.seller_id) + '&listingId=' + encodeURIComponent(l.id); }; }
+          return;
+        }
+      } catch (err) {
+        console.error('PAYMENT_ERROR', err);
+        if (resultEl) resultEl.innerHTML = '<div style="color:#ef4444;font-size:13px;">' + esc(err.message || 'Something went wrong') + '</div>';
+        if (btn) { btn.disabled = false; btn.textContent = 'Confirm Payment'; btn.style.background = '#10b981'; }
+      }
+    };
+
+    // Full Stripe checkout — no deposit, full item price
+    async function handleStripeCheckout(deliveryType) {
+      var l = window._listingData;
+      var token = getToken() || localStorage.getItem('tc_token');
+      if (!token) { window.showAuthModal(); return; }
+
+      try {
+        var res = await fetch('/api/delivery/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({
+            listingId: l.id,
+            paymentMethod: 'stripe',
+            delivery_type: deliveryType || 'pickup',
+            selectedVariant: window._selectedSize || null,
+            quantity: parseInt((document.getElementById('qtyInput') || {}).value) || 1,
+            unitPriceCents: Math.round((window._listingPrice || parseFloat(l.price || 0)) * 100)
+          })
+        });
+        var data = await res.json();
+        if (!res.ok) {
+          alert(data.error || 'Could not start checkout. Please try again.');
+          return;
+        }
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          alert('Checkout error: no redirect URL. Please try again.');
+        }
+      } catch(e) {
+        alert('Network error. Please check your connection and try again.');
+      }
+    }
+  </script>
+<script>
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.id === 'qtyInput') {
+    tcUpdateBuyButtons();
+  }
+});
+document.addEventListener('input', function(e) {
+  if (e.target && e.target.id === 'qtyInput') {
+    tcUpdateBuyButtons();
+  }
+});
+document.addEventListener('click', function(e) {
+  var pill = e.target.closest('.size-pill');
+  if (pill) {
+    document.querySelectorAll('.size-pill').forEach(function(p) { p.classList.remove('active'); });
+    pill.classList.add('active');
+    window._selectedSize = pill.dataset.size;
+    if (pill.dataset.price) {
+      window._listingPrice = Number(pill.dataset.price);
+    }
+    tcUpdateBuyButtons();
+  }
+});
+
+function tcUpdateBuyButtons() {
+  var qtyInput = document.getElementById('qtyInput');
+  var qty = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+  var unitPrice = window._listingPrice || 0;
+  var total = unitPrice * qty;
+  var shippingCents = window._shippingCents || 0;
+  var shippingStr = shippingCents > 0 ? ' + $' + (shippingCents / 100).toFixed(2) + ' shipping' : '';
+  var priceStr = '$' + total.toFixed(2);
+  var shipBtn = document.getElementById('btnBuyShip');
+  var pickupBtn = document.getElementById('btnBuyPickup');
+  var priceEl = document.getElementById('listingPrice');
+  if (shipBtn) shipBtn.textContent = 'Buy & Ship \u2014 ' + priceStr + shippingStr;
+  if (pickupBtn) pickupBtn.innerHTML = '&#128205; Buy &mdash; Local Pickup ' + priceStr;
+  if (priceEl) priceEl.textContent = '$' + unitPrice.toFixed(2);
+}
+
+function submitNotifyEmail() {
+  var input = document.getElementById('notifyEmailInput');
+  var msg = document.getElementById('notifyMsg');
+  var email = (input.value || '').trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    msg.style.display = 'block';
+    msg.style.color = '#ef4444';
+    msg.textContent = 'Please enter a valid email address.';
+    return;
+  }
+  var ld = window._listingData || {};
+  var communityId = ld.community_id || null;
+  fetch('/api/email-capture', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email, community_id: communityId, listing_id: ld.id || null, source: 'listing' })
+  }).then(function(r) { return r.json(); }).then(function() {
+    msg.style.display = 'block';
+    msg.style.color = '#10b981';
+    msg.textContent = "Done! We'll notify you of local deals.";
+    document.getElementById('notifyForm').style.display = 'none';
+  }).catch(function() {
+    msg.style.display = 'block';
+    msg.style.color = '#ef4444';
+    msg.textContent = 'Something went wrong. Please try again.';
+  });
+}
+</script>
+</body>
+</html>

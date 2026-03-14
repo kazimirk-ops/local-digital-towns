@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Giveaway — Treasure Coast</title>
+  <style>
+    :root { --primary: #0ea5e9; --accent: #00E5FF; --bg: #0a0f1a; --panel: #111827; --border: #1e293b; --text: #e2e8f0; --muted: #64748b; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    a { color: var(--primary); text-decoration: none; }
+
+    .top-bar { background: var(--panel); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 18px; font-weight: 800; color: var(--primary); }
+    .back-link { font-size: 13px; color: var(--muted); }
+    .back-link:hover { color: var(--text); }
+
+    .hero { background: linear-gradient(135deg, #0ea5e922, #00E5FF11); border-bottom: 1px solid var(--border); padding: 48px 20px; text-align: center; }
+    .hero h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+    .hero p { color: var(--muted); font-size: 16px; max-width: 500px; margin: 0 auto; }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 24px 20px; }
+
+    /* Auth notice */
+    .auth-notice { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px; }
+    .auth-notice .btn { display: inline-block; margin-top: 12px; padding: 10px 28px; background: var(--primary); color: #fff; border-radius: 8px; font-weight: 700; font-size: 14px; border: none; cursor: pointer; }
+
+    /* Balance card */
+    .balance-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .balance-card .balance-num { font-size: 36px; font-weight: 800; color: var(--accent); }
+    .balance-card .balance-label { font-size: 14px; color: var(--muted); }
+
+    /* Earn grid */
+    .section-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+    .earn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 32px; }
+    .earn-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
+    .earn-card .earn-icon { font-size: 28px; margin-bottom: 8px; }
+    .earn-card .earn-label { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .earn-card .earn-pts { font-size: 18px; font-weight: 800; color: var(--accent); }
+    .earn-card.disabled { opacity: 0.4; }
+
+    /* Active sweep */
+    .sweep-card { background: var(--panel); border: 2px solid var(--primary); border-radius: 16px; padding: 28px; margin-bottom: 24px; }
+    .sweep-card h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .sweep-prize { font-size: 16px; color: var(--accent); font-weight: 700; margin-bottom: 4px; }
+    .sweep-desc { font-size: 14px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+    .sweep-prize-img { max-width: 100%; max-height: 200px; border-radius: 10px; margin-bottom: 16px; object-fit: cover; }
+    .sweep-stats { display: flex; gap: 24px; margin-bottom: 16px; font-size: 13px; color: var(--muted); }
+    .sweep-stats span { font-weight: 700; color: var(--text); }
+    .sweep-entry-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .sweep-entry-row input { width: 80px; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; text-align: center; }
+    .sweep-entry-row .btn { padding: 10px 24px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 14px; }
+    .sweep-entry-row .btn:hover { background: #0284c7; }
+    .sweep-entry-row .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .sweep-cost { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .sweep-result { font-size: 14px; color: #10b981; font-weight: 600; margin-top: 8px; display: none; }
+    .sweep-error { font-size: 14px; color: #ef4444; font-weight: 600; margin-top: 8px; display: none; }
+
+    .no-sweep { text-align: center; color: var(--muted); padding: 40px; font-size: 14px; }
+
+    /* Leaderboard */
+    .leaderboard { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px; }
+    .leaderboard table { width: 100%; border-collapse: collapse; }
+    .leaderboard th { text-align: left; font-size: 12px; color: var(--muted); padding: 10px 16px; border-bottom: 1px solid var(--border); }
+    .leaderboard td { padding: 10px 16px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .leaderboard tr:hover td { background: rgba(255,255,255,.02); }
+    .rank-1 { color: #f59e0b; font-weight: 700; }
+    .rank-2 { color: #94a3b8; font-weight: 700; }
+    .rank-3 { color: #b45309; font-weight: 700; }
+
+    /* History */
+    .history-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 24px; }
+    .history-item { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+    .history-item .pts-pos { color: #10b981; font-weight: 700; }
+    .history-item .pts-neg { color: #ef4444; font-weight: 700; }
+    .history-item .reason { color: var(--muted); }
+
+    /* Ended sweepstake winner */
+    .winner-banner { background: linear-gradient(135deg, #f59e0b22, #10b98122); border: 1px solid #f59e0b44; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px; }
+    .winner-banner .trophy { font-size: 40px; }
+    .winner-banner h3 { margin: 8px 0 4px; font-size: 18px; }
+    .winner-banner p { color: var(--muted); font-size: 14px; }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 24px; }
+      .balance-card { flex-direction: column; text-align: center; gap: 8px; }
+      .earn-grid { grid-template-columns: repeat(2, 1fr); }
+      .sweep-stats { flex-wrap: wrap; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="/" class="logo">&#127758; Treasure Coast</a>
+  <a href="/" class="back-link">&larr; Back to Town</a>
+</div>
+
+<div class="hero">
+  <h1>&#127881; Giveaway</h1>
+  <p>Earn sweep points by shopping, listing, and engaging — then spend them to enter giveaways and win prizes!</p>
+</div>
+
+<div class="container">
+  <!-- Auth notice (hidden when logged in) -->
+  <div id="authNotice" class="auth-notice" style="display:none;">
+    <p>Log in to earn points and enter giveaways</p>
+    <a href="/#login" class="btn">Log In</a>
+  </div>
+
+  <!-- Balance (hidden when not logged in) -->
+  <div id="balanceCard" class="balance-card" style="display:none;">
+    <div>
+      <div class="balance-label">Your Sweep Points</div>
+      <div class="balance-num" id="balanceNum">0</div>
+    </div>
+    <a href="/dashboard#local-town" style="font-size:13px;">View in Dashboard &rarr;</a>
+  </div>
+
+  <!-- Earn ways -->
+  <div class="section-title">How to Earn Points</div>
+  <div class="earn-grid" id="earnGrid">
+    <div class="earn-card"><div class="earn-icon">&#128722;</div><div class="earn-label">Buy an Item</div><div class="earn-pts">+5 pts</div></div>
+    <div class="earn-card"><div class="earn-icon">&#128230;</div><div class="earn-label">Create a Listing</div><div class="earn-pts">+10 pts</div></div>
+    <div class="earn-card"><div class="earn-icon">&#11088;</div><div class="earn-label">Leave a Review</div><div class="earn-pts">+3 pts</div></div>
+    <div class="earn-card"><div class="earn-icon">&#128197;</div><div class="earn-label">Daily Login</div><div class="earn-pts">+1 pt</div></div>
+    <div class="earn-card"><div class="earn-icon">&#128101;</div><div class="earn-label">Refer a Friend</div><div class="earn-pts">+15 pts</div></div>
+  </div>
+
+  <!-- Active Sweepstake -->
+  <div class="section-title">Active Giveaway</div>
+  <div id="sweepArea">
+    <div class="no-sweep" id="noSweep">No active giveaway right now. Check back soon!</div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div id="leaderboardSection" style="display:none;">
+    <div class="section-title">Leaderboard</div>
+    <div class="leaderboard">
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Entries</th></tr></thead>
+        <tbody id="leaderboardBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div id="historySection" style="display:none;">
+    <div class="section-title">Your Recent Activity</div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var TOKEN_KEY = 'tc_token';
+  var token = localStorage.getItem(TOKEN_KEY);
+  var isLoggedIn = false;
+  var activeSweep = null;
+
+  function esc(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  var reasonLabels = {
+    listing_create: 'Created a listing',
+    purchase: 'Purchase reward',
+    review_left: 'Left a review',
+    daily_login: 'Daily login',
+    referral: 'Referral bonus',
+    sweepstake_entry: 'Giveaway entry'
+  };
+
+  async function apiFetch(url, opts) {
+    opts = opts || {};
+    if (token) {
+      opts.headers = opts.headers || {};
+      opts.headers['Authorization'] = 'Bearer ' + token;
+    }
+    var r = await fetch(url, opts);
+    return r;
+  }
+
+  async function loadBalance() {
+    if (!token) {
+      document.getElementById('authNotice').style.display = 'block';
+      return;
+    }
+    try {
+      var r = await apiFetch('/api/sweep/balance');
+      if (r.status === 401) {
+        document.getElementById('authNotice').style.display = 'block';
+        return;
+      }
+      if (!r.ok) return;
+      isLoggedIn = true;
+      var data = await r.json();
+      document.getElementById('balanceCard').style.display = 'flex';
+      document.getElementById('balanceNum').textContent = data.balance;
+
+      if (data.history && data.history.length) {
+        document.getElementById('historySection').style.display = 'block';
+        document.getElementById('historyList').innerHTML = data.history.map(function(h) {
+          var cls = h.amount >= 0 ? 'pts-pos' : 'pts-neg';
+          var sign = h.amount >= 0 ? '+' : '';
+          var label = reasonLabels[h.reason] || h.reason;
+          return '<div class="history-item"><span>' + esc(label) + '</span><span class="' + cls + '">' + sign + h.amount + ' pts</span></div>';
+        }).join('');
+      }
+    } catch (e) {
+      console.error('Balance error', e);
+    }
+  }
+
+  async function loadActiveSweep() {
+    try {
+      var r = await apiFetch('/api/sweep/active');
+      if (!r.ok) return;
+      var data = await r.json();
+      if (!data.sweep) return;
+
+      activeSweep = data.sweep;
+      var s = activeSweep;
+      var area = document.getElementById('sweepArea');
+      document.getElementById('noSweep').style.display = 'none';
+
+      // Check if completed with winner
+      if (s.status === 'completed' && s.winner_user_id) {
+        area.innerHTML = '<div class="winner-banner"><div class="trophy">&#127942;</div><h3>' + esc(s.title) + '</h3><p>This giveaway has ended!</p></div>';
+        return;
+      }
+
+      var imgHtml = s.prize_image_url ? '<img class="sweep-prize-img" src="' + esc(s.prize_image_url) + '" alt="">' : '';
+      var donorHtml = s.donor_name ? ' <span style="color:#64748b;">donated by ' + esc(s.donor_name) + '</span>' : '';
+      var endHtml = s.end_at ? '<span>Ends: <span>' + new Date(s.end_at).toLocaleDateString() + '</span></span>' : '';
+      var userEntriesHtml = '';
+      if (typeof s.user_entries !== 'undefined') {
+        userEntriesHtml = '<span>Your Entries: <span>' + s.user_entries + '</span></span>';
+      }
+
+      var entryFormHtml = '';
+      if (isLoggedIn) {
+        entryFormHtml = '<div class="sweep-entry-row">' +
+          '<input type="number" id="entryCount" value="1" min="1" max="50">' +
+          '<button class="btn" id="enterBtn" onclick="enterSweep()">Enter Giveaway</button>' +
+          '</div>' +
+          '<div class="sweep-cost" id="entryCost">Cost: ' + s.entry_cost + ' pts per entry</div>' +
+          '<div class="sweep-result" id="sweepResult"></div>' +
+          '<div class="sweep-error" id="sweepError"></div>';
+      } else {
+        entryFormHtml = '<p style="color:#64748b;font-size:14px;margin-top:12px;"><a href="/#login">Log in</a> to enter this giveaway</p>';
+      }
+
+      area.innerHTML = '<div class="sweep-card">' +
+        '<h2>' + esc(s.title) + '</h2>' +
+        '<div class="sweep-prize">&#127873; ' + esc(s.prize) + donorHtml + '</div>' +
+        (s.prize_description ? '<div class="sweep-desc">' + esc(s.prize_description) + '</div>' : '') +
+        imgHtml +
+        '<div class="sweep-stats">' +
+        '<span>Total Entries: <span>' + (s.total_entries || 0) + '</span></span>' +
+        userEntriesHtml +
+        (s.prize_value ? '<span>Value: $' + Number(s.prize_value).toFixed(0) + '</span>' : '') +
+        endHtml +
+        '</div>' +
+        entryFormHtml +
+        '</div>';
+
+      // Load leaderboard
+      loadLeaderboard(s.id);
+    } catch (e) {
+      console.error('Active sweep error', e);
+    }
+  }
+
+  window.enterSweep = async function() {
+    if (!activeSweep || !isLoggedIn) return;
+    var btn = document.getElementById('enterBtn');
+    var resultEl = document.getElementById('sweepResult');
+    var errorEl = document.getElementById('sweepError');
+    var count = parseInt(document.getElementById('entryCount').value) || 1;
+
+    btn.disabled = true;
+    btn.textContent = 'Entering...';
+    resultEl.style.display = 'none';
+    errorEl.style.display = 'none';
+
+    try {
+      var r = await apiFetch('/api/sweep/enter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sweepId: activeSweep.id, count: count })
+      });
+      var data = await r.json();
+      if (!r.ok) {
+        errorEl.textContent = data.error || 'Entry failed';
+        errorEl.style.display = 'block';
+      } else {
+        resultEl.textContent = 'Entered ' + data.entered + 'x! Total: ' + data.total_entries + ' entries. Balance: ' + data.new_balance + ' pts';
+        resultEl.style.display = 'block';
+        document.getElementById('balanceNum').textContent = data.new_balance;
+        loadLeaderboard(activeSweep.id);
+      }
+    } catch (e) {
+      errorEl.textContent = 'Network error';
+      errorEl.style.display = 'block';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Enter Giveaway';
+  };
+
+  async function loadLeaderboard(sweepId) {
+    try {
+      var r = await fetch('/api/sweep/leaderboard?sweepId=' + sweepId);
+      if (!r.ok) return;
+      var data = await r.json();
+      if (!data.participants || !data.participants.length) return;
+      document.getElementById('leaderboardSection').style.display = 'block';
+      document.getElementById('leaderboardBody').innerHTML = data.participants.map(function(p, i) {
+        var cls = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
+        var medal = i === 0 ? '&#129351; ' : i === 1 ? '&#129352; ' : i === 2 ? '&#129353; ' : '';
+        return '<tr class="' + cls + '"><td>' + medal + (i + 1) + '</td><td>' + esc(p.name || 'User') + '</td><td>' + p.total_entries + '</td></tr>';
+      }).join('');
+    } catch (e) {
+      console.error('Leaderboard error', e);
+    }
+  }
+
+  // Load rules from API to update earn grid
+  async function loadRules() {
+    try {
+      var r = await fetch('/api/sweep/active');
+      // Rules are static in the earn grid for now; could be dynamic later
+    } catch (e) {}
+  }
+
+  // Init
+  loadBalance();
+  loadActiveSweep();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book a Gig | FloridaLife</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080d14; --surface: #101825; --border: #1a2d42;
+      --text: #e2e8f0; --muted: #94a3b8;
+      --accent: #00b4d8; --accent-hover: #0096b7;
+      --green: #22c55e; --amber: #f59e0b; --danger: #ef4444;
+      --radius: 12px;
+      --heading: 'Barlow Condensed', sans-serif;
+      --body: 'Barlow', sans-serif;
+    }
+    body { font-family: var(--body); background: var(--bg); color: var(--text); min-height: 100vh; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Nav */
+    .site-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(8,13,20,0.95); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px; display: flex; align-items: center; height: 56px; gap: 24px;
+    }
+    .nav-brand { font-family: var(--heading); font-weight: 900; font-size: 20px; color: #fff; text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .nav-brand:hover { text-decoration: none; }
+    .nav-links { display: flex; gap: 6px; margin-left: auto; }
+    .nav-links a {
+      font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--muted);
+      padding: 6px 14px; border-radius: 8px; text-decoration: none; transition: all .15s;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,.06); text-decoration: none; }
+    .nav-links a.active { color: var(--accent); background: rgba(0,180,216,.1); }
+
+    /* Page layout */
+    .page { max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
+    .back-link { font-size: 14px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+    .back-link:hover { color: var(--accent); text-decoration: none; }
+
+    /* Provider header */
+    .provider-header {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; margin-bottom: 24px;
+    }
+    .provider-header h1 { font-family: var(--heading); font-weight: 900; font-size: 32px; color: #fff; margin-bottom: 6px; }
+    .provider-meta { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+    .provider-stars { display: flex; align-items: center; gap: 4px; font-size: 14px; margin-bottom: 10px; }
+    .star-filled { color: var(--amber); }
+    .star-empty { color: #334155; }
+    .provider-badges { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+    .badge-sm { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 6px; }
+    .badge-insured { background: rgba(34,197,94,.15); color: var(--green); }
+    .badge-featured { background: rgba(0,180,216,.15); color: var(--accent); }
+    .badge-licensed { background: rgba(245,158,11,.15); color: var(--amber); }
+    .provider-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+    /* Service selector */
+    .section-label { font-family: var(--heading); font-weight: 800; font-size: 20px; color: #fff; margin-bottom: 14px; }
+    .service-cards { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .svc-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+      transition: all .15s;
+    }
+    .svc-card:hover { border-color: rgba(255,255,255,.15); }
+    .svc-card.selected { border-color: var(--accent); box-shadow: 0 0 16px rgba(0,180,216,.15); }
+    .svc-card .svc-name { font-weight: 600; font-size: 15px; color: var(--text); }
+    .svc-card .svc-unit { font-size: 12px; color: var(--muted); }
+    .svc-card .svc-price { font-family: var(--heading); font-weight: 800; font-size: 20px; color: var(--accent); }
+
+    /* Booking form */
+    .book-form {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; margin-bottom: 24px;
+    }
+    .form-row { display: flex; gap: 12px; margin-bottom: 14px; }
+    .form-row > * { flex: 1; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font-size: 14px; font-family: var(--body);
+    }
+    .form-group textarea { min-height: 70px; resize: vertical; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+
+    /* Quote box */
+    .quote-box {
+      background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius);
+      padding: 24px; text-align: center; margin-bottom: 28px;
+    }
+    .quote-service { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+    .quote-amount { font-family: var(--heading); font-weight: 900; font-size: 36px; color: #fff; margin-bottom: 16px; }
+    .quote-box .btn { width: 100%; justify-content: center; font-size: 16px; padding: 14px; }
+    .quote-fine { font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
+    .quote-placeholder { color: var(--muted); font-size: 14px; padding: 12px 0; }
+    .btn { border: none; padding: 12px 24px; border-radius: 10px; font-family: var(--body); font-weight: 600; font-size: 15px; cursor: pointer; transition: all .15s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { text-decoration: none; }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-accent:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Reviews */
+    .reviews-section { margin-top: 32px; }
+    .review-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; margin-bottom: 12px;
+    }
+    .review-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .review-stars { display: flex; gap: 2px; }
+    .review-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .review-tag { font-size: 11px; padding: 2px 10px; border-radius: 12px; background: rgba(0,180,216,.1); color: var(--accent); }
+    .review-body { font-size: 14px; color: var(--text); line-height: 1.5; margin-bottom: 8px; }
+    .review-footer { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); }
+    .helpful-btn { background: none; border: 1px solid var(--border); color: var(--muted); font-size: 12px; padding: 3px 10px; border-radius: 6px; cursor: pointer; font-family: var(--body); }
+    .helpful-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Error/loading */
+    .error-panel { background: rgba(239,68,68,.1); border: 1px solid var(--danger); border-radius: var(--radius); padding: 14px; text-align: center; color: var(--danger); font-size: 14px; margin-bottom: 16px; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 40px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .site-footer { border-top: 1px solid var(--border); padding: 32px 20px; text-align: center; font-size: 13px; color: var(--muted); }
+    .site-footer a { color: var(--muted); }
+    .site-footer a:hover { color: var(--accent); }
+
+    @media (max-width: 640px) {
+      .form-row { flex-direction: column; gap: 0; }
+      .provider-header h1 { font-size: 24px; }
+      .quote-amount { font-size: 28px; }
+    }
+    @media (max-width: 480px) {
+      .page { padding: 20px 16px 60px; }
+      .nav-links a { padding: 6px 10px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="site-nav">
+    <a href="/" class="nav-brand" id="navBrand">FloridaLife</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/gigs" class="active">Services</a>
+      <a href="/rides">Rides</a>
+      <a href="/junk">Junk</a>
+      <a href="/leaderboard">Leaderboard</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/login" id="navLogin">Login</a>
+    </div>
+  </nav>
+
+  <div class="page" id="pageContent">
+    <a href="/gigs" class="back-link" id="backLink">&larr; Back to Gigs</a>
+    <div class="spinner" id="loadingSpinner"></div>
+
+    <!-- Provider header (populated by JS) -->
+    <div id="providerHeader" style="display:none;"></div>
+
+    <!-- Service selector -->
+    <div id="serviceSection" style="display:none;">
+      <h2 class="section-label">Select a Service</h2>
+      <div class="service-cards" id="serviceCards"></div>
+    </div>
+
+    <!-- Booking form -->
+    <div id="bookSection" style="display:none;">
+      <div class="book-form">
+        <h2 class="section-label">Booking Details</h2>
+        <div class="form-row">
+          <div class="form-group"><label>Your Name</label><input type="text" id="bookName"></div>
+          <div class="form-group"><label>Phone</label><input type="tel" id="bookPhone"></div>
+        </div>
+        <div class="form-group"><label>Your Address</label></div>
+        <div class="form-row">
+          <div class="form-group"><label>Street</label><input type="text" id="bookStreet"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>City</label><input type="text" id="bookCity"></div>
+          <div class="form-group">
+            <label>State</label>
+            <select id="bookState">
+              <option value="FL" selected>FL</option>
+              <option value="GA">GA</option>
+              <option value="AL">AL</option>
+              <option value="SC">SC</option>
+            </select>
+          </div>
+          <div class="form-group"><label>ZIP</label><input type="text" id="bookZip" maxlength="10"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Preferred Date</label><input type="date" id="bookDate"></div>
+          <div class="form-group">
+            <label>Preferred Window</label>
+            <select id="bookWindow">
+              <option value="morning">Morning (8am &ndash; 12pm)</option>
+              <option value="afternoon">Afternoon (12pm &ndash; 5pm)</option>
+              <option value="evening">Evening (5pm &ndash; 8pm)</option>
+              <option value="flexible">Flexible</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>Notes</label><textarea id="bookNotes" placeholder="Special instructions, gate codes, etc."></textarea></div>
+      </div>
+
+      <!-- Quote box -->
+      <div class="quote-box" id="quoteBox">
+        <div class="quote-placeholder">Select a service above to see pricing</div>
+      </div>
+
+      <div id="bookError" class="error-panel" style="display:none;"></div>
+    </div>
+
+    <!-- Reviews -->
+    <div id="reviewsSection" class="reviews-section" style="display:none;">
+      <h2 class="section-label">Reviews</h2>
+      <div id="reviewsList"></div>
+    </div>
+
+    <!-- Error state -->
+    <div id="errorState" style="display:none; text-align:center; padding:60px 20px;">
+      <p style="font-size:18px; color:var(--danger); margin-bottom:12px;">Provider not found</p>
+      <a href="/gigs">&larr; Browse all providers</a>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 FloridaLife &middot; <a href="/">Home</a> &middot; <a href="/gigs">Gigs</a></p>
+  </footer>
+
+<script>
+(function() {
+  function getTownName() {
+    var map = {
+      'treasurecoast-fl.com': 'Treasure Coast',
+      'space-coastfl.com': 'Space Coast',
+      'jacksonville-floridalife.com': 'Jacksonville',
+      'miami-floridalife.com': 'Miami',
+      'orlando-floridalife.com': 'Orlando',
+      'tampa-bay-florida.com': 'Tampa Bay',
+      'fortlauderdale-fl.com': 'Fort Lauderdale',
+      'fortmyers-fl.com': 'Fort Myers',
+      'westpalmbeach-fl.com': 'West Palm Beach',
+      'localhost': 'Treasure Coast'
+    };
+    return map[window.location.hostname] || 'FloridaLife';
+  }
+  document.getElementById('navBrand').textContent = getTownName();
+
+  function getToken() {
+    try { var m = document.cookie.match(/(?:^|;\s*)token=([^;]*)/); return m ? m[1] : null; } catch(e) { return null; }
+  }
+  var token = getToken() || localStorage.getItem('tc_token');
+  if (token) {
+    var el = document.getElementById('navLogin');
+    if (el) { el.textContent = 'Dashboard'; el.href = '/dashboard'; }
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    var d = document.createElement('div'); d.appendChild(document.createTextNode(str)); return d.innerHTML;
+  }
+
+  var params = new URLSearchParams(window.location.search);
+  var fromListing = params.get('from_listing');
+  if (fromListing) {
+    var bl = document.getElementById('backLink');
+    if (bl) { bl.href = '/listing/' + encodeURIComponent(fromListing); bl.innerHTML = '&larr; Back to Listing'; }
+  }
+  var providerId = params.get('provider') || params.get('provider_id');
+  if (!providerId) {
+    document.getElementById('loadingSpinner').style.display = 'none';
+    document.getElementById('errorState').style.display = 'block';
+    return;
+  }
+
+  var provider = null;
+  var selectedServiceIdx = -1;
+
+  async function loadProvider() {
+    try {
+      var res = await fetch('/api/gigs/providers/' + providerId);
+      if (!res.ok) throw new Error('Not found');
+      provider = await res.json();
+      document.getElementById('loadingSpinner').style.display = 'none';
+      renderProvider();
+      renderServices();
+      renderReviews();
+      document.getElementById('providerHeader').style.display = 'block';
+      document.getElementById('serviceSection').style.display = 'block';
+      document.getElementById('bookSection').style.display = 'block';
+      document.getElementById('reviewsSection').style.display = 'block';
+      prefillUser();
+    } catch(err) {
+      console.error('LOAD_PROVIDER_ERROR', err);
+      document.getElementById('loadingSpinner').style.display = 'none';
+      document.getElementById('errorState').style.display = 'block';
+    }
+  }
+
+  function prefillUser() {
+    try {
+      var name = localStorage.getItem('tc_user_name');
+      if (name) document.getElementById('bookName').value = name;
+    } catch(e) {}
+  }
+
+  function renderStars(rating) {
+    var r = parseFloat(rating) || 0;
+    var html = '';
+    for (var i = 1; i <= 5; i++) {
+      html += '<span class="' + (i <= Math.round(r) ? 'star-filled' : 'star-empty') + '">&#9733;</span>';
+    }
+    return html;
+  }
+
+  function renderProvider() {
+    var p = provider;
+    var badges = '';
+    if (p.featured) badges += '<span class="badge-sm badge-featured">Featured</span>';
+    if (p.insured) badges += '<span class="badge-sm badge-insured">Insured</span>';
+    if (p.licensed) badges += '<span class="badge-sm badge-licensed">Licensed</span>';
+
+    document.getElementById('providerHeader').innerHTML =
+      '<div class="provider-header">'
+      + '<h1>' + esc(p.business_name) + '</h1>'
+      + '<div class="provider-meta">' + (p.category_icon || '') + ' ' + esc(p.category_name || '') + ' &middot; ' + esc(p.city || '') + '</div>'
+      + '<div class="provider-stars">' + renderStars(p.avg_rating) + '<span style="color:var(--muted);font-size:12px;margin-left:6px;">' + (parseFloat(p.avg_rating) || 0).toFixed(1) + ' (' + (p.review_count || 0) + ' reviews)</span></div>'
+      + (badges ? '<div class="provider-badges">' + badges + '</div>' : '')
+      + (p.description ? '<div class="provider-desc">' + esc(p.description) + '</div>' : '')
+      + (token ? '<button onclick="window._shareProvider()" style="margin-top:12px;padding:8px 16px;border-radius:8px;border:1px solid rgba(0,180,216,0.3);background:rgba(0,180,216,0.08);color:#00b4d8;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;" title="+1 point when someone clicks">Share this provider &amp; earn points</button>' : '')
+      + '</div>';
+    document.title = esc(p.business_name) + ' — Book on Gigs';
+  }
+
+  function renderServices() {
+    var services = provider.services || [];
+    var container = document.getElementById('serviceCards');
+    if (!services.length) {
+      container.innerHTML = '<p style="color:var(--muted);">No services listed yet. Contact the provider directly.</p>';
+      return;
+    }
+    var html = '';
+    services.forEach(function(s, i) {
+      html += '<div class="svc-card' + (selectedServiceIdx === i ? ' selected' : '') + '" onclick="window._selectService(' + i + ')">'
+        + '<div><div class="svc-name">' + esc(s.name) + '</div>' + (s.unit ? '<div class="svc-unit">' + esc(s.unit) + '</div>' : '') + '</div>'
+        + '<div class="svc-price">$' + (s.price_cents / 100).toFixed(2) + '</div>'
+        + '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  window._selectService = function(idx) {
+    selectedServiceIdx = idx;
+    renderServices();
+    updateQuote();
+  };
+
+  function updateQuote() {
+    var box = document.getElementById('quoteBox');
+    if (selectedServiceIdx < 0 || !provider || !provider.services[selectedServiceIdx]) {
+      box.innerHTML = '<div class="quote-placeholder">Select a service above to see pricing</div>';
+      return;
+    }
+    var s = provider.services[selectedServiceIdx];
+    var price = (s.price_cents / 100).toFixed(2);
+    box.innerHTML =
+      '<div class="quote-service">' + esc(s.name) + '</div>'
+      + '<div class="quote-amount">$' + price + '</div>'
+      + '<button class="btn btn-accent" id="confirmBookBtn" onclick="window._confirmBook()">Confirm &amp; Pay $' + price + ' &rarr;</button>'
+      + '<div class="quote-fine">Paid securely via Stripe &middot; Provider confirms within 2 hours &middot; Full refund if not confirmed</div>';
+  }
+
+  window._confirmBook = async function() {
+    if (!token) {
+      window.location.href = '/login?next=' + encodeURIComponent('/gigs/book?provider=' + providerId);
+      return;
+    }
+    if (selectedServiceIdx < 0) return;
+
+    var btn = document.getElementById('confirmBookBtn');
+    btn.textContent = 'Processing...'; btn.disabled = true;
+    document.getElementById('bookError').style.display = 'none';
+
+    var s = provider.services[selectedServiceIdx];
+    var street = document.getElementById('bookStreet').value.trim();
+    var city = document.getElementById('bookCity').value.trim();
+    var state = document.getElementById('bookState').value;
+    var zip = document.getElementById('bookZip').value.trim();
+    var address = [street, city, state, zip].filter(Boolean).join(', ');
+
+    try {
+      var res = await fetch('/api/gigs/book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({
+          provider_id: parseInt(providerId),
+          service_name: s.name,
+          price_cents: s.price_cents,
+          scheduled_date: document.getElementById('bookDate').value || null,
+          scheduled_window: document.getElementById('bookWindow').value,
+          customer_address: address || null,
+          notes: document.getElementById('bookNotes').value.trim() || null
+        })
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Booking failed');
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        window.location.href = '/gigs?booked=' + data.bookingId;
+      }
+    } catch(err) {
+      console.error('BOOK_ERROR', err);
+      document.getElementById('bookError').textContent = err.message;
+      document.getElementById('bookError').style.display = 'block';
+      btn.textContent = 'Confirm & Pay'; btn.disabled = false;
+    }
+  };
+
+  function renderReviews() {
+    var reviews = provider.recent_reviews || [];
+    var container = document.getElementById('reviewsList');
+    if (!reviews.length) {
+      container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px 0;">No reviews yet &mdash; be the first to book!</p>';
+      return;
+    }
+    var html = '';
+    reviews.forEach(function(r) {
+      var tags = '';
+      var tagArr = r.tags || [];
+      if (typeof tagArr === 'string') { try { tagArr = JSON.parse(tagArr); } catch(e) { tagArr = []; } }
+      tagArr.forEach(function(t) { tags += '<span class="review-tag">' + esc(t) + '</span>'; });
+
+      var name = r.customer_name || 'Customer';
+      var firstName = name.split(' ')[0];
+      var date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+
+      html += '<div class="review-card">'
+        + '<div class="review-header"><div class="review-stars">' + renderStars(r.stars) + '</div></div>'
+        + (tags ? '<div class="review-tags">' + tags + '</div>' : '')
+        + (r.body ? '<div class="review-body">' + esc(r.body) + '</div>' : '')
+        + '<div class="review-footer">'
+        + '<span>' + esc(firstName) + ' &middot; ' + date + '</span>'
+        + '<button class="helpful-btn" onclick="window._markHelpful(' + r.id + ', this)">Helpful (' + (r.helpful_count || 0) + ')</button>'
+        + '</div></div>';
+    });
+    container.innerHTML = html;
+  }
+
+  window._markHelpful = async function(reviewId, btn) {
+    try {
+      var res = await fetch('/api/gigs/reviews/' + reviewId + '/helpful', { method: 'POST' });
+      var data = await res.json();
+      if (res.ok) btn.textContent = 'Helpful (' + data.helpful_count + ')';
+    } catch(e) { console.error('HELPFUL_ERROR', e); }
+  };
+
+  window._shareProvider = async function() {
+    if (!token) { alert('Please log in to earn community points.'); return; }
+    try {
+      var r = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ type: 'provider', id: providerId })
+      });
+      var data = await r.json();
+      if (data.share_url) {
+        if (navigator.share) {
+          navigator.share({ title: (provider ? provider.business_name : 'Check this out') + ' on Gigs', url: data.share_url });
+        } else if (navigator.clipboard) {
+          navigator.clipboard.writeText(data.share_url);
+          var btns = document.querySelectorAll('[onclick*="_shareProvider"]');
+          btns.forEach(function(b) { b.textContent = 'Link copied!'; setTimeout(function() { b.textContent = 'Share this provider & earn points'; }, 2000); });
+        }
+      }
+    } catch (err) { console.error('SHARE_PROVIDER_ERROR', err); }
+  };
+
+  loadProvider();
+})();
+</script>
+</body>
+</html>

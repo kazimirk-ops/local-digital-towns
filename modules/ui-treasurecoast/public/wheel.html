@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Giveaway Wheel — Admin</title>
+  <style>
+    :root { --primary: #0ea5e9; --accent: #00E5FF; --bg: #0a0f1a; --panel: #111827; --border: #1e293b; --text: #e2e8f0; --muted: #64748b; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+    a { color: var(--primary); text-decoration: none; }
+
+    .top-bar { background: var(--panel); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 18px; font-weight: 800; color: var(--primary); }
+    .back-link { font-size: 13px; color: var(--muted); }
+    .back-link:hover { color: var(--text); }
+
+    .container { max-width: 700px; margin: 0 auto; padding: 32px 20px; text-align: center; }
+    h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+
+    .sweep-select { margin-bottom: 24px; }
+    .sweep-select select { padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text); font-size: 14px; min-width: 300px; }
+
+    .wheel-wrap { position: relative; display: inline-block; margin-bottom: 24px; }
+    canvas { display: block; margin: 0 auto; }
+    .pointer { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 32px; z-index: 10; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
+
+    .spin-btn { padding: 14px 48px; background: var(--primary); color: #fff; border: none; border-radius: 12px; font-size: 18px; font-weight: 800; cursor: pointer; transition: background .2s; }
+    .spin-btn:hover { background: #0284c7; }
+    .spin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .result-card { display: none; background: var(--panel); border: 2px solid #f59e0b; border-radius: 16px; padding: 32px; margin-top: 24px; }
+    .result-card h2 { font-size: 24px; margin-bottom: 8px; }
+    .result-card .winner-name { font-size: 28px; font-weight: 800; color: #f59e0b; }
+    .result-card .winner-entries { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+    .participants-summary { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+
+    .confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999; }
+
+    .auth-error { background: #7f1d1d44; border: 1px solid #dc2626; border-radius: 12px; padding: 24px; margin-bottom: 24px; color: #fca5a5; }
+
+    .no-data { color: var(--muted); font-size: 14px; padding: 40px; }
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="/dashboard#admin" class="logo">&#127758; Treasure Coast</a>
+  <a href="/dashboard#admin" class="back-link">&larr; Admin Dashboard</a>
+</div>
+
+<div class="container">
+  <h1>&#127922; Giveaway Wheel</h1>
+  <p class="subtitle">Select a giveaway and spin the wheel to pick a winner!</p>
+
+  <div id="authError" class="auth-error" style="display:none;">
+    Admin access required. <a href="/dashboard">Go to Dashboard</a>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <div class="sweep-select">
+      <select id="sweepSelect" onchange="loadSweepParticipants()">
+        <option value="">Select a giveaway...</option>
+      </select>
+    </div>
+
+    <div id="participantsSummary" class="participants-summary"></div>
+
+    <div class="wheel-wrap" id="wheelWrap" style="display:none;">
+      <div class="pointer">&#9660;</div>
+      <canvas id="wheelCanvas" width="500" height="500"></canvas>
+    </div>
+
+    <div id="spinArea" style="display:none;">
+      <button class="spin-btn" id="spinBtn" onclick="spinWheel()">&#127922; Spin the Wheel</button>
+    </div>
+
+    <div class="result-card" id="resultCard">
+      <h2>&#127942; Winner!</h2>
+      <div class="winner-name" id="winnerName"></div>
+      <div class="winner-entries" id="winnerEntries"></div>
+    </div>
+  </div>
+</div>
+
+<canvas id="confettiCanvas" class="confetti-canvas" style="display:none;"></canvas>
+
+<script>
+(function() {
+  var TOKEN_KEY = 'tc_token';
+  var token = localStorage.getItem(TOKEN_KEY);
+  var participants = [];
+  var selectedSweepId = null;
+  var spinning = false;
+
+  function esc(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  async function apiFetch(url, opts) {
+    opts = opts || {};
+    if (token) {
+      opts.headers = opts.headers || {};
+      opts.headers['Authorization'] = 'Bearer ' + token;
+    }
+    return await fetch(url, opts);
+  }
+
+  // Check admin access
+  async function checkAdmin() {
+    if (!token) {
+      document.getElementById('authError').style.display = 'block';
+      return;
+    }
+    try {
+      var r = await apiFetch('/api/auth/me');
+      if (!r.ok) {
+        document.getElementById('authError').style.display = 'block';
+        return;
+      }
+      var user = await r.json();
+      if (user.role !== 'admin') {
+        document.getElementById('authError').style.display = 'block';
+        return;
+      }
+      document.getElementById('mainContent').style.display = 'block';
+      loadSweepstakes();
+    } catch (e) {
+      document.getElementById('authError').style.display = 'block';
+    }
+  }
+
+  async function loadSweepstakes() {
+    try {
+      var r = await apiFetch('/api/admin/sweep');
+      if (!r.ok) return;
+      var data = await r.json();
+      var sel = document.getElementById('sweepSelect');
+      (data.sweepstakes || []).forEach(function(s) {
+        var opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.title + ' (' + s.status + ') — ' + (s.total_entries || 0) + ' entries';
+        sel.appendChild(opt);
+      });
+    } catch (e) {
+      console.error('Load sweepstakes error', e);
+    }
+  }
+
+  window.loadSweepParticipants = async function() {
+    var sweepId = document.getElementById('sweepSelect').value;
+    if (!sweepId) {
+      document.getElementById('wheelWrap').style.display = 'none';
+      document.getElementById('spinArea').style.display = 'none';
+      document.getElementById('participantsSummary').textContent = '';
+      return;
+    }
+    selectedSweepId = sweepId;
+    try {
+      var r = await fetch('/api/sweep/leaderboard?sweepId=' + sweepId);
+      if (!r.ok) return;
+      var data = await r.json();
+      participants = data.participants || [];
+      if (!participants.length) {
+        document.getElementById('participantsSummary').textContent = 'No entries for this giveaway yet.';
+        document.getElementById('wheelWrap').style.display = 'none';
+        document.getElementById('spinArea').style.display = 'none';
+        return;
+      }
+      var total = participants.reduce(function(s, p) { return s + p.total_entries; }, 0);
+      document.getElementById('participantsSummary').textContent =
+        participants.length + ' participants, ' + total + ' total entries';
+      document.getElementById('wheelWrap').style.display = 'inline-block';
+      document.getElementById('spinArea').style.display = 'block';
+      document.getElementById('resultCard').style.display = 'none';
+      drawWheel(0);
+    } catch (e) {
+      console.error('Load participants error', e);
+    }
+  };
+
+  // ─── Wheel Drawing ───
+  var WHEEL_COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16'];
+
+  function drawWheel(rotation) {
+    var canvas = document.getElementById('wheelCanvas');
+    var ctx = canvas.getContext('2d');
+    var cx = canvas.width / 2;
+    var cy = canvas.height / 2;
+    var radius = 230;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!participants.length) return;
+
+    var total = participants.reduce(function(s, p) { return s + p.total_entries; }, 0);
+    var startAngle = rotation;
+
+    participants.forEach(function(p, i) {
+      var sliceAngle = (p.total_entries / total) * 2 * Math.PI;
+      var color = WHEEL_COLORS[i % WHEEL_COLORS.length];
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, radius, startAngle, startAngle + sliceAngle);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = '#0a0f1a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Label
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(startAngle + sliceAngle / 2);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 12px sans-serif';
+      var name = (p.name || 'User').substring(0, 14);
+      ctx.fillText(name + ' (' + p.total_entries + ')', radius - 12, 4);
+      ctx.restore();
+
+      startAngle += sliceAngle;
+    });
+
+    // Center circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, 30, 0, 2 * Math.PI);
+    ctx.fillStyle = var_bg();
+    ctx.fill();
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  function var_bg() { return '#0a0f1a'; }
+
+  // ─── Spin Animation ───
+  window.spinWheel = async function() {
+    if (spinning || !selectedSweepId || !participants.length) return;
+    spinning = true;
+    var btn = document.getElementById('spinBtn');
+    btn.disabled = true;
+    btn.textContent = 'Spinning...';
+    document.getElementById('resultCard').style.display = 'none';
+
+    // Call API to get actual winner
+    try {
+      var r = await apiFetch('/api/admin/sweep/' + selectedSweepId + '/draw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      var data = await r.json();
+      if (!r.ok) {
+        alert(data.error || 'Draw failed');
+        spinning = false;
+        btn.disabled = false;
+        btn.textContent = '&#127922; Spin the Wheel';
+        return;
+      }
+
+      var winner = data.winner;
+      var winnerIndex = -1;
+      for (var i = 0; i < participants.length; i++) {
+        if (participants[i].id === winner.user_id || participants[i].name === winner.name) {
+          winnerIndex = i;
+          break;
+        }
+      }
+      if (winnerIndex < 0) winnerIndex = 0;
+
+      // Calculate target angle so winner lands at top
+      var total = participants.reduce(function(s, p) { return s + p.total_entries; }, 0);
+      var angleBeforeWinner = 0;
+      for (var j = 0; j < winnerIndex; j++) {
+        angleBeforeWinner += (participants[j].total_entries / total) * 2 * Math.PI;
+      }
+      var winnerSlice = (participants[winnerIndex].total_entries / total) * 2 * Math.PI;
+      var targetMid = angleBeforeWinner + winnerSlice / 2;
+      // Pointer is at top (-PI/2), we want targetMid to land there
+      var targetRotation = -Math.PI / 2 - targetMid;
+      // Add several full rotations for drama
+      var fullSpins = 5 + Math.random() * 3;
+      var finalAngle = targetRotation - fullSpins * 2 * Math.PI;
+
+      // Animate
+      var startTime = performance.now();
+      var duration = 4000 + Math.random() * 1500;
+      var startRotation = 0;
+
+      function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+      function animate(now) {
+        var elapsed = now - startTime;
+        var progress = Math.min(elapsed / duration, 1);
+        var eased = easeOutCubic(progress);
+        var currentAngle = startRotation + (finalAngle - startRotation) * eased;
+        drawWheel(currentAngle);
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          // Show winner
+          document.getElementById('resultCard').style.display = 'block';
+          document.getElementById('winnerName').textContent = winner.name || 'User';
+          document.getElementById('winnerEntries').textContent = winner.entries + ' entries out of ' + data.total_entries + ' total';
+          btn.disabled = true;
+          btn.textContent = 'Winner Selected!';
+          spinning = false;
+          fireConfetti();
+        }
+      }
+      requestAnimationFrame(animate);
+    } catch (e) {
+      console.error('Spin error', e);
+      alert('Draw failed: ' + e.message);
+      spinning = false;
+      btn.disabled = false;
+      btn.textContent = '&#127922; Spin the Wheel';
+    }
+  };
+
+  // ─── Confetti ───
+  function fireConfetti() {
+    var canvas = document.getElementById('confettiCanvas');
+    canvas.style.display = 'block';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    var ctx = canvas.getContext('2d');
+    var pieces = [];
+    var colors = ['#f59e0b', '#10b981', '#0ea5e9', '#ef4444', '#8b5cf6', '#ec4899', '#f97316'];
+
+    for (var i = 0; i < 150; i++) {
+      pieces.push({
+        x: Math.random() * canvas.width,
+        y: -20 - Math.random() * 200,
+        w: 6 + Math.random() * 6,
+        h: 4 + Math.random() * 8,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        vx: -2 + Math.random() * 4,
+        vy: 2 + Math.random() * 4,
+        rot: Math.random() * Math.PI * 2,
+        rotV: (-0.1 + Math.random() * 0.2)
+      });
+    }
+
+    var frame = 0;
+    function drawConfetti() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      var alive = false;
+      pieces.forEach(function(p) {
+        if (p.y > canvas.height + 20) return;
+        alive = true;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.08;
+        p.rot += p.rotV;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+      frame++;
+      if (alive && frame < 300) {
+        requestAnimationFrame(drawConfetti);
+      } else {
+        canvas.style.display = 'none';
+      }
+    }
+    requestAnimationFrame(drawConfetti);
+  }
+
+  checkAdmin();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Junk Removal | FloridaLife</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080d14; --surface: #101825; --border: #1a2d42;
+      --text: #e2e8f0; --muted: #94a3b8;
+      --accent: #22c55e; --accent-hover: #16a34a;
+      --green: #22c55e; --amber: #f59e0b; --danger: #ef4444;
+      --radius: 12px;
+      --heading: 'Barlow Condensed', sans-serif;
+      --body: 'Barlow', sans-serif;
+    }
+    body { font-family: var(--body); background: var(--bg); color: var(--text); min-height: 100vh; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Nav */
+    .site-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(8,13,20,0.95); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px; display: flex; align-items: center; height: 56px; gap: 24px;
+    }
+    .nav-brand { font-family: var(--heading); font-weight: 900; font-size: 20px; color: #fff; text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .nav-brand:hover { text-decoration: none; }
+    .nav-links { display: flex; gap: 6px; margin-left: auto; }
+    .nav-links a {
+      font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--muted);
+      padding: 6px 14px; border-radius: 8px; text-decoration: none; transition: all .15s;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,.06); text-decoration: none; }
+    .nav-links a.active { color: var(--accent); background: rgba(34,197,94,.1); }
+
+    /* Hero */
+    .hero {
+      padding: 80px 20px 60px; text-align: center;
+      background: linear-gradient(180deg, rgba(34,197,94,.06) 0%, transparent 100%);
+    }
+    .hero h1 { font-family: var(--heading); font-weight: 900; font-size: 56px; color: #fff; letter-spacing: -1px; margin-bottom: 12px; }
+    .hero .sub { font-family: var(--heading); font-weight: 700; font-size: 22px; color: var(--accent); margin-bottom: 16px; }
+    .hero p { font-size: 16px; color: var(--muted); max-width: 480px; margin: 0 auto 28px; line-height: 1.6; }
+    .btn { border: none; padding: 12px 24px; border-radius: 10px; font-family: var(--body); font-weight: 600; font-size: 15px; cursor: pointer; transition: all .15s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { text-decoration: none; }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-accent:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Sections */
+    .section-wrap { max-width: 880px; margin: 0 auto; padding: 48px 20px; }
+    .section-title { font-family: var(--heading); font-weight: 800; font-size: 28px; color: #fff; margin-bottom: 24px; }
+    .section-label { font-family: var(--heading); font-weight: 800; font-size: 20px; color: #fff; margin-bottom: 14px; }
+
+    /* Junk type cards */
+    .junk-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .junk-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; cursor: pointer; transition: all .15s;
+    }
+    .junk-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .junk-card.active { border-color: var(--accent); box-shadow: 0 0 20px rgba(34,197,94,.15); }
+    .junk-icon { font-size: 32px; margin-bottom: 8px; }
+    .junk-name { font-family: var(--heading); font-weight: 800; font-size: 18px; color: #fff; }
+    .junk-desc { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+    .junk-price { font-size: 13px; color: var(--accent); font-weight: 600; margin-top: 8px; }
+
+    /* Book form */
+    .book-form {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; margin-bottom: 24px;
+    }
+    .form-row { display: flex; gap: 12px; margin-bottom: 14px; }
+    .form-row > * { flex: 1; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font-size: 14px; font-family: var(--body);
+    }
+    .form-group textarea { min-height: 70px; resize: vertical; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+
+    /* Info callout */
+    .info-callout {
+      border-left: 3px solid var(--accent); background: rgba(34,197,94,.06);
+      border-radius: 0 8px 8px 0; padding: 14px 16px; margin-bottom: 24px;
+      font-size: 13px; color: var(--muted); line-height: 1.5;
+    }
+    .info-callout strong { color: var(--text); }
+
+    /* Service cards */
+    .service-cards { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .svc-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+      transition: all .15s;
+    }
+    .svc-card:hover { border-color: rgba(255,255,255,.15); }
+    .svc-card.selected { border-color: var(--accent); box-shadow: 0 0 16px rgba(34,197,94,.15); }
+    .svc-card .svc-name { font-weight: 600; font-size: 15px; color: var(--text); }
+    .svc-card .svc-unit { font-size: 12px; color: var(--muted); }
+    .svc-card .svc-price { font-family: var(--heading); font-weight: 800; font-size: 20px; color: var(--accent); }
+
+    /* Quote box */
+    .quote-box {
+      background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius);
+      padding: 24px; text-align: center; margin-bottom: 28px;
+    }
+    .quote-service { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+    .quote-amount { font-family: var(--heading); font-weight: 900; font-size: 36px; color: #fff; margin-bottom: 16px; }
+    .quote-box .btn { width: 100%; justify-content: center; font-size: 16px; padding: 14px; }
+    .quote-fine { font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
+    .quote-placeholder { color: var(--muted); font-size: 14px; padding: 12px 0; }
+
+    /* What we take */
+    .take-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 32px; }
+    .take-item { font-size: 14px; color: var(--text); padding: 4px 0; }
+    .take-item span { color: var(--accent); margin-right: 6px; }
+    .take-note { font-size: 13px; color: var(--muted); margin-top: 16px; line-height: 1.5; }
+
+    /* Apply banner */
+    .apply-banner {
+      background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius);
+      padding: 32px; text-align: center; margin-top: 48px;
+    }
+    .apply-banner p { color: var(--muted); margin-bottom: 20px; font-size: 15px; line-height: 1.6; max-width: 520px; margin-left: auto; margin-right: auto; }
+
+    /* Error/loading */
+    .error-panel { background: rgba(239,68,68,.1); border: 1px solid var(--danger); border-radius: var(--radius); padding: 14px; text-align: center; color: var(--danger); font-size: 14px; margin-bottom: 16px; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 40px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .success-banner {
+      background: rgba(34,197,94,.1); border: 1px solid var(--green); border-radius: var(--radius);
+      padding: 20px; text-align: center; color: var(--green); font-weight: 600; margin-bottom: 24px;
+    }
+    .success-banner p { color: var(--muted); font-weight: 400; margin-top: 8px; font-size: 14px; }
+
+    .site-footer { border-top: 1px solid var(--border); padding: 32px 20px; text-align: center; font-size: 13px; color: var(--muted); }
+    .site-footer a { color: var(--muted); }
+    .site-footer a:hover { color: var(--accent); }
+
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 38px; }
+      .hero .sub { font-size: 18px; }
+      .junk-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .form-row { flex-direction: column; gap: 0; }
+      .quote-amount { font-size: 28px; }
+      .take-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .junk-grid { grid-template-columns: 1fr; }
+      .hero { padding: 48px 16px 36px; }
+      .section-wrap { padding: 32px 16px; }
+      .nav-links a { padding: 6px 10px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="site-nav">
+    <a href="/" class="nav-brand" id="navBrand">FloridaLife</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/gigs">Services</a>
+      <a href="/rides">Rides</a>
+      <a href="/junk" class="active">Junk</a>
+      <a href="/leaderboard">Leaderboard</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/login" id="navLogin">Login</a>
+    </div>
+  </nav>
+
+  <!-- Success banner -->
+  <div id="successBanner" style="display:none;max-width:880px;margin:20px auto 0;padding:0 20px;"></div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>Junk Removal</h1>
+    <div class="sub">Same-day junk removal, done right.</div>
+    <p>Furniture, appliances, yard waste, full cleanouts. We show up, we haul it, you're done. Serving your entire community.</p>
+    <a href="#book-form" class="btn btn-accent">Schedule Pickup &rarr;</a>
+  </section>
+
+  <!-- Junk type cards -->
+  <section class="section-wrap">
+    <h2 class="section-title">What Do You Need Hauled?</h2>
+    <div class="junk-grid" id="junkGrid">
+      <div class="junk-card" onclick="window._selectJobType('furniture')">
+        <div class="junk-icon">&#128715;&#65039;</div>
+        <div class="junk-name">Furniture &amp; Appliances</div>
+        <div class="junk-desc">Sofas, mattresses, washers, fridges &mdash; we take it all.</div>
+        <div class="junk-price">From $65</div>
+      </div>
+      <div class="junk-card" onclick="window._selectJobType('cleanout')">
+        <div class="junk-icon">&#127968;</div>
+        <div class="junk-name">Home Cleanout</div>
+        <div class="junk-desc">Moving out or cleaning up? Full interior cleanouts.</div>
+        <div class="junk-price">From $499</div>
+      </div>
+      <div class="junk-card" onclick="window._selectJobType('yard')">
+        <div class="junk-icon">&#127807;</div>
+        <div class="junk-name">Yard Waste &amp; Debris</div>
+        <div class="junk-desc">Brush, branches, dirt, gravel &mdash; cleared and hauled.</div>
+        <div class="junk-price">From $125</div>
+      </div>
+      <div class="junk-card" onclick="window._selectJobType('construction')">
+        <div class="junk-icon">&#128296;</div>
+        <div class="junk-name">Construction Debris</div>
+        <div class="junk-desc">Drywall, lumber, tile, concrete &mdash; post-reno cleanup.</div>
+        <div class="junk-price">From $225</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Booking form -->
+  <section class="section-wrap" id="book-form">
+    <h2 class="section-title">Schedule Your Pickup</h2>
+
+    <div class="book-form">
+      <div class="form-group">
+        <label>Job Type</label>
+        <select id="jobType" onchange="window._onJobTypeChange()">
+          <option value="">Select a job type...</option>
+          <option value="furniture">Furniture &amp; Appliances</option>
+          <option value="cleanout">Home Cleanout</option>
+          <option value="yard">Yard Waste &amp; Debris</option>
+          <option value="construction">Construction Debris</option>
+          <option value="single">Single Item</option>
+          <option value="mixed">Mixed / Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Pickup Address *</label><input type="text" id="pickupAddr" placeholder="Full address where items are located" required></div>
+      <div class="form-row">
+        <div class="form-group"><label>Date</label><input type="date" id="junkDate"></div>
+        <div class="form-group">
+          <label>Time Window</label>
+          <select id="junkWindow">
+            <option value="morning">Morning (7am &ndash; 12pm)</option>
+            <option value="afternoon" selected>Afternoon (12 &ndash; 5pm)</option>
+            <option value="flexible">Flexible</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Approximate Load Size</label>
+        <select id="loadSize">
+          <option value="small">Small (a few items)</option>
+          <option value="medium">Medium (half a truck)</option>
+          <option value="large">Large (full truck)</option>
+          <option value="unsure" selected>Not sure</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea id="junkNotes" placeholder="List items to remove, any access issues (stairs, gate codes), or special instructions..."></textarea></div>
+
+      <div class="info-callout">
+        <strong>&#8505;&#65039; About Dump Fees</strong><br>
+        Indian River County dump fees may apply for certain materials. Our team will advise you on-site. Electronics and hazardous materials may require separate disposal.
+      </div>
+    </div>
+
+    <!-- Service selector -->
+    <h2 class="section-label">Select a Service</h2>
+    <div class="service-cards" id="serviceCards">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Quote box -->
+    <div class="quote-box" id="quoteBox">
+      <div class="quote-placeholder">Select a service above to see pricing</div>
+    </div>
+
+    <div id="bookError" class="error-panel" style="display:none;"></div>
+  </section>
+
+  <!-- What we take -->
+  <section class="section-wrap">
+    <h2 class="section-title">What We Take</h2>
+    <div class="take-grid">
+      <div class="take-item"><span>&#10003;</span> Furniture (sofas, beds, dressers)</div>
+      <div class="take-item"><span>&#10003;</span> Construction debris</div>
+      <div class="take-item"><span>&#10003;</span> Appliances (washers, dryers, fridges)</div>
+      <div class="take-item"><span>&#10003;</span> Office furniture</div>
+      <div class="take-item"><span>&#10003;</span> Mattresses</div>
+      <div class="take-item"><span>&#10003;</span> Hot tubs &amp; swing sets</div>
+      <div class="take-item"><span>&#10003;</span> Electronics (TVs, computers)</div>
+      <div class="take-item"><span>&#10003;</span> Exercise equipment</div>
+      <div class="take-item"><span>&#10003;</span> Yard waste &amp; brush</div>
+      <div class="take-item"><span>&#10003;</span> Garage cleanouts</div>
+      <div class="take-item"><span>&#10003;</span> Moving boxes &amp; packing</div>
+      <div class="take-item"><span>&#10003;</span> Storage unit cleanouts</div>
+    </div>
+    <div class="take-note">We cannot accept: paint, chemicals, asbestos, medical waste, or tires.</div>
+  </section>
+
+  <!-- Apply -->
+  <section class="section-wrap">
+    <div class="apply-banner">
+      <h2 class="section-title" style="margin-bottom:12px;">Work with Junk Removal</h2>
+      <p>Earn on your schedule hauling junk in your community. Truck or trailer required.</p>
+      <a href="/gigs#apply-form" class="btn btn-accent" onclick="setTimeout(function(){if(window.switchApplyTab)switchApplyTab('individual');var r=document.getElementById('indRole');if(r)r.value='junk';},200)">Apply to Work &rarr;</a>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 FloridaLife &middot; <a href="/">Home</a> &middot; <a href="/gigs">Gigs</a> &middot; <a href="/junk">Junk Removal</a></p>
+  </footer>
+
+<script src="/auth-gate.js"></script>
+<script>
+(function() {
+  function getTownName() {
+    var map = {
+      'treasurecoast-fl.com': 'Treasure Coast',
+      'space-coastfl.com': 'Space Coast',
+      'jacksonville-floridalife.com': 'Jacksonville',
+      'miami-floridalife.com': 'Miami',
+      'orlando-floridalife.com': 'Orlando',
+      'tampa-bay-florida.com': 'Tampa Bay',
+      'fortlauderdale-fl.com': 'Fort Lauderdale',
+      'fortmyers-fl.com': 'Fort Myers',
+      'westpalmbeach-fl.com': 'West Palm Beach',
+      'localhost': 'Treasure Coast'
+    };
+    return map[window.location.hostname] || 'FloridaLife';
+  }
+  document.getElementById('navBrand').textContent = getTownName();
+
+  function getToken() {
+    try { var m = document.cookie.match(/(?:^|;\s*)token=([^;]*)/); return m ? m[1] : null; } catch(e) { return null; }
+  }
+  var token = getToken() || localStorage.getItem('tc_token');
+  if (token) {
+    var el = document.getElementById('navLogin');
+    if (el) { el.textContent = 'Dashboard'; el.href = '/dashboard'; }
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    var d = document.createElement('div'); d.appendChild(document.createTextNode(str)); return d.innerHTML;
+  }
+
+  // Success banner
+  var params = new URLSearchParams(window.location.search);
+  var bookedId = params.get('booked');
+  if (bookedId) {
+    var banner = document.getElementById('successBanner');
+    banner.innerHTML = '<div class="success-banner">Pickup scheduled! Booking #' + esc(bookedId) + '<p>Our team will confirm within 2 hours. You\'ll receive an email with details.</p></div>';
+    banner.style.display = 'block';
+  }
+
+  var providerId = null;
+  var services = [];
+  var selectedServiceIdx = -1;
+  var selectedJobType = '';
+
+  // Load TC Junk card
+  async function loadJunkCard() {
+    try {
+      var res = await fetch('/api/gigs/junk/card');
+      var data = await res.json();
+      if (!data.available) {
+        document.getElementById('serviceCards').innerHTML = '<p style="color:var(--muted);">Junk Removal is not yet available.</p>';
+        return;
+      }
+      providerId = data.provider_id;
+      services = data.services || [];
+      renderServices();
+    } catch(err) {
+      console.error('LOAD_JUNK_CARD_ERROR', err);
+      document.getElementById('serviceCards').innerHTML = '<p style="color:var(--muted);">Failed to load services.</p>';
+    }
+  }
+
+  function renderServices() {
+    var container = document.getElementById('serviceCards');
+    if (!services.length) {
+      container.innerHTML = '<p style="color:var(--muted);">No services available.</p>';
+      return;
+    }
+    var html = '';
+    services.forEach(function(s, i) {
+      html += '<div class="svc-card' + (selectedServiceIdx === i ? ' selected' : '') + '" onclick="window._selectService(' + i + ')">'
+        + '<div><div class="svc-name">' + esc(s.name) + '</div>' + (s.unit ? '<div class="svc-unit">' + esc(s.unit) + '</div>' : '') + '</div>'
+        + '<div class="svc-price">$' + (s.price_cents / 100).toFixed(2) + '</div>'
+        + '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  window._selectService = function(idx) {
+    selectedServiceIdx = idx;
+    renderServices();
+    updateQuote();
+  };
+
+  function updateQuote() {
+    var box = document.getElementById('quoteBox');
+    if (selectedServiceIdx < 0 || !services[selectedServiceIdx]) {
+      box.innerHTML = '<div class="quote-placeholder">Select a service above to see pricing</div>';
+      return;
+    }
+    var s = services[selectedServiceIdx];
+    var price = (s.price_cents / 100).toFixed(2);
+    box.innerHTML =
+      '<div class="quote-service">' + esc(s.name) + '</div>'
+      + '<div class="quote-amount">$' + price + '</div>'
+      + '<button class="btn btn-accent" id="confirmBookBtn" onclick="window._confirmBook()">Schedule &amp; Pay $' + price + ' &rarr;</button>'
+      + '<div class="quote-fine">Pay securely via Stripe &middot; Team confirms within 2 hours &middot; Full refund if not confirmed</div>';
+  }
+
+  // Job type cards
+  window._selectJobType = function(type) {
+    selectedJobType = type;
+    document.getElementById('jobType').value = type;
+    updateJobCards();
+    document.getElementById('book-form').scrollIntoView({ behavior: 'smooth' });
+  };
+
+  window._onJobTypeChange = function() {
+    selectedJobType = document.getElementById('jobType').value;
+    updateJobCards();
+  };
+
+  function updateJobCards() {
+    document.querySelectorAll('.junk-card').forEach(function(c) { c.classList.remove('active'); });
+    if (selectedJobType) {
+      var map = { furniture: 0, cleanout: 1, yard: 2, construction: 3 };
+      var idx = map[selectedJobType];
+      if (idx !== undefined) {
+        var cards = document.querySelectorAll('.junk-card');
+        if (cards[idx]) cards[idx].classList.add('active');
+      }
+    }
+  }
+
+  // Book junk removal
+  window._confirmBook = async function() {
+    if (!token) {
+      window.showAuthModal();
+      return;
+    }
+    if (selectedServiceIdx < 0 || !providerId) return;
+
+    var addr = document.getElementById('pickupAddr').value.trim();
+    if (!addr) {
+      document.getElementById('bookError').textContent = 'Pickup address is required.';
+      document.getElementById('bookError').style.display = 'block';
+      return;
+    }
+
+    var btn = document.getElementById('confirmBookBtn');
+    btn.textContent = 'Processing...'; btn.disabled = true;
+    document.getElementById('bookError').style.display = 'none';
+
+    var s = services[selectedServiceIdx];
+    var jobType = document.getElementById('jobType').value || 'mixed';
+    var loadSize = document.getElementById('loadSize').value || '';
+    var notes = document.getElementById('junkNotes').value.trim() || '';
+    var fullNotes = jobType + (loadSize ? ' | Load: ' + loadSize : '') + (notes ? ' — ' + notes : '');
+
+    try {
+      var res = await fetch('/api/gigs/book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({
+          provider_id: providerId,
+          service_name: s.name,
+          price_cents: s.price_cents,
+          scheduled_date: document.getElementById('junkDate').value || null,
+          scheduled_window: document.getElementById('junkWindow').value,
+          customer_address: addr,
+          notes: fullNotes || null
+        })
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Booking failed');
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        window.location.href = '/junk?booked=' + data.bookingId;
+      }
+    } catch(err) {
+      console.error('JUNK_BOOK_ERROR', err);
+      document.getElementById('bookError').textContent = err.message;
+      document.getElementById('bookError').style.display = 'block';
+      btn.textContent = 'Schedule & Pay'; btn.disabled = false;
+    }
+  };
+
+  // Init
+  loadJunkCard();
+})();
+</script>
+</body>
+</html>

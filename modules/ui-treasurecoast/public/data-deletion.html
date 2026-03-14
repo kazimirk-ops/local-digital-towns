@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Delete Your Account - Treasure Coast Digital</title>
+    <style>
+      :root {
+        --page-bg: #0a0f1a;
+        --page-panel: #0d1424;
+        --page-panel-2: #151d2e;
+        --page-border: rgba(255, 255, 255, 0.08);
+        --page-muted: #94a3b8;
+        --page-text: #e2e8f0;
+        --page-accent: #22d3ee;
+      }
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        background: var(--page-bg);
+        color: var(--page-text);
+        margin: 0;
+        line-height: 1.6;
+      }
+      a { color: #7dd3fc; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .page {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(13, 20, 36, 0.92);
+        border-bottom: 1px solid var(--page-border);
+        backdrop-filter: blur(12px);
+      }
+      .topbar-inner {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        color: var(--page-muted);
+        transition: all 0.2s ease;
+      }
+      .nav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); text-decoration: none; }
+      .hero {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 28px 18px 8px;
+      }
+      .hero-title {
+        font-size: 30px;
+        margin: 0;
+        color: #fff;
+      }
+      .hero-subtitle {
+        margin: 6px 0 0;
+        color: var(--page-muted);
+        font-size: 14px;
+      }
+      .content {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 18px;
+      }
+      .card {
+        background: var(--page-panel);
+        border: 1px solid var(--page-border);
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 20px 40px rgba(3, 7, 15, 0.35);
+      }
+      h2 {
+        color: #fff;
+        font-size: 20px;
+        margin: 28px 0 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--page-border);
+      }
+      h2:first-child {
+        margin-top: 0;
+      }
+      p {
+        margin: 0 0 12px;
+        color: var(--page-text);
+      }
+      ul {
+        margin: 0 0 12px;
+        padding-left: 20px;
+      }
+      li {
+        margin-bottom: 6px;
+        color: var(--page-text);
+      }
+      .muted { color: var(--page-muted); font-size: 13px; }
+      .email-cta {
+        display: inline-block;
+        padding: 14px 28px;
+        background: #1877f2;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 700;
+        border-radius: 10px;
+        text-decoration: none;
+        transition: background 0.15s;
+        margin: 8px 0 16px;
+      }
+      .email-cta:hover { background: #1565d8; text-decoration: none; }
+      .footer-links {
+        display: flex;
+        gap: 16px;
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid var(--page-border);
+      }
+      @media (max-width: 640px) {
+        .card { padding: 18px; }
+        .hero-title { font-size: 24px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <div class="topbar-inner">
+          <a class="nav-btn" href="/">&larr; Back to Town</a>
+          <span class="muted">Treasure Coast Digital</span>
+        </div>
+      </header>
+
+      <section class="hero">
+        <h1 class="hero-title">Delete Your Account</h1>
+        <div class="hero-subtitle">Request deletion of your account and personal data</div>
+      </section>
+
+      <div class="content">
+        <div class="card">
+          <p>To request deletion of your Treasure Coast Digital account and all associated data, please email us at:</p>
+
+          <a class="email-cta" href="mailto:support@sebastian-florida.com?subject=Account Deletion Request">support@sebastian-florida.com</a>
+
+          <p>Include the email address associated with your account in your request.</p>
+
+          <h2>What Gets Deleted</h2>
+          <ul>
+            <li>Your account and login credentials</li>
+            <li>All marketplace listings you created</li>
+            <li>Order history and transaction records</li>
+            <li>Community posts and messages</li>
+            <li>Facebook profile ID and photo URL</li>
+          </ul>
+
+          <h2>Timeline</h2>
+          <p>Account deletion requests are processed within 7 business days. You will receive a confirmation email when your data has been deleted.</p>
+
+          <h2>Data Retained</h2>
+          <p>We may retain anonymized transaction records as required for tax and legal compliance. No personally identifiable information is kept after deletion.</p>
+
+          <div class="footer-links">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="/">Back to Town</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

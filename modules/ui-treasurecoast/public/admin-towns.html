@@ -1,0 +1,662 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Manage Towns — Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Syne', ui-sans-serif, system-ui, sans-serif; background: #0a0f1a; color: #e2e8f0; min-height: 100vh; }
+      a { color: #0ea5e9; text-decoration: none; }
+
+      .top-bar {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 32px; border-bottom: 1px solid rgba(255,255,255,0.08);
+        background: #0f1722;
+      }
+      .top-bar h1 { font-size: 20px; font-weight: 700; }
+      .top-bar .back-link { font-size: 14px; color: #9fb0c3; }
+      .top-bar .back-link:hover { color: #e2e8f0; }
+
+      .actions-bar {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 32px 0;
+      }
+      .actions-bar .count { font-size: 14px; color: #9fb0c3; }
+
+      .btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 16px; border-radius: 8px; border: none;
+        font-family: inherit; font-size: 13px; font-weight: 600;
+        cursor: pointer; transition: all .15s;
+      }
+      .btn-primary { background: #0ea5e9; color: #fff; }
+      .btn-primary:hover { background: #0284c7; }
+      .btn-sm { padding: 6px 12px; font-size: 12px; }
+      .btn-danger { background: #dc2626; color: #fff; }
+      .btn-danger:hover { background: #b91c1c; }
+      .btn-ghost { background: transparent; color: #9fb0c3; border: 1px solid rgba(255,255,255,0.12); }
+      .btn-ghost:hover { color: #e2e8f0; border-color: rgba(255,255,255,0.25); }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        padding: 20px 32px 40px;
+      }
+      @media (max-width: 1200px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+      @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+      @media (max-width: 600px) { .grid { grid-template-columns: 1fr; padding: 16px; } .top-bar, .actions-bar { padding-left: 16px; padding-right: 16px; } }
+
+      .card {
+        background: #0f1722; border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px; overflow: hidden; transition: border-color .2s;
+      }
+      .card:hover { border-color: rgba(255,255,255,0.2); }
+
+      .card-cover {
+        width: 100%; height: 120px; object-fit: cover; display: block;
+      }
+      .card-cover-fallback {
+        width: 100%; height: 120px;
+        background: linear-gradient(135deg, #1e293b 0%, #0f1722 100%);
+      }
+
+      .card-body { padding: 14px 16px 16px; position: relative; }
+
+      .card-logo {
+        width: 48px; height: 48px; border-radius: 50%;
+        border: 3px solid #0f1722; object-fit: cover;
+        position: absolute; top: -28px; left: 16px;
+        background: #1e293b;
+      }
+      .card-logo-fallback {
+        width: 48px; height: 48px; border-radius: 50%;
+        border: 3px solid #0f1722;
+        position: absolute; top: -28px; left: 16px;
+        background: #1e293b; display: flex; align-items: center; justify-content: center;
+        font-size: 18px; font-weight: 700; color: #9fb0c3;
+      }
+
+      .card-header { padding-top: 24px; margin-bottom: 8px; }
+      .card-name { font-size: 16px; font-weight: 700; color: #e2e8f0; }
+      .card-domain { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+      .badge-row { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+      .badge {
+        font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+        padding: 2px 8px; border-radius: 4px;
+      }
+      .badge-green { background: rgba(16,185,129,0.15); color: #10b981; }
+      .badge-gray { background: rgba(100,116,139,0.2); color: #64748b; }
+      .badge-purple { background: rgba(139,92,246,0.15); color: #a78bfa; }
+
+      .stats-row {
+        display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: #9fb0c3;
+      }
+      .stats-row span { display: flex; align-items: center; gap: 4px; }
+      .stats-row strong { color: #e2e8f0; font-weight: 600; }
+
+      .card-actions { margin-top: 12px; }
+
+      /* Modal */
+      .modal-overlay {
+        display: none; position: fixed; inset: 0; z-index: 100;
+        background: rgba(0,0,0,0.6); align-items: center; justify-content: center;
+        padding: 20px;
+      }
+      .modal-overlay.active { display: flex; }
+      .modal {
+        background: #0f1722; border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 16px; width: 100%; max-width: 540px;
+        max-height: 90vh; overflow-y: auto; padding: 24px;
+      }
+      .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+
+      .form-group { margin-bottom: 14px; }
+      .form-group label { display: block; font-size: 12px; color: #9fb0c3; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+      .form-group input[type="text"],
+      .form-group input[type="number"] {
+        width: 100%; padding: 8px 12px; background: #1a2636; border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px; color: #e2e8f0; font-family: inherit; font-size: 14px;
+      }
+      .form-group input:focus { outline: none; border-color: #0ea5e9; }
+
+      .form-row { display: flex; gap: 12px; }
+      .form-row .form-group { flex: 1; }
+
+      .color-picker-wrap {
+        display: flex; align-items: center; gap: 8px;
+      }
+      .color-picker-wrap input[type="color"] {
+        width: 36px; height: 36px; border: none; border-radius: 6px;
+        cursor: pointer; background: none; padding: 0;
+      }
+      .color-picker-wrap input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+      .color-picker-wrap input[type="color"]::-webkit-color-swatch { border-radius: 4px; border: none; }
+      .color-hex { font-size: 13px; color: #9fb0c3; font-family: monospace; }
+
+      .color-preview {
+        height: 40px; border-radius: 8px; margin-top: 10px; margin-bottom: 14px;
+        display: flex; align-items: center; justify-content: center; gap: 12px;
+        font-weight: 700; font-size: 15px; overflow: hidden;
+      }
+      .color-preview .cp-primary { flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; }
+      .color-preview .cp-accent { flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; }
+
+      .toggle-row {
+        display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+      }
+      .toggle-row input[type="checkbox"] {
+        width: 18px; height: 18px; accent-color: #0ea5e9;
+      }
+      .toggle-row label { font-size: 13px; color: #e2e8f0; cursor: pointer; }
+
+      .upload-row {
+        display: flex; gap: 10px; margin-bottom: 14px;
+      }
+      .upload-btn {
+        display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+        background: #1a2636; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+        color: #9fb0c3; font-size: 12px; cursor: pointer; transition: all .15s;
+      }
+      .upload-btn:hover { border-color: rgba(255,255,255,0.25); color: #e2e8f0; }
+      .upload-btn input[type="file"] { display: none; }
+      .upload-status { font-size: 11px; color: #10b981; margin-top: 4px; }
+
+      .modal-footer { display: flex; justify-content: space-between; margin-top: 20px; gap: 10px; }
+
+      .toast {
+        position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+        background: #1e293b; color: #e2e8f0; padding: 10px 20px; border-radius: 8px;
+        font-size: 13px; z-index: 200; display: none; border: 1px solid rgba(255,255,255,0.1);
+      }
+      .toast.show { display: block; }
+    </style>
+  </head>
+  <body>
+
+    <div class="top-bar">
+      <div>
+        <a href="/dashboard" class="back-link">&larr; Back to Dashboard</a>
+        <h1>Manage Towns</h1>
+      </div>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ Add Town</button>
+    </div>
+
+    <div class="actions-bar">
+      <span class="count" id="townCount"></span>
+    </div>
+
+    <div class="grid" id="townsGrid"></div>
+
+    <!-- Edit Modal -->
+    <div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeModal('editModal')">
+      <div class="modal">
+        <h2 id="editModalTitle">Edit Town</h2>
+        <input type="hidden" id="editId" />
+
+        <div class="form-group">
+          <label>Town Name</label>
+          <input type="text" id="editName" />
+        </div>
+        <div class="form-group">
+          <label>Tagline</label>
+          <input type="text" id="editTagline" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Domain</label>
+            <input type="text" id="editDomain" placeholder="tampabay.app" />
+          </div>
+          <div class="form-group">
+            <label>State</label>
+            <input type="text" id="editState" placeholder="FL" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Primary Color</label>
+            <div class="color-picker-wrap">
+              <input type="color" id="editPrimary" value="#0ea5e9" oninput="updateEditPreview()" />
+              <span class="color-hex" id="editPrimaryHex">#0ea5e9</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Accent Color</label>
+            <div class="color-picker-wrap">
+              <input type="color" id="editAccent" value="#f0c040" oninput="updateEditPreview()" />
+              <span class="color-hex" id="editAccentHex">#f0c040</span>
+            </div>
+          </div>
+        </div>
+        <div class="color-preview" id="editColorPreview">
+          <div class="cp-primary" style="background:#0ea5e9;color:#fff;">Town Name</div>
+          <div class="cp-accent" style="background:#f0c040;color:#000;">Town Name</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="number" id="editLat" step="0.0001" />
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="number" id="editLng" step="0.0001" />
+          </div>
+          <div class="form-group">
+            <label>Radius (mi)</label>
+            <input type="number" id="editRadius" />
+          </div>
+        </div>
+
+        <div class="upload-row">
+          <label class="upload-btn">
+            Upload Logo
+            <input type="file" accept="image/*" onchange="uploadFile(this, 'logo')" />
+          </label>
+          <label class="upload-btn">
+            Upload Cover
+            <input type="file" accept="image/*" onchange="uploadFile(this, 'cover')" />
+          </label>
+        </div>
+        <div class="upload-status" id="uploadStatus"></div>
+
+        <div class="toggle-row">
+          <input type="checkbox" id="editActive" />
+          <label for="editActive">Town is active and visible</label>
+        </div>
+        <div class="toggle-row">
+          <input type="checkbox" id="editLiveSelling" />
+          <label for="editLiveSelling">Live selling enabled</label>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-danger btn-sm" onclick="deactivateTown()">Deactivate</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="closeModal('editModal')">Cancel</button>
+            <button class="btn btn-primary btn-sm" onclick="saveEdit()">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Modal -->
+    <div class="modal-overlay" id="createModal" onclick="if(event.target===this)closeModal('createModal')">
+      <div class="modal">
+        <h2>Add New Town</h2>
+
+        <div class="form-group">
+          <label>ID (slug, e.g. "tampa-bay")</label>
+          <input type="text" id="createId" placeholder="tampa-bay" oninput="validateSlug(this)" />
+          <div id="slugError" style="font-size:11px;color:#ef4444;margin-top:4px;display:none;">Only lowercase letters, numbers, and hyphens allowed</div>
+        </div>
+        <div class="form-group">
+          <label>Town Name</label>
+          <input type="text" id="createName" />
+        </div>
+        <div class="form-group">
+          <label>Tagline</label>
+          <input type="text" id="createTagline" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Domain</label>
+            <input type="text" id="createDomain" placeholder="tampabay.app" />
+          </div>
+          <div class="form-group">
+            <label>State</label>
+            <input type="text" id="createState" value="FL" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Primary Color</label>
+            <div class="color-picker-wrap">
+              <input type="color" id="createPrimary" value="#0ea5e9" oninput="updateCreatePreview()" />
+              <span class="color-hex" id="createPrimaryHex">#0ea5e9</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Accent Color</label>
+            <div class="color-picker-wrap">
+              <input type="color" id="createAccent" value="#f0c040" oninput="updateCreatePreview()" />
+              <span class="color-hex" id="createAccentHex">#f0c040</span>
+            </div>
+          </div>
+        </div>
+        <div class="color-preview" id="createColorPreview">
+          <div class="cp-primary" style="background:#0ea5e9;color:#fff;">Town Name</div>
+          <div class="cp-accent" style="background:#f0c040;color:#000;">Town Name</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="number" id="createLat" step="0.0001" />
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="number" id="createLng" step="0.0001" />
+          </div>
+          <div class="form-group">
+            <label>Radius (mi)</label>
+            <input type="number" id="createRadius" value="50" />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="closeModal('createModal')">Cancel</button>
+            <button class="btn btn-primary btn-sm" onclick="createTown()">Create Town</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    (function() {
+      var TOKEN_KEY = 'tc_token';
+
+      function getToken() { return localStorage.getItem(TOKEN_KEY); }
+
+      function apiFetch(url, opts) {
+        opts = opts || {};
+        var token = getToken();
+        if (token) {
+          opts.headers = opts.headers || {};
+          opts.headers['Authorization'] = 'Bearer ' + token;
+        }
+        return fetch(url, opts).then(function(r) {
+          if (r.status === 401) {
+            localStorage.removeItem(TOKEN_KEY);
+            window.location.href = '/#login';
+            return null;
+          }
+          return r;
+        });
+      }
+
+      function showToast(msg) {
+        var t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(function() { t.classList.remove('show'); }, 3000);
+      }
+
+      function openModal(id) { document.getElementById(id).classList.add('active'); }
+      function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+      // Expose to inline handlers
+      window.openModal = openModal;
+      window.closeModal = closeModal;
+      window.showToast = showToast;
+
+      // ── Auth check ──
+      apiFetch('/api/auth/me').then(function(r) {
+        if (!r) return;
+        return r.json();
+      }).then(function(user) {
+        if (!user || user.role !== 'admin') {
+          window.location.href = '/';
+          return;
+        }
+        loadTowns();
+      });
+
+      // ── Load towns ──
+      var allTowns = [];
+
+      function loadTowns() {
+        apiFetch('/api/admin/communities').then(function(r) {
+          if (!r) return;
+          return r.json();
+        }).then(function(data) {
+          if (!data) return;
+          allTowns = data.communities || [];
+          document.getElementById('townCount').textContent = allTowns.length + ' town' + (allTowns.length !== 1 ? 's' : '');
+          renderTowns(allTowns);
+        });
+      }
+
+      function renderTowns(towns) {
+        var grid = document.getElementById('townsGrid');
+        grid.innerHTML = '';
+        towns.forEach(function(t) {
+          var card = document.createElement('div');
+          card.className = 'card';
+
+          var coverHtml = t.cover_url
+            ? '<img class="card-cover" src="' + escHtml(t.cover_url) + '" alt="" />'
+            : '<div class="card-cover-fallback"></div>';
+
+          var logoHtml = t.logo_url
+            ? '<img class="card-logo" src="' + escHtml(t.logo_url) + '" alt="" />'
+            : '<div class="card-logo-fallback">' + escHtml((t.name || '?').charAt(0).toUpperCase()) + '</div>';
+
+          var badges = '';
+          if (t.is_active) {
+            badges += '<span class="badge badge-green">LIVE</span>';
+          } else {
+            badges += '<span class="badge badge-gray">INACTIVE</span>';
+          }
+          if (t.live_selling_enabled) {
+            badges += '<span class="badge badge-purple">LIVE SELLING ON</span>';
+          }
+
+          var gmv = Number(t.total_gmv_cents || t.total_gmv || 0);
+          var gmvStr = '$' + (gmv / 100).toFixed(2);
+
+          card.innerHTML = coverHtml + '<div class="card-body">' + logoHtml +
+            '<div class="card-header">' +
+              '<div class="card-name">' + escHtml(t.name) + '</div>' +
+              '<div class="card-domain">' + escHtml(t.domain || '') + '</div>' +
+            '</div>' +
+            '<div class="badge-row">' + badges + '</div>' +
+            '<div class="stats-row">' +
+              '<span><strong>' + (t.member_count || 0) + '</strong> members</span>' +
+              '<span><strong>' + (t.active_listings || 0) + '</strong> listings</span>' +
+              '<span><strong>' + (t.email_captures || 0) + '</strong> emails</span>' +
+              '<span><strong>' + gmvStr + '</strong> GMV</span>' +
+            '</div>' +
+            '<div class="card-actions">' +
+              '<button class="btn btn-ghost btn-sm" data-edit="' + escHtml(t.id) + '">Edit</button>' +
+            '</div>' +
+          '</div>';
+
+          card.querySelector('[data-edit]').addEventListener('click', function() {
+            openEditModal(t);
+          });
+
+          grid.appendChild(card);
+        });
+      }
+
+      function escHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s || '';
+        return d.innerHTML;
+      }
+
+      // ── Edit modal ──
+      var editingTown = null;
+
+      function openEditModal(t) {
+        editingTown = t;
+        document.getElementById('editId').value = t.id;
+        document.getElementById('editModalTitle').textContent = 'Edit: ' + t.name;
+        document.getElementById('editName').value = t.name || '';
+        document.getElementById('editTagline').value = t.tagline || '';
+        document.getElementById('editDomain').value = t.domain || '';
+        document.getElementById('editState').value = t.state || '';
+        document.getElementById('editPrimary').value = t.theme_primary || '#0ea5e9';
+        document.getElementById('editAccent').value = t.theme_accent || '#f0c040';
+        document.getElementById('editLat').value = t.lat || '';
+        document.getElementById('editLng').value = t.lng || '';
+        document.getElementById('editRadius').value = t.radius_miles || '';
+        document.getElementById('editActive').checked = !!t.is_active;
+        document.getElementById('editLiveSelling').checked = !!t.live_selling_enabled;
+        document.getElementById('uploadStatus').textContent = '';
+        updateEditPreview();
+        openModal('editModal');
+      }
+      window.openEditModal = openEditModal;
+
+      function updateEditPreview() {
+        var p = document.getElementById('editPrimary').value;
+        var a = document.getElementById('editAccent').value;
+        document.getElementById('editPrimaryHex').textContent = p;
+        document.getElementById('editAccentHex').textContent = a;
+        var preview = document.getElementById('editColorPreview');
+        preview.querySelector('.cp-primary').style.background = p;
+        preview.querySelector('.cp-primary').style.color = '#fff';
+        preview.querySelector('.cp-accent').style.background = a;
+        preview.querySelector('.cp-accent').style.color = '#000';
+      }
+      window.updateEditPreview = updateEditPreview;
+
+      function saveEdit() {
+        var id = document.getElementById('editId').value;
+        var body = {
+          name: document.getElementById('editName').value.trim() || null,
+          tagline: document.getElementById('editTagline').value.trim() || null,
+          domain: document.getElementById('editDomain').value.trim() || null,
+          state: document.getElementById('editState').value.trim() || null,
+          theme_primary: document.getElementById('editPrimary').value,
+          theme_accent: document.getElementById('editAccent').value,
+          lat: parseFloat(document.getElementById('editLat').value) || null,
+          lng: parseFloat(document.getElementById('editLng').value) || null,
+          radius_miles: parseInt(document.getElementById('editRadius').value) || null,
+          is_active: document.getElementById('editActive').checked,
+          live_selling_enabled: document.getElementById('editLiveSelling').checked
+        };
+        apiFetch('/api/admin/communities/' + encodeURIComponent(id), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }).then(function(r) { return r.json(); }).then(function(data) {
+          if (data.error) { showToast('Error: ' + data.error); return; }
+          showToast('Town updated!');
+          closeModal('editModal');
+          loadTowns();
+        });
+      }
+      window.saveEdit = saveEdit;
+
+      function deactivateTown() {
+        var id = document.getElementById('editId').value;
+        if (!confirm('Deactivate this town? It will be hidden but data is preserved.')) return;
+        apiFetch('/api/admin/communities/' + encodeURIComponent(id), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_active: false })
+        }).then(function(r) { return r.json(); }).then(function() {
+          showToast('Town deactivated');
+          closeModal('editModal');
+          loadTowns();
+        });
+      }
+      window.deactivateTown = deactivateTown;
+
+      // ── File uploads ──
+      function uploadFile(input, type) {
+        if (!input.files || !input.files[0]) return;
+        var id = document.getElementById('editId').value;
+        if (!id) return;
+        var fd = new FormData();
+        fd.append('file', input.files[0]);
+        var statusEl = document.getElementById('uploadStatus');
+        statusEl.textContent = 'Uploading ' + type + '...';
+        apiFetch('/api/admin/communities/' + encodeURIComponent(id) + '/' + type, {
+          method: 'POST',
+          body: fd
+        }).then(function(r) { return r.json(); }).then(function(data) {
+          if (data.error) { statusEl.textContent = 'Error: ' + data.error; return; }
+          statusEl.textContent = type.charAt(0).toUpperCase() + type.slice(1) + ' uploaded!';
+          loadTowns();
+        });
+      }
+      window.uploadFile = uploadFile;
+
+      // ── Create modal ──
+      function openCreateModal() {
+        document.getElementById('createId').value = '';
+        document.getElementById('createName').value = '';
+        document.getElementById('createTagline').value = '';
+        document.getElementById('createDomain').value = '';
+        document.getElementById('createState').value = 'FL';
+        document.getElementById('createPrimary').value = '#0ea5e9';
+        document.getElementById('createAccent').value = '#f0c040';
+        document.getElementById('createLat').value = '';
+        document.getElementById('createLng').value = '';
+        document.getElementById('createRadius').value = '50';
+        document.getElementById('slugError').style.display = 'none';
+        updateCreatePreview();
+        openModal('createModal');
+      }
+      window.openCreateModal = openCreateModal;
+
+      function updateCreatePreview() {
+        var p = document.getElementById('createPrimary').value;
+        var a = document.getElementById('createAccent').value;
+        document.getElementById('createPrimaryHex').textContent = p;
+        document.getElementById('createAccentHex').textContent = a;
+        var preview = document.getElementById('createColorPreview');
+        preview.querySelector('.cp-primary').style.background = p;
+        preview.querySelector('.cp-primary').style.color = '#fff';
+        preview.querySelector('.cp-accent').style.background = a;
+        preview.querySelector('.cp-accent').style.color = '#000';
+      }
+      window.updateCreatePreview = updateCreatePreview;
+
+      function validateSlug(input) {
+        var val = input.value;
+        var err = document.getElementById('slugError');
+        if (val && !/^[a-z0-9-]+$/.test(val)) {
+          err.style.display = 'block';
+        } else {
+          err.style.display = 'none';
+        }
+      }
+      window.validateSlug = validateSlug;
+
+      function createTown() {
+        var id = document.getElementById('createId').value.trim();
+        var name = document.getElementById('createName').value.trim();
+        if (!id || !name) { showToast('ID and Name are required'); return; }
+        if (!/^[a-z0-9-]+$/.test(id)) { showToast('ID must be lowercase letters, numbers, and hyphens only'); return; }
+        var body = {
+          id: id,
+          name: name,
+          tagline: document.getElementById('createTagline').value.trim(),
+          domain: document.getElementById('createDomain').value.trim(),
+          state: document.getElementById('createState').value.trim() || 'FL',
+          theme_primary: document.getElementById('createPrimary').value,
+          theme_accent: document.getElementById('createAccent').value,
+          lat: parseFloat(document.getElementById('createLat').value) || null,
+          lng: parseFloat(document.getElementById('createLng').value) || null,
+          radius_miles: parseInt(document.getElementById('createRadius').value) || 50
+        };
+        apiFetch('/api/admin/communities', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }).then(function(r) { return r.json(); }).then(function(data) {
+          if (data.error) { showToast('Error: ' + data.error); return; }
+          showToast('Town created!');
+          closeModal('createModal');
+          loadTowns();
+        });
+      }
+      window.createTown = createTown;
+
+    })();
+    </script>
+  </body>
+</html>

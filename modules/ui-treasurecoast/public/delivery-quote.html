@@ -1,0 +1,347 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Request Delivery Quote | FloridaLife</title>
+  <style>
+    :root { --bg:#0a0f1a; --surface:#111827; --border:#1e293b; --text:#e2e8f0; --muted:#94a3b8; --accent:#10b981; --blue:#0ea5e9; --radius:12px; }
+    * { box-sizing:border-box; margin:0; }
+    body { font-family:ui-sans-serif,system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+    a { color:#7dd3fc; text-decoration:none; }
+    .topbar { position:sticky;top:0;z-index:10;background:rgba(13,20,36,0.92);border-bottom:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(12px);padding:14px 18px; }
+    .topbar-inner { max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between; }
+    .nav-btn { display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;color:var(--muted);font-size:13px;transition:all .2s; }
+    .nav-btn:hover { color:#fff;background:rgba(255,255,255,0.06); }
+    .page { max-width:960px;margin:0 auto;padding:24px 18px; }
+    h1 { font-size:24px;color:#fff;margin-bottom:6px; }
+    .subtitle { color:var(--muted);font-size:14px;margin-bottom:24px; }
+    .card { background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px; }
+    .form-grid { display:grid;grid-template-columns:1fr 1fr;gap:20px; }
+    @media (max-width:700px) { .form-grid { grid-template-columns:1fr; } }
+    .form-group { display:flex;flex-direction:column;gap:4px; }
+    .form-group.full { grid-column:1/-1; }
+    label { font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600; }
+    input, select, textarea { padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s; }
+    input:focus, select:focus, textarea:focus { border-color:var(--accent); }
+    input[readonly] { opacity:0.7;cursor:not-allowed; }
+    textarea { resize:vertical;min-height:80px; }
+    .row-3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px; }
+    .toggle-row { display:flex;align-items:center;gap:10px;padding:4px 0; }
+    .toggle { position:relative;width:44px;height:24px;cursor:pointer; }
+    .toggle input { opacity:0;width:0;height:0; }
+    .toggle .slider { position:absolute;inset:0;background:#334155;border-radius:24px;transition:.3s; }
+    .toggle .slider::before { content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s; }
+    .toggle input:checked + .slider { background:var(--accent); }
+    .toggle input:checked + .slider::before { transform:translateX(20px); }
+    .toggle-label { font-size:14px;color:var(--text); }
+    .submit-btn { width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;transition:opacity .2s; }
+    .submit-btn:hover { opacity:0.9; }
+    .submit-btn:disabled { opacity:0.5;cursor:not-allowed; }
+    .item-preview { display:flex;gap:14px;align-items:center;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;margin-bottom:20px; }
+    .item-preview img { width:64px;height:64px;border-radius:8px;object-fit:cover; }
+    .item-preview .info { flex:1; }
+    .item-preview .title { font-size:14px;font-weight:600;color:#fff; }
+    .item-preview .price { font-size:13px;color:var(--accent);font-weight:700; }
+    .success-card { text-align:center;padding:40px 20px; }
+    .success-icon { font-size:48px;margin-bottom:12px; }
+    .success-title { font-size:20px;font-weight:700;color:var(--accent);margin-bottom:8px; }
+    .success-msg { color:var(--muted);font-size:14px;margin-bottom:24px; }
+    .msg { padding:10px 14px;border-radius:8px;font-size:13px;margin-top:12px; }
+    .msg-error { background:#7f1d1d;border:1px solid #dc2626;color:#fca5a5; }
+    .info-note { padding:10px 14px;border-radius:8px;font-size:13px;color:var(--muted);background:rgba(14,165,233,0.08);border:1px solid rgba(14,165,233,0.2);margin-bottom:16px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <a class="nav-btn" href="/">&larr; Back to Town</a>
+      <span style="color:var(--muted);font-size:13px;">TCD</span>
+    </div>
+  </div>
+
+  <div class="page">
+    <h1 id="pageTitle">Request Delivery Quote</h1>
+    <div class="subtitle" id="pageSubtitle">Fill out the details below and we'll get back to you with pricing within a few hours.</div>
+
+    <div class="card" id="formCard">
+      <div id="itemPreview"></div>
+
+      <form id="quoteForm" class="form-grid" onsubmit="return false;">
+        <!-- Item details (read-only for auction post-win) -->
+        <div class="form-group" id="itemNameGroup">
+          <label>Item Name</label>
+          <input type="text" id="itemName" required>
+        </div>
+        <div class="form-group" id="itemValueGroup">
+          <label>Item Value ($)</label>
+          <input type="number" id="itemValue" step="0.01" min="0" required>
+        </div>
+
+        <div class="form-group full" id="pickupGroup">
+          <label>Pickup Address</label>
+          <input type="text" id="pickupAddress" placeholder="Seller's address (if known)">
+        </div>
+
+        <div class="form-group full" style="margin-top:4px;">
+          <label style="font-size:14px;color:#fff;text-transform:none;letter-spacing:0;font-weight:700;margin-bottom:8px;">Delivery Address</label>
+        </div>
+        <div class="form-group">
+          <label>Street</label>
+          <input type="text" id="delStreet" required>
+        </div>
+        <div class="form-group">
+          <label>City</label>
+          <input type="text" id="delCity" required>
+        </div>
+        <div class="form-group">
+          <label>State</label>
+          <select id="delState">
+            <option value="">Select</option>
+            <option value="FL" selected>Florida</option><option value="AL">Alabama</option><option value="GA">Georgia</option>
+            <option value="SC">South Carolina</option><option value="NC">North Carolina</option><option value="TN">Tennessee</option>
+            <option value="TX">Texas</option><option value="NY">New York</option><option value="CA">California</option>
+            <option value="PA">Pennsylvania</option><option value="OH">Ohio</option><option value="IL">Illinois</option>
+            <option value="MI">Michigan</option><option value="VA">Virginia</option><option value="NJ">New Jersey</option>
+            <option value="MD">Maryland</option><option value="MA">Massachusetts</option><option value="IN">Indiana</option>
+            <option value="AZ">Arizona</option><option value="CO">Colorado</option><option value="WA">Washington</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ZIP Code</label>
+          <input type="text" id="delZip" maxlength="10" required>
+        </div>
+
+        <!-- Package details (hidden for auction post-win shipping) -->
+        <div id="packageSection">
+          <div class="form-group full" style="margin-top:4px;">
+            <label style="font-size:14px;color:#fff;text-transform:none;letter-spacing:0;font-weight:700;margin-bottom:8px;">Package Details</label>
+          </div>
+          <div class="form-grid" style="margin-top:8px;">
+            <div class="form-group">
+              <label>Dimensions (inches): L x W x H</label>
+              <div class="row-3">
+                <input type="number" id="pkgL" placeholder="L" step="0.1" min="0">
+                <input type="number" id="pkgW" placeholder="W" step="0.1" min="0">
+                <input type="number" id="pkgH" placeholder="H" step="0.1" min="0">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Weight (lbs)</label>
+              <input type="number" id="pkgWeight" step="0.1" min="0">
+            </div>
+            <div class="form-group">
+              <div class="toggle-row">
+                <label class="toggle"><input type="checkbox" id="isFragile"><span class="slider"></span></label>
+                <span class="toggle-label">Fragile</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="toggle-row">
+                <label class="toggle"><input type="checkbox" id="specialHandling"><span class="slider"></span></label>
+                <span class="toggle-label">Special Handling Required</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Preferred Delivery Date</label>
+          <input type="date" id="prefDate">
+        </div>
+
+        <div class="form-group full" style="margin-top:4px;">
+          <label style="font-size:14px;color:#fff;text-transform:none;letter-spacing:0;font-weight:700;margin-bottom:8px;">Your Contact Info</label>
+        </div>
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="contactName" required>
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="tel" id="contactPhone">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="contactEmail">
+        </div>
+        <div class="form-group full">
+          <label>Special Instructions (optional)</label>
+          <textarea id="specialInstructions" placeholder="Gate code, delivery notes, etc."></textarea>
+        </div>
+
+        <div class="form-group full">
+          <button type="submit" class="submit-btn" id="submitBtn" onclick="submitQuote()">Submit Quote Request</button>
+          <div id="formMsg"></div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/auth-gate.js"></script>
+  <script>
+    var params = new URLSearchParams(window.location.search);
+    var listingId = params.get('listing_id');
+    var orderId = params.get('order_id');
+    var qType = params.get('type'); // 'auction' (pre-bid estimate), 'shipping' (post-win), 'fulfillment' (post-win)
+    var isPostWin = (qType === 'shipping' || qType === 'fulfillment');
+
+    var token = localStorage.getItem('tc_token');
+    if (!token) { window.showAuthModal(); }
+
+    // Auction post-win mode: hide package details, make item fields read-only
+    if (isPostWin) {
+      document.getElementById('pageTitle').textContent = 'Request Shipping Quote';
+      document.getElementById('pageSubtitle').textContent = 'Confirm your delivery address and we\'ll get back to you with a shipping quote.';
+      // Hide package details section
+      document.getElementById('packageSection').style.display = 'none';
+    }
+
+    // Pre-fill from listing data
+    if (listingId && isPostWin && token) {
+      // Use the dedicated auction quote data endpoint
+      fetch('/api/delivery-quote-data?listing_id=' + listingId + (orderId ? '&order_id=' + orderId : ''), {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.title) {
+            document.getElementById('itemName').value = d.title;
+            document.getElementById('itemName').readOnly = true;
+          }
+          if (d.winning_amount_cents) {
+            document.getElementById('itemValue').value = (d.winning_amount_cents / 100).toFixed(2);
+            document.getElementById('itemValue').readOnly = true;
+          }
+          if (d.pickup_address) {
+            document.getElementById('pickupAddress').value = d.pickup_address;
+            document.getElementById('pickupAddress').readOnly = true;
+          }
+          // Pre-fill contact from response
+          if (d.buyer_name) document.getElementById('contactName').value = d.buyer_name;
+          if (d.buyer_email) document.getElementById('contactEmail').value = d.buyer_email;
+          if (d.buyer_phone) document.getElementById('contactPhone').value = d.buyer_phone;
+
+          // Show item preview
+          var photos = [];
+          try { photos = typeof d.photos === 'string' ? JSON.parse(d.photos) : (d.photos || []); } catch(e) {}
+          var imgHtml = photos.length > 0 ? '<img src="' + photos[0] + '" alt="">' : '';
+          var priceVal = d.winning_amount_cents ? '$' + (d.winning_amount_cents / 100).toFixed(2) : '';
+          document.getElementById('itemPreview').innerHTML = '<div class="item-preview">'
+            + imgHtml
+            + '<div class="info"><div class="title">' + (d.title || '') + '</div>'
+            + (priceVal ? '<div class="price">Won for ' + priceVal + '</div>' : '') + '</div></div>'
+            + '<div class="info-note">Seller will provide package dimensions and weight when confirming the quote.</div>';
+        })
+        .catch(function() {});
+    } else if (listingId) {
+      // Regular pre-bid estimate: use listing API
+      fetch('/api/listings/' + listingId)
+        .then(function(r) { return r.json(); })
+        .then(function(l) {
+          if (l.title) document.getElementById('itemName').value = l.title;
+          if (l.price) document.getElementById('itemValue').value = parseFloat(l.price).toFixed(2);
+          if (l.pickup_address) document.getElementById('pickupAddress').value = l.pickup_address;
+
+          var photos = [];
+          try { photos = typeof l.photos === 'string' ? JSON.parse(l.photos) : (l.photos || []); } catch(e) {}
+          var imgHtml = photos.length > 0 ? '<img src="' + photos[0] + '" alt="">' : '';
+          document.getElementById('itemPreview').innerHTML = '<div class="item-preview">'
+            + imgHtml
+            + '<div class="info"><div class="title">' + (l.title || '') + '</div>'
+            + '<div class="price">$' + parseFloat(l.price || 0).toFixed(2) + '</div></div></div>';
+        })
+        .catch(function() {});
+
+      // Pre-fill contact from profile
+      if (token) {
+        fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(function(r) { return r.json(); })
+          .then(function(u) {
+            if (u.name) document.getElementById('contactName').value = u.name;
+            if (u.email) document.getElementById('contactEmail').value = u.email;
+            if (u.phone) document.getElementById('contactPhone').value = u.phone;
+          })
+          .catch(function() {});
+      }
+    } else {
+      // No listing — pre-fill contact from profile
+      if (token) {
+        fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(function(r) { return r.json(); })
+          .then(function(u) {
+            if (u.name) document.getElementById('contactName').value = u.name;
+            if (u.email) document.getElementById('contactEmail').value = u.email;
+            if (u.phone) document.getElementById('contactPhone').value = u.phone;
+          })
+          .catch(function() {});
+      }
+    }
+
+    function submitQuote() {
+      var btn = document.getElementById('submitBtn');
+      var msgEl = document.getElementById('formMsg');
+      var name = document.getElementById('contactName').value.trim();
+      var phone = document.getElementById('contactPhone').value.trim();
+      var email = document.getElementById('contactEmail').value.trim();
+      if (!name || (!phone && !email)) {
+        msgEl.innerHTML = '<div class="msg msg-error">Name and at least a phone or email required.</div>';
+        return;
+      }
+      btn.disabled = true; btn.textContent = 'Submitting...';
+      msgEl.innerHTML = '';
+
+      var body = {
+        listing_id: listingId,
+        listing_title: document.getElementById('itemName').value.trim(),
+        item_value_cents: Math.round(parseFloat(document.getElementById('itemValue').value || 0) * 100),
+        pickup_address: document.getElementById('pickupAddress').value.trim(),
+        delivery_street: document.getElementById('delStreet').value.trim(),
+        delivery_city: document.getElementById('delCity').value.trim(),
+        delivery_state: document.getElementById('delState').value,
+        delivery_zip: document.getElementById('delZip').value.trim(),
+        package_length: isPostWin ? null : (parseFloat(document.getElementById('pkgL').value) || null),
+        package_width: isPostWin ? null : (parseFloat(document.getElementById('pkgW').value) || null),
+        package_height: isPostWin ? null : (parseFloat(document.getElementById('pkgH').value) || null),
+        package_weight: isPostWin ? null : (parseFloat(document.getElementById('pkgWeight').value) || null),
+        is_fragile: isPostWin ? false : document.getElementById('isFragile').checked,
+        special_handling: isPostWin ? false : document.getElementById('specialHandling').checked,
+        preferred_date: document.getElementById('prefDate').value || null,
+        contact_name: name,
+        contact_phone: phone,
+        contact_email: email,
+        notes: document.getElementById('specialInstructions').value.trim(),
+        auction_type: qType || ''
+      };
+
+      fetch('/api/delivery-quote-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(body)
+      })
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+      .then(function(result) {
+        if (!result.ok) throw new Error(result.data.error || 'Failed');
+        // Also mark fulfillment as shipping if this is a post-win request
+        if (isPostWin && orderId && token) {
+          fetch('/api/listing-orders/' + orderId + '/fulfillment', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ fulfillment_type: 'shipping' })
+          }).catch(function() {});
+        }
+        document.getElementById('formCard').innerHTML = '<div class="success-card">'
+          + '<div class="success-icon">&#9989;</div>'
+          + '<div class="success-title">Quote Request Received!</div>'
+          + '<div class="success-msg">We\'ll get back to you with pricing within a few hours.' + (isPostWin ? ' The seller will provide package details.' : '') + '</div>'
+          + '<a href="' + (isPostWin ? '/auctions#won' : (listingId ? '/listing?id=' + listingId : '/')) + '" style="display:inline-block;padding:12px 24px;background:var(--accent);color:#fff;border-radius:8px;font-weight:600;">' + (isPostWin ? 'Back to Won Auctions' : 'Back to Listing') + '</a>'
+          + '</div>';
+      })
+      .catch(function(e) {
+        btn.disabled = false; btn.textContent = 'Submit Quote Request';
+        msgEl.innerHTML = '<div class="msg msg-error">' + (e.message || 'Something went wrong') + '</div>';
+      });
+    }
+  </script>
+</body>
+</html>

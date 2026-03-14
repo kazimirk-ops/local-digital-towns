@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discussion Groups — Treasure Coast Digital</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0a1628;
+    color:#fff;
+    font-family:-apple-system,system-ui,'Segoe UI',sans-serif;
+    min-height:100vh;
+    padding:24px 16px;
+  }
+  .container { max-width:680px; margin:0 auto; }
+  .header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:24px;
+  }
+  .header h1 { font-size:22px; font-weight:800; }
+  .header a {
+    color:#0ea5e9;
+    text-decoration:none;
+    font-size:14px;
+  }
+  .btn-create {
+    padding:10px 20px;
+    border-radius:10px;
+    border:none;
+    background:#0ea5e9;
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    transition:background 0.2s;
+  }
+  .btn-create:hover { background:#0c8dcc; }
+  .btn-create:disabled { opacity:0.5; cursor:not-allowed; }
+  .group-card {
+    background:#0d1b2e;
+    border:1px solid #1e3a5f;
+    border-radius:14px;
+    padding:20px;
+    margin-bottom:12px;
+    cursor:pointer;
+    transition:border-color 0.2s;
+  }
+  .group-card:hover { border-color:#0ea5e9; }
+  .group-name { font-size:17px; font-weight:700; margin-bottom:4px; }
+  .group-desc { color:#94a3b8; font-size:13px; line-height:1.5; margin-bottom:10px; }
+  .group-meta { color:#64748b; font-size:12px; display:flex; gap:16px; }
+  .category-badge {
+    display:inline-block;
+    background:#1e293b;
+    color:#0ea5e9;
+    font-size:11px;
+    font-weight:700;
+    padding:2px 8px;
+    border-radius:6px;
+    margin-left:8px;
+    text-transform:uppercase;
+  }
+  .empty { color:#64748b; text-align:center; padding:60px 20px; font-size:14px; line-height:1.6; }
+  .gate-msg {
+    background:#1e293b;
+    border:1px solid #1e3a5f;
+    border-radius:12px;
+    padding:20px;
+    text-align:center;
+    margin-bottom:20px;
+  }
+  .gate-msg p { color:#94a3b8; font-size:14px; line-height:1.5; margin-bottom:12px; }
+  .gate-msg a { color:#0ea5e9; text-decoration:none; font-weight:600; }
+
+  /* Create form */
+  .create-form { display:none; margin-bottom:20px; }
+  .create-form.show { display:block; }
+  .create-form .field { margin-bottom:14px; }
+  .create-form label { display:block; font-size:13px; font-weight:600; color:#94a3b8; margin-bottom:4px; }
+  .create-form input, .create-form textarea, .create-form select {
+    width:100%;
+    padding:10px 12px;
+    border-radius:8px;
+    border:1px solid #1e3a5f;
+    background:#0a1628;
+    color:#fff;
+    font-size:14px;
+    font-family:inherit;
+    outline:none;
+  }
+  .create-form input:focus, .create-form textarea:focus, .create-form select:focus { border-color:#0ea5e9; }
+  .create-form textarea { resize:vertical; min-height:60px; }
+  .form-actions { display:flex; gap:8px; }
+  .btn-cancel {
+    padding:10px 20px;
+    border-radius:10px;
+    border:1px solid #1e3a5f;
+    background:transparent;
+    color:#94a3b8;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+
+  /* Group detail view */
+  .detail-view { display:none; }
+  .detail-view.show { display:block; }
+  .back-link { color:#0ea5e9; text-decoration:none; font-size:14px; display:inline-block; margin-bottom:16px; }
+  .post-input {
+    display:flex;
+    gap:8px;
+    margin-bottom:20px;
+  }
+  .post-input textarea {
+    flex:1;
+    padding:10px 12px;
+    border-radius:8px;
+    border:1px solid #1e3a5f;
+    background:#0a1628;
+    color:#fff;
+    font-size:14px;
+    font-family:inherit;
+    outline:none;
+    resize:none;
+    min-height:44px;
+  }
+  .post-input button {
+    padding:10px 16px;
+    border-radius:8px;
+    border:none;
+    background:#0ea5e9;
+    color:#fff;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .post-card {
+    background:#0d1b2e;
+    border:1px solid #1e3a5f;
+    border-radius:10px;
+    padding:14px;
+    margin-bottom:8px;
+  }
+  .post-author { font-weight:700; font-size:14px; margin-bottom:4px; }
+  .post-content { color:#cbd5e1; font-size:14px; line-height:1.5; margin-bottom:6px; }
+  .post-time { color:#64748b; font-size:11px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- List view -->
+  <div id="listView">
+    <div class="header">
+      <div>
+        <h1>Discussion Groups</h1>
+      </div>
+      <a href="/">&larr; Home</a>
+    </div>
+
+    <div id="gateMessage"></div>
+    <div id="createBtnWrap" style="margin-bottom:16px;display:none;">
+      <button class="btn-create" id="createBtn" onclick="toggleForm()">+ Create Group</button>
+    </div>
+
+    <div id="createForm" class="create-form">
+      <div class="field">
+        <label>Group Name</label>
+        <input type="text" id="groupName" placeholder="e.g. Treasure Coast Fishing">
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea id="groupDesc" placeholder="What's this group about?"></textarea>
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <select id="groupCategory">
+          <option value="general">General</option>
+          <option value="hobbies">Hobbies</option>
+          <option value="sports">Sports</option>
+          <option value="food">Food & Dining</option>
+          <option value="events">Events</option>
+          <option value="pets">Pets</option>
+          <option value="parenting">Parenting</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button class="btn-create" id="submitGroup" onclick="createGroup()">Create Group</button>
+        <button class="btn-cancel" onclick="toggleForm()">Cancel</button>
+      </div>
+      <div id="formError" style="color:#ef4444;font-size:13px;margin-top:8px;display:none;"></div>
+    </div>
+
+    <div id="groupsList"></div>
+  </div>
+
+  <!-- Detail view -->
+  <div id="detailView" class="detail-view">
+    <a href="#" class="back-link" onclick="showList();return false;">&larr; Back to Groups</a>
+    <h2 id="detailName" style="font-size:20px;font-weight:800;margin-bottom:4px;"></h2>
+    <div id="detailDesc" style="color:#94a3b8;font-size:13px;margin-bottom:20px;"></div>
+
+    <div id="postInput" class="post-input" style="display:none;">
+      <textarea id="postContent" placeholder="Share something with the group..."></textarea>
+      <button onclick="submitPost()">Post</button>
+    </div>
+
+    <div id="postsList"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var token = localStorage.getItem('tc_token');
+  var currentUser = null;
+  var currentGroupId = null;
+  var headers = {};
+  if (token) headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+  function timeAgo(d) {
+    var s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s/60) + 'm ago';
+    if (s < 86400) return Math.floor(s/3600) + 'h ago';
+    return Math.floor(s/86400) + 'd ago';
+  }
+
+  // Load user
+  if (token) {
+    fetch('/api/auth/me', { headers: headers })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(u) {
+        currentUser = u;
+        setupUI();
+        loadGroups();
+      })
+      .catch(function() { loadGroups(); });
+  } else {
+    loadGroups();
+  }
+
+  function setupUI() {
+    if (!currentUser) return;
+    if (currentUser.is_florida_resident || currentUser.role === 'admin') {
+      document.getElementById('createBtnWrap').style.display = 'block';
+      document.getElementById('postInput').style.display = 'flex';
+    } else {
+      var msg = document.getElementById('gateMessage');
+      msg.innerHTML = '<div class="gate-msg"><p>Become a verified local member to create groups and post.</p>'
+        + '<a href="/profile-complete">Complete your profile to get started &rarr;</a></div>';
+    }
+  }
+
+  function loadGroups() {
+    fetch('/api/discussion-groups')
+      .then(function(r) { return r.json(); })
+      .then(function(groups) {
+        var el = document.getElementById('groupsList');
+        if (!groups.length) {
+          el.innerHTML = '<div class="empty">No discussion groups yet.<br>Be the first to create one!</div>';
+          return;
+        }
+        var html = '';
+        groups.forEach(function(g) {
+          html += '<div class="group-card" onclick="openGroup(' + g.id + ',\'' + esc(g.name) + '\',\'' + esc(g.description || '') + '\')">'
+            + '<div class="group-name">' + esc(g.name)
+            + '<span class="category-badge">' + esc(g.category) + '</span></div>'
+            + '<div class="group-desc">' + esc(g.description || '') + '</div>'
+            + '<div class="group-meta">'
+            + '<span>' + g.member_count + ' member' + (g.member_count !== 1 ? 's' : '') + '</span>'
+            + '<span>' + g.post_count + ' post' + (g.post_count !== 1 ? 's' : '') + '</span>'
+            + '<span>by ' + esc(g.creator_name) + '</span>'
+            + '</div></div>';
+        });
+        el.innerHTML = html;
+      })
+      .catch(function() {
+        document.getElementById('groupsList').innerHTML = '<div class="empty">Failed to load groups.</div>';
+      });
+  }
+
+  window.toggleForm = function() {
+    var f = document.getElementById('createForm');
+    f.classList.toggle('show');
+  };
+
+  window.createGroup = function() {
+    var name = document.getElementById('groupName').value.trim();
+    var desc = document.getElementById('groupDesc').value.trim();
+    var cat = document.getElementById('groupCategory').value;
+    var errEl = document.getElementById('formError');
+    errEl.style.display = 'none';
+
+    if (!name) { errEl.textContent = 'Group name is required'; errEl.style.display = 'block'; return; }
+
+    var btn = document.getElementById('submitGroup');
+    btn.disabled = true;
+
+    fetch('/api/discussion-groups', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ name: name, description: desc, category: cat })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.id) {
+        document.getElementById('groupName').value = '';
+        document.getElementById('groupDesc').value = '';
+        document.getElementById('createForm').classList.remove('show');
+        loadGroups();
+      } else {
+        errEl.textContent = d.error || d.message || 'Failed';
+        errEl.style.display = 'block';
+      }
+      btn.disabled = false;
+    })
+    .catch(function() {
+      errEl.textContent = 'Network error';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+    });
+  };
+
+  window.openGroup = function(id, name, desc) {
+    currentGroupId = id;
+    document.getElementById('listView').style.display = 'none';
+    document.getElementById('detailView').classList.add('show');
+    document.getElementById('detailName').textContent = name;
+    document.getElementById('detailDesc').textContent = desc;
+
+    if (currentUser && (currentUser.is_florida_resident || currentUser.role === 'admin')) {
+      document.getElementById('postInput').style.display = 'flex';
+    }
+
+    loadPosts(id);
+  };
+
+  window.showList = function() {
+    document.getElementById('detailView').classList.remove('show');
+    document.getElementById('listView').style.display = 'block';
+    currentGroupId = null;
+  };
+
+  function loadPosts(groupId) {
+    fetch('/api/discussion-groups/' + groupId + '/posts')
+      .then(function(r) { return r.json(); })
+      .then(function(posts) {
+        var el = document.getElementById('postsList');
+        if (!posts.length) {
+          el.innerHTML = '<div class="empty">No posts yet. Start the conversation!</div>';
+          return;
+        }
+        var html = '';
+        posts.forEach(function(p) {
+          html += '<div class="post-card">'
+            + '<div class="post-author">' + esc(p.author_name) + '</div>'
+            + '<div class="post-content">' + esc(p.content) + '</div>'
+            + '<div class="post-time">' + timeAgo(p.created_at) + '</div>'
+            + '</div>';
+        });
+        el.innerHTML = html;
+      })
+      .catch(function() {
+        document.getElementById('postsList').innerHTML = '<div class="empty">Failed to load posts.</div>';
+      });
+  }
+
+  window.submitPost = function() {
+    if (!currentGroupId) return;
+    var input = document.getElementById('postContent');
+    var content = input.value.trim();
+    if (!content) return;
+
+    fetch('/api/discussion-groups/' + currentGroupId + '/posts', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ content: content })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.id) {
+        input.value = '';
+        loadPosts(currentGroupId);
+      }
+    })
+    .catch(function() {});
+  };
+})();
+</script>
+</body>
+</html>

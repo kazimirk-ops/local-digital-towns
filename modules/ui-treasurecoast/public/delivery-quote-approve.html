@@ -1,0 +1,146 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Delivery Quote | FloridaLife</title>
+  <style>
+    :root { --bg:#0a0f1a; --surface:#111827; --border:#1e293b; --text:#e2e8f0; --muted:#94a3b8; --accent:#10b981; --radius:12px; }
+    * { box-sizing:border-box; margin:0; }
+    body { font-family:ui-sans-serif,system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+    a { color:#7dd3fc; text-decoration:none; }
+    .topbar { position:sticky;top:0;z-index:10;background:rgba(13,20,36,0.92);border-bottom:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(12px);padding:14px 18px; }
+    .topbar-inner { max-width:600px;margin:0 auto;display:flex;align-items:center;justify-content:space-between; }
+    .nav-btn { display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;color:var(--muted);font-size:13px; }
+    .nav-btn:hover { color:#fff;background:rgba(255,255,255,0.06); }
+    .page { max-width:600px;margin:0 auto;padding:24px 18px; }
+    .card { background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px; }
+    .title { font-size:20px;font-weight:700;color:#fff;margin-bottom:20px; }
+    .line-item { display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border); }
+    .line-item:last-child { border-bottom:none; }
+    .line-label { font-size:14px;color:var(--text); }
+    .line-value { font-size:14px;font-weight:600;color:#fff; }
+    .total-row { display:flex;justify-content:space-between;align-items:center;padding:16px 0;margin-top:8px;border-top:2px solid var(--border); }
+    .total-label { font-size:16px;font-weight:700;color:#fff; }
+    .total-value { font-size:22px;font-weight:800;color:var(--accent); }
+    .pay-btn { width:100%;padding:16px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;margin-top:20px;transition:opacity .2s; }
+    .pay-btn:hover { opacity:0.9; }
+    .pay-btn:disabled { opacity:0.5;cursor:not-allowed; }
+    .loading { text-align:center;padding:40px;color:var(--muted); }
+    .spinner { width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .error-msg { background:#7f1d1d;border:1px solid #dc2626;border-radius:8px;padding:14px;color:#fca5a5;font-size:14px;text-align:center; }
+    .status-badge { display:inline-block;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600; }
+    .status-pending { background:rgba(251,191,36,0.15);color:#fbbf24; }
+    .status-quoted { background:rgba(16,185,129,0.15);color:#10b981; }
+    .status-paid { background:rgba(14,165,233,0.15);color:#0ea5e9; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <a class="nav-btn" href="/">&larr; Back to Town</a>
+      <span style="color:var(--muted);font-size:13px;">TCD</span>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="card" id="mainCard">
+      <div class="loading" id="loadingState">
+        <div class="spinner"></div>
+        Loading your delivery quote...
+      </div>
+    </div>
+  </div>
+
+  <script src="/auth-gate.js"></script>
+  <script>
+    var token = localStorage.getItem('tc_token');
+    if (!token) { window.showAuthModal(); }
+
+    // Extract quote ID from URL: /delivery-quote/:id/approve
+    var pathParts = window.location.pathname.split('/');
+    var quoteId = pathParts[2]; // /delivery-quote/[id]/approve
+
+    if (!quoteId) {
+      document.getElementById('mainCard').innerHTML = '<div class="error-msg">Invalid quote link.</div>';
+    } else {
+      loadQuote();
+    }
+
+    function loadQuote() {
+      fetch('/api/delivery-quote-requests/' + quoteId, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+      .then(function(result) {
+        if (!result.ok) throw new Error(result.data.error || 'Failed to load quote');
+        var q = result.data.quote;
+        renderQuote(q);
+      })
+      .catch(function(e) {
+        document.getElementById('mainCard').innerHTML = '<div class="error-msg">' + (e.message || 'Could not load quote') + '</div>';
+      });
+    }
+
+    function renderQuote(q) {
+      var itemPrice = parseFloat(q.listing_price || q.item_value_cents / 100 || 0);
+      var deliveryPrice = q.quote_amount ? (q.quote_amount / 100) : 0;
+      var total = itemPrice + deliveryPrice;
+      var statusClass = q.status === 'paid' ? 'status-paid' : (q.status === 'quoted' ? 'status-quoted' : 'status-pending');
+
+      var html = '<div class="title">' + (q.listing_title || q.listing_title_live || 'Delivery Quote') + '</div>';
+
+      if (q.status === 'pending') {
+        html += '<div style="text-align:center;padding:20px 0;color:var(--muted);">'
+          + '<div style="font-size:32px;margin-bottom:8px;">&#9203;</div>'
+          + '<div style="font-size:16px;font-weight:600;color:var(--text);">Quote Pending</div>'
+          + '<div style="font-size:13px;margin-top:4px;">We\'re working on your delivery quote. You\'ll be notified when it\'s ready.</div>'
+          + '</div>';
+      } else if (q.status === 'quoted' || q.status === 'approved') {
+        html += '<div class="line-item"><span class="line-label">Item Price</span><span class="line-value">$' + itemPrice.toFixed(2) + '</span></div>';
+        html += '<div class="line-item"><span class="line-label">Delivery Fee</span><span class="line-value">$' + deliveryPrice.toFixed(2) + '</span></div>';
+        html += '<div class="total-row"><span class="total-label">Total</span><span class="total-value">$' + total.toFixed(2) + '</span></div>';
+        html += '<button class="pay-btn" id="payBtn" onclick="payNow()">Pay Now &mdash; $' + total.toFixed(2) + '</button>';
+        html += '<div style="text-align:center;margin-top:10px;font-size:12px;color:var(--muted);">&#128179; Paid securely via Stripe</div>';
+        html += '<div id="payMsg" style="margin-top:8px;"></div>';
+      } else if (q.status === 'paid') {
+        html += '<div style="text-align:center;padding:20px 0;">'
+          + '<div style="font-size:32px;margin-bottom:8px;">&#10003;</div>'
+          + '<div style="font-size:16px;font-weight:600;color:var(--accent);">Payment Complete</div>'
+          + '<div style="font-size:13px;color:var(--muted);margin-top:4px;">Your order has been paid. We\'ll coordinate delivery.</div>'
+          + '</div>';
+      }
+
+      html += '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);">';
+      html += 'Status: <span class="status-badge ' + statusClass + '">' + q.status + '</span>';
+      if (q.delivery_street) html += '<br>Delivery to: ' + [q.delivery_street, q.delivery_city, q.delivery_state, q.delivery_zip].filter(Boolean).join(', ');
+      html += '</div>';
+
+      document.getElementById('mainCard').innerHTML = html;
+    }
+
+    function payNow() {
+      var btn = document.getElementById('payBtn');
+      var msgEl = document.getElementById('payMsg');
+      btn.disabled = true; btn.textContent = 'Processing...';
+
+      fetch('/api/delivery-quote-requests/' + quoteId + '/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+      })
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+      .then(function(result) {
+        if (!result.ok) throw new Error(result.data.error || 'Checkout failed');
+        if (result.data.url) {
+          window.location.href = result.data.url;
+        }
+      })
+      .catch(function(e) {
+        btn.disabled = false; btn.textContent = 'Pay Now';
+        msgEl.innerHTML = '<div class="error-msg">' + (e.message || 'Something went wrong') + '</div>';
+      });
+    }
+  </script>
+</body>
+</html>

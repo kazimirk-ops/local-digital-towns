@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buy &amp; Sell Groups | FloridaLife</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --primary: #0ea5e9;
+  --secondary: #10b981;
+  --accent: #f0c040;
+  --bg: #0a0f1a;
+  --surface: #111827;
+  --surface2: #1a2332;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --border: rgba(255,255,255,0.08);
+  --radius: 10px;
+  --radius-lg: 14px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+a { color:var(--primary); text-decoration:none; }
+a:hover { text-decoration:underline; }
+
+.site-nav { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; background:#080d14; border-bottom:1px solid var(--border); }
+.nav-brand { font-weight:700; font-size:1.1rem; color:var(--text); text-decoration:none; }
+.nav-links { display:flex; gap:18px; align-items:center; font-size:0.85rem; }
+.nav-links a { color:var(--muted); text-decoration:none; font-weight:500; }
+.nav-links a:hover { color:var(--text); }
+.nav-links a.active { color:var(--primary); }
+
+.container { max-width:960px; margin:0 auto; padding:24px 16px; }
+
+.page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
+.page-header h1 { font-size:1.5rem; font-weight:700; }
+.page-header p { font-size:0.9rem; color:var(--muted); margin-top:4px; }
+
+.city-select { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-family:inherit; font-size:0.85rem; cursor:pointer; }
+.city-select option { background:var(--surface); color:var(--text); }
+
+.groups-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; margin-bottom:24px; }
+
+.group-card { background:var(--surface); border:1px solid #1e293b; border-radius:var(--radius-lg); padding:20px; cursor:pointer; transition:transform 0.15s,border-color 0.15s; position:relative; overflow:hidden; }
+.group-card:hover { transform:translateY(-2px); border-color:var(--primary); }
+.group-card-banner { height:4px; border-radius:2px; margin-bottom:16px; }
+.group-card-featured { position:absolute; top:12px; right:12px; background:#3b2e0a; color:var(--accent); font-size:10px; font-weight:600; padding:2px 8px; border-radius:99px; }
+.group-card h3 { font-size:1rem; font-weight:700; margin-bottom:6px; }
+.group-card-desc { font-size:0.8rem; color:var(--muted); margin-bottom:12px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.group-card-meta { display:flex; gap:12px; font-size:0.75rem; color:#64748b; margin-bottom:12px; }
+.group-card-mod { display:flex; align-items:center; gap:6px; font-size:0.8rem; color:var(--muted); margin-bottom:12px; }
+.group-card-mod img { width:20px; height:20px; border-radius:50%; object-fit:cover; }
+.group-card-rank { font-size:0.75rem; color:var(--accent); font-weight:600; }
+.group-card-actions { display:flex; justify-content:flex-end; margin-top:8px; }
+.btn-sm { display:inline-flex; align-items:center; padding:6px 14px; border-radius:6px; border:none; font-family:inherit; font-size:0.8rem; font-weight:600; cursor:pointer; background:var(--primary); color:#fff; transition:opacity 0.15s; }
+.btn-sm:hover { opacity:0.85; }
+
+.empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
+.empty-state p { font-size:0.95rem; margin-bottom:16px; }
+
+.cta-bar { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:24px; text-align:center; }
+.cta-bar p { font-size:0.9rem; color:var(--muted); margin-bottom:12px; }
+
+@media (max-width:600px) {
+  .groups-grid { grid-template-columns:1fr; }
+  .page-header { flex-direction:column; align-items:flex-start; }
+}
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="/" class="nav-brand" id="navBrand">FloridaLife</a>
+  <div class="nav-links">
+    <a href="/buy-sell-trade" class="active">Buy &amp; Sell Groups</a>
+    <a href="/gigs">Services</a>
+    <a href="/leaderboard">Leaderboard</a>
+    <a href="/dashboard">Dashboard</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <div>
+      <h1 id="pageTitle">Buy &amp; Sell Groups</h1>
+      <p>Community storefronts from local BST groups</p>
+    </div>
+  </div>
+
+  <div id="groupsGrid" class="groups-grid"></div>
+  <div id="emptyState" class="empty-state" style="display:none;">
+    <p>No BST groups in this city yet.</p>
+    <a href="/mod-apply" class="btn-sm">Apply to bring your group here</a>
+  </div>
+
+  <div class="cta-bar" id="createGroupCta">
+    <p>Start your own Buy &amp; Sell group and unlock leaderboard rankings, a storefront page, and more.</p>
+    <button class="btn-sm" onclick="showCreateForm()">Create a Group &rarr;</button>
+  </div>
+
+  <div id="createGroupForm" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:24px;">
+    <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:16px;">Create a New Group</h3>
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:480px;">
+      <input type="text" id="cgName" placeholder="Group name *" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:inherit;font-size:0.9rem;">
+      <textarea id="cgDesc" placeholder="Description (optional)" rows="3" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:inherit;font-size:0.9rem;resize:vertical;"></textarea>
+      <input type="text" id="cgFbUrl" placeholder="Facebook group URL (optional)" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:inherit;font-size:0.9rem;">
+      <textarea id="cgRules" placeholder="Group rules (optional)" rows="2" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:inherit;font-size:0.9rem;resize:vertical;"></textarea>
+      <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--muted);cursor:pointer;">
+        <input type="checkbox" id="cgPrivate"> Make this group private (members must request to join)
+      </label>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button class="btn-sm" onclick="submitCreateGroup()" id="cgSubmitBtn">Create Group</button>
+        <button class="btn-sm" style="background:transparent;color:var(--muted);border:1px solid var(--border);" onclick="hideCreateForm()">Cancel</button>
+      </div>
+      <div id="cgError" style="display:none;color:#ef4444;font-size:0.85rem;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function getTownName() {
+  var map = {
+    'treasurecoast-fl.com': 'Treasure Coast',
+    'space-coastfl.com': 'Space Coast',
+    'jacksonville-floridalife.com': 'Jacksonville',
+    'miami-floridalife.com': 'Miami',
+    'orlando-floridalife.com': 'Orlando',
+    'tampa-bay-florida.com': 'Tampa Bay',
+    'fortlauderdale-fl.com': 'Fort Lauderdale',
+    'fortmyers-fl.com': 'Fort Myers',
+    'westpalmbeach-fl.com': 'West Palm Beach',
+    'localhost': 'Treasure Coast'
+  };
+  return map[window.location.hostname] || 'FloridaLife';
+}
+document.getElementById('navBrand').textContent = getTownName();
+
+var CITIES = [
+  { slug:'treasure-coast', label:'Treasure Coast' },
+  { slug:'space-coast', label:'Space Coast' },
+  { slug:'fort-lauderdale', label:'Fort Lauderdale' },
+  { slug:'fort-myers', label:'Fort Myers' },
+  { slug:'jacksonville', label:'Jacksonville' },
+  { slug:'miami', label:'Miami' },
+  { slug:'orlando', label:'Orlando' },
+  { slug:'tampa-bay', label:'Tampa Bay' },
+  { slug:'west-palm-beach', label:'West Palm Beach' }
+];
+
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function detectCity() {
+  var cityDomains = {
+    'treasurecoast-fl.com':'treasure-coast',
+    'space-coastfl.com':'space-coast',
+    'jacksonville-floridalife.com':'jacksonville',
+    'miami-floridalife.com':'miami',
+    'orlando-floridalife.com':'orlando',
+    'tampa-bay-florida.com':'tampa-bay',
+    'fortlauderdale-fl.com':'fort-lauderdale',
+    'fortmyers-fl.com':'fort-myers',
+    'westpalmbeach-fl.com':'west-palm-beach',
+    'localhost':'treasure-coast'
+  };
+  var h = window.location.hostname.replace(/^www\./, '');
+  return cityDomains[h] || 'treasure-coast';
+}
+
+var currentCity = detectCity();
+
+// Set page title from detected city
+var cityLabel = CITIES.find(function(c) { return c.slug === currentCity; });
+if (cityLabel) document.getElementById('pageTitle').textContent = cityLabel.label + ' Groups';
+
+async function loadGroups() {
+  try {
+    var res = await fetch('/api/bst-groups/' + currentCity);
+    if (!res.ok) throw new Error('Failed');
+    var data = await res.json();
+    var groups = data.groups || [];
+
+    var grid = document.getElementById('groupsGrid');
+    var empty = document.getElementById('emptyState');
+
+    if (groups.length === 0) {
+      grid.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    var html = '';
+    groups.forEach(function(g) {
+      var bannerColor = g.banner_color || '#0ea5e9';
+      var featuredHtml = g.featured ? '<div class="group-card-featured">&#11088; Featured</div>' : '';
+      var rankHtml = g.leaderboard_rank ? '<div class="group-card-rank">&#127942; #' + g.leaderboard_rank + '</div>' : '';
+
+      var modHtml = '';
+      if (g.mod_name) {
+        var avatar = g.mod_photo_url
+          ? '<img src="' + esc(g.mod_photo_url) + '" alt="">'
+          : '<span style="width:20px;height:20px;border-radius:50%;background:#1e293b;display:inline-flex;align-items:center;justify-content:center;font-size:10px;">&#128100;</span>';
+        modHtml = '<div class="group-card-mod">' + avatar + 'Mod: ' + esc(g.mod_name) + '</div>';
+      }
+
+      html += '<div class="group-card" onclick="window.location.href=\'/groups/' + esc(g.slug) + '\'">'
+        + featuredHtml
+        + '<div class="group-card-banner" style="background:' + esc(bannerColor) + ';"></div>'
+        + '<h3>' + esc(g.name) + '</h3>'
+        + '<div class="group-card-desc">' + esc(g.description || '') + '</div>'
+        + modHtml
+        + '<div class="group-card-meta">'
+        + '<span>&#128101; ' + (g.member_count || 0) + ' members</span>'
+        + '<span>&#128230; ' + (g.active_listing_count || 0) + ' listings</span>'
+        + '</div>'
+        + rankHtml
+        + '<div class="group-card-actions"><span class="btn-sm">View Group</span></div>'
+        + '</div>';
+    });
+    grid.innerHTML = html;
+  } catch (err) {
+    console.error('LOAD_GROUPS_ERROR', err);
+    document.getElementById('groupsGrid').innerHTML = '<div class="empty-state"><p>Failed to load groups.</p></div>';
+  }
+}
+
+loadGroups();
+
+function showCreateForm() {
+  var token = localStorage.getItem('tc_token');
+  if (!token) { alert('Please log in to create a group.'); return; }
+  document.getElementById('createGroupCta').style.display = 'none';
+  document.getElementById('createGroupForm').style.display = 'block';
+}
+
+function hideCreateForm() {
+  document.getElementById('createGroupForm').style.display = 'none';
+  document.getElementById('createGroupCta').style.display = 'block';
+  document.getElementById('cgError').style.display = 'none';
+}
+
+async function submitCreateGroup() {
+  var token = localStorage.getItem('tc_token');
+  if (!token) { alert('Please log in.'); return; }
+
+  var name = document.getElementById('cgName').value.trim();
+  if (!name) { document.getElementById('cgError').textContent = 'Group name is required.'; document.getElementById('cgError').style.display = 'block'; return; }
+
+  var btn = document.getElementById('cgSubmitBtn');
+  btn.disabled = true; btn.textContent = 'Creating...';
+  document.getElementById('cgError').style.display = 'none';
+
+  try {
+    var res = await fetch('/api/bst-groups/create', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: name,
+        description: document.getElementById('cgDesc').value.trim() || null,
+        facebook_group_url: document.getElementById('cgFbUrl').value.trim() || null,
+        rules: document.getElementById('cgRules').value.trim() || null,
+        is_private: document.getElementById('cgPrivate').checked
+      })
+    });
+    var data = await res.json();
+    if (data.success && data.group) {
+      window.location.href = '/groups/' + data.group.slug;
+    } else {
+      document.getElementById('cgError').textContent = data.error || 'Failed to create group.';
+      document.getElementById('cgError').style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Create Group';
+    }
+  } catch (err) {
+    document.getElementById('cgError').textContent = 'Network error. Please try again.';
+    document.getElementById('cgError').style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Create Group';
+  }
+}
+</script>
+</body>
+</html>

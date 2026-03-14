@@ -1,0 +1,356 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Complete Your Profile — Treasure Coast</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Syne', ui-sans-serif, system-ui, sans-serif; background: #0a0f1a; color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+
+      .container { width: 100%; max-width: 560px; padding: 40px 20px 60px; }
+
+      /* Progress indicator */
+      .progress { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 40px; }
+      .step-dot {
+        width: 36px; height: 36px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 14px; font-weight: 700;
+        background: #1a2636; color: #64748b; border: 2px solid #1e293b;
+        transition: all .3s;
+      }
+      .step-dot.active { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+      .step-dot.done { background: #10b981; color: #fff; border-color: #10b981; }
+      .step-line { width: 60px; height: 2px; background: #1e293b; transition: background .3s; }
+      .step-line.done { background: #10b981; }
+      .step-labels { display: flex; justify-content: space-between; margin-top: 8px; padding: 0 8px; }
+      .step-label { font-size: 11px; color: #64748b; text-align: center; width: 100px; transition: color .3s; }
+      .step-label.active { color: #0ea5e9; }
+      .step-label.done { color: #10b981; }
+
+      /* Steps */
+      .step { display: none; }
+      .step.active { display: block; }
+
+      .step-title { font-size: 24px; font-weight: 800; text-align: center; margin-bottom: 6px; }
+      .step-sub { font-size: 14px; color: #9fb0c3; text-align: center; margin-bottom: 32px; }
+
+      /* Type cards */
+      .type-cards { display: flex; gap: 16px; margin-bottom: 20px; }
+      .type-card {
+        flex: 1; background: #0f1722; border: 2px solid rgba(255,255,255,0.08);
+        border-radius: 16px; padding: 28px 20px; text-align: center; cursor: pointer;
+        transition: all .2s;
+      }
+      .type-card:hover { border-color: rgba(255,255,255,0.2); }
+      .type-card.selected { border-color: #0ea5e9; background: rgba(14,165,233,0.06); }
+      .type-card .tc-icon { font-size: 36px; margin-bottom: 12px; }
+      .type-card .tc-label { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+      .type-card .tc-desc { font-size: 12px; color: #9fb0c3; line-height: 1.4; }
+
+      .biz-name-wrap { margin-top: 16px; display: none; }
+      .biz-name-wrap.show { display: block; }
+
+      /* Form inputs */
+      .form-group { margin-bottom: 16px; }
+      .form-group label { display: block; font-size: 12px; color: #9fb0c3; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+      .form-group input, .form-group textarea {
+        width: 100%; padding: 12px 14px; background: #0f1722; border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px; color: #e2e8f0; font-family: inherit; font-size: 14px;
+        transition: border-color .2s;
+      }
+      .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #0ea5e9; }
+      .form-group textarea { resize: vertical; min-height: 80px; }
+      .form-group .helper { font-size: 11px; color: #64748b; margin-top: 4px; }
+      .form-row { display: flex; gap: 12px; }
+      .form-row .form-group { flex: 1; }
+
+      /* Niche pills */
+      .niche-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 24px; }
+      .niche-pill {
+        padding: 10px 18px; border-radius: 100px;
+        background: #0f1722; border: 1.5px solid rgba(255,255,255,0.1);
+        font-size: 13px; font-weight: 600; cursor: pointer;
+        transition: all .2s; user-select: none;
+      }
+      .niche-pill:hover { border-color: rgba(255,255,255,0.25); }
+      .niche-pill.selected { background: #0ea5e9; border-color: #0ea5e9; color: #fff; }
+
+      /* Buttons */
+      .btn-row { display: flex; gap: 12px; margin-top: 28px; }
+      .btn {
+        padding: 12px 28px; border-radius: 10px; border: none;
+        font-family: inherit; font-size: 14px; font-weight: 700;
+        cursor: pointer; transition: all .2s; flex: 1; text-align: center;
+      }
+      .btn-primary { background: #0ea5e9; color: #fff; }
+      .btn-primary:hover { background: #0284c7; }
+      .btn-primary:disabled { opacity: 0.4; cursor: default; }
+      .btn-back { background: transparent; color: #9fb0c3; border: 1px solid rgba(255,255,255,0.1); flex: 0 0 auto; padding: 12px 20px; }
+      .btn-back:hover { color: #e2e8f0; border-color: rgba(255,255,255,0.25); }
+      .btn-accent { background: #f0c040; color: #000; }
+      .btn-accent:hover { background: #e6b635; }
+      .btn-accent:disabled { opacity: 0.4; cursor: default; }
+
+      .error-msg { color: #ef4444; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
+
+      @media (max-width: 500px) {
+        .type-cards { flex-direction: column; }
+        .container { padding: 24px 16px 40px; }
+        .step-title { font-size: 20px; }
+      }
+    </style>
+  </head>
+  <body>
+
+    <div class="container">
+      <!-- Progress -->
+      <div class="progress">
+        <div class="step-dot active" id="dot1">1</div>
+        <div class="step-line" id="line1"></div>
+        <div class="step-dot" id="dot2">2</div>
+        <div class="step-line" id="line2"></div>
+        <div class="step-dot" id="dot3">3</div>
+      </div>
+      <div class="step-labels">
+        <div class="step-label active" id="label1">Account Type</div>
+        <div class="step-label" id="label2">Your Location</div>
+        <div class="step-label" id="label3">Your Interests</div>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="step active" id="step1">
+        <div class="step-title">Who are you?</div>
+        <div class="step-sub">Choose the account type that best describes you</div>
+
+        <div class="type-cards">
+          <div class="type-card" id="cardPersonal" onclick="selectType('personal')">
+            <div class="tc-icon">&#128722;</div>
+            <div class="tc-label">Personal</div>
+            <div class="tc-desc">I want to buy, sell, and connect locally</div>
+          </div>
+          <div class="type-card" id="cardBusiness" onclick="selectType('business')">
+            <div class="tc-icon">&#127970;</div>
+            <div class="tc-label">Business</div>
+            <div class="tc-desc">I represent a business or brand</div>
+          </div>
+        </div>
+
+        <div class="biz-name-wrap" id="bizNameWrap">
+          <div class="form-group">
+            <label>Business Name</label>
+            <input type="text" id="businessName" placeholder="Your business or brand name" />
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn1" onclick="goStep(2)" disabled>Next</button>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step" id="step2">
+        <div class="step-title">Where are you?</div>
+        <div class="step-sub">Help us connect you with your local community</div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>City *</label>
+            <input type="text" id="inputCity" placeholder="Your city" />
+          </div>
+          <div class="form-group" style="flex:0.6;">
+            <label>Zip Code</label>
+            <input type="text" id="inputZip" placeholder="Zip code (optional)" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>About You</label>
+          <textarea id="inputBio" placeholder="Tell the community a little about yourself... (optional)"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="tel" id="inputPhone" placeholder="Phone number (optional) — used for local pickup coordination" />
+          <div class="helper">Only shared with buyers/sellers when a transaction is agreed upon</div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-back" onclick="goStep(1)">&larr; Back</button>
+          <button class="btn btn-primary" id="btn2" onclick="goStep(3)" disabled>Next</button>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step" id="step3">
+        <div class="step-title">What are you into?</div>
+        <div class="step-sub">Select your interests &mdash; we'll personalize your feed based on these</div>
+
+        <div class="niche-grid" id="nicheGrid"></div>
+
+        <div class="btn-row">
+          <button class="btn btn-back" onclick="goStep(2)">&larr; Back</button>
+          <button class="btn btn-accent" id="btnSubmit" onclick="submitProfile()" disabled>Complete Profile</button>
+        </div>
+        <div class="error-msg" id="errorMsg"></div>
+      </div>
+    </div>
+
+    <script>
+    (function() {
+      var TOKEN_KEY = 'tc_token';
+      function getToken() { return localStorage.getItem(TOKEN_KEY); }
+
+      // ── Auth check ──
+      var token = getToken();
+      if (!token) { window.location.href = '/'; return; }
+      fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function(r) { return r.ok ? r.json() : Promise.reject(); })
+        .then(function(user) {
+          if (user.profile_complete) { window.location.href = '/'; return; }
+        })
+        .catch(function() { window.location.href = '/'; });
+
+      // ── State ──
+      var profileData = {
+        account_type: null,
+        business_name: null,
+        location_city: null,
+        location_zip: null,
+        bio: null,
+        phone: null,
+        selected_niches: []
+      };
+
+      var niches = [
+        { id: 'plants', label: '\uD83C\uDF3F Plants' },
+        { id: 'fish-aquatics', label: '\uD83D\uDC20 Fish & Aquatics' },
+        { id: 'pets', label: '\uD83D\uDC3E Pets' },
+        { id: 'fashion', label: '\uD83D\uDC57 Fashion' },
+        { id: 'electronics', label: '\uD83D\uDCF1 Electronics' },
+        { id: 'home-garden', label: '\uD83C\uDFE0 Home & Garden' },
+        { id: 'art-crafts', label: '\uD83C\uDFA8 Art & Crafts' },
+        { id: 'food-kitchen', label: '\uD83C\uDF73 Food & Kitchen' },
+        { id: 'automotive', label: '\uD83D\uDE97 Automotive' },
+        { id: 'kids-toys', label: '\uD83E\uDDF8 Kids & Toys' },
+        { id: 'sports-fitness', label: '\uD83D\uDCAA Sports & Fitness' },
+        { id: 'books-media', label: '\uD83D\uDCDA Books & Media' },
+        { id: 'gaming', label: '\uD83C\uDFAE Gaming' },
+        { id: 'jewelry', label: '\uD83D\uDC8E Jewelry' },
+        { id: 'outdoor-camping', label: '\uD83E\uDEB4 Outdoor & Camping' },
+        { id: 'plant-seeds', label: '\uD83C\uDF31 Plant Seeds' }
+      ];
+
+      // ── Render niches ──
+      var nicheGrid = document.getElementById('nicheGrid');
+      niches.forEach(function(n) {
+        var pill = document.createElement('div');
+        pill.className = 'niche-pill';
+        pill.textContent = n.label;
+        pill.setAttribute('data-niche', n.id);
+        pill.addEventListener('click', function() {
+          pill.classList.toggle('selected');
+          var idx = profileData.selected_niches.indexOf(n.id);
+          if (idx === -1) {
+            profileData.selected_niches.push(n.id);
+          } else {
+            profileData.selected_niches.splice(idx, 1);
+          }
+          document.getElementById('btnSubmit').disabled = profileData.selected_niches.length === 0;
+        });
+        nicheGrid.appendChild(pill);
+      });
+
+      // ── Step 2 city input enables Next ──
+      document.getElementById('inputCity').addEventListener('input', function() {
+        document.getElementById('btn2').disabled = !this.value.trim();
+      });
+
+      // ── Type selection ──
+      function selectType(type) {
+        profileData.account_type = type;
+        document.getElementById('cardPersonal').classList.toggle('selected', type === 'personal');
+        document.getElementById('cardBusiness').classList.toggle('selected', type === 'business');
+        document.getElementById('bizNameWrap').classList.toggle('show', type === 'business');
+        document.getElementById('btn1').disabled = false;
+      }
+      window.selectType = selectType;
+
+      // ── Step navigation ──
+      function goStep(n) {
+        // Validate before advancing
+        if (n === 2 && !profileData.account_type) return;
+        if (n === 2) {
+          profileData.business_name = document.getElementById('businessName').value.trim() || null;
+        }
+        if (n === 3) {
+          var city = document.getElementById('inputCity').value.trim();
+          if (!city) {
+            document.getElementById('inputCity').style.borderColor = '#ef4444';
+            return;
+          }
+          document.getElementById('inputCity').style.borderColor = '';
+          profileData.location_city = city;
+          profileData.location_zip = document.getElementById('inputZip').value.trim() || null;
+          profileData.bio = document.getElementById('inputBio').value.trim() || null;
+          profileData.phone = document.getElementById('inputPhone').value.trim() || null;
+        }
+
+        // Update steps
+        for (var i = 1; i <= 3; i++) {
+          document.getElementById('step' + i).classList.toggle('active', i === n);
+          var dot = document.getElementById('dot' + i);
+          var label = document.getElementById('label' + i);
+          dot.classList.remove('active', 'done');
+          label.classList.remove('active', 'done');
+          if (i < n) { dot.classList.add('done'); dot.textContent = '\u2713'; label.classList.add('done'); }
+          else if (i === n) { dot.classList.add('active'); dot.textContent = String(i); label.classList.add('active'); }
+          else { dot.textContent = String(i); }
+        }
+        if (n >= 2) document.getElementById('line1').classList.add('done'); else document.getElementById('line1').classList.remove('done');
+        if (n >= 3) document.getElementById('line2').classList.add('done'); else document.getElementById('line2').classList.remove('done');
+      }
+      window.goStep = goStep;
+
+      // ── Submit ──
+      function submitProfile() {
+        if (profileData.selected_niches.length === 0) return;
+        var errEl = document.getElementById('errorMsg');
+        errEl.style.display = 'none';
+        var btn = document.getElementById('btnSubmit');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        fetch('/api/auth/complete-profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + getToken()
+          },
+          body: JSON.stringify(profileData)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            errEl.textContent = data.error === 'profile_incomplete' ? data.message : data.error;
+            errEl.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Complete Profile';
+            return;
+          }
+          window.location.href = '/';
+        })
+        .catch(function(e) {
+          errEl.textContent = 'Something went wrong. Please try again.';
+          errEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Complete Profile';
+        });
+      }
+      window.submitProfile = submitProfile;
+
+    })();
+    </script>
+  </body>
+</html>

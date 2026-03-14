@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopping Cart | TreasureCoast</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #10b981;
+      --danger: #ef4444;
+      --blue: #3b82f6;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+    a { color: var(--accent); text-decoration: none; }
+    .container { max-width: 720px; margin: 0 auto; padding: 20px 16px; }
+    .page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .page-header h1 { font-size: 22px; font-weight: 700; }
+    .back-link { color: var(--muted); font-size: 14px; }
+
+    .empty-cart { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-cart .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-cart p { margin-bottom: 16px; }
+    .empty-cart a { display: inline-block; padding: 10px 24px; background: var(--accent); color: #fff; border-radius: 8px; font-weight: 600; }
+
+    .login-prompt { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .login-prompt a { display: inline-block; padding: 10px 24px; background: var(--accent); color: #fff; border-radius: 8px; font-weight: 600; margin-top: 12px; }
+
+    .supplier-group { margin-bottom: 24px; }
+    .supplier-header { font-size: 16px; font-weight: 700; padding: 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+
+    .cart-item { display: flex; gap: 12px; padding: 12px; background: var(--card); border-radius: 10px; margin-bottom: 10px; position: relative; }
+    .cart-item img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
+    .cart-item-info { flex: 1; min-width: 0; }
+    .cart-item-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cart-item-variant { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .cart-item-row { display: flex; align-items: center; gap: 10px; }
+    .qty-control { display: flex; align-items: center; gap: 0; }
+    .qty-btn { width: 28px; height: 28px; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+    .qty-btn:first-child { border-radius: 6px 0 0 6px; }
+    .qty-btn:last-child { border-radius: 0 6px 6px 0; }
+    .qty-val { width: 36px; height: 28px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--card); color: var(--text); text-align: center; font-size: 13px; line-height: 28px; }
+    .cart-item-price { font-size: 14px; font-weight: 600; color: var(--accent); margin-left: auto; }
+    .remove-btn { position: absolute; top: 8px; right: 8px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 2px 6px; }
+    .remove-btn:hover { color: var(--danger); }
+
+    .group-summary { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 13px; color: var(--muted); }
+    .group-summary .label { }
+    .group-summary .value { color: var(--text); font-weight: 600; }
+
+    .cart-footer { border-top: 2px solid var(--border); padding-top: 16px; margin-top: 12px; }
+    .total-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 15px; }
+    .total-row.grand { font-size: 18px; font-weight: 700; padding-top: 10px; border-top: 1px solid var(--border); margin-top: 6px; }
+    .total-row .value { color: var(--accent); }
+
+    .checkout-btn { display: block; width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 16px; }
+    .checkout-btn:hover { opacity: 0.9; }
+    .checkout-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #e2e8f0; padding: 10px 20px; border-radius: 8px; font-size: 14px; z-index: 9999; display: none; border: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="page-header">
+      <a href="/" class="back-link">&larr; Back</a>
+      <h1>Shopping Cart</h1>
+    </div>
+    <div id="cartContent">
+      <div style="text-align:center;padding:40px;color:var(--muted);">Loading cart...</div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    var token = localStorage.getItem('tc_token');
+    var cartItems = [];
+
+    function showToast(msg) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      setTimeout(function() { t.style.display = 'none'; }, 2500);
+    }
+
+    function authHeaders() {
+      return { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+    }
+
+    async function loadCart() {
+      if (!token) {
+        document.getElementById('cartContent').innerHTML =
+          '<div class="login-prompt"><p>Sign in to view your cart</p><a href="/#login">Sign In</a></div>';
+        return;
+      }
+
+      try {
+        var res = await fetch('/api/cart', { headers: authHeaders() });
+        if (!res.ok) throw new Error('Failed to load cart');
+        var data = await res.json();
+        cartItems = data.items || [];
+        renderCart();
+      } catch (e) {
+        document.getElementById('cartContent').innerHTML =
+          '<div class="empty-cart"><p>Failed to load cart.</p></div>';
+      }
+    }
+
+    function getPhoto(item) {
+      try {
+        var photos = typeof item.photos === 'string' ? JSON.parse(item.photos) : item.photos;
+        return (photos && photos.length) ? photos[0] : '';
+      } catch(e) { return ''; }
+    }
+
+    function groupLabel(niche) {
+      if (niche === 'organic-food') return '\uD83D\uDCE6 Organic Food';
+      if (niche === 'plant-seeds') return '\uD83C\uDF31 Plant Seeds';
+      return '\uD83D\uDCE6 Order';
+    }
+
+    function renderCart() {
+      var el = document.getElementById('cartContent');
+
+      if (!cartItems.length) {
+        el.innerHTML = '<div class="empty-cart"><div class="icon">\uD83D\uDED2</div><p>Your cart is empty</p><a href="/">Browse Marketplace</a></div>';
+        return;
+      }
+
+      // Group by niche
+      var groups = {};
+      cartItems.forEach(function(item) {
+        var niche = item.niche || 'other';
+        if (!groups[niche]) groups[niche] = [];
+        groups[niche].push(item);
+      });
+
+      var html = '';
+      var grandTotal = 0;
+      var totalShipping = 0;
+
+      Object.keys(groups).forEach(function(niche) {
+        var items = groups[niche];
+        var subtotal = 0;
+        var shippingCents = parseInt(items[0].delivery_fee_cents) || 0;
+
+        html += '<div class="supplier-group">';
+        html += '<div class="supplier-header">' + groupLabel(niche) + '</div>';
+
+        items.forEach(function(item) {
+          var lineTotal = item.unit_price_cents * item.quantity;
+          subtotal += lineTotal;
+          var photo = getPhoto(item);
+          var imgHtml = photo ? '<img src="' + photo + '" alt="">' : '<div style="width:72px;height:72px;background:#1e293b;border-radius:8px;"></div>';
+
+          html += '<div class="cart-item" data-id="' + item.id + '">';
+          html += imgHtml;
+          html += '<div class="cart-item-info">';
+          html += '<div class="cart-item-title">' + escHtml(item.title) + '</div>';
+          if (item.selected_variant) {
+            html += '<div class="cart-item-variant">' + escHtml(item.selected_variant) + '</div>';
+          }
+          html += '<div class="cart-item-row">';
+          html += '<div class="qty-control">';
+          html += '<button class="qty-btn" onclick="changeQty(\'' + item.id + '\', ' + (item.quantity - 1) + ')">-</button>';
+          html += '<div class="qty-val">' + item.quantity + '</div>';
+          html += '<button class="qty-btn" onclick="changeQty(\'' + item.id + '\', ' + (item.quantity + 1) + ')">+</button>';
+          html += '</div>';
+          html += '<div class="cart-item-price">$' + (lineTotal / 100).toFixed(2) + '</div>';
+          html += '</div>';
+          html += '</div>';
+          html += '<button class="remove-btn" onclick="removeItem(\'' + item.id + '\')">&times;</button>';
+          html += '</div>';
+        });
+
+        html += '<div class="group-summary"><span class="label">Subtotal</span><span class="value">$' + (subtotal / 100).toFixed(2) + '</span></div>';
+        html += '<div class="group-summary"><span class="label">Shipping</span><span class="value">$' + (shippingCents / 100).toFixed(2) + '</span></div>';
+        html += '</div>';
+
+        grandTotal += subtotal;
+        totalShipping += shippingCents;
+      });
+
+      html += '<div class="cart-footer">';
+      html += '<div class="total-row"><span>Items</span><span class="value">$' + (grandTotal / 100).toFixed(2) + '</span></div>';
+      html += '<div class="total-row"><span>Shipping</span><span class="value">$' + (totalShipping / 100).toFixed(2) + '</span></div>';
+      html += '<div class="total-row grand"><span>Total</span><span class="value">$' + ((grandTotal + totalShipping) / 100).toFixed(2) + '</span></div>';
+      html += '<button class="checkout-btn" onclick="checkout()">Checkout \u2014 $' + ((grandTotal + totalShipping) / 100).toFixed(2) + '</button>';
+      html += '</div>';
+
+      el.innerHTML = html;
+    }
+
+    function escHtml(str) {
+      var d = document.createElement('div');
+      d.textContent = str || '';
+      return d.innerHTML;
+    }
+
+    async function changeQty(itemId, newQty) {
+      if (newQty < 1) {
+        removeItem(itemId);
+        return;
+      }
+      if (newQty > 50) return;
+
+      try {
+        var res = await fetch('/api/cart/' + itemId, {
+          method: 'PATCH',
+          headers: authHeaders(),
+          body: JSON.stringify({ quantity: newQty })
+        });
+        if (!res.ok) throw new Error();
+        // Update local data
+        cartItems.forEach(function(item) {
+          if (item.id === itemId) item.quantity = newQty;
+        });
+        renderCart();
+      } catch(e) {
+        showToast('Failed to update quantity');
+      }
+    }
+
+    async function removeItem(itemId) {
+      try {
+        var res = await fetch('/api/cart/' + itemId, {
+          method: 'DELETE',
+          headers: authHeaders()
+        });
+        if (!res.ok) throw new Error();
+        cartItems = cartItems.filter(function(item) { return item.id !== itemId; });
+        renderCart();
+        showToast('Item removed');
+      } catch(e) {
+        showToast('Failed to remove item');
+      }
+    }
+
+    async function checkout() {
+      var btn = document.querySelector('.checkout-btn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
+
+      try {
+        var res = await fetch('/api/cart/checkout', {
+          method: 'POST',
+          headers: authHeaders()
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Checkout failed');
+        if (data.url) {
+          window.location.href = data.url;
+        }
+      } catch(e) {
+        showToast(e.message || 'Checkout failed');
+        if (btn) { btn.disabled = false; btn.textContent = 'Checkout'; }
+      }
+    }
+
+    loadCart();
+  </script>
+</body>
+</html>

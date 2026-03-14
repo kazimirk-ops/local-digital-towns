@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live — Treasure Coast</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #0ea5e9;
+      --accent: #f0c040;
+      --bg: #0a0f1a;
+      --surface: #0f1722;
+      --surface2: #1a2636;
+      --text: #e2e8f0;
+      --muted: #9fb0c3;
+      --border: rgba(255,255,255,0.08);
+      --red: #dc2626;
+      --radius: 10px;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Top Bar ── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .top-bar a { color: var(--primary); text-decoration: none; font-size: 14px; font-weight: 600; }
+    .top-bar a:hover { text-decoration: underline; }
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--red);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .live-badge .dot {
+      width: 6px; height: 6px;
+      background: #fff;
+      border-radius: 50%;
+      animation: pulse-dot 1.5s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ── Main Layout ── */
+    .live-container {
+      display: flex;
+      height: calc(100vh - 49px);
+    }
+
+    /* ── Left: Video + Info ── */
+    .left-panel {
+      flex: 0 0 65%;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #000;
+      flex-shrink: 0;
+    }
+    .video-wrap iframe, .video-wrap video {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .video-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      color: var(--muted);
+      font-size: 14px;
+      gap: 8px;
+    }
+    .video-placeholder svg { width: 48px; height: 48px; opacity: 0.4; }
+
+    /* Ended overlay */
+    .ended-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #fff;
+      z-index: 5;
+    }
+    .ended-overlay h2 { font-family: 'Syne', sans-serif; font-size: 22px; }
+    .ended-overlay p { color: var(--muted); font-size: 14px; }
+
+    /* Waitlist overlay */
+    .waitlist-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(10,15,26,0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      z-index: 10;
+      padding: 24px;
+      text-align: center;
+    }
+    .waitlist-overlay h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .waitlist-overlay p { color: var(--muted); font-size: 14px; max-width: 360px; }
+    .waitlist-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .waitlist-row input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 14px;
+      flex: 1;
+      min-width: 0;
+      max-width: 240px;
+      outline: none;
+    }
+    .waitlist-row input:focus { border-color: var(--primary); }
+    .waitlist-row button {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .waitlist-row button:hover { opacity: 0.9; }
+    .waitlist-success { color: var(--accent); font-weight: 600; font-size: 14px; }
+
+    /* Session info */
+    .session-info {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .session-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .seller-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .seller-row img {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--surface2);
+    }
+    .seller-row .name { font-weight: 600; font-size: 14px; }
+    .viewer-count {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Sessions list (lobby) */
+    .sessions-list {
+      padding: 20px;
+      flex: 1;
+    }
+    .sessions-list h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .session-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .session-card:hover { border-color: var(--primary); }
+    .session-card .sc-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+    .session-card .sc-seller { font-size: 13px; color: var(--muted); }
+    .session-card .sc-status {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-top: 8px;
+      text-transform: uppercase;
+    }
+    .sc-status.live { background: var(--red); color: #fff; }
+    .sc-status.scheduled { background: var(--surface2); color: var(--accent); }
+    .no-sessions { color: var(--muted); font-size: 14px; padding: 20px 0; }
+
+    /* ── Right: Product + Chat ── */
+    .right-panel {
+      flex: 0 0 35%;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    /* Featured product */
+    .featured-product {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .fp-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+    .fp-card {
+      display: flex;
+      gap: 12px;
+    }
+    .fp-card img {
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: var(--surface2);
+      flex-shrink: 0;
+    }
+    .fp-details { flex: 1; min-width: 0; }
+    .fp-title { font-weight: 600; font-size: 14px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fp-condition { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .fp-price { font-weight: 700; font-size: 16px; color: var(--accent); }
+    .fp-buy {
+      width: 100%;
+      margin-top: 10px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .fp-buy:hover { opacity: 0.9; }
+    .fp-empty { color: var(--muted); font-size: 13px; padding: 12px 0; text-align: center; }
+
+    /* Chat */
+    .chat-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .chat-header {
+      padding: 12px 16px;
+      font-weight: 700;
+      font-size: 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .chat-msg {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .chat-msg.own { flex-direction: row-reverse; }
+    .chat-msg img {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--surface2);
+    }
+    .chat-bubble {
+      background: var(--surface2);
+      border-radius: 12px;
+      padding: 8px 12px;
+      max-width: 75%;
+    }
+    .chat-msg.own .chat-bubble { background: var(--primary); color: #fff; }
+    .chat-name { font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 2px; }
+    .chat-msg.own .chat-name { color: rgba(255,255,255,0.7); text-align: right; }
+    .chat-text { font-size: 13px; line-height: 1.4; word-break: break-word; }
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .chat-input-row input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+    }
+    .chat-input-row input:focus { border-color: var(--primary); }
+    .chat-input-row button {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .chat-input-row button:hover { opacity: 0.9; }
+    .chat-login {
+      padding: 14px 16px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .chat-login a { color: var(--primary); text-decoration: none; font-weight: 600; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2);
+      color: var(--text);
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      z-index: 9999;
+      transition: transform 0.3s ease;
+      pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+      .live-container {
+        flex-direction: column;
+        height: auto;
+        min-height: calc(100vh - 49px);
+      }
+      .left-panel { flex: none; width: 100%; }
+      .right-panel {
+        flex: none;
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--border);
+        height: 50vh;
+        min-height: 400px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <a href="/">Back to Marketplace</a>
+    <div id="liveIndicator" style="display:none;">
+      <span class="live-badge"><span class="dot"></span> LIVE</span>
+    </div>
+    <a href="/dashboard">Dashboard</a>
+  </div>
+
+  <div class="live-container">
+    <!-- Left Panel -->
+    <div class="left-panel">
+      <!-- Video area (shown when viewing a session) -->
+      <div id="videoSection" style="display:none;">
+        <div class="video-wrap">
+          <div id="videoEmbed">
+            <div class="video-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9A2.25 2.25 0 0013.5 5.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/>
+              </svg>
+              <span id="videoMsg">Waiting for stream to start...</span>
+            </div>
+          </div>
+          <!-- Waitlist overlay -->
+          <div id="waitlistOverlay" class="waitlist-overlay" style="display:none;">
+            <h2>Live Selling Coming Soon</h2>
+            <p id="waitlistSubtext">Be the first to know when it launches</p>
+            <div class="waitlist-row" id="waitlistForm">
+              <input type="email" id="waitlistEmail" placeholder="you@email.com">
+              <button onclick="joinWaitlist()">Join Waitlist</button>
+            </div>
+            <div class="waitlist-success" id="waitlistSuccess" style="display:none;">You're on the list!</div>
+          </div>
+          <!-- Ended overlay -->
+          <div id="endedOverlay" class="ended-overlay" style="display:none;">
+            <h2>Stream Ended</h2>
+            <p>This live session has ended. Thanks for watching!</p>
+            <a href="/live" style="color:var(--primary);font-size:14px;margin-top:8px;">Browse other sessions</a>
+          </div>
+        </div>
+        <div class="session-info">
+          <div class="session-title" id="sessionTitle">Loading...</div>
+          <div class="seller-row">
+            <img id="sellerAvatar" src="" alt="">
+            <span class="name" id="sellerName"></span>
+            <span class="viewer-count" id="viewerCount">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              <span id="viewerNum">0</span> watching
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sessions lobby (shown when no session selected) -->
+      <div id="sessionsLobby" class="sessions-list">
+        <h2>Live Sessions</h2>
+        <div id="sessionsList"></div>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+      <!-- Featured Product -->
+      <div class="featured-product" id="featuredProduct">
+        <div class="fp-label">Featured Product</div>
+        <div class="fp-empty" id="fpEmpty">No product featured yet</div>
+        <div id="fpCard" style="display:none;">
+          <div class="fp-card">
+            <img id="fpPhoto" src="" alt="">
+            <div class="fp-details">
+              <div class="fp-title" id="fpTitle"></div>
+              <div class="fp-condition" id="fpCondition"></div>
+              <div class="fp-price" id="fpPrice"></div>
+            </div>
+          </div>
+          <button class="fp-buy" id="fpBuyBtn" onclick="buyFeatured()">Buy Now</button>
+        </div>
+      </div>
+
+      <!-- Chat -->
+      <div class="chat-section">
+        <div class="chat-header">Live Chat</div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div id="chatInputArea">
+          <div class="chat-input-row" id="chatInputRow" style="display:none;">
+            <input type="text" id="chatInput" placeholder="Say something..." maxlength="500" onkeydown="if(event.key==='Enter')sendChat()">
+            <button onclick="sendChat()">Send</button>
+          </div>
+          <div class="chat-login" id="chatLoginPrompt">
+            <a href="/login">Log in</a> to join the chat
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function() {
+    const TOKEN = localStorage.getItem('tc_token');
+    let currentUser = null;
+    let sessionId = null;
+    let session = null;
+    let lastChatTs = null;
+    let sessionPoll = null;
+    let chatPoll = null;
+    let featuredListing = null;
+
+    // ═══ Helpers ═══
+
+    async function apiFetch(url, opts = {}) {
+      const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+      if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+      const r = await fetch(url, { ...opts, headers });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.error || err.message || r.statusText);
+      }
+      return r.json();
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function formatPrice(cents) {
+      if (!cents && cents !== 0) return '';
+      return '$' + (cents / 100).toFixed(2);
+    }
+
+    // ═══ Auth Check ═══
+
+    async function checkAuth() {
+      if (!TOKEN) return;
+      try {
+        const data = await apiFetch('/api/auth/me');
+        currentUser = data;
+        document.getElementById('chatInputRow').style.display = 'flex';
+        document.getElementById('chatLoginPrompt').style.display = 'none';
+      } catch(e) {
+        // Not logged in
+      }
+    }
+
+    // ═══ Route ═══
+
+    function getSessionIdFromUrl() {
+      const parts = window.location.pathname.split('/');
+      // /live/:sessionId
+      if (parts.length >= 3 && parts[1] === 'live' && parts[2]) {
+        return parts[2];
+      }
+      return null;
+    }
+
+    // ═══ Sessions Lobby ═══
+
+    async function loadSessions() {
+      try {
+        const data = await apiFetch('/api/live/sessions');
+        const list = document.getElementById('sessionsList');
+        if (!data.sessions || !data.sessions.length) {
+          list.innerHTML = '<div class="no-sessions">No live sessions right now. Check back later!</div>';
+          return;
+        }
+        list.innerHTML = data.sessions.map(s => `
+          <div class="session-card" onclick="window.location.href='/live/${s.id}'">
+            <div class="sc-title">${esc(s.title)}</div>
+            <div class="sc-seller">${esc(s.seller_name)}</div>
+            <span class="sc-status ${s.status}">${s.status === 'live' ? 'LIVE NOW' : 'Scheduled'}</span>
+          </div>
+        `).join('');
+      } catch(e) {
+        document.getElementById('sessionsList').innerHTML = '<div class="no-sessions">Unable to load sessions.</div>';
+      }
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    // ═══ Session View ═══
+
+    async function loadSession(id) {
+      sessionId = id;
+      document.getElementById('sessionsLobby').style.display = 'none';
+      document.getElementById('videoSection').style.display = 'block';
+
+      try {
+        const data = await apiFetch('/api/live/sessions/' + id);
+        session = data.session;
+        renderSession();
+        startPolling();
+        loadChat();
+      } catch(e) {
+        document.getElementById('sessionTitle').textContent = 'Session not found';
+      }
+    }
+
+    function renderSession() {
+      if (!session) return;
+
+      document.getElementById('sessionTitle').textContent = session.title || 'Untitled Session';
+      document.getElementById('sellerName').textContent = session.seller_name || '';
+      document.getElementById('sellerAvatar').src = session.seller_avatar || '';
+      document.getElementById('viewerNum').textContent = session.viewer_count || 0;
+
+      // Live indicator
+      document.getElementById('liveIndicator').style.display = session.status === 'live' ? '' : 'none';
+
+      // Video placeholder message
+      if (session.status === 'scheduled') {
+        document.getElementById('videoMsg').textContent = 'Stream starting soon...';
+      } else if (session.status === 'live') {
+        document.getElementById('videoMsg').textContent = 'Stream is live — video embed ready';
+      }
+
+      // Ended overlay
+      document.getElementById('endedOverlay').style.display = session.status === 'ended' ? 'flex' : 'none';
+
+      // Check live selling enabled for waitlist
+      checkWaitlist();
+
+      // Featured product
+      updateFeaturedProduct();
+
+      document.title = (session.title || 'Live') + ' — Treasure Coast';
+    }
+
+    async function checkWaitlist() {
+      try {
+        const data = await apiFetch('/api/community/live-selling');
+        if (!data.enabled) {
+          const overlay = document.getElementById('waitlistOverlay');
+          overlay.style.display = 'flex';
+          const sub = document.getElementById('waitlistSubtext');
+          sub.textContent = 'Be the first to know when live selling launches';
+        }
+      } catch(e) {}
+    }
+
+    async function updateFeaturedProduct() {
+      if (!session || !session.product_queue || !session.product_queue.length) {
+        document.getElementById('fpEmpty').style.display = '';
+        document.getElementById('fpCard').style.display = 'none';
+        return;
+      }
+
+      const lastId = session.product_queue[session.product_queue.length - 1];
+      if (featuredListing && featuredListing.id === lastId) return;
+
+      try {
+        const listing = await apiFetch('/api/listings/' + lastId);
+        featuredListing = listing;
+
+        document.getElementById('fpEmpty').style.display = 'none';
+        document.getElementById('fpCard').style.display = '';
+        document.getElementById('fpTitle').textContent = listing.title || '';
+        document.getElementById('fpCondition').textContent = listing.condition || '';
+        document.getElementById('fpPrice').textContent = listing.price ? formatPrice(listing.price) : '';
+
+        const photos = listing.photos || [];
+        document.getElementById('fpPhoto').src = photos.length ? photos[0] : '';
+        document.getElementById('fpPhoto').style.display = photos.length ? '' : 'none';
+
+        document.getElementById('fpBuyBtn').textContent = listing.price ? 'Buy Now ' + formatPrice(listing.price) : 'Buy Now';
+      } catch(e) {
+        // Could not load listing
+      }
+    }
+
+    function buyFeatured() {
+      if (!featuredListing) return;
+      window.open('/listing/' + featuredListing.id, '_blank');
+    }
+
+    // ═══ Chat ═══
+
+    async function loadChat() {
+      if (!sessionId) return;
+      try {
+        const data = await apiFetch('/api/live/sessions/' + sessionId + '/chat');
+        const container = document.getElementById('chatMessages');
+        container.innerHTML = '';
+        if (data.messages && data.messages.length) {
+          data.messages.forEach(m => appendChatMsg(m));
+          lastChatTs = data.messages[data.messages.length - 1].created_at;
+        }
+        scrollChat();
+      } catch(e) {}
+    }
+
+    function appendChatMsg(m) {
+      const container = document.getElementById('chatMessages');
+      const isOwn = currentUser && currentUser.id === m.user_id;
+      const div = document.createElement('div');
+      div.className = 'chat-msg' + (isOwn ? ' own' : '');
+      div.innerHTML = `
+        <img src="${esc(m.avatar_url || '')}" alt="">
+        <div class="chat-bubble">
+          <div class="chat-name">${esc(m.user_name || 'User')}</div>
+          <div class="chat-text">${esc(m.message)}</div>
+        </div>
+      `;
+      container.appendChild(div);
+    }
+
+    function scrollChat() {
+      const c = document.getElementById('chatMessages');
+      c.scrollTop = c.scrollHeight;
+    }
+
+    async function pollChat() {
+      if (!sessionId) return;
+      try {
+        const data = await apiFetch('/api/live/sessions/' + sessionId + '/chat');
+        if (!data.messages || !data.messages.length) return;
+
+        const newMsgs = lastChatTs
+          ? data.messages.filter(m => m.created_at > lastChatTs)
+          : data.messages;
+
+        if (newMsgs.length) {
+          newMsgs.forEach(m => appendChatMsg(m));
+          lastChatTs = data.messages[data.messages.length - 1].created_at;
+          scrollChat();
+        }
+      } catch(e) {}
+    }
+
+    window.sendChat = async function() {
+      const input = document.getElementById('chatInput');
+      const msg = input.value.trim();
+      if (!msg) return;
+      input.value = '';
+      try {
+        await apiFetch('/api/live/sessions/' + sessionId + '/chat', {
+          method: 'POST',
+          body: JSON.stringify({ message: msg })
+        });
+        await pollChat();
+      } catch(e) {
+        showToast('Failed to send message');
+      }
+    };
+
+    // ═══ Polling ═══
+
+    function startPolling() {
+      stopPolling();
+      sessionPoll = setInterval(pollSession, 3000);
+      chatPoll = setInterval(pollChat, 2000);
+    }
+
+    function stopPolling() {
+      if (sessionPoll) clearInterval(sessionPoll);
+      if (chatPoll) clearInterval(chatPoll);
+    }
+
+    async function pollSession() {
+      if (!sessionId) return;
+      try {
+        const data = await apiFetch('/api/live/sessions/' + sessionId);
+        session = data.session;
+        renderSession();
+        if (session.status === 'ended') {
+          stopPolling();
+        }
+      } catch(e) {}
+    }
+
+    // ═══ Waitlist ═══
+
+    window.joinWaitlist = async function() {
+      const email = document.getElementById('waitlistEmail').value.trim();
+      if (!email) return;
+      try {
+        await apiFetch('/api/live/waitlist', {
+          method: 'POST',
+          body: JSON.stringify({ email })
+        });
+        document.getElementById('waitlistForm').style.display = 'none';
+        document.getElementById('waitlistSuccess').style.display = '';
+      } catch(e) {
+        showToast('Failed to join waitlist');
+      }
+    };
+
+    // ═══ Init ═══
+
+    async function init() {
+      await checkAuth();
+      const id = getSessionIdFromUrl();
+      if (id) {
+        loadSession(id);
+      } else {
+        loadSessions();
+      }
+    }
+
+    init();
+  })();
+  </script>
+</body>
+</html>

@@ -217,10 +217,16 @@ app.get("/staging-auth", (req, res) => {
   res.type("html").send(STAGING_LOGIN_HTML);
 });
 
+// Staging password gate — only protects admin routes, not the public town UI
+const ADMIN_GATE_PATHS = ["/admin", "/admin-modules", "/admin-towns", "/communities", "/users", "/docs", "/genesis"];
 app.use((req, res, next) => {
-  // Skip auth check for the login endpoint and static assets (css, js, images, fonts)
   if (req.path === "/staging-auth") return next();
-  if (/\.(css|js|png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|eot|map)$/i.test(req.path)) return next();
+
+  // Only gate admin paths (exact or prefix with .html)
+  const isAdminPath = ADMIN_GATE_PATHS.some(p =>
+    req.path === p || req.path === p + ".html" || req.path.startsWith(p + "/")
+  );
+  if (!isAdminPath) return next();
 
   const cookies = (req.headers.cookie || "").split(";").reduce((acc, c) => {
     const [k, v] = c.trim().split("=");
@@ -319,6 +325,9 @@ try {
 } catch (err) {
   console.error("Places module failed to load:", err?.message);
 }
+
+// ─── Mount L5 UI modules (before API modules so HTML routes take priority) ───
+try { require('./modules/ui-treasurecoast/routes')(app, db); } catch(e) { console.error('ui-treasurecoast:', e.message); }
 
 // ─── Mount L0 modules (before view-only lockdown so POST/PUT/DELETE endpoints work) ───
 try { require('./modules/businesses/routes')(app, db); } catch(e) { console.error('businesses:', e.message); }

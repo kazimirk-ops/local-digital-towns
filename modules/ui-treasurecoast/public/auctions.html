@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auctions | FloridaLife</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #0ea5e9; --secondary: #10b981; --accent: #f0c040;
+      --bg: #0a0f1a; --surface: #111827; --surface2: #1e293b;
+      --text: #e2e8f0; --muted: #94a3b8; --border: rgba(255,255,255,0.08);
+    }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(10,15,26,0.95); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar h1 { font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .topbar a { color: var(--primary); text-decoration: none; font-size: 14px; font-weight: 600; }
+
+    .content { padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .section-header { font-size: 20px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+    .auction-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;
+    }
+
+    .auction-card {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+      overflow: hidden; cursor: pointer; transition: transform 0.15s, border-color 0.2s;
+    }
+    .auction-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.15); }
+
+    .card-img {
+      position: relative; width: 100%; aspect-ratio: 16/9;
+      background: linear-gradient(135deg, #1e3a5f, #0d1424);
+      overflow: hidden;
+    }
+    .card-img img { width: 100%; height: 100%; object-fit: cover; }
+    .card-img .fallback { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 48px; }
+
+    .type-badge {
+      position: absolute; top: 8px; left: 8px;
+      padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.5px; text-transform: uppercase; color: #fff;
+    }
+    .type-badge.flash { background: #ef4444; }
+    .type-badge.standard { background: #6366f1; }
+    .type-badge.buy_now_offer { background: #f59e0b; }
+
+    .bid-count-badge {
+      position: absolute; top: 8px; right: 8px;
+      background: rgba(0,0,0,0.7); color: #e2e8f0; padding: 4px 8px;
+      border-radius: 6px; font-size: 11px; font-weight: 600;
+    }
+
+    .card-body { padding: 14px; }
+    .card-title {
+      font-size: 15px; font-weight: 700; color: var(--text);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .current-bid { font-size: 22px; font-weight: 800; color: var(--accent); margin-bottom: 6px; }
+    .bid-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+
+    .timer {
+      font-size: 14px; font-weight: 600; color: var(--text);
+      padding: 6px 10px; background: rgba(255,255,255,0.05); border-radius: 8px;
+      display: inline-block; margin: 8px 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .timer.warning { color: #f59e0b; background: rgba(245,158,11,0.1); }
+    .timer.danger { color: #ef4444; background: rgba(239,68,68,0.15); animation: pulse 1s infinite; }
+    .timer.ended { color: var(--muted); background: rgba(255,255,255,0.03); }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+    .card-footer {
+      display: flex; align-items: center; justify-content: space-between; margin-top: 10px;
+    }
+    .bid-info { font-size: 12px; color: var(--muted); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; padding: 10px 18px; transition: all 0.2s; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: #0284c7; }
+    .btn-amber { background: #f59e0b; color: #000; }
+    .btn-amber:hover { background: #d97706; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    .empty-state { text-align: center; color: var(--muted); padding: 60px 20px; }
+    .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+
+    /* Detail Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border-radius: 16px; width: 100%; max-width: 800px;
+      max-height: 90vh; overflow-y: auto; border: 1px solid var(--border);
+    }
+    .modal-close {
+      position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.5);
+      border: none; color: #fff; font-size: 18px; width: 32px; height: 32px;
+      border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+    .detail-left { border-right: 1px solid var(--border); }
+    .detail-left img { width: 100%; aspect-ratio: 4/3; object-fit: cover; }
+    .detail-left .no-img { width: 100%; aspect-ratio: 4/3; background: linear-gradient(135deg,#1e3a5f,#0d1424); display: flex; align-items: center; justify-content: center; font-size: 64px; }
+    .detail-right { padding: 24px; }
+
+    .bid-history { margin-top: 16px; }
+    .bid-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .bid-row:last-child { border-bottom: none; }
+
+    .bid-input-row {
+      display: flex; gap: 8px; margin-top: 12px;
+    }
+    .bid-input-row input {
+      flex: 1; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 15px; font-weight: 600;
+    }
+    .bid-input-row input:focus { outline: none; border-color: var(--primary); }
+
+    #cardSetupSection {
+      margin-top: 16px; padding: 16px; background: rgba(14,165,233,0.08);
+      border: 1px solid rgba(14,165,233,0.2); border-radius: 12px; display: none;
+    }
+    #card-element {
+      padding: 12px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; margin: 12px 0;
+    }
+
+    .anti-ghost-notice {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; background: rgba(16,185,129,0.08);
+      border: 1px solid rgba(16,185,129,0.15); border-radius: 8px;
+      font-size: 12px; color: var(--secondary); margin-top: 12px;
+    }
+
+    @media (max-width: 640px) {
+      .detail-grid { grid-template-columns: 1fr; }
+      .detail-left { border-right: none; border-bottom: 1px solid var(--border); }
+      .auction-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>&#9889; Auctions &amp; Flash Sales</h1>
+  <a href="/">&#8592; Back to Town</a>
+</div>
+
+<div class="content">
+  <div id="flashSalesSection" style="display:none;margin-bottom:32px;">
+    <div class="section-header">&#128293; Flash Sales</div>
+    <div id="flashSalesGrid" class="auction-grid"></div>
+  </div>
+
+  <div id="auctionsSection">
+    <div class="section-header">&#9889; Live Auctions</div>
+    <div id="auctionGrid" class="auction-grid">
+      <div class="empty-state" style="grid-column:1/-1;">Loading auctions...</div>
+    </div>
+  </div>
+
+  <div id="wonAuctionsSection" style="display:none;margin-top:32px;">
+    <div class="section-header">&#127942; Won Auctions</div>
+    <div id="wonAuctionsGrid" style="display:flex;flex-direction:column;gap:16px;"></div>
+  </div>
+</div>
+
+<!-- Auction Detail Modal -->
+<div class="modal-overlay" id="auctionModal">
+  <div class="modal" style="position:relative;">
+    <button class="modal-close" onclick="closeAuctionModal()">&times;</button>
+    <div id="auctionDetail"></div>
+  </div>
+</div>
+
+<!-- Flash Sale Detail Modal -->
+<div class="modal-overlay" id="flashSaleModal" onclick="if(event.target===this)closeFlashSaleModal()">
+  <div class="modal" style="position:relative;max-width:520px;">
+    <button class="modal-close" onclick="closeFlashSaleModal()">&times;</button>
+    <div id="flashSaleDetail"></div>
+  </div>
+</div>
+
+<script src="/auth-gate.js"></script>
+<script>
+(function() {
+  console.log('AUCTIONS_SCRIPT_LOADED');
+  var token = localStorage.getItem('tc_token');
+  var currentUser = null;
+  var allAuctions = [];
+  var auctionPage = 1;
+  var AUCTION_PAGE_SIZE = 20;
+  var timerInterval = null;
+  var detailTimerInterval = null;
+  var currentDetailAuctionId = null;
+  var stripeInstance = null;
+  var cardElement = null;
+  var setupClientSecret = null;
+
+  function auctionShareUrl(auctionId) {
+    return window.location.origin + '/auction?id=' + auctionId;
+  }
+  function auctionShareUrlRaw(auctionId) {
+    return window.location.origin + '/auction?id=' + auctionId;
+  }
+  function shareButtonsHtml(auctionId, size) {
+    var s = size || 'sm';
+    var pad = s === 'sm' ? '4px 10px' : '6px 12px';
+    var fs = s === 'sm' ? '11px' : '12px';
+    var url = auctionShareUrl(auctionId);
+    var rawUrl = auctionShareUrlRaw(auctionId);
+    return '<div style="display:flex;gap:6px;flex-wrap:wrap;' + (s === 'sm' ? 'margin-top:6px;' : 'margin:8px 0;') + '" onclick="event.stopPropagation();">'
+      + '<a href="https://www.facebook.com/sharer/sharer.php?u=' + url + '" target="_blank" rel="noopener" style="padding:' + pad + ';background:rgba(59,89,152,0.15);border:1px solid rgba(59,89,152,0.3);color:#5b7bd5;border-radius:999px;font-size:' + fs + ';font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">Facebook</a>'
+      + '<a href="https://wa.me/?text=Check%20out%20this%20auction%3A%20' + encodeURIComponent(rawUrl) + '" target="_blank" rel="noopener" style="padding:' + pad + ';background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.3);color:#25d366;border-radius:999px;font-size:' + fs + ';font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">WhatsApp</a>'
+      + '<button onclick="copyAuctionLink(' + auctionId + ', this)" style="padding:' + pad + ';background:rgba(148,163,184,0.12);border:1px solid rgba(148,163,184,0.3);color:#94a3b8;border-radius:999px;font-size:' + fs + ';font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">Copy Link</button>'
+      + '</div>';
+  }
+  window.copyAuctionLink = function(auctionId, btn) {
+    var url = auctionShareUrlRaw(auctionId);
+    navigator.clipboard.writeText(url).then(function() {
+      var orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.style.color = '#10b981';
+      setTimeout(function() { btn.textContent = orig; btn.style.color = '#94a3b8'; }, 2000);
+    }).catch(function() {
+      prompt('Copy this link:', url);
+    });
+  };
+
+  function apiFetch(url, opts) {
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+    if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(opts.body);
+    }
+    return fetch(url, opts).then(function(r) {
+      return r.json().then(function(data) {
+        if (!r.ok) { data._httpStatus = r.status; }
+        return data;
+      });
+    });
+  }
+
+  function isRealEmail(email) {
+    if (!email) return false;
+    if (email.indexOf('@fb.placeholder') !== -1) return false;
+    if (email.indexOf('@facebook.com') !== -1) return false;
+    return true;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+  }
+
+  function fmtCents(cents) {
+    return '$' + (Number(cents || 0) / 100).toFixed(2);
+  }
+
+  function formatCountdown(endsAt) {
+    var t = new Date(endsAt).getTime();
+    if (isNaN(t)) return { text: 'No end time', cls: '' };
+    var ms = t - Date.now();
+    if (ms <= 0) return { text: 'Ended', cls: 'ended' };
+    var s = Math.floor(ms / 1000);
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var sec = s % 60;
+    var text = (h > 0 ? h + 'h ' : '') + m + 'm ' + sec + 's';
+    var cls = '';
+    if (ms < 60000) cls = 'danger';
+    else if (ms < 300000) cls = 'warning';
+    return { text: text, cls: cls };
+  }
+
+  // Check auth — wrapped in try-catch to prevent IIFE crash
+  try {
+    if (token) {
+      apiFetch('/api/auth/me').then(function(data) {
+        if (data.id) currentUser = data;
+      }).catch(function(e) { console.error('AUTH_CHECK_ERROR', e); });
+    }
+  } catch(e) { console.error('AUTH_CHECK_SYNC_ERROR', e); }
+
+  function loadAuctions() {
+    apiFetch('/api/auctions?status=active').then(function(data) {
+      allAuctions = data.auctions || [];
+      // Also load scheduled
+      apiFetch('/api/auctions?status=upcoming').then(function(d2) {
+        allAuctions = allAuctions.concat(d2.auctions || []);
+        auctionPage = 1;
+        renderAuctionPage();
+      }).catch(function(err) {
+        console.error('UPCOMING_AUCTIONS_ERROR', err);
+        // Still render whatever active auctions we have
+        auctionPage = 1;
+        renderAuctionPage();
+      });
+    }).catch(function(err) {
+      console.error('ACTIVE_AUCTIONS_ERROR', err);
+      document.getElementById('auctionGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;">Failed to load auctions.</div>';
+    });
+  }
+
+  function renderAuctions() {
+    var container = document.getElementById('auctionGrid');
+
+    if (allAuctions.length === 0) {
+      container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">'
+        + '<div class="emoji">&#9889;</div>'
+        + '<h3 style="color:var(--text);margin:0 0 8px;">No auctions right now</h3>'
+        + '<p>Check back soon or create one from your dashboard!</p>'
+        + '</div>';
+      return;
+    }
+
+    var html = '';
+    allAuctions.forEach(function(a) {
+      var photos = [];
+      try { photos = typeof a.photos === 'string' ? JSON.parse(a.photos) : (a.photos || []); } catch(e) { photos = []; }
+      var imgHtml = photos.length > 0
+        ? '<img src="' + escapeHtml(photos[0]) + '" alt="' + escapeHtml(a.title) + '">'
+        : '<div class="fallback">&#128176;</div>';
+
+      var currentBid = a.current_bid_cents || a.starting_bid_cents || 0;
+      var bidLabel = a.current_bid_cents ? 'Current Bid' : 'Starting Bid';
+      var cd = formatCountdown(a.ends_at);
+      var typeBadge = a.auction_type || 'flash';
+      var bidCount = parseInt(a.bid_count) || 0;
+
+      var buyNowHtml = '';
+      if (a.buy_now_price_cents) {
+        buyNowHtml = '<div style="font-size:12px;color:#f59e0b;margin-top:4px;">Buy Now: ' + fmtCents(a.buy_now_price_cents) + '</div>';
+      }
+
+      html += '<div class="auction-card" data-auction-id="' + a.id + '">'
+        + '<div class="card-img">' + imgHtml
+        + '<span class="type-badge ' + escapeHtml(typeBadge) + '">' + escapeHtml(typeBadge.replace(/_/g, ' ')) + '</span>'
+        + '<span class="bid-count-badge">' + bidCount + ' bid' + (bidCount !== 1 ? 's' : '') + '</span>'
+        + '</div>'
+        + '<div class="card-body">'
+        + '<div class="card-title">' + escapeHtml(a.title) + '</div>'
+        + shareButtonsHtml(a.id, 'sm')
+        + '<div class="bid-label">' + bidLabel + '</div>'
+        + '<div class="current-bid">' + fmtCents(currentBid) + '</div>'
+        + '<div class="timer ' + cd.cls + '" data-ends="' + escapeHtml(a.ends_at) + '">&#9202; ' + cd.text + '</div>'
+        + buyNowHtml
+        + '<div class="card-footer">'
+        + '<span class="bid-info">' + escapeHtml(a.seller_name || 'Seller') + '</span>'
+        + '<button class="btn btn-primary btn-sm">Place Bid</button>'
+        + '</div></div></div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function renderAuctionPage() {
+    var container = document.getElementById('auctionGrid');
+    if (allAuctions.length === 0) {
+      container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">'
+        + '<div class="emoji">&#9889;</div>'
+        + '<h3 style="color:var(--text);margin:0 0 8px;">No auctions right now</h3>'
+        + '<p>Check back soon or create one from your dashboard!</p>'
+        + '</div>';
+      return;
+    }
+    var total = allAuctions.length;
+    var totalPages = Math.max(1, Math.ceil(total / AUCTION_PAGE_SIZE));
+    if (auctionPage > totalPages) auctionPage = totalPages;
+    if (auctionPage < 1) auctionPage = 1;
+    var start = (auctionPage - 1) * AUCTION_PAGE_SIZE;
+    var pageItems = allAuctions.slice(start, start + AUCTION_PAGE_SIZE);
+
+    var html = '';
+    pageItems.forEach(function(a) {
+      var photos = [];
+      try { photos = typeof a.photos === 'string' ? JSON.parse(a.photos) : (a.photos || []); } catch(e) { photos = []; }
+      var imgHtml = photos.length > 0
+        ? '<img src="' + escapeHtml(photos[0]) + '" alt="' + escapeHtml(a.title) + '">'
+        : '<div class="fallback">&#128176;</div>';
+      var currentBid = a.current_bid_cents || a.starting_bid_cents || 0;
+      var bidLabel = a.current_bid_cents ? 'Current Bid' : 'Starting Bid';
+      var cd = formatCountdown(a.ends_at);
+      var typeBadge = a.auction_type || 'flash';
+      var bidCount = parseInt(a.bid_count) || 0;
+      var buyNowHtml = '';
+      if (a.buy_now_price_cents) {
+        buyNowHtml = '<div style="font-size:12px;color:#f59e0b;margin-top:4px;">Buy Now: ' + fmtCents(a.buy_now_price_cents) + '</div>';
+      }
+      html += '<div class="auction-card" data-auction-id="' + a.id + '">'
+        + '<div class="card-img">' + imgHtml
+        + '<span class="type-badge ' + escapeHtml(typeBadge) + '">' + escapeHtml(typeBadge.replace(/_/g, ' ')) + '</span>'
+        + '<span class="bid-count-badge">' + bidCount + ' bid' + (bidCount !== 1 ? 's' : '') + '</span>'
+        + '</div>'
+        + '<div class="card-body">'
+        + '<div class="card-title">' + escapeHtml(a.title) + '</div>'
+        + shareButtonsHtml(a.id, 'sm')
+        + '<div class="bid-label">' + bidLabel + '</div>'
+        + '<div class="current-bid">' + fmtCents(currentBid) + '</div>'
+        + '<div class="timer ' + cd.cls + '" data-ends="' + escapeHtml(a.ends_at) + '">&#9202; ' + cd.text + '</div>'
+        + buyNowHtml
+        + '<div class="card-footer">'
+        + '<span class="bid-info">' + escapeHtml(a.seller_name || 'Seller') + '</span>'
+        + '<button class="btn btn-primary btn-sm">Place Bid</button>'
+        + '</div></div></div>';
+    });
+    if (totalPages > 1) {
+      html += '<div style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:24px;padding:12px 0;grid-column:1/-1;">'
+        + '<button onclick="auctionPrevPage()" style="background:#1c2128;border:1px solid #30363d;color:#e6edf3;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;"' + (auctionPage === 1 ? ' disabled' : '') + '>&larr; Prev</button>'
+        + '<span style="font-size:13px;color:#8b949e;">Page ' + auctionPage + ' of ' + totalPages + '</span>'
+        + '<button onclick="auctionNextPage()" style="background:#1c2128;border:1px solid #30363d;color:#e6edf3;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;"' + (auctionPage === totalPages ? ' disabled' : '') + '>Next &rarr;</button>'
+        + '</div>';
+    }
+    container.innerHTML = html;
+  }
+
+  window.auctionPrevPage = function() {
+    if (auctionPage > 1) { auctionPage--; renderAuctionPage(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  };
+  window.auctionNextPage = function() {
+    auctionPage++; renderAuctionPage(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Event delegation for auction card clicks — on document (always exists)
+  document.addEventListener('click', function(e) {
+    var card = e.target.closest('.auction-card[data-auction-id]');
+    if (!card) return;
+    var auctionId = card.getAttribute('data-auction-id');
+    console.log('AUCTION_CARD_CLICK', auctionId, card);
+    if (auctionId) window.openAuctionDetail(Number(auctionId));
+  });
+  console.log('CLICK_LISTENER_REGISTERED');
+
+  // Live timer update every second
+  function startTimers() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(function() {
+      document.querySelectorAll('.timer[data-ends]').forEach(function(el) {
+        var cd = formatCountdown(el.getAttribute('data-ends'));
+        el.textContent = '\u23F2 ' + cd.text;
+        el.className = 'timer ' + cd.cls;
+      });
+    }, 1000);
+  }
+
+  // Open auction detail modal
+  window.openAuctionDetail = function(auctionId) {
+    console.log('openAuctionDetail called with', auctionId);
+    currentDetailAuctionId = Number(auctionId);
+    apiFetch('/api/auctions/' + auctionId).then(function(data) {
+      console.log('AUCTION_DETAIL_RESPONSE', data);
+      var a = data.auction;
+      if (!a) {
+        console.error('AUCTION_DETAIL: data.auction is falsy', data);
+        document.getElementById('auctionDetail').innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444;">'
+          + '<div style="font-size:18px;font-weight:700;margin-bottom:8px;">Auction not found</div>'
+          + '<button class="btn btn-primary" style="margin-top:16px;" onclick="closeAuctionModal()">Close</button></div>';
+        document.getElementById('auctionModal').classList.add('open');
+        return;
+      }
+
+      var photos = [];
+      try { photos = typeof a.photos === 'string' ? JSON.parse(a.photos) : (a.photos || []); } catch(e) { photos = []; }
+      var imgHtml = photos.length > 0
+        ? '<img src="' + escapeHtml(photos[0]) + '" style="width:100%;aspect-ratio:4/3;object-fit:cover;">'
+        : '<div class="no-img">&#128176;</div>';
+
+      var cd = formatCountdown(a.ends_at);
+      var currentBid = a.current_bid_cents || a.starting_bid_cents || 0;
+      var nextBid = a.current_bid_cents ? a.current_bid_cents + (a.bid_increment_cents || 100) : a.starting_bid_cents;
+      var bidLabel = a.current_bid_cents ? 'Current Bid' : 'Starting Bid';
+
+      // Bid history
+      var bidsHtml = '';
+      if (a.recent_bids && a.recent_bids.length) {
+        a.recent_bids.slice(0, 5).forEach(function(b) {
+          var time = new Date(b.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          bidsHtml += '<div class="bid-row">'
+            + '<span style="color:var(--text);font-weight:600;">' + escapeHtml(b.bidder_name || 'Bidder') + '</span>'
+            + '<span style="color:var(--accent);font-weight:700;">' + fmtCents(b.bid_amount_cents) + '</span>'
+            + '<span style="color:var(--muted);">' + time + '</span>'
+            + '</div>';
+        });
+      } else {
+        bidsHtml = '<div style="color:var(--muted);font-size:13px;padding:12px 0;">No bids yet. Be the first!</div>';
+      }
+
+      var buyNowHtml = '';
+      if (a.buy_now_price_cents && a.status === 'active') {
+        buyNowHtml = '<button class="btn btn-amber" style="width:100%;margin-top:8px;" onclick="doBuyNow(' + a.id + ')">Buy Now for ' + fmtCents(a.buy_now_price_cents) + '</button>';
+      }
+
+      var statusHtml = '';
+      if (a.status === 'sold' || a.status === 'ended') {
+        statusHtml = '<div style="padding:12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;text-align:center;color:#ef4444;font-weight:600;margin-bottom:12px;">Auction ' + (a.status === 'sold' ? 'Sold' : 'Ended') + '</div>';
+      }
+
+      var myBidHtml = '';
+      if (a.my_bid) {
+        myBidHtml = '<div style="padding:8px 12px;background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);border-radius:8px;font-size:13px;color:var(--primary);margin-bottom:8px;">Your current bid: ' + fmtCents(a.my_bid.bid_amount_cents) + '</div>';
+      }
+
+      var html = '<div class="detail-grid">'
+        + '<div class="detail-left">' + imgHtml
+        + '<div style="padding:16px;">'
+        + '<div style="font-size:13px;color:var(--muted);margin-bottom:8px;">' + escapeHtml(a.description || '') + '</div>'
+        + (function() {
+          var badges = [];
+          if (a.list_locally) badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:6px;font-size:11px;color:#10b981;font-weight:600;">&#128205; Local Pickup</span>');
+          if (a.ship_nationally) badges.push('<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.25);border-radius:20px;font-size:11px;color:#a78bfa;font-weight:700;">&#128230; Ships Nationwide</span>');
+          if (a.delivery_available) badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.2);border-radius:6px;font-size:11px;color:#a855f7;font-weight:600;">&#128666; Delivery</span>');
+          return badges.length ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' + badges.join('') + '</div>' : '';
+        })()
+        + '<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--border);">'
+        + (a.seller_avatar ? '<img src="' + escapeHtml(a.seller_avatar) + '" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">' : '<div style="width:32px;height:32px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:14px;">&#128100;</div>')
+        + '<div><div style="font-size:13px;font-weight:600;color:var(--text);">' + escapeHtml(a.seller_name || 'Seller') + '</div></div>'
+        + '</div></div></div>'
+        + '<div class="detail-right">'
+        + statusHtml
+        + '<div class="card-title" style="font-size:18px;margin-bottom:4px;">' + escapeHtml(a.title) + '</div>'
+        + shareButtonsHtml(a.id, 'md')
+        + '<div class="bid-label">' + bidLabel + '</div>'
+        + '<div class="current-bid" style="font-size:28px;" id="detailCurrentBid">' + fmtCents(currentBid) + '</div>'
+        + (a.reference_price_cents > 0 ? '<div style="font-size:13px;color:var(--muted);margin-top:2px;">Retail Value: <span style="text-decoration:line-through;">' + fmtCents(a.reference_price_cents) + '</span></div>' : '')
+        + '<div class="timer ' + cd.cls + '" id="detailTimer" data-ends="' + escapeHtml(a.ends_at) + '">&#9202; ' + cd.text + '</div>'
+        + myBidHtml
+        + '<div id="auctionDeliveryEstimate" style="margin:8px 0;"></div>'
+        + (a.delivery_available && !a.uber_direct_enabled
+          ? '<a href="/delivery-quote?listing_id=' + a.listing_id + '&type=auction" style="display:flex;align-items:center;gap:6px;padding:10px 14px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:8px;color:#10b981;font-size:13px;font-weight:600;text-decoration:none;margin-bottom:12px;">&#128230; Get a delivery estimate before you bid</a>'
+          : '')
+        + '<div class="bid-history"><div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Bid History (' + (a.bid_count || 0) + ' bids)</div>' + bidsHtml + '</div>';
+
+      // Check if buyer has a delivery quote for this auction
+      if (token && a.listing_id) {
+        fetch('/api/delivery-quote-requests?listing_id=' + a.listing_id, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        }).then(function(r) { return r.json(); }).then(function(d) {
+          var quotes = d.quotes || [];
+          var activeQuote = quotes.find(function(q) { return q.status === 'quoted' || q.status === 'approved'; });
+          if (activeQuote && activeQuote.quote_amount) {
+            var delFee = activeQuote.quote_amount / 100;
+            var projTotal = (currentBid / 100) + delFee;
+            var el = document.getElementById('auctionDeliveryEstimate');
+            if (el) {
+              el.innerHTML = '<div style="padding:10px 14px;background:rgba(14,165,233,0.08);border:1px solid rgba(14,165,233,0.2);border-radius:8px;font-size:13px;">'
+                + '<div style="color:#0ea5e9;font-weight:600;margin-bottom:2px;">Your delivery estimate: $' + delFee.toFixed(2) + '</div>'
+                + '<div style="color:var(--muted);">Projected total (bid + delivery): <strong style="color:#fff;">$' + projTotal.toFixed(2) + '</strong></div>'
+                + '</div>';
+            }
+          }
+        }).catch(function() {});
+      }
+
+      var isOwnAuction = currentUser && a.seller_id && currentUser.id === a.seller_id;
+      if (a.status === 'active' && isOwnAuction) {
+        html += '<div style="text-align:center;color:#64748b;font-size:14px;padding:16px 0;">This is your auction</div>'
+          + '<a href="/dashboard#listings" class="btn" style="display:block;text-align:center;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);padding:10px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">Manage Listing</a>';
+      } else if (a.status === 'active') {
+        html += '<div style="margin-top:16px;">'
+          + '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Next bid: ' + fmtCents(nextBid) + ' or higher</div>'
+          + '<div class="bid-input-row">'
+          + '<input type="number" id="bidAmountInput" placeholder="' + (nextBid / 100).toFixed(2) + '" min="' + (nextBid / 100).toFixed(2) + '" step="0.01" value="' + (nextBid / 100).toFixed(2) + '">'
+          + '<button class="btn btn-primary" id="placeBidBtn" onclick="doBid(' + a.id + ')">Place Bid</button>'
+          + '</div>'
+          + '<div id="bidMsg" style="font-size:13px;margin-top:8px;"></div>'
+          + '</div>';
+        if (a.has_verified_card) {
+          html += '<div style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:8px;margin-top:8px;font-size:13px;color:#10b981;font-weight:600;">&#10003; Card verified — bid directly</div>';
+        } else {
+          html += '<div id="cardSetupSection">'
+            + '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;">&#128179; Verify your card to bid</div>'
+            + '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">A $1 authorization hold verifies your card (released within 7 days). Winner pays full amount automatically.</div>'
+            + '<div id="card-element"></div>'
+            + '<button class="btn btn-primary" style="width:100%;" id="saveCardBtn" onclick="saveCard()">Verify Card & Place Bid</button>'
+            + '<div id="cardMsg" style="font-size:13px;margin-top:8px;color:#ef4444;"></div>'
+            + '</div>';
+        }
+        html += buyNowHtml;
+      }
+
+      // Post-win fulfillment section
+      if (a.is_winner && a.winner_order) {
+        var wo = a.winner_order;
+        html += '<div style="margin-top:16px;padding:16px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:12px;">'
+          + '<div style="font-size:16px;font-weight:700;color:#10b981;margin-bottom:12px;">&#127942; You won this auction!</div>'
+          + '<div style="font-size:14px;color:var(--text);margin-bottom:4px;">Amount paid: <strong>' + fmtCents(wo.amount_cents) + '</strong></div>';
+        if (wo.fulfillment_status === 'pending' || wo.fulfillment_status === 'overdue') {
+          html += '<div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Choose how to receive your item:</div>'
+            + '<div style="display:flex;flex-direction:column;gap:8px;">'
+            + '<button class="btn" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);padding:12px;text-align:left;" onclick="chooseFulfillment(\'' + wo.id + '\',\'pickup\')">'
+            + '<strong>Local Pickup</strong><br><span style="font-size:12px;color:var(--muted);">Contact seller: ' + escapeHtml(wo.seller_name || '') + (isRealEmail(wo.seller_email) ? ' (' + escapeHtml(wo.seller_email) + ')' : '') + '</span></button>'
+            + '<button class="btn" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);padding:12px;text-align:left;width:100%;" onclick="chooseFulfillment(\'' + wo.id + '\',\'uber_direct\')">'
+            + '<strong>Uber Direct Delivery</strong><br><span style="font-size:12px;color:var(--muted);">Same-day local driver dispatch by seller</span></button>'
+            + '<a href="/delivery-quote?listing_id=' + a.listing_id + '&order_id=' + wo.id + '&type=shipping" class="btn" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);padding:12px;text-align:left;text-decoration:none;display:block;">'
+            + '<strong>Long Distance Shipping</strong><br><span style="font-size:12px;color:var(--muted);">Get a shipping quote (shipping fee charged separately)</span></a>'
+            + '</div>';
+          if (wo.fulfillment_deadline) {
+            var dl = new Date(wo.fulfillment_deadline);
+            html += '<div style="font-size:12px;color:#f59e0b;margin-top:8px;">Arrange fulfillment by: ' + dl.toLocaleDateString() + ' ' + dl.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + '</div>';
+          }
+        } else if (wo.fulfillment_status === 'arranged') {
+          html += '<div style="font-size:13px;color:#10b981;margin-top:8px;">Fulfillment arranged: <strong>' + (wo.fulfillment_type || 'pending') + '</strong></div>';
+          if (wo.fulfillment_type === 'uber_direct' && wo.delivery_fee_paid && wo.dispatch_status !== 'dispatched' && wo.dispatch_status !== 'auto_dispatched') {
+            html += '<button class="btn" style="margin-top:8px;padding:6px 14px;font-size:12px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:6px;cursor:pointer;" onclick="cancelUberDirect(\'' + wo.id + '\')">Cancel Uber Direct &amp; Switch to Pickup</button>';
+          }
+        }
+        html += '</div>';
+      }
+
+      html += '<div class="anti-ghost-notice">&#128179; Card verified — winner pays full amount automatically</div>'
+        + '</div></div>';
+
+      document.getElementById('auctionDetail').innerHTML = html;
+      document.getElementById('auctionModal').classList.add('open');
+
+      // Check if non-local winner needs to provide shipping address
+      if (a.status === 'sold' && a.is_winner) {
+        checkNeedsShipping(a.id);
+      }
+
+      // Start detail timer
+      if (detailTimerInterval) clearInterval(detailTimerInterval);
+      detailTimerInterval = setInterval(function() {
+        var el = document.getElementById('detailTimer');
+        if (!el) return;
+        var cd2 = formatCountdown(el.getAttribute('data-ends'));
+        el.textContent = '\u23F2 ' + cd2.text;
+        el.className = 'timer ' + cd2.cls;
+      }, 1000);
+
+    }).catch(function(err) {
+      console.error('DETAIL_ERROR', err);
+      document.getElementById('auctionDetail').innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444;">'
+        + '<div style="font-size:18px;font-weight:700;margin-bottom:8px;">Failed to load auction</div>'
+        + '<div style="font-size:13px;color:var(--muted);">' + (err.message || 'Network error') + '</div>'
+        + '<button class="btn btn-primary" style="margin-top:16px;" onclick="closeAuctionModal()">Close</button></div>';
+      document.getElementById('auctionModal').classList.add('open');
+    });
+  };
+
+  window.closeAuctionModal = function() {
+    document.getElementById('auctionModal').classList.remove('open');
+    if (detailTimerInterval) clearInterval(detailTimerInterval);
+    currentDetailAuctionId = null;
+    setupClientSecret = null;
+  };
+
+  // Close modal on overlay click
+  document.getElementById('auctionModal').addEventListener('click', function(e) {
+    if (e.target === this) closeAuctionModal();
+  });
+
+  // Place bid
+  window.doBid = function(auctionId) {
+    if (!token) { window.showAuthGate('Place Your Bid', 'Sign in with Facebook to bid on this auction. Free to join \u2014 takes 10 seconds.'); return; }
+    var input = document.getElementById('bidAmountInput');
+    var amount = parseFloat(input.value);
+    if (!amount || amount <= 0) return;
+    var amountCents = Math.round(amount * 100);
+    var msgEl = document.getElementById('bidMsg');
+
+    var btn = document.getElementById('placeBidBtn');
+    btn.disabled = true;
+    btn.textContent = 'Bidding...';
+    msgEl.textContent = '';
+
+    apiFetch('/api/auctions/' + auctionId + '/bid', {
+      method: 'POST',
+      body: { bid_amount_cents: amountCents }
+    }).then(function(data) {
+      btn.disabled = false;
+      btn.textContent = 'Place Bid';
+
+      if (data.requiresCardVerification) {
+        // Show card input — server will handle $1 verification when PM is sent
+        document.getElementById('cardSetupSection').style.display = 'block';
+        initStripeCard();
+        msgEl.style.color = 'var(--primary)';
+        msgEl.textContent = 'Verify your card to place your bid ($1 hold, released within 7 days).';
+        return;
+      }
+
+      if (data.ok) {
+        msgEl.style.color = '#10b981';
+        msgEl.textContent = 'Bid placed! Current bid: ' + fmtCents(data.current_bid_cents);
+        if (data.extended) {
+          msgEl.textContent += ' (Time extended!)';
+        }
+        // Refresh detail and list
+        openAuctionDetail(auctionId);
+        loadAuctions();
+      } else {
+        msgEl.style.color = '#ef4444';
+        msgEl.textContent = data.error || 'Bid failed';
+      }
+    }).catch(function(err) {
+      btn.disabled = false;
+      btn.textContent = 'Place Bid';
+      msgEl.style.color = '#ef4444';
+      msgEl.textContent = err.message || 'Network error';
+    });
+  };
+
+  // Stripe card setup
+  function initStripeCard() {
+    if (!window.Stripe) {
+      // Load Stripe.js dynamically
+      var script = document.createElement('script');
+      script.src = 'https://js.stripe.com/v3/';
+      script.onload = function() { mountCardElement(); };
+      document.head.appendChild(script);
+    } else {
+      mountCardElement();
+    }
+  }
+
+  function mountCardElement() {
+    var pkKey = window.TC_STRIPE_PK || '';
+    if (!pkKey) {
+      // Try to get from meta tag or known env
+      var meta = document.querySelector('meta[name="stripe-pk"]');
+      if (meta) pkKey = meta.getAttribute('content');
+    }
+    if (!pkKey) {
+      document.getElementById('cardMsg').textContent = 'Stripe not configured. Contact support.';
+      return;
+    }
+
+    stripeInstance = Stripe(pkKey);
+    var elements = stripeInstance.elements();
+    cardElement = elements.create('card', {
+      style: {
+        base: { color: '#e2e8f0', fontSize: '15px', '::placeholder': { color: '#64748b' } },
+        invalid: { color: '#ef4444' }
+      }
+    });
+    cardElement.mount('#card-element');
+  }
+
+  window.saveCard = function() {
+    if (!stripeInstance || !cardElement) return;
+    var btn = document.getElementById('saveCardBtn');
+    var msgEl = document.getElementById('cardMsg');
+    btn.disabled = true;
+    btn.textContent = 'Verifying...';
+    msgEl.textContent = '';
+
+    // Create PaymentMethod from card element, then send to server for $1 verification
+    stripeInstance.createPaymentMethod({
+      type: 'card',
+      card: cardElement
+    }).then(function(result) {
+      if (result.error) {
+        btn.disabled = false;
+        btn.textContent = 'Verify Card & Place Bid';
+        msgEl.textContent = result.error.message;
+        return;
+      }
+
+      // Send PM to server — server handles attach, $1 auth, save, and bid placement
+      var pmId = result.paymentMethod.id;
+      var input = document.getElementById('bidAmountInput');
+      var amountCents = Math.round(parseFloat(input.value) * 100);
+
+      apiFetch('/api/auctions/' + currentDetailAuctionId + '/bid', {
+        method: 'POST',
+        body: { bid_amount_cents: amountCents, payment_method_id: pmId }
+      }).then(function(data) {
+        btn.disabled = false;
+        btn.textContent = 'Verify Card & Place Bid';
+        document.getElementById('cardSetupSection').style.display = 'none';
+
+        var bidMsg = document.getElementById('bidMsg');
+        if (data.ok) {
+          bidMsg.style.color = '#10b981';
+          bidMsg.textContent = 'Card verified & bid placed! ' + fmtCents(data.current_bid_cents);
+          openAuctionDetail(currentDetailAuctionId);
+          loadAuctions();
+        } else {
+          bidMsg.style.color = '#ef4444';
+          bidMsg.textContent = data.error || 'Bid failed after card verification';
+        }
+      });
+    });
+  };
+
+  // Buy Now
+  window.doBuyNow = function(auctionId) {
+    if (!token) { window.showAuthGate('Buy This Item', 'Sign in with Facebook to buy now. Free to join \u2014 takes 10 seconds.'); return; }
+    if (!confirm('Buy this item now? Your card will be charged immediately.')) return;
+
+    apiFetch('/api/auctions/' + auctionId + '/buy-now', {
+      method: 'POST',
+      body: {}
+    }).then(function(data) {
+      if (data.requiresCardVerification) {
+        // Show card form for verification
+        var cardSection = document.getElementById('cardSetupSection');
+        if (cardSection) {
+          cardSection.style.display = 'block';
+          cardSection.scrollIntoView({ behavior: 'smooth' });
+          initStripeCard();
+          var cardMsg = document.getElementById('cardMsg');
+          if (cardMsg) {
+            cardMsg.style.color = '#f59e0b';
+            cardMsg.textContent = 'Verify your card first, then click Buy Now again.';
+          }
+        } else {
+          alert('Please verify your card in the bid section above, then click Buy Now.');
+        }
+        return;
+      }
+      if (data.ok) {
+        alert('Purchased! Amount: ' + fmtCents(data.amount_cents));
+        closeAuctionModal();
+        loadAuctions();
+      } else {
+        alert(data.error || 'Buy now failed');
+      }
+    }).catch(function() { alert('Network error'); });
+  };
+
+  // Choose fulfillment method for won auction
+  window.chooseFulfillment = function(orderId, type) {
+    if (!token) return;
+    if (type === 'uber_direct') {
+      // Get delivery fee estimate first
+      apiFetch('/api/uber-direct/estimate?order_id=' + orderId)
+        .then(function(data) {
+          if (data.error) { alert(data.error); return; }
+          var feeDollars = (data.estimated_fee_cents / 100).toFixed(2);
+          var mins = data.estimated_minutes || 30;
+          var quoteId = data.quote_id || '';
+          // Show confirmation prompt
+          var confirmMsg = '\uD83D\uDE97 Uber Direct Delivery\n\nEstimated fee: $' + feeDollars
+            + '\nEstimated delivery: ~' + mins + ' minutes from dispatch'
+            + '\n\nYour card will be charged $' + feeDollars + ' now to reserve your delivery. The seller will dispatch a driver when they are ready \u2014 your item will arrive approximately ' + mins + ' minutes after dispatch.'
+            + '\n\nConfirm & Pay $' + feeDollars + '?';
+          if (!confirm(confirmMsg)) return;
+          // Pay delivery fee
+          apiFetch('/api/listing-orders/' + orderId + '/pay-delivery-fee', {
+            method: 'POST',
+            body: { fee_cents: data.estimated_fee_cents, quote_id: quoteId }
+          }).then(function(payData) {
+            if (payData.ok) {
+              if (payData.warning === 'no_delivery_address') {
+                alert('\u2705 Delivery fee paid! Your driver is reserved. The seller will dispatch when ready \u2014 you\'ll be notified when your driver is on the way.\n\n\u26A0\uFE0F Please add your delivery address in your dashboard Settings so the seller can dispatch your driver.\n\nGo to Dashboard > Settings > Delivery Address');
+              } else {
+                alert('\u2705 Delivery fee paid! Your driver is reserved. The seller will dispatch when ready \u2014 you\'ll be notified when your driver is on the way.');
+              }
+              loadWonAuctions();
+              if (currentDetailAuctionId) openAuctionDetail(currentDetailAuctionId);
+            } else {
+              alert(payData.error || 'Payment failed');
+            }
+          }).catch(function() { alert('Network error'); });
+        }).catch(function() { alert('Could not get delivery estimate. Please try again.'); });
+      return;
+    }
+    apiFetch('/api/listing-orders/' + orderId + '/fulfillment', {
+      method: 'PUT',
+      body: { fulfillment_type: type }
+    }).then(function(data) {
+      if (data.ok) {
+        if (type === 'pickup') {
+          alert('Local Pickup selected. Contact the seller to arrange pickup.');
+        } else {
+          alert('Fulfillment set to: ' + type + '.');
+        }
+        loadWonAuctions();
+        if (currentDetailAuctionId) openAuctionDetail(currentDetailAuctionId);
+      } else {
+        alert(data.error || 'Failed to update fulfillment');
+      }
+    }).catch(function() { alert('Network error'); });
+  };
+
+  window.cancelUberDirect = function(orderId) {
+    if (!token) return;
+    if (!confirm('Cancel Uber Direct delivery and get a refund?\n\nYour delivery fee will be refunded to your card. You can then choose a different fulfillment method (e.g. Local Pickup).')) return;
+    apiFetch('/api/listing-orders/' + orderId + '/cancel-uber-direct', { method: 'POST' })
+      .then(function(data) {
+        if (data.ok) {
+          alert('Uber Direct cancelled. Delivery fee ' + (data.refunded ? 'refunded' : 'cleared') + '. You can now choose a new fulfillment method.');
+          loadWonAuctions();
+          if (currentDetailAuctionId) openAuctionDetail(currentDetailAuctionId);
+        } else {
+          alert(data.error || 'Failed to cancel');
+        }
+      }).catch(function() { alert('Network error'); });
+  };
+
+  window.confirmReceived = function(orderId) {
+    if (!token) return;
+    if (!confirm('Confirm you have received this item?')) return;
+    apiFetch('/api/listing-orders/' + orderId + '/fulfill', { method: 'PUT' })
+      .then(function(data) {
+        if (data.ok) {
+          showReviewPrompt(orderId);
+        } else {
+          alert(data.error || 'Failed to update');
+        }
+      }).catch(function() { alert('Network error'); });
+  };
+
+  // ─── Review Prompt After Confirm Received ───
+  var _reviewOrderMeta = {}; // populated during loadWonAuctions
+
+  function showReviewPrompt(orderId) {
+    var meta = _reviewOrderMeta[orderId] || {};
+    var sellerName = meta.seller_name || 'the seller';
+    var sellerId = meta.seller_id || '';
+    var grid = document.getElementById('wonAuctionsGrid');
+
+    // Find and replace the order card with the review prompt
+    var cards = grid.querySelectorAll('[data-order-id]');
+    var target = null;
+    for (var i = 0; i < cards.length; i++) {
+      if (cards[i].getAttribute('data-order-id') === orderId) { target = cards[i]; break; }
+    }
+    if (!target) { loadWonAuctions(); return; }
+
+    target.innerHTML = '<div style="padding:20px;text-align:center;">'
+      + '<div style="font-size:24px;margin-bottom:8px;">&#127881;</div>'
+      + '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">Order complete!</div>'
+      + '<div style="font-size:13px;color:var(--muted);margin-bottom:16px;">How was your experience with ' + escapeHtml(sellerName) + '?</div>'
+      + '<div id="reviewStars_' + orderId + '" style="display:flex;justify-content:center;gap:6px;margin-bottom:12px;cursor:pointer;">'
+      + buildStarHtml(orderId, 0)
+      + '</div>'
+      + '<textarea id="reviewComment_' + orderId + '" placeholder="Leave a comment (optional)" style="width:100%;max-width:400px;padding:10px;font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);resize:vertical;min-height:60px;margin-bottom:12px;"></textarea>'
+      + '<div style="display:flex;justify-content:center;gap:12px;">'
+      + '<button id="submitReview_' + orderId + '" onclick="submitReview(\'' + orderId + '\',\'' + sellerId + '\')" style="padding:8px 24px;font-size:13px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;" disabled>Submit Review</button>'
+      + '<a href="javascript:void(0)" onclick="loadWonAuctions()" style="font-size:13px;color:var(--muted);text-decoration:none;padding:8px 12px;">Skip</a>'
+      + '</div>'
+      + '</div>';
+  }
+
+  function buildStarHtml(orderId, selected) {
+    var html = '';
+    for (var i = 1; i <= 5; i++) {
+      var color = i <= selected ? '#f59e0b' : '#374151';
+      html += '<span onclick="selectStar(\'' + orderId + '\',' + i + ')" style="font-size:32px;color:' + color + ';transition:color 0.15s;">&#9733;</span>';
+    }
+    return html;
+  }
+
+  window.selectStar = function(orderId, rating) {
+    window['_reviewRating_' + orderId] = rating;
+    var container = document.getElementById('reviewStars_' + orderId);
+    if (container) container.innerHTML = buildStarHtml(orderId, rating);
+    var btn = document.getElementById('submitReview_' + orderId);
+    if (btn) btn.disabled = false;
+  };
+
+  window.submitReview = function(orderId, sellerId) {
+    var rating = window['_reviewRating_' + orderId];
+    if (!rating) return;
+    var comment = (document.getElementById('reviewComment_' + orderId) || {}).value || '';
+    var btn = document.getElementById('submitReview_' + orderId);
+    if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
+    apiFetch('/api/reviews', {
+      method: 'POST',
+      body: { reviewed_id: sellerId, order_id: orderId, rating: rating, review_text: comment.trim() || null, reviewer_role: 'buyer' }
+    }).then(function(data) {
+      if (data.ok || data.review) {
+        loadWonAuctions();
+      } else {
+        alert(data.error || 'Failed to submit review');
+        if (btn) { btn.disabled = false; btn.textContent = 'Submit Review'; }
+      }
+    }).catch(function() {
+      alert('Network error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit Review'; }
+    });
+  };
+
+  // ─── Archive / Unarchive Orders ───
+  window.archiveOrder = function(orderId) {
+    apiFetch('/api/listing-orders/' + orderId + '/archive', { method: 'PUT' })
+      .then(function(data) {
+        if (data.ok) loadWonAuctions();
+        else alert(data.error || 'Failed to archive');
+      }).catch(function() { alert('Network error'); });
+  };
+
+  window.unarchiveOrder = function(orderId) {
+    apiFetch('/api/listing-orders/' + orderId + '/unarchive', { method: 'PUT' })
+      .then(function(data) {
+        if (data.ok) loadWonAuctions();
+        else alert(data.error || 'Failed to unarchive');
+      }).catch(function() { alert('Network error'); });
+  };
+
+  window.toggleArchived = function() {
+    _showArchived = !_showArchived;
+    loadWonAuctions();
+  };
+
+  // ═══ Flash Sales ═══
+  var flashSalesData = [];
+
+  function loadFlashSales() {
+    apiFetch('/api/flash-sales').then(function(data) {
+      flashSalesData = data.flash_sales || [];
+      renderFlashSales();
+    }).catch(function() {
+      document.getElementById('flashSalesSection').style.display = 'none';
+    });
+  }
+
+  function renderFlashSales() {
+    var container = document.getElementById('flashSalesGrid');
+    var section = document.getElementById('flashSalesSection');
+    if (!flashSalesData.length) {
+      section.style.display = 'none';
+      return;
+    }
+    section.style.display = 'block';
+
+    var html = '';
+    flashSalesData.forEach(function(fs) {
+      var photos = [];
+      photos = Array.isArray(fs.photos) ? fs.photos : (typeof fs.photos === 'string' ? (function(){ try { return JSON.parse(fs.photos); } catch(e) { return []; } })() : []);
+      var imgHtml = photos.length > 0
+        ? '<img src="' + escapeHtml(photos[0]) + '" style="width:100%;height:100%;object-fit:cover;">'
+        : '<div class="fallback">&#128293;</div>';
+
+      var discount = Math.round((1 - fs.sale_price_cents / fs.original_price_cents) * 100);
+      var cd = formatCountdown(fs.ends_at);
+      var remaining = fs.quantity - fs.claimed;
+      var soldOut = remaining <= 0;
+
+      html += '<div class="auction-card" data-flash-sale-id="' + fs.id + '">'
+        + '<div class="card-img">' + imgHtml
+        + '<span class="type-badge flash" style="background:#ef4444;">-' + discount + '%</span>'
+        + (soldOut ? '<span class="bid-count-badge" style="background:rgba(239,68,68,0.9);">SOLD OUT</span>' : '<span class="bid-count-badge">' + remaining + ' left</span>')
+        + '</div>'
+        + '<div class="card-body">'
+        + '<div class="card-title">' + escapeHtml(fs.title) + '</div>'
+        + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">'
+        + '<span style="font-size:22px;font-weight:800;color:#ef4444;">' + fmtCents(fs.sale_price_cents) + '</span>'
+        + '<span style="font-size:14px;color:var(--muted);text-decoration:line-through;">' + fmtCents(fs.original_price_cents) + '</span>'
+        + '</div>'
+        + '<div class="timer ' + cd.cls + '" data-ends="' + escapeHtml(fs.ends_at) + '">&#9202; ' + cd.text + '</div>'
+        + '<div style="font-size:12px;color:var(--muted);margin-top:6px;">'
+        + (fs.description ? escapeHtml(fs.description).substring(0, 80) + (fs.description.length > 80 ? '...' : '') : '')
+        + '</div>'
+        + '<div class="card-footer">'
+        + '<span class="bid-info">' + escapeHtml(fs.seller_name || 'Seller') + '</span>'
+        + '<button class="btn btn-primary btn-sm">View Deal</button>'
+        + '</div></div></div>';
+    });
+    container.innerHTML = html;
+  }
+
+  // Event delegation for flash sale card clicks — on document (always exists)
+  document.addEventListener('click', function(e) {
+    var card = e.target.closest('.auction-card[data-flash-sale-id]');
+    if (!card) return;
+    var fsId = card.getAttribute('data-flash-sale-id');
+    console.log('FLASH_SALE_CARD_CLICK', fsId);
+    if (fsId) window.openFlashSaleDetail(Number(fsId));
+  });
+
+  window.claimFlashSale = function(fsId, btn) {
+    if (!token) { window.showAuthGate('Claim This Deal', 'Sign in with Facebook to claim flash sale items. Free to join \u2014 takes 10 seconds.'); return; }
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    apiFetch('/api/flash-sales/' + fsId + '/claim', {
+      method: 'POST',
+      body: {}
+    }).then(function(data) {
+      if (data.url) { window.location.href = data.url; return; }
+      if (data.ok) { alert(data.message || 'Claimed!'); btn.textContent = 'Claimed'; closeFlashSaleModal(); loadFlashSales(); return; }
+      btn.disabled = false;
+      btn.textContent = 'Claim Now';
+      if (data.error) { alert(data.error); }
+    }).catch(function() {
+      btn.disabled = false;
+      btn.textContent = 'Claim Now';
+      alert('Network error');
+    });
+  };
+
+  window.openFlashSaleDetail = function(fsId) {
+    console.log('openFlashSaleDetail called', fsId, flashSalesData.length);
+    var fs = null;
+    flashSalesData.forEach(function(s) { if (s.id == fsId) fs = s; });
+    if (!fs) return;
+
+    var photos = [];
+    try { photos = typeof fs.photos === 'string' ? JSON.parse(fs.photos) : (fs.photos || []); } catch(e) {}
+    var imgHtml = photos.length > 0
+      ? '<img src="' + escapeHtml(photos[0]) + '" style="width:100%;max-height:300px;object-fit:cover;border-radius:8px;">'
+      : '<div style="width:100%;height:200px;background:linear-gradient(135deg,#7f1d1d,#1e293b);display:flex;align-items:center;justify-content:center;font-size:64px;border-radius:8px;">&#128293;</div>';
+
+    var discount = Math.round((1 - fs.sale_price_cents / fs.original_price_cents) * 100);
+    var cd = formatCountdown(fs.ends_at);
+    var remaining = fs.quantity - fs.claimed;
+    var soldOut = remaining <= 0;
+
+    var html = imgHtml
+      + '<div style="padding:16px 0;">'
+      + '<div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;">' + escapeHtml(fs.title) + '</div>'
+      + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;">'
+      + '<span style="font-size:28px;font-weight:800;color:#ef4444;">' + fmtCents(fs.sale_price_cents) + '</span>'
+      + '<span style="font-size:16px;color:var(--muted);text-decoration:line-through;">' + fmtCents(fs.original_price_cents) + '</span>'
+      + '<span style="background:#ef4444;color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700;">-' + discount + '%</span>'
+      + '</div>'
+      + '<div class="timer ' + cd.cls + '" data-ends="' + escapeHtml(fs.ends_at) + '" style="margin-bottom:10px;">&#9202; ' + cd.text + '</div>'
+      + '<div style="display:flex;gap:8px;margin-bottom:12px;">'
+      + '<span style="font-size:13px;color:var(--muted);">' + remaining + ' of ' + fs.quantity + ' remaining</span>'
+      + '</div>';
+
+    if (fs.description) {
+      html += '<div style="font-size:14px;color:#cbd5e1;line-height:1.6;margin-bottom:12px;">' + escapeHtml(fs.description) + '</div>';
+    }
+
+    // Fulfillment badges
+    var badges = [];
+    if (fs.list_locally) badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:6px;font-size:11px;color:#10b981;font-weight:600;">&#128205; Local Pickup</span>');
+    if (fs.ship_nationally) badges.push('<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.25);border-radius:20px;font-size:11px;color:#a78bfa;font-weight:700;">&#128230; Ships Nationwide</span>');
+    if (fs.delivery_available) badges.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.2);border-radius:6px;font-size:11px;color:#a855f7;font-weight:600;">&#128666; Delivery</span>');
+    if (badges.length) {
+      html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' + badges.join('') + '</div>';
+    }
+
+    // Payment methods
+    var payMethods = [];
+    try { payMethods = typeof fs.payment_methods === 'string' ? JSON.parse(fs.payment_methods) : (fs.payment_methods || []); } catch(e) {}
+    if (payMethods.length) {
+      html += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Accepts: ' + payMethods.map(function(m) { return escapeHtml(m.charAt(0).toUpperCase() + m.slice(1)); }).join(', ') + '</div>';
+    }
+
+    // Seller info
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--border);margin-bottom:12px;">'
+      + (fs.seller_avatar ? '<img src="' + escapeHtml(fs.seller_avatar) + '" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">' : '<div style="width:32px;height:32px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:14px;">&#128100;</div>')
+      + '<div style="font-size:13px;font-weight:600;color:var(--text);">' + escapeHtml(fs.seller_name || 'Seller') + '</div>'
+      + '</div>';
+
+    // Share buttons
+    var pageUrl = encodeURIComponent(window.location.href);
+    html += '<div style="display:flex;gap:8px;margin-bottom:14px;">'
+      + '<button onclick="window.open(\'https://www.facebook.com/sharer/sharer.php?u=' + pageUrl + '\',\'_blank\',\'width=600,height=400\')" style="background:rgba(24,119,242,0.15);border:1px solid rgba(24,119,242,0.3);color:#1877f2;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600;">&#128216; Facebook</button>'
+      + '<button onclick="window.open(\'https://wa.me/?text=' + encodeURIComponent('Check out this flash sale: ') + pageUrl + '\',\'_blank\')" style="background:rgba(37,211,102,0.15);border:1px solid rgba(37,211,102,0.3);color:#25d366;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600;">&#128172; WhatsApp</button>'
+      + '<button onclick="navigator.clipboard.writeText(window.location.href);this.textContent=\'Copied!\';var b=this;setTimeout(function(){b.textContent=\'&#128279; Copy Link\';},2000);" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600;">&#128279; Copy Link</button>'
+      + '</div>';
+
+    // Claim button
+    if (soldOut) {
+      html += '<div style="text-align:center;padding:14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;color:#ef4444;font-weight:600;">Sold Out</div>';
+    } else {
+      html += '<button class="btn btn-primary" style="width:100%;padding:14px;background:#ef4444;font-size:15px;" onclick="claimFlashSale(' + fs.id + ', this)">Claim Now &mdash; ' + fmtCents(fs.sale_price_cents) + '</button>';
+    }
+
+    html += '</div>';
+
+    document.getElementById('flashSaleDetail').innerHTML = html;
+    document.getElementById('flashSaleModal').classList.add('open');
+  };
+
+  window.closeFlashSaleModal = function() {
+    document.getElementById('flashSaleModal').classList.remove('open');
+  };
+
+  // ═══ Won Auctions Section ═══
+  var _showArchived = false;
+
+  function loadWonAuctions() {
+    console.log('loadWonAuctions token:', token ? 'present' : 'missing');
+    if (!token) return;
+    var url = '/api/orders/won' + (_showArchived ? '?include_archived=true' : '');
+    apiFetch(url).then(function(data) {
+      var orders = data.orders || [];
+      var archivedCount = data.archived_count || 0;
+      var section = document.getElementById('wonAuctionsSection');
+      var grid = document.getElementById('wonAuctionsGrid');
+      if (!orders.length && !archivedCount) { section.style.display = 'none'; return; }
+      section.style.display = 'block';
+      // Populate review meta
+      orders.forEach(function(o) {
+        _reviewOrderMeta[o.id] = { seller_name: o.seller_name, seller_id: o.seller_id };
+      });
+      grid.innerHTML = orders.map(function(o) {
+        var photos = [];
+        try { photos = typeof o.photos === 'string' ? JSON.parse(o.photos) : (o.photos || []); } catch(e) {}
+        var imgHtml = photos.length > 0
+          ? '<img src="' + escapeHtml(photos[0]) + '" style="width:100px;height:100px;object-fit:cover;border-radius:8px;flex-shrink:0;">'
+          : '<div style="width:100px;height:100px;background:linear-gradient(135deg,#1e3a5f,#0d1424);display:flex;align-items:center;justify-content:center;font-size:36px;border-radius:8px;flex-shrink:0;">&#9889;</div>';
+
+        // Payment status overrides
+        var paymentPending = o.status === 'payment_pending';
+        var paymentFailed = o.status === 'payment_failed';
+        var statusColor, statusLabel;
+        if (paymentFailed) {
+          statusColor = '#ef4444'; statusLabel = 'Payment Failed';
+        } else if (paymentPending) {
+          statusColor = '#f59e0b'; statusLabel = 'Processing Payment';
+        } else {
+          statusColor = o.fulfillment_status === 'pending' ? '#f59e0b' : o.fulfillment_status === 'arranged' ? '#10b981' : o.fulfillment_status === 'overdue' ? '#ef4444' : o.fulfillment_status === 'fulfilled' ? '#06b6d4' : '#94a3b8';
+          statusLabel = o.fulfillment_status === 'pending' ? 'Awaiting Fulfillment' : o.fulfillment_status === 'arranged' ? 'Arranged' : o.fulfillment_status === 'overdue' ? 'Overdue' : o.fulfillment_status === 'fulfilled' ? 'Fulfilled' : o.fulfillment_status || 'Unknown';
+        }
+
+        // Payment failure/pending banners
+        var paymentBannerHtml = '';
+        if (paymentFailed) {
+          paymentBannerHtml = '<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px;margin-top:8px;font-size:12px;color:#ef4444;">Payment failed. We will retry automatically. If the issue persists, please update your card in your profile.</div>';
+        } else if (paymentPending) {
+          paymentBannerHtml = '<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:10px;margin-top:8px;font-size:12px;color:#f59e0b;">Payment is being processed. Fulfillment options will appear once payment is confirmed.</div>';
+        }
+
+        var isPaid = o.status === 'paid';
+
+        // Countdown to fulfillment deadline
+        var deadlineHtml = '';
+        if (isPaid && o.fulfillment_deadline && o.fulfillment_status === 'pending') {
+          var msLeft = new Date(o.fulfillment_deadline).getTime() - Date.now();
+          if (msLeft > 0) {
+            var hLeft = Math.floor(msLeft / 3600000);
+            var mLeft = Math.floor((msLeft % 3600000) / 60000);
+            deadlineHtml = '<div style="font-size:12px;color:#f59e0b;margin-top:4px;">&#9202; ' + hLeft + 'h ' + mLeft + 'm left to arrange fulfillment</div>';
+          } else {
+            deadlineHtml = '<div style="font-size:12px;color:#ef4444;margin-top:4px;">Fulfillment deadline passed</div>';
+          }
+        }
+
+        // Fulfillment action buttons (only if paid and pending or overdue)
+        var actionsHtml = '';
+        if (isPaid && (o.fulfillment_status === 'pending' || o.fulfillment_status === 'overdue')) {
+          actionsHtml = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">'
+            + '<button class="btn" style="padding:6px 14px;font-size:12px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#10b981;border-radius:6px;cursor:pointer;" onclick="chooseFulfillment(\'' + o.id + '\',\'pickup\')">&#128205; Local Pickup</button>';
+          if (o.delivery_available && o.roadie_eligible && o.seller_roadie_enabled) {
+            actionsHtml += '<button class="btn" style="padding:6px 14px;font-size:12px;background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);color:#a855f7;border-radius:6px;cursor:pointer;" onclick="chooseFulfillment(\'' + o.id + '\',\'uber_direct\')">&#128663; Uber Direct Delivery</button>';
+          }
+          if (o.delivery_available && !(o.roadie_eligible && o.seller_roadie_enabled)) {
+            actionsHtml += '<a href="/delivery-quote?listing_id=' + o.listing_id + '&type=auction" style="padding:6px 14px;font-size:12px;background:rgba(14,165,233,0.15);border:1px solid rgba(14,165,233,0.3);color:#0ea5e9;border-radius:6px;text-decoration:none;display:inline-block;">&#128230; Long Distance Delivery Quote</a>';
+          }
+          actionsHtml += '</div>';
+        }
+
+        // Fulfillment type chosen — show details based on type
+        var chosenHtml = '';
+        if (o.fulfillment_status === 'fulfilled') {
+          chosenHtml = '<div style="font-size:12px;color:#06b6d4;margin-top:4px;">Order complete</div>';
+        } else if (o.fulfillment_status === 'arranged' && o.fulfillment_type) {
+          var ftLabel = o.fulfillment_type === 'pickup' ? 'Local Pickup' : o.fulfillment_type === 'uber_direct' ? 'Uber Direct' : 'Shipping';
+          chosenHtml = '<div style="font-size:12px;color:#10b981;margin-top:4px;">Fulfillment: ' + ftLabel + '</div>';
+          if (o.fulfillment_type === 'pickup') {
+            chosenHtml += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:8px;padding:10px;margin-top:6px;">';
+            chosenHtml += '<div style="font-size:12px;color:var(--muted);">Seller: <strong>' + escapeHtml(o.seller_name || 'Seller') + '</strong>';
+            if (isRealEmail(o.seller_email)) chosenHtml += ' &mdash; <a href="mailto:' + escapeHtml(o.seller_email) + '" style="color:var(--primary);">' + escapeHtml(o.seller_email) + '</a>';
+            chosenHtml += '</div>';
+            if (o.pickup_instructions) {
+              chosenHtml += '<div style="font-size:12px;color:var(--text);margin-top:6px;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px;white-space:pre-wrap;">' + escapeHtml(o.pickup_instructions) + '</div>';
+            } else {
+              chosenHtml += '<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic;">Waiting for seller to add pickup instructions...</div>';
+            }
+            chosenHtml += '</div>';
+          } else if (o.fulfillment_type === 'uber_direct') {
+            chosenHtml += '<div style="font-size:12px;color:var(--muted);margin-top:4px;">Delivery will be arranged by seller.</div>';
+            if (o.delivery_fee_paid && o.dispatch_status !== 'dispatched' && o.dispatch_status !== 'auto_dispatched') {
+              chosenHtml += '<button class="btn" style="margin-top:6px;padding:5px 12px;font-size:11px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:6px;cursor:pointer;" onclick="cancelUberDirect(\'' + o.id + '\')">Cancel Uber Direct &amp; Switch to Pickup</button>';
+            }
+          }
+        }
+
+        // Seller contact
+        var sellerHtml = '<div style="font-size:12px;color:var(--muted);margin-top:6px;">Seller: ' + escapeHtml(o.seller_name || 'Seller');
+        if (isRealEmail(o.seller_email)) sellerHtml += ' &middot; <a href="mailto:' + escapeHtml(o.seller_email) + '" style="color:var(--primary);text-decoration:none;">' + escapeHtml(o.seller_email) + '</a>';
+        sellerHtml += '</div>';
+
+        // Confirm received button (buyer can mark fulfilled — only if paid)
+        var confirmBtn = '';
+        if (isPaid && o.fulfillment_status !== 'fulfilled' && o.fulfillment_type) {
+          confirmBtn = '<div style="margin-top:8px;"><button class="btn" style="padding:6px 14px;font-size:12px;background:rgba(6,182,212,0.15);border:1px solid rgba(6,182,212,0.3);color:#06b6d4;border-radius:6px;cursor:pointer;" onclick="confirmReceived(\'' + o.id + '\')">Confirm Received</button></div>';
+        }
+
+        // Receipt
+        var wonDate = o.won_at ? new Date(o.won_at).toLocaleString() : '';
+        var receiptHtml = '<div style="font-size:11px;color:var(--muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'
+          + 'Order: ' + (o.id || '').substring(0, 8) + ' &middot; ' + (isPaid ? 'Paid: ' : 'Amount: ') + fmtCents(o.amount_cents) + (isPaid ? ' &middot; Card via Stripe' : '') + ' &middot; ' + wonDate
+          + '</div>';
+
+        // Archive button (only on fulfilled orders)
+        var archiveBtn = '';
+        if (o.fulfillment_status === 'fulfilled' && !o.archived) {
+          archiveBtn = '<div style="margin-top:6px;"><a href="javascript:void(0)" onclick="archiveOrder(\'' + o.id + '\')" style="font-size:11px;color:var(--muted);text-decoration:none;">Archive</a></div>';
+        }
+        if (o.archived) {
+          archiveBtn = '<div style="margin-top:6px;"><a href="javascript:void(0)" onclick="unarchiveOrder(\'' + o.id + '\')" style="font-size:11px;color:var(--primary);text-decoration:none;">Unarchive</a></div>';
+        }
+
+        var cardStyle = 'background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;gap:16px;align-items:flex-start;'
+          + (o.archived ? 'opacity:0.5;' : '');
+
+        return '<div data-order-id="' + o.id + '" style="' + cardStyle + '">'
+          + imgHtml
+          + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">' + escapeHtml(o.title || 'Auction Item') + '</div>'
+          + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+          + '<span style="font-size:18px;font-weight:800;color:#10b981;">' + fmtCents(o.amount_cents) + '</span>'
+          + '<span style="padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;color:' + statusColor + ';background:' + statusColor + '1a;border:1px solid ' + statusColor + '40;">' + statusLabel + '</span>'
+          + '</div>'
+          + paymentBannerHtml + deadlineHtml + chosenHtml + sellerHtml + actionsHtml + confirmBtn + receiptHtml + archiveBtn
+          + '</div></div>';
+      }).join('');
+      // Archived toggle link
+      if (archivedCount > 0 || _showArchived) {
+        var toggleLabel = _showArchived ? 'Hide archived orders' : 'View archived orders (' + archivedCount + ')';
+        grid.innerHTML += '<div style="text-align:center;margin-top:8px;"><a href="javascript:void(0)" onclick="toggleArchived()" style="font-size:13px;color:var(--muted);text-decoration:none;">' + toggleLabel + '</a></div>';
+      }
+    }).catch(function(err) { console.error('WON_AUCTIONS_LOAD_ERROR', err); });
+  }
+
+  // Init
+  loadAuctions();
+  // loadFlashSales(); // Flash Sales disabled — coming soon
+  startTimers();
+  loadWonAuctions();
+
+  // Auto-open auction from server-injected __OPEN_AUCTION_ID__ (OG share link: /auction?id=X)
+  if (window.__OPEN_AUCTION_ID__) {
+    setTimeout(function() {
+      window.openAuctionDetail(Number(window.__OPEN_AUCTION_ID__));
+    }, 500);
+  }
+
+  // Auto-open auction detail if URL has #auctionId (e.g. /auctions#42)
+  // Also handle #won to scroll to won auctions section
+  var hashVal = window.location.hash.replace('#', '');
+  if (hashVal === 'won') {
+    setTimeout(function() {
+      var wonSection = document.getElementById('wonAuctionsSection');
+      if (wonSection) wonSection.scrollIntoView({ behavior: 'smooth' });
+    }, 800);
+  } else if (hashVal && !isNaN(hashVal)) {
+    setTimeout(function() {
+      window.openAuctionDetail(Number(hashVal));
+    }, 500);
+  }
+  // ── Shipping address collection for ship_nationally auction winners ──
+  var shippingAuctionId = null;
+
+  window.checkNeedsShipping = function(auctionId) {
+    if (!token) return;
+    apiFetch('/api/auctions/' + auctionId + '/needs-shipping').then(function(d) {
+      if (d.needs_shipping) {
+        shippingAuctionId = auctionId;
+        var titleEl = document.getElementById('shippingItemTitle');
+        if (titleEl) titleEl.textContent = d.item_title || 'Auction Item';
+        // Pre-fill name from user profile
+        var nameEl = document.getElementById('shipName');
+        if (nameEl && !nameEl.value && d.user_name) nameEl.value = d.user_name;
+        var modal = document.getElementById('shippingModal');
+        if (modal) {
+          modal.style.display = 'flex';
+          document.body.style.overflow = 'hidden';
+        }
+      }
+    }).catch(function(){});
+  };
+
+  window.submitShippingAddress = function() {
+    var btn = document.getElementById('shippingSubmitBtn');
+    var errEl = document.getElementById('shippingError');
+    var name = document.getElementById('shipName').value.trim();
+    var phone = document.getElementById('shipPhone').value.trim();
+    var street1 = document.getElementById('shipStreet').value.trim();
+    var city = document.getElementById('shipCity').value.trim();
+    var state = document.getElementById('shipState').value.trim().toUpperCase();
+    var zip = document.getElementById('shipZip').value.trim();
+
+    if (!name || !street1 || !city || !state || !zip) {
+      errEl.textContent = 'Please fill in all required fields.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    errEl.style.display = 'none';
+
+    apiFetch('/api/auctions/' + shippingAuctionId + '/shipping-address', {
+      method: 'POST',
+      body: {
+        full_name: name,
+        phone: phone,
+        street1: street1,
+        city: city,
+        state: state,
+        zip: zip
+      }
+    }).then(function(d) {
+      if (d.success) {
+        document.getElementById('shippingModal').style.display = 'none';
+        document.body.style.overflow = '';
+        alert('Shipping address saved! The seller will be in touch shortly.');
+      } else {
+        errEl.textContent = d.error || 'Something went wrong.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Confirm Shipping Address \u2192';
+      }
+    }).catch(function() {
+      errEl.textContent = 'Network error. Try again.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Confirm Shipping Address \u2192';
+    });
+  };
+
+})();
+</script>
+
+<!-- Shipping Address Modal -->
+<div id="shippingModal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+  <div style="background:#0d1b2e;border:1px solid #0ea5e9;border-radius:20px;padding:32px;max-width:420px;width:90%;max-height:90vh;overflow-y:auto;">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:36px;margin-bottom:8px;">&#128230;</div>
+      <h2 style="color:#fff;font-size:20px;font-weight:800;margin:0 0 6px;">You Won! Where should we ship it?</h2>
+      <p style="color:#94a3b8;font-size:13px;margin:0;" id="shippingItemTitle"></p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <input id="shipName" placeholder="Full Name" style="background:#1e293b;border:1px solid #1e3a4a;border-radius:10px;padding:12px 14px;color:#fff;font-size:14px;width:100%;font-family:inherit;box-sizing:border-box;" />
+      <input id="shipPhone" placeholder="Phone Number" type="tel" style="background:#1e293b;border:1px solid #1e3a4a;border-radius:10px;padding:12px 14px;color:#fff;font-size:14px;width:100%;font-family:inherit;box-sizing:border-box;" />
+      <input id="shipStreet" placeholder="Street Address" style="background:#1e293b;border:1px solid #1e3a4a;border-radius:10px;padding:12px 14px;color:#fff;font-size:14px;width:100%;font-family:inherit;box-sizing:border-box;" />
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;">
+        <input id="shipCity" placeholder="City" style="background:#1e293b;border:1px solid #1e3a4a;border-radius:10px;padding:12px 14px;color:#fff;font-size:14px;font-family:inherit;box-sizing:border-box;" />
+        <input id="shipState" placeholder="ST" maxlength="2" style="background:#1e293b;border:1px solid #1e3a4a;border-radius:10px;padding:12px 14px;color:#fff;font-size:14px;text-transform:uppercase;font-family:inherit;box-sizing:border-box;" />
+        <input id="shipZip" placeholder="ZIP" maxlength="10" style="background:#1e293b;border:1px solid #1e3a4a;border-radius:10px;padding:12px 14px;color:#fff;font-size:14px;font-family:inherit;box-sizing:border-box;" />
+      </div>
+      <div id="shippingError" style="color:#ef4444;font-size:12px;display:none;text-align:center;"></div>
+      <button onclick="submitShippingAddress()" id="shippingSubmitBtn" style="background:#0ea5e9;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;">Confirm Shipping Address &#8594;</button>
+      <p style="color:#334155;font-size:11px;text-align:center;margin:0;">Your card has been charged. We'll arrange shipping once we receive your address.</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

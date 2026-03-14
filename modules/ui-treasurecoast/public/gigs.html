@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gigs | FloridaLife</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080d14;
+      --surface: #101825;
+      --border: #1a2d42;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #00b4d8;
+      --accent-hover: #0096b7;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --danger: #ef4444;
+      --radius: 12px;
+      --heading: 'Barlow Condensed', sans-serif;
+      --body: 'Barlow', sans-serif;
+    }
+    body { font-family: var(--body); background: var(--bg); color: var(--text); min-height: 100vh; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Nav */
+    .site-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(8,13,20,0.95); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px; display: flex; align-items: center; height: 56px; gap: 24px;
+    }
+    .nav-brand { font-family: var(--heading); font-weight: 900; font-size: 20px; color: #fff; text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .nav-brand:hover { text-decoration: none; }
+    .nav-links { display: flex; gap: 6px; margin-left: auto; }
+    .nav-links a {
+      font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--muted);
+      padding: 6px 14px; border-radius: 8px; text-decoration: none; transition: all .15s;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,.06); text-decoration: none; }
+    .nav-links a.active { color: var(--accent); background: rgba(0,180,216,.1); }
+
+    /* Hero */
+    .hero {
+      padding: 80px 20px 60px; text-align: center;
+      background: linear-gradient(180deg, rgba(0,180,216,.06) 0%, transparent 100%);
+    }
+    .hero h1 { font-family: var(--heading); font-weight: 900; font-size: 56px; color: #fff; letter-spacing: -1px; margin-bottom: 12px; }
+    .hero .sub { font-family: var(--heading); font-weight: 700; font-size: 22px; color: var(--accent); margin-bottom: 16px; }
+    .hero p { font-size: 16px; color: var(--muted); max-width: 460px; margin: 0 auto 28px; line-height: 1.6; }
+    .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn { border: none; padding: 12px 24px; border-radius: 10px; font-family: var(--body); font-weight: 600; font-size: 15px; cursor: pointer; transition: all .15s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { text-decoration: none; }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-accent:hover { background: var(--accent-hover); }
+    .btn-outline { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+    .btn-outline:hover { background: rgba(0,180,216,.1); }
+
+    /* Sections */
+    .section-wrap { max-width: 880px; margin: 0 auto; padding: 48px 20px; }
+    .section-title { font-family: var(--heading); font-weight: 800; font-size: 28px; color: #fff; margin-bottom: 24px; }
+
+    /* Category grid */
+    .cat-filter { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .cat-chip {
+      font-family: var(--body); font-weight: 600; font-size: 13px; padding: 6px 16px;
+      border-radius: 20px; border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); cursor: pointer; transition: all .15s;
+    }
+    .cat-chip:hover { border-color: var(--accent); color: var(--text); }
+    .cat-chip.active { background: rgba(0,180,216,.15); border-color: var(--accent); color: var(--accent); }
+    .cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .cat-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; cursor: pointer; transition: all .15s;
+    }
+    .cat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .cat-card.active { border-color: var(--accent); box-shadow: 0 0 20px rgba(0,180,216,.15); }
+    .cat-icon { font-size: 32px; margin-bottom: 8px; }
+    .cat-name { font-family: var(--heading); font-weight: 800; font-size: 18px; color: #fff; }
+    .cat-desc { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .cat-price { font-size: 13px; color: var(--accent); font-weight: 600; margin-top: 8px; }
+
+    /* Provider cards */
+    .providers-list { display: flex; flex-direction: column; gap: 16px; margin-top: 32px; }
+    .provider-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; transition: all .15s;
+    }
+    .provider-card:hover { border-color: rgba(255,255,255,.15); }
+    .provider-card.featured { border-color: var(--accent); box-shadow: 0 0 20px rgba(0,180,216,.1); }
+    .provider-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .provider-name { font-family: var(--heading); font-weight: 800; font-size: 20px; color: #fff; }
+    .provider-meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .provider-badges { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .badge-sm {
+      display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 10px;
+      border-radius: 6px;
+    }
+    .badge-insured { background: rgba(34,197,94,.15); color: var(--green); }
+    .badge-featured { background: rgba(0,180,216,.15); color: var(--accent); }
+    .badge-licensed { background: rgba(245,158,11,.15); color: var(--amber); }
+    .provider-stars { display: flex; align-items: center; gap: 4px; font-size: 14px; }
+    .star-filled { color: var(--amber); }
+    .star-empty { color: #334155; }
+    .provider-services { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+    .service-row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .service-name { color: var(--text); }
+    .service-price { color: var(--accent); font-weight: 600; }
+    .provider-actions { margin-top: 16px; display: flex; justify-content: flex-end; }
+    .placeholder-overlay { color: var(--muted); font-style: italic; text-align: center; padding: 20px 0; }
+
+    /* How it works */
+    .hiw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .hiw-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; text-align: center;
+    }
+    .hiw-num {
+      font-family: var(--heading); font-weight: 900; font-size: 36px; color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .hiw-title { font-family: var(--heading); font-weight: 800; font-size: 18px; color: #fff; margin-bottom: 6px; }
+    .hiw-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* Apply CTA banner */
+    .apply-banner {
+      background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius);
+      padding: 32px; text-align: center; margin-top: 48px;
+    }
+    .apply-banner p { color: var(--muted); margin-bottom: 20px; font-size: 15px; line-height: 1.6; max-width: 520px; margin-left: auto; margin-right: auto; }
+    .apply-banner .sub-link { display: block; margin-top: 12px; font-size: 13px; color: var(--muted); }
+    .apply-banner .sub-link:hover { color: var(--accent); }
+
+    /* Application forms */
+    .apply-section { margin-top: 48px; }
+    .apply-tabs { display: flex; gap: 4px; margin-bottom: 24px; }
+    .apply-tab {
+      font-family: var(--body); font-weight: 600; font-size: 14px; padding: 10px 20px;
+      border-radius: 10px 10px 0 0; border: 1px solid var(--border); border-bottom: none;
+      background: var(--surface); color: var(--muted); cursor: pointer; transition: all .15s;
+    }
+    .apply-tab.active { color: var(--accent); background: rgba(0,180,216,.08); border-color: var(--accent); }
+    .apply-form-panel { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: 0 var(--radius) var(--radius) var(--radius); padding: 24px; }
+    .apply-form-panel.active { display: block; }
+    .form-row { display: flex; gap: 12px; margin-bottom: 14px; }
+    .form-row > * { flex: 1; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font-size: 14px; font-family: var(--body);
+    }
+    .form-group textarea { min-height: 80px; resize: vertical; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); cursor: pointer; }
+    .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+    .avail-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .avail-chip {
+      font-size: 13px; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--muted); cursor: pointer; transition: all .15s;
+    }
+    .avail-chip.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,180,216,.1); }
+    .service-rows { display: flex; flex-direction: column; gap: 8px; }
+    .svc-input-row { display: flex; gap: 8px; align-items: center; }
+    .svc-input-row input { flex: 1; }
+    .svc-input-row .price-input { max-width: 120px; }
+    .svc-input-row .remove-svc { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 18px; padding: 4px; }
+    .add-svc-link { font-size: 13px; color: var(--accent); cursor: pointer; margin-top: 6px; display: inline-block; }
+    .add-svc-link:hover { text-decoration: underline; }
+    .success-panel {
+      background: rgba(34,197,94,.1); border: 1px solid var(--green); border-radius: var(--radius);
+      padding: 20px; text-align: center; color: var(--green); font-weight: 600;
+    }
+    .success-panel p { color: var(--muted); font-weight: 400; margin-top: 8px; font-size: 14px; }
+    .error-panel {
+      background: rgba(239,68,68,.1); border: 1px solid var(--danger); border-radius: var(--radius);
+      padding: 14px; text-align: center; color: var(--danger); font-size: 14px; margin-top: 12px;
+    }
+
+    /* Footer */
+    .site-footer {
+      border-top: 1px solid var(--border); padding: 32px 20px; text-align: center;
+      font-size: 13px; color: var(--muted);
+    }
+    .site-footer a { color: var(--muted); }
+    .site-footer a:hover { color: var(--accent); }
+
+    /* Loading */
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 40px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 38px; }
+      .hero .sub { font-size: 18px; }
+      .cat-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .hiw-grid { grid-template-columns: 1fr; }
+      .form-row { flex-direction: column; gap: 0; }
+      .nav-links { gap: 2px; }
+      .nav-links a { padding: 6px 10px; font-size: 12px; }
+    }
+    @media (max-width: 480px) {
+      .cat-grid { grid-template-columns: 1fr; }
+      .hero { padding: 48px 16px 36px; }
+      .section-wrap { padding: 32px 16px; }
+      .svc-input-row { flex-direction: column; }
+      .svc-input-row .price-input { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="site-nav">
+    <a href="/" class="nav-brand" id="navBrand">FloridaLife</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/gigs" class="active">Services</a>
+      <a href="/rides">Rides</a>
+      <a href="/junk">Junk</a>
+      <a href="/leaderboard">Leaderboard</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/login" id="navLogin">Login</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>Gigs</h1>
+    <div class="sub">Local services, booked in minutes.</div>
+    <p>Real people from your community &mdash; painters, haulers, handymen, drivers. Book and pay securely. Done today.</p>
+    <div class="hero-btns">
+      <a href="#categories" class="btn btn-accent">Browse Services</a>
+      <a href="#apply-form" class="btn btn-outline">Apply as a Provider &rarr;</a>
+    </div>
+  </section>
+
+  <!-- Categories -->
+  <section class="section-wrap" id="categories">
+    <h2 class="section-title">Browse by Category</h2>
+    <div class="cat-filter" id="catFilter">
+      <button class="cat-chip active" data-slug="">All</button>
+    </div>
+    <div class="cat-grid" id="catGrid">
+      <div class="spinner"></div>
+    </div>
+  </section>
+
+  <!-- Providers -->
+  <section class="section-wrap" id="providersSection">
+    <h2 class="section-title">Available Providers</h2>
+    <div class="providers-list" id="providersList">
+      <div class="spinner"></div>
+    </div>
+  </section>
+
+  <!-- Offer Your Services -->
+  <section class="section-wrap" style="margin-top:0;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;" id="workerAppForm">
+      <h2 class="section-title" style="margin-bottom:4px;">Offer Your Services</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Want to work as a gig provider in your community? Fill out this form and we'll get back to you.</p>
+      <input type="text" id="waName" placeholder="Your name" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;margin-bottom:8px;box-sizing:border-box;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <input type="text" id="waPhone" placeholder="Phone number" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box;">
+        <input type="email" id="waEmail" placeholder="Email" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box;">
+      </div>
+      <input type="text" id="waCategory" placeholder="Category (e.g. Painting, Hauling, Handyman)" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;margin-bottom:8px;box-sizing:border-box;">
+      <textarea id="waExperience" placeholder="Describe your experience..." style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;margin-bottom:8px;box-sizing:border-box;min-height:60px;resize:vertical;font-family:inherit;"></textarea>
+      <input type="text" id="waArea" placeholder="Service area (e.g. Stuart, PSL, Vero Beach)" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;margin-bottom:10px;box-sizing:border-box;">
+      <button id="waSubmitBtn" onclick="submitWorkerApp()" class="btn btn-accent" style="width:100%;border:none;cursor:pointer;">Submit Application</button>
+      <div id="waResult" style="margin-top:6px;font-size:13px;"></div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="section-wrap">
+    <h2 class="section-title">How It Works</h2>
+    <div class="hiw-grid">
+      <div class="hiw-card">
+        <div class="hiw-num">1</div>
+        <div class="hiw-title">Browse</div>
+        <div class="hiw-desc">Find a local service provider by category. Compare ratings, prices, and reviews.</div>
+      </div>
+      <div class="hiw-card">
+        <div class="hiw-num">2</div>
+        <div class="hiw-title">Request</div>
+        <div class="hiw-desc">Select your service, describe what you need, and submit a request. We'll connect you with the provider.</div>
+      </div>
+      <div class="hiw-card">
+        <div class="hiw-num">3</div>
+        <div class="hiw-title">Done Today</div>
+        <div class="hiw-desc">Provider confirms within 2 hours. Get your job done by a vetted local pro.</div>
+      </div>
+    </div>
+
+    <!-- Apply CTA banner -->
+    <div class="apply-banner">
+      <h2 class="section-title" style="margin-bottom:12px;">List Your Business</h2>
+      <p>Own a local service business? List your gigs &mdash; reach customers who are ready to book now.</p>
+      <a href="#apply-form" class="btn btn-accent">Apply to List Your Business &rarr;</a>
+      <a href="#apply-form" class="sub-link" onclick="setTimeout(function(){switchApplyTab('individual')},100)">Looking to earn as a gig worker? Apply as an individual &rarr;</a>
+    </div>
+  </section>
+
+  <!-- Application Forms -->
+  <section class="section-wrap apply-section" id="apply-form">
+    <h2 class="section-title">Apply to Join Gigs</h2>
+
+    <div class="apply-tabs">
+      <button class="apply-tab active" onclick="switchApplyTab('individual')">Individual Gig Worker</button>
+      <button class="apply-tab" onclick="switchApplyTab('business')">Service Business</button>
+    </div>
+
+    <!-- Individual form -->
+    <div class="apply-form-panel active" id="panel-individual">
+      <div id="indSuccess" style="display:none;"></div>
+      <form id="indForm" onsubmit="submitIndividual(event)">
+        <div class="form-row">
+          <div class="form-group"><label>First Name *</label><input type="text" id="indFirst" required></div>
+          <div class="form-group"><label>Last Name</label><input type="text" id="indLast"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Phone *</label><input type="tel" id="indPhone" required></div>
+          <div class="form-group"><label>City</label><input type="text" id="indCity"></div>
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select id="indRole">
+            <option value="">Select a role...</option>
+            <option value="hauler">Hauler / Delivery</option>
+            <option value="junk">Junk Removal</option>
+            <option value="rides">Rides Driver</option>
+            <option value="handyman">Handyman</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Vehicle</label></div>
+        <div class="form-row">
+          <div class="form-group"><label>Year</label><input type="text" id="indVYear" placeholder="2020"></div>
+          <div class="form-group"><label>Make</label><input type="text" id="indVMake" placeholder="Ford"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Model</label><input type="text" id="indVModel" placeholder="F-150"></div>
+          <div class="form-group"><label>Color</label><input type="text" id="indVColor" placeholder="White"></div>
+        </div>
+        <div class="form-group">
+          <label>Availability</label>
+          <div class="avail-grid" id="indAvail">
+            <span class="avail-chip" data-val="weekday_mornings" onclick="toggleAvail(this)">Weekday mornings</span>
+            <span class="avail-chip" data-val="weekday_afternoons" onclick="toggleAvail(this)">Weekday afternoons</span>
+            <span class="avail-chip" data-val="weekends" onclick="toggleAvail(this)">Weekends</span>
+            <span class="avail-chip" data-val="flexible" onclick="toggleAvail(this)">Flexible</span>
+          </div>
+        </div>
+        <div class="form-group"><label>Notes</label><textarea id="indNotes" placeholder="Anything else you'd like us to know..."></textarea></div>
+        <div id="indError" class="error-panel" style="display:none;"></div>
+        <button type="submit" class="btn btn-accent" style="margin-top:8px;" id="indSubmitBtn">Submit Application</button>
+      </form>
+    </div>
+
+    <!-- Business form -->
+    <div class="apply-form-panel" id="panel-business">
+      <div id="bizSuccess" style="display:none;"></div>
+      <form id="bizForm" onsubmit="submitBusiness(event)">
+        <div class="form-row">
+          <div class="form-group"><label>Business Name *</label><input type="text" id="bizName" required></div>
+          <div class="form-group"><label>Owner Name</label><input type="text" id="bizOwner"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Phone *</label><input type="tel" id="bizPhone" required></div>
+          <div class="form-group"><label>City</label><input type="text" id="bizCity"></div>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="bizCategory"><option value="">Select a category...</option></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Years Experience</label>
+            <select id="bizExp">
+              <option value="">Select...</option>
+              <option value="<1">Less than 1 year</option>
+              <option value="1-3">1-3 years</option>
+              <option value="3-5">3-5 years</option>
+              <option value="5-10">5-10 years</option>
+              <option value="10+">10+ years</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Service Radius</label>
+            <select id="bizRadius">
+              <option value="">Select...</option>
+              <option value="5 miles">5 miles</option>
+              <option value="10 miles">10 miles</option>
+              <option value="20 miles">20 miles</option>
+              <option value="30 miles">30 miles</option>
+              <option value="50+ miles">50+ miles</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:14px;">
+          <label class="checkbox-row"><input type="checkbox" id="bizInsured"> Insured</label>
+          <label class="checkbox-row"><input type="checkbox" id="bizLicensed"> Licensed</label>
+        </div>
+        <div class="form-group"><label>Description</label><textarea id="bizDesc" placeholder="Tell customers about your business..."></textarea></div>
+
+        <div class="form-group">
+          <label>Pricing &mdash; Services You Offer</label>
+          <div class="service-rows" id="bizServices">
+            <div class="svc-input-row">
+              <input type="text" placeholder="Service name" class="svc-name">
+              <input type="text" placeholder="$0.00" class="svc-price price-input">
+            </div>
+          </div>
+          <span class="add-svc-link" onclick="addServiceRow()">+ Add service</span>
+        </div>
+        <div class="form-group"><label>Notes</label><textarea id="bizNotes" placeholder="Anything else..."></textarea></div>
+        <div id="bizError" class="error-panel" style="display:none;"></div>
+        <button type="submit" class="btn btn-accent" style="margin-top:8px;" id="bizSubmitBtn">Submit Application</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <p>&copy; 2026 FloridaLife &middot; <a href="/">Home</a> &middot; <a href="/gigs">Gigs</a></p>
+  </footer>
+
+<script src="/auth-gate.js"></script>
+<script>
+(function() {
+  // Detect town from hostname
+  function getTownName() {
+    var map = {
+      'treasurecoast-fl.com': 'Treasure Coast',
+      'space-coastfl.com': 'Space Coast',
+      'jacksonville-floridalife.com': 'Jacksonville',
+      'miami-floridalife.com': 'Miami',
+      'orlando-floridalife.com': 'Orlando',
+      'tampa-bay-florida.com': 'Tampa Bay',
+      'fortlauderdale-fl.com': 'Fort Lauderdale',
+      'fortmyers-fl.com': 'Fort Myers',
+      'westpalmbeach-fl.com': 'West Palm Beach',
+      'localhost': 'Treasure Coast'
+    };
+    return map[window.location.hostname] || 'FloridaLife';
+  }
+  document.getElementById('navBrand').textContent = getTownName();
+
+  function getTownSlug() {
+    var map = {
+      'treasurecoast-fl.com':'treasure-coast',
+      'space-coastfl.com':'space-coast',
+      'jacksonville-floridalife.com':'jacksonville',
+      'miami-floridalife.com':'miami',
+      'orlando-floridalife.com':'orlando',
+      'tampa-bay-florida.com':'tampa-bay',
+      'fortlauderdale-fl.com':'fort-lauderdale',
+      'fortmyers-fl.com':'fort-myers',
+      'westpalmbeach-fl.com':'west-palm-beach',
+      'localhost':'treasure-coast'
+    };
+    var h = window.location.hostname.replace(/^www\./, '');
+    return map[h] || 'treasure-coast';
+  }
+
+  // Token helper
+  function getToken() {
+    try { var m = document.cookie.match(/(?:^|;\s*)token=([^;]*)/); return m ? m[1] : null; } catch(e) { return null; }
+  }
+  var token = getToken() || localStorage.getItem('tc_token');
+  if (token) {
+    var loginLink = document.getElementById('navLogin');
+    if (loginLink) { loginLink.textContent = 'Dashboard'; loginLink.href = '/dashboard'; }
+  }
+
+  // Minimum price estimates per category
+  var catMinPrices = {
+    hauling: 'From $75', junk: 'From $50', rides: 'From $25',
+    painting: 'From $120', handyman: 'From $60', cleaning: 'From $80',
+    lawn: 'From $40', pressure: 'From $100'
+  };
+
+  var categories = [];
+  var activeCategory = '';
+
+  // Load categories
+  async function loadCategories() {
+    try {
+      var res = await fetch('/api/gigs/categories');
+      var data = await res.json();
+      categories = data.categories || [];
+      renderCategories();
+      populateBizCategorySelect();
+    } catch(err) {
+      console.error('LOAD_CATEGORIES_ERROR', err);
+      document.getElementById('catGrid').innerHTML = '<p style="color:var(--muted);">Failed to load categories.</p>';
+    }
+  }
+
+  function renderCategories() {
+    var grid = document.getElementById('catGrid');
+    var filter = document.getElementById('catFilter');
+    if (!categories.length) {
+      grid.innerHTML = '<p style="color:var(--muted);">No categories available yet.</p>';
+      return;
+    }
+    // Filter chips
+    var chipsHtml = '<button class="cat-chip' + (!activeCategory ? ' active' : '') + '" data-slug="" onclick="window._filterCat(\'\')">All</button>';
+    categories.forEach(function(c) {
+      chipsHtml += '<button class="cat-chip' + (activeCategory === c.slug ? ' active' : '') + '" data-slug="' + c.slug + '" onclick="window._filterCat(\'' + c.slug + '\')">' + (c.icon || '') + ' ' + c.name + '</button>';
+    });
+    filter.innerHTML = chipsHtml;
+
+    // Grid cards
+    var html = '';
+    categories.forEach(function(c) {
+      var price = catMinPrices[c.slug] || 'Get a quote';
+      html += '<div class="cat-card' + (activeCategory === c.slug ? ' active' : '') + '" onclick="window._filterCat(\'' + c.slug + '\')">'
+        + '<div class="cat-icon">' + (c.icon || '') + '</div>'
+        + '<div class="cat-name">' + c.name + '</div>'
+        + '<div class="cat-desc">' + (c.description || '') + '</div>'
+        + '<div class="cat-price">' + price + '</div>'
+        + '</div>';
+    });
+    grid.innerHTML = html;
+  }
+
+  function populateBizCategorySelect() {
+    var sel = document.getElementById('bizCategory');
+    if (!sel) return;
+    categories.forEach(function(c) {
+      var opt = document.createElement('option');
+      opt.value = c.slug;
+      opt.textContent = (c.icon || '') + ' ' + c.name;
+      sel.appendChild(opt);
+    });
+  }
+
+  window._filterCat = function(slug) {
+    activeCategory = (activeCategory === slug && slug) ? '' : slug;
+    renderCategories();
+    loadProviders();
+  };
+
+  // Load providers
+  async function loadProviders() {
+    var list = document.getElementById('providersList');
+    list.innerHTML = '<div class="spinner"></div>';
+    try {
+      var url = '/api/gigs/providers?market=' + getTownSlug();
+      if (activeCategory) url += '&category=' + encodeURIComponent(activeCategory);
+      var res = await fetch(url);
+      var data = await res.json();
+      var providers = data.providers || [];
+      if (providers.length === 0) {
+        renderPlaceholders(list);
+      } else {
+        renderProviders(list, providers);
+        loadProviderBadges(providers);
+      }
+    } catch(err) {
+      console.error('LOAD_PROVIDERS_ERROR', err);
+      renderPlaceholders(list);
+    }
+  }
+
+  async function loadProviderBadges(providers) {
+    providers.forEach(async function(p) {
+      try {
+        var r = await fetch('/api/leaderboard/user/' + p.id + '/badges');
+        if (!r.ok) return;
+        var data = await r.json();
+        var badges = data.badges || [];
+        if (badges.length === 0) return;
+        var el = document.querySelector('.lb-badges[data-provider-id="' + p.id + '"]');
+        if (!el) return;
+        var html = '';
+        var hasChampion = badges.some(function(b) { return b.badge_type === 'defending_champion'; });
+        var hasTopRated = badges.some(function(b) { return b.badge_type === 'top_driver' || b.badge_type === 'top_worker'; });
+        if (hasChampion) html += '<span class="badge-sm" style="background:rgba(240,192,64,.15);color:#f0c040;">&#128081; Defending Champion</span> ';
+        if (hasTopRated) html += '<span class="badge-sm" style="background:rgba(0,180,216,.15);color:#00b4d8;">&#127942; Top Rated</span>';
+        el.innerHTML = html;
+      } catch (err) { /* graceful fail */ }
+    });
+  }
+
+  function renderStars(rating, count) {
+    var r = parseFloat(rating) || 0;
+    var html = '<div class="provider-stars">';
+    for (var i = 1; i <= 5; i++) {
+      html += '<span class="' + (i <= Math.round(r) ? 'star-filled' : 'star-empty') + '">&#9733;</span>';
+    }
+    html += '<span style="color:var(--muted);font-size:12px;margin-left:4px;">' + r.toFixed(1) + ' (' + (count || 0) + ')</span></div>';
+    return html;
+  }
+
+  function renderProviders(container, providers) {
+    var html = '';
+    providers.forEach(function(p) {
+      var services = p.services || [];
+      var svcHtml = '';
+      services.slice(0, 3).forEach(function(s) {
+        svcHtml += '<div class="service-row"><span class="service-name">' + esc(s.name) + '</span><span class="service-price">$' + (s.price_cents / 100).toFixed(2) + '</span></div>';
+      });
+      if (services.length > 3) svcHtml += '<div style="font-size:12px;color:var(--muted);padding-top:4px;">+ ' + (services.length - 3) + ' more services</div>';
+
+      var badges = '';
+      if (p.featured) badges += '<span class="badge-sm badge-featured">Featured</span>';
+      if (p.insured) badges += '<span class="badge-sm badge-insured">Insured</span>';
+      if (p.licensed) badges += '<span class="badge-sm badge-licensed">Licensed</span>';
+
+      html += '<div class="provider-card' + (p.featured ? ' featured' : '') + '">'
+        + '<div class="provider-top">'
+        + '<div>'
+        + '<div class="provider-name">' + esc(p.business_name) + '</div>'
+        + '<div class="provider-meta">' + (p.category_icon || '') + ' ' + (p.category_name || '') + ' &middot; ' + esc(p.city || '') + ' &middot; ' + (p.service_radius_miles || 20) + ' mi radius</div>'
+        + renderStars(p.avg_rating, p.review_count)
+        + (badges ? '<div class="provider-badges">' + badges + '</div>' : '')
+        + '<div class="lb-badges" data-provider-id="' + p.id + '"></div>'
+        + '</div>'
+        + '</div>'
+        + (svcHtml ? '<div class="provider-services">' + svcHtml + '</div>' : '')
+        + '<div class="provider-actions"><button onclick="toggleServiceForm(\'' + p.id + '\', \'' + esc(p.business_name).replace(/'/g, "\\'") + '\')" class="btn btn-accent" style="border:none;cursor:pointer;">Request Service &rarr;</button></div>'
+        + '<div id="svcForm-' + p.id + '" style="display:none;padding:12px 16px;border-top:1px solid var(--border);">'
+        + '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;">Request a Service from ' + esc(p.business_name) + '</div>'
+        + '<input type="text" class="svc-input" data-field="name" placeholder="Your name" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;margin-bottom:6px;box-sizing:border-box;">'
+        + '<input type="text" class="svc-input" data-field="phone" placeholder="Phone number" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;margin-bottom:6px;box-sizing:border-box;">'
+        + '<input type="email" class="svc-input" data-field="email" placeholder="Email (optional)" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;margin-bottom:6px;box-sizing:border-box;">'
+        + '<textarea class="svc-input" data-field="description" placeholder="Describe what you need..." style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;margin-bottom:6px;box-sizing:border-box;min-height:50px;resize:vertical;font-family:inherit;"></textarea>'
+        + '<input type="date" class="svc-input" data-field="date" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;margin-bottom:8px;box-sizing:border-box;">'
+        + '<button onclick="submitServiceRequest(\'' + p.id + '\', \'' + esc(p.business_name).replace(/'/g, "\\'") + '\')" class="btn btn-accent" style="width:100%;border:none;cursor:pointer;">Submit Request</button>'
+        + '<div class="svc-result" style="margin-top:6px;font-size:13px;"></div>'
+        + '</div>'
+        + '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function renderPlaceholders(container) {
+    var placeholders = [
+      { name: 'TC Painting Pros', cat: 'Painting', icon: '\uD83C\uDFA8', city: 'Stuart', services: [{name:'Single Room',price:'$120.00'},{name:'Full Interior',price:'$800.00'},{name:'Cabinet Repaint',price:'$350.00'}] },
+      { name: 'Treasure Haulers', cat: 'Hauling & Delivery', icon: '\uD83D\uDE9A', city: 'Port St. Lucie', services: [{name:'Small Load',price:'$75.00'},{name:'Full Truck',price:'$150.00'},{name:'Appliance Move',price:'$100.00'}] },
+      { name: 'Coast Handyman', cat: 'Handyman', icon: '\uD83D\uDD27', city: 'Jensen Beach', services: [{name:'Small Repair',price:'$60.00'},{name:'TV Mounting',price:'$85.00'},{name:'Fixture Install',price:'$95.00'}] }
+    ];
+    var html = '';
+    placeholders.forEach(function(p) {
+      var svcHtml = '';
+      p.services.forEach(function(s) { svcHtml += '<div class="service-row"><span class="service-name" style="color:var(--muted);">' + s.name + '</span><span class="service-price" style="color:var(--muted);">' + s.price + '</span></div>'; });
+      html += '<div class="provider-card" style="opacity:.5;">'
+        + '<div class="provider-top"><div>'
+        + '<div class="provider-name" style="color:var(--muted);">' + p.name + '</div>'
+        + '<div class="provider-meta">' + p.icon + ' ' + p.cat + ' &middot; ' + p.city + ' &middot; 20 mi radius</div>'
+        + renderStars(0, 0)
+        + '</div></div>'
+        + '<div class="provider-services">' + svcHtml + '</div>'
+        + '<div class="placeholder-overlay">Coming Soon</div>'
+        + '<div class="provider-actions"><button class="btn btn-accent" disabled style="opacity:.4;">Book Now &rarr;</button></div>'
+        + '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    var d = document.createElement('div'); d.appendChild(document.createTextNode(str)); return d.innerHTML;
+  }
+
+  // Tab switching
+  window.switchApplyTab = function(tab) {
+    document.querySelectorAll('.apply-tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.apply-form-panel').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById('panel-' + tab).classList.add('active');
+    document.querySelector('.apply-tab[onclick*="' + tab + '"]').classList.add('active');
+  };
+
+  // Availability toggle
+  window.toggleAvail = function(el) { el.classList.toggle('selected'); };
+
+  // Add service row
+  var svcCount = 1;
+  window.addServiceRow = function() {
+    if (svcCount >= 6) return;
+    svcCount++;
+    var row = document.createElement('div');
+    row.className = 'svc-input-row';
+    row.innerHTML = '<input type="text" placeholder="Service name" class="svc-name">'
+      + '<input type="text" placeholder="$0.00" class="svc-price price-input">'
+      + '<button type="button" class="remove-svc" onclick="this.parentElement.remove();svcCount--;">&times;</button>';
+    document.getElementById('bizServices').appendChild(row);
+  };
+  window.svcCount = svcCount;
+
+  // Submit individual application
+  window.submitIndividual = async function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('indSubmitBtn');
+    btn.textContent = 'Submitting...'; btn.disabled = true;
+    document.getElementById('indError').style.display = 'none';
+
+    var avail = [];
+    document.querySelectorAll('#indAvail .avail-chip.selected').forEach(function(c) { avail.push(c.dataset.val); });
+
+    try {
+      var res = await fetch('/api/gigs/apply/individual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name: document.getElementById('indFirst').value.trim(),
+          last_name: document.getElementById('indLast').value.trim(),
+          phone: document.getElementById('indPhone').value.trim(),
+          city: document.getElementById('indCity').value.trim(),
+          role: document.getElementById('indRole').value,
+          vehicle_year: document.getElementById('indVYear').value.trim(),
+          vehicle_make: document.getElementById('indVMake').value.trim(),
+          vehicle_model: document.getElementById('indVModel').value.trim(),
+          vehicle_color: document.getElementById('indVColor').value.trim(),
+          availability: avail,
+          notes: document.getElementById('indNotes').value.trim()
+        })
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit');
+      document.getElementById('indForm').style.display = 'none';
+      document.getElementById('indSuccess').style.display = 'block';
+      document.getElementById('indSuccess').innerHTML = '<div class="success-panel">Application received!<p>We review every application within 24 hours. We\'ll contact you at the phone number provided.</p></div>';
+    } catch(err) {
+      document.getElementById('indError').textContent = err.message;
+      document.getElementById('indError').style.display = 'block';
+      btn.textContent = 'Submit Application'; btn.disabled = false;
+    }
+  };
+
+  // Submit business application
+  window.submitBusiness = async function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('bizSubmitBtn');
+    btn.textContent = 'Submitting...'; btn.disabled = true;
+    document.getElementById('bizError').style.display = 'none';
+
+    var services = [];
+    document.querySelectorAll('#bizServices .svc-input-row').forEach(function(row) {
+      var name = row.querySelector('.svc-name').value.trim();
+      var priceStr = row.querySelector('.svc-price').value.trim().replace(/[^0-9.]/g, '');
+      if (name && priceStr) {
+        services.push({ name: name, price_cents: Math.round(parseFloat(priceStr) * 100) });
+      }
+    });
+
+    try {
+      var res = await fetch('/api/gigs/apply/business', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_name: document.getElementById('bizName').value.trim(),
+          owner_name: document.getElementById('bizOwner').value.trim(),
+          phone: document.getElementById('bizPhone').value.trim(),
+          city: document.getElementById('bizCity').value.trim(),
+          category_slug: document.getElementById('bizCategory').value,
+          years_experience: document.getElementById('bizExp').value,
+          service_radius: document.getElementById('bizRadius').value,
+          insured: document.getElementById('bizInsured').checked,
+          licensed: document.getElementById('bizLicensed').checked,
+          description: document.getElementById('bizDesc').value.trim(),
+          services: services,
+          notes: document.getElementById('bizNotes').value.trim()
+        })
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit');
+      document.getElementById('bizForm').style.display = 'none';
+      document.getElementById('bizSuccess').style.display = 'block';
+      document.getElementById('bizSuccess').innerHTML = '<div class="success-panel">Application received!<p>We review every listing within 24 hours. We\'ll contact you at the phone number provided.</p></div>';
+    } catch(err) {
+      document.getElementById('bizError').textContent = err.message;
+      document.getElementById('bizError').style.display = 'block';
+      btn.textContent = 'Submit Application'; btn.disabled = false;
+    }
+  };
+
+  // ─── Service Request Form ────────────────────
+  window.toggleServiceForm = function(providerId, providerName) {
+    var form = document.getElementById('svcForm-' + providerId);
+    if (!form) return;
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  };
+
+  window.submitServiceRequest = async function(providerId, providerName) {
+    var form = document.getElementById('svcForm-' + providerId);
+    if (!form) return;
+    var name = form.querySelector('[data-field="name"]').value.trim();
+    var phone = form.querySelector('[data-field="phone"]').value.trim();
+    var email = form.querySelector('[data-field="email"]').value.trim();
+    var desc = form.querySelector('[data-field="description"]').value.trim();
+    var date = form.querySelector('[data-field="date"]').value;
+    var resultEl = form.querySelector('.svc-result');
+
+    if (!name || (!phone && !email)) {
+      resultEl.innerHTML = '<span style="color:#ef4444;">Name and at least a phone or email required.</span>';
+      return;
+    }
+
+    var btn = form.querySelector('button');
+    btn.textContent = 'Submitting...'; btn.disabled = true;
+    try {
+      var resp = await fetch('/api/gigs/service-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider_id: providerId,
+          provider_name: providerName,
+          requester_name: name,
+          requester_phone: phone,
+          requester_email: email,
+          description: desc,
+          preferred_date: date || null
+        })
+      });
+      var data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Failed');
+      form.innerHTML = '<div style="text-align:center;padding:12px;color:var(--accent);font-weight:600;">&#9989; Request submitted! We\'ll be in touch.</div>';
+    } catch(e) {
+      resultEl.innerHTML = '<span style="color:#ef4444;">' + esc(e.message) + '</span>';
+      btn.textContent = 'Submit Request'; btn.disabled = false;
+    }
+  };
+
+  // ─── Worker Application Form ────────────────────
+  window.submitWorkerApp = async function() {
+    var name = document.getElementById('waName').value.trim();
+    var phone = document.getElementById('waPhone').value.trim();
+    var email = document.getElementById('waEmail').value.trim();
+    var category = document.getElementById('waCategory').value.trim();
+    var experience = document.getElementById('waExperience').value.trim();
+    var area = document.getElementById('waArea').value.trim();
+    var resultEl = document.getElementById('waResult');
+
+    if (!name || (!phone && !email)) {
+      resultEl.innerHTML = '<span style="color:#ef4444;">Name and at least a phone or email required.</span>';
+      return;
+    }
+
+    var btn = document.getElementById('waSubmitBtn');
+    btn.textContent = 'Submitting...'; btn.disabled = true;
+    try {
+      var resp = await fetch('/api/gigs/worker-application', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, phone: phone, email: email, category: category, experience: experience, service_area: area })
+      });
+      var data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Failed');
+      document.getElementById('workerAppForm').innerHTML = '<div style="text-align:center;padding:20px;color:var(--accent);font-weight:600;font-size:15px;">&#9989; Application submitted! We\'ll review it and get back to you.</div>';
+    } catch(e) {
+      resultEl.innerHTML = '<span style="color:#ef4444;">' + esc(e.message) + '</span>';
+      btn.textContent = 'Submit Application'; btn.disabled = false;
+    }
+  };
+
+  // Init
+  loadCategories();
+  loadProviders();
+})();
+</script>
+</body>
+</html>

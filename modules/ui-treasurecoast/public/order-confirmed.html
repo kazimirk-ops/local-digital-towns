@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Confirmed | FloridaLife</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #08090E;
+      color: #e8eef6;
+      font-family: -apple-system, 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .topbar { position:fixed;top:0;left:0;right:0;z-index:10;background:rgba(8,9,14,0.92);border-bottom:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(12px);padding:14px 18px; }
+    .topbar-inner { max-width:600px;margin:0 auto;display:flex;align-items:center;justify-content:space-between; }
+    .nav-btn { display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;color:#9fb0c3;font-size:13px;text-decoration:none;transition:all .2s; }
+    .nav-btn:hover { color:#fff;background:rgba(255,255,255,0.06); }
+    .card {
+      background: #0f1722;
+      border: 1px solid #1a2636;
+      border-radius: 16px;
+      padding: 48px 40px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+    .icon { font-size: 64px; margin-bottom: 24px; }
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #e8eef6;
+    }
+    .subtitle {
+      color: #9fb0c3;
+      font-size: 15px;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #1a2636;
+      font-size: 14px;
+    }
+    .detail-row:last-of-type { border-bottom: none; }
+    .detail-label { color: #9fb0c3; }
+    .detail-value {
+      color: #e8eef6;
+      font-weight: 600;
+      text-align: right;
+      max-width: 60%;
+    }
+    .price-value {
+      color: #FFB800;
+      font-size: 20px;
+      font-weight: 800;
+    }
+    .details-block {
+      background: #0a0f1a;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 24px 0;
+    }
+    .notice {
+      background: rgba(0,229,255,0.08);
+      border: 1px solid rgba(0,229,255,0.2);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #9fb0c3;
+      margin-bottom: 28px;
+      line-height: 1.5;
+      text-align: left;
+    }
+    .notice strong { color: #00E5FF; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .btn-primary {
+      background: #00E5FF;
+      color: #08090E;
+    }
+    .btn-secondary {
+      background: #1a2636;
+      color: #e8eef6;
+    }
+    .loading {
+      color: #9fb0c3;
+      font-size: 16px;
+      padding: 40px 0;
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid #1a2636;
+      border-top-color: #00E5FF;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-icon { font-size: 48px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <a class="nav-btn" href="/">&larr; Back to Town</a>
+      <span style="color:#9fb0c3;font-size:13px;">TCD</span>
+    </div>
+  </div>
+  <div class="card" id="mainCard">
+    <div class="loading">
+      <div class="spinner"></div>
+      Confirming your order...
+    </div>
+  </div>
+
+  <script>
+    var card = document.getElementById('mainCard');
+
+    function showSuccess(data) {
+      var isDeposit = data.is_deposit === true;
+      var depositAmt = parseFloat(data.deposit || 0);
+      var remainder = parseFloat(data.remainder || 0);
+      var totalAmt = parseFloat(data.amount || 0);
+      var paidAmt = isDeposit ? depositAmt : totalAmt;
+      var payMethod = data.payment_method || '';
+
+      var headline = isDeposit ? 'Item Reserved!' : 'Order Confirmed!';
+      var subtitle = isDeposit
+        ? 'Your $' + depositAmt.toFixed(2) + ' refundable deposit has been charged. The item is now held for you.'
+        : 'Your payment of $' + paidAmt.toFixed(2) + ' was successful.';
+
+      var nextSteps = '';
+      var payLink = '';
+
+      if (isDeposit) {
+        var remainderStr = '$' + remainder.toFixed(2);
+
+        if (payMethod === 'venmo' && data.seller_venmo_handle) {
+          var vHandle = data.seller_venmo_handle;
+          var vDeepLink = 'venmo://paycharge?txn=pay&recipients=' + encodeURIComponent(vHandle) + '&amount=' + remainder.toFixed(2) + '&note=' + encodeURIComponent('TreasureCoast Purchase');
+          var vWebLink = 'https://venmo.com/' + encodeURIComponent(vHandle);
+          nextSteps = '<strong>What happens next?</strong><br>'
+            + 'Contact the seller to arrange pickup. Send the remaining <strong>' + remainderStr + '</strong> to <strong>@' + esc(vHandle) + '</strong> on Venmo before you meet.';
+          payLink = '<div style="margin-top:16px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.25);border-radius:10px;padding:16px;text-align:center;">'
+            + '<div style="font-size:14px;font-weight:700;color:#e8eef6;margin-bottom:10px;">&#128242; Complete your payment &mdash; send ' + remainderStr + ' to the seller before pickup</div>'
+            + '<a href="' + vDeepLink + '" style="display:block;padding:12px;background:#3b82f6;color:#fff;border-radius:8px;font-size:15px;font-weight:700;text-decoration:none;margin-bottom:8px;">Pay @' + esc(vHandle) + ' on Venmo</a>'
+            + '<a href="' + vWebLink + '" target="_blank" style="font-size:12px;color:#94a3b8;">Open venmo.com/' + esc(vHandle) + ' on desktop &rarr;</a>'
+            + '</div>';
+        } else if (payMethod === 'paypal' && data.seller_paypal_handle) {
+          var pHandle = data.seller_paypal_handle;
+          var pUrl = pHandle.indexOf('paypal.me') !== -1
+            ? 'https://' + pHandle + '/' + remainder.toFixed(2)
+            : 'https://paypal.me/' + encodeURIComponent(pHandle) + '/' + remainder.toFixed(2);
+          nextSteps = '<strong>What happens next?</strong><br>'
+            + 'Contact the seller to arrange pickup. Send the remaining <strong>' + remainderStr + '</strong> via PayPal before you meet.';
+          payLink = '<div style="margin-top:16px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:16px;text-align:center;">'
+            + '<div style="font-size:14px;font-weight:700;color:#e8eef6;margin-bottom:10px;">&#128242; Complete your payment &mdash; send ' + remainderStr + ' to the seller before pickup</div>'
+            + '<a href="' + pUrl + '" target="_blank" style="display:block;padding:12px;background:#f59e0b;color:#000;border-radius:8px;font-size:15px;font-weight:700;text-decoration:none;">Pay ' + remainderStr + ' via PayPal</a>'
+            + '</div>';
+        } else {
+          nextSteps = '<strong>What happens next?</strong><br>'
+            + 'Contact the seller to arrange pickup. Pay the remaining <strong>' + remainderStr + '</strong> in cash when you meet.';
+        }
+
+        if (data.seller_email) {
+          nextSteps += '<br>Seller email: <strong>' + esc(data.seller_email) + '</strong>';
+        }
+      } else if (data.delivery_type === 'pickup') {
+        nextSteps = '<strong>What happens next?</strong><br>'
+          + 'Paid in full! Contact the seller to arrange pickup.'
+          + (data.seller_email ? '<br>Seller email: <strong>' + esc(data.seller_email) + '</strong>' : '');
+      } else {
+        nextSteps = '<strong>What happens next?</strong><br>'
+          + 'The seller has been notified and will arrange delivery.';
+      }
+
+      card.innerHTML =
+        '<div class="icon">' + (isDeposit ? '&#128176;' : '&#9989;') + '</div>'
+        + '<h1>' + headline + '</h1>'
+        + '<p class="subtitle">' + subtitle + '</p>'
+        + '<div class="details-block">'
+        + '<div class="detail-row"><span class="detail-label">Item</span><span class="detail-value">' + esc(data.listing_title || 'Your item') + '</span></div>'
+        + '<div class="detail-row"><span class="detail-label">' + (isDeposit ? 'Deposit paid' : 'Total paid') + '</span><span class="detail-value price-value">$' + paidAmt.toFixed(2) + '</span></div>'
+        + (isDeposit ? '<div class="detail-row"><span class="detail-label">Remainder due</span><span class="detail-value" style="color:#f59e0b;">$' + remainder.toFixed(2) + '</span></div>' : '')
+        + '<div class="detail-row"><span class="detail-label">Sold by</span><span class="detail-value">' + esc(data.seller_name || 'Seller') + '</span></div>'
+        + '</div>'
+        + '<div class="notice">' + nextSteps + '</div>'
+        + payLink
+        + '<a href="/" class="btn btn-primary">&#8592; Back to Marketplace</a>'
+        + '<a href="/dashboard" class="btn btn-secondary">View My Orders</a>';
+    }
+
+    function showError(message) {
+      card.innerHTML =
+        '<div class="error-icon">&#10060;</div>'
+        + '<h1>Something went wrong</h1>'
+        + '<p class="subtitle">' + esc(message || 'Could not confirm your order.') + '</p>'
+        + '<a href="/" class="btn btn-primary">Back to Marketplace</a>';
+    }
+
+    function esc(str) {
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(String(str || '')));
+      return div.innerHTML;
+    }
+
+    async function confirmOrder() {
+      var params = new URLSearchParams(window.location.search);
+      var sessionId = params.get('session_id');
+      var orderId = params.get('orderId');
+
+      if (!sessionId && !orderId) {
+        window.location.href = '/';
+        return;
+      }
+
+      var qp = [];
+      if (sessionId) qp.push('session_id=' + encodeURIComponent(sessionId));
+      if (orderId) qp.push('orderId=' + encodeURIComponent(orderId));
+
+      try {
+        var token = localStorage.getItem('tc_token');
+        var headers = {};
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        var res = await fetch(
+          '/api/orders/confirm?' + qp.join('&'),
+          { credentials: 'include', headers: headers }
+        );
+
+        if (!res.ok) {
+          var err = {};
+          try { err = await res.json(); } catch(e) {}
+          showError(err.error || 'Order not found.');
+          return;
+        }
+
+        var data = await res.json();
+        showSuccess(data);
+
+      } catch(e) {
+        showError('Network error. Please check your orders in the dashboard.');
+      }
+    }
+
+    confirmOrder();
+  </script>
+</body>
+</html>

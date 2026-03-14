@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile — Treasure Coast</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary: #0ea5e9; --accent: #f0c040; --bg: #0a0f1a; --panel: #0f1722; --border: #1e293b; --text: #e2e8f0; --muted: #64748b; --radius: 12px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Syne', ui-sans-serif, system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    a { color: var(--primary); text-decoration: none; }
+
+    /* ── Topbar ── */
+    .topbar { position: sticky; top: 0; z-index: 100; background: rgba(10,15,26,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+    .topbar-back { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
+    .topbar-back:hover { color: var(--text); background: var(--panel); }
+    .topbar-title { font-size: 15px; font-weight: 600; color: var(--text); flex: 1; }
+
+    /* ── Cover Banner ── */
+    .cover-wrap { position: relative; width: 100%; height: 200px; background: linear-gradient(135deg, #0a0f1a, #0ea5e9); overflow: hidden; }
+    .cover-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .cover-change-btn { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.5); color: rgba(255,255,255,0.8); border: none; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-family: inherit; cursor: pointer; display: none; backdrop-filter: blur(4px); }
+    .cover-change-btn:hover { background: rgba(0,0,0,0.7); color: #fff; }
+    input[type="file"] { display: none; }
+
+    /* ── Container ── */
+    .container { max-width: 960px; margin: 0 auto; padding: 0 20px 60px; }
+
+    /* ── Profile Header Card ── */
+    .profile-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-top: 8px; }
+    .profile-top { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+    .avatar-wrap { flex-shrink: 0; }
+    .avatar { width: 72px; height: 72px; border-radius: 50%; border: 3px solid var(--accent); object-fit: cover; background: var(--border); }
+    .avatar-placeholder { width: 72px; height: 72px; border-radius: 50%; border: 3px solid var(--accent); background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #fff; }
+    .profile-info { flex: 1; min-width: 0; }
+    .name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .profile-name { font-size: 22px; font-weight: 800; line-height: 1.2; }
+    .acct-pill { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 4px; border: 1px solid; }
+    .acct-pill.personal { border-color: rgba(14,165,233,0.4); color: #0ea5e9; background: transparent; }
+    .acct-pill.business { border-color: rgba(139,92,246,0.4); color: #a78bfa; background: transparent; }
+    .biz-name { font-size: 14px; color: var(--muted); margin-top: 2px; }
+    .meta-line { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .niche-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .niche-pill { font-size: 10px; padding: 2px 8px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.1); color: var(--muted); background: transparent; white-space: nowrap; }
+    .stats-row { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+    .stat { font-size: 13px; color: var(--muted); }
+    .stat b { color: var(--text); font-weight: 700; }
+    .stat .star { color: var(--accent); }
+    .actions-row { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; border: none; cursor: pointer; font-family: inherit; transition: all 0.15s; white-space: nowrap; }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: #0284c7; }
+    .btn-outline { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
+    .btn-outline:hover { background: var(--primary); color: #fff; }
+    .btn-muted { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-muted:hover { border-color: var(--muted); color: var(--text); }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin: 24px 0; overflow-x: auto; }
+    .tab-btn { padding: 12px 20px; font-size: 14px; font-weight: 600; color: var(--muted); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; font-family: inherit; transition: color 0.15s; }
+    .tab-btn.active { color: #fff; border-bottom-color: var(--primary); }
+    .tab-btn:hover { color: var(--text); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Listings Grid ── */
+    .listings-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .listing-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: transform 0.15s, border-color 0.15s; position: relative; }
+    .listing-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.12); }
+    .listing-img-wrap { position: relative; }
+    .listing-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; background: var(--border); display: block; }
+    .condition-badge { position: absolute; top: 8px; right: 8px; font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.6); color: rgba(255,255,255,0.85); text-transform: uppercase; font-weight: 600; backdrop-filter: blur(4px); }
+    .listing-body { padding: 12px; }
+    .listing-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .listing-price { font-size: 16px; font-weight: 800; color: var(--accent); }
+
+    /* ── Skeleton Loading ── */
+    .skeleton-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .skeleton-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .skeleton-img { width: 100%; aspect-ratio: 1/1; background: linear-gradient(90deg, var(--border) 25%, #253040 50%, var(--border) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+    .skeleton-body { padding: 12px; }
+    .skeleton-line { height: 14px; border-radius: 4px; background: linear-gradient(90deg, var(--border) 25%, #253040 50%, var(--border) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; margin-bottom: 8px; }
+    .skeleton-line.short { width: 60%; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* ── Reviews ── */
+    .review-summary { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+    .avg-block { text-align: center; }
+    .avg-num { font-size: 48px; font-weight: 800; color: var(--accent); line-height: 1; }
+    .avg-stars { color: #f59e0b; font-size: 16px; margin-top: 4px; }
+    .avg-count { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .bars-block { flex: 1; min-width: 180px; }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .bar-row span { font-size: 12px; width: 20px; text-align: right; color: var(--muted); }
+    .bar-track { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; background: #f59e0b; border-radius: 4px; }
+    .bar-row .bar-count { font-size: 11px; color: var(--muted); width: 24px; }
+    .review-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+    .review-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .review-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--muted); flex-shrink: 0; overflow: hidden; }
+    .review-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .review-info { flex: 1; }
+    .review-name { font-weight: 600; font-size: 14px; }
+    .review-date { font-size: 12px; color: var(--muted); }
+    .review-stars { color: #f59e0b; font-size: 14px; margin-bottom: 4px; }
+    .review-text { font-size: 14px; color: var(--text); line-height: 1.5; }
+
+    /* ── About ── */
+    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .about-col { display: flex; flex-direction: column; gap: 16px; }
+    .about-item { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+    .about-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .about-value { font-size: 14px; font-weight: 600; line-height: 1.5; }
+    .about-value a { color: var(--primary); }
+    .about-niche-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .about-niche-pill { font-size: 12px; padding: 4px 10px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.12); color: var(--muted); }
+
+    /* ── Empty states ── */
+    .empty-state { text-align: center; color: var(--muted); padding: 60px 20px; font-size: 14px; }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; display: block; opacity: 0.5; }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #10b981; color: #fff; padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 300; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+
+    /* ── Edit Modal ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto; padding: 24px; }
+    .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+    .form-hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .form-input, .form-textarea { width: 100%; padding: 9px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; font-family: inherit; outline: none; }
+    .form-input:focus, .form-textarea:focus { border-color: var(--primary); }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .edit-avatar-section { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; cursor: pointer; }
+    .edit-avatar-section img, .edit-avatar-section .avatar-placeholder { width: 56px; height: 56px; }
+    .edit-avatar-hint { font-size: 12px; color: var(--primary); }
+    .edit-niche-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .edit-niche-pill { font-size: 11px; padding: 4px 10px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.12); color: var(--muted); background: transparent; cursor: pointer; transition: all 0.15s; }
+    .edit-niche-pill:hover { border-color: rgba(255,255,255,0.25); }
+    .edit-niche-pill.selected { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    /* ── Loading ── */
+    .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 50vh; }
+    .loading-spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .listings-grid, .skeleton-grid { grid-template-columns: repeat(2, 1fr); }
+      .profile-top { flex-direction: column; align-items: center; text-align: center; }
+      .name-row { justify-content: center; }
+      .niche-pills { justify-content: center; }
+      .stats-row { justify-content: center; }
+      .actions-row { justify-content: center; }
+      .about-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .listings-grid, .skeleton-grid { grid-template-columns: 1fr; }
+    }
+    .badge-local { display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 8px;border-radius:100px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3); }
+    .badge-visitor { display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 8px;border-radius:100px;background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid rgba(148,163,184,0.2); }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <button class="topbar-back" onclick="history.length > 1 ? history.back() : window.location.href='/'">&#8592;</button>
+    <span class="topbar-title" id="topbarTitle">Profile</span>
+  </div>
+
+  <div id="loadingState" class="loading-state"><div class="loading-spinner"></div></div>
+
+  <div id="profilePage" style="display:none">
+    <!-- 1. Cover Banner -->
+    <div class="cover-wrap" id="coverWrap">
+      <img id="coverImg" style="display:none">
+      <button class="cover-change-btn" id="coverChangeBtn" onclick="document.getElementById('coverInput').click()">&#9999;&#65039; Change Cover</button>
+      <input type="file" id="coverInput" accept="image/*" onchange="uploadCover(this)">
+    </div>
+
+    <div class="container">
+      <!-- 2. Profile Header Card -->
+      <div class="profile-card">
+        <div class="profile-top">
+          <div class="avatar-wrap" id="avatarWrap">
+            <div id="avatarEl"></div>
+          </div>
+          <div class="profile-info">
+            <div class="name-row">
+              <span class="profile-name" id="profileName"></span>
+              <span class="acct-pill" id="acctPill"></span>
+            </div>
+            <div class="biz-name" id="bizName" style="display:none"></div>
+            <div class="meta-line" id="metaLine"></div>
+            <div class="niche-pills" id="nichePills"></div>
+            <div class="stats-row" id="statsRow"></div>
+          </div>
+        </div>
+        <div class="actions-row" id="actionBtns"></div>
+      </div>
+
+      <!-- 3. Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="listings" onclick="switchTab('listings')">Listings</button>
+        <button class="tab-btn" data-tab="purchases" onclick="switchTab('purchases')">Purchases <span class="tab-count" id="tabPurchaseCount" style="font-size:11px;color:var(--muted);"></span></button>
+        <button class="tab-btn" data-tab="wins" onclick="switchTab('wins')">Auction Wins <span class="tab-count" id="tabWinsCount" style="font-size:11px;color:var(--muted);"></span></button>
+        <button class="tab-btn" data-tab="inbox" onclick="switchTab('inbox')">Inbox <span class="tab-count" id="tabInboxCount" style="background:#0ea5e9;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;display:none;"></span></button>
+        <button class="tab-btn" data-tab="reviews" onclick="switchTab('reviews')">Reviews <span class="tab-count" id="tabReviewCount" style="font-size:11px;color:var(--muted);"></span></button>
+        <button class="tab-btn" data-tab="groups" onclick="switchTab('groups')">BST Groups</button>
+        <button class="tab-btn" data-tab="towns" onclick="switchTab('towns')">Towns</button>
+        <button class="tab-btn" data-tab="about" onclick="switchTab('about')">About</button>
+      </div>
+
+      <!-- 4. Tab Content -->
+      <div id="tab-listings" class="tab-content active">
+        <div id="listingsSkeleton" class="skeleton-grid">
+          <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div></div>
+          <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div></div>
+          <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div></div>
+          <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div></div>
+          <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div></div>
+          <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div></div>
+        </div>
+        <div id="listingsGrid" class="listings-grid" style="display:none"></div>
+        <div id="listingsEmpty" class="empty-state" style="display:none"><span class="empty-icon">&#128722;</span>No listings yet</div>
+      </div>
+
+      <div id="tab-reviews" class="tab-content">
+        <div id="reviewSummary" class="review-summary" style="display:none"></div>
+        <div id="reviewsList"></div>
+        <div id="reviewsEmpty" class="empty-state" style="display:none"><span class="empty-icon">&#11088;</span>No reviews yet</div>
+      </div>
+
+      <div id="tab-purchases" class="tab-content">
+        <div id="purchasesList"><div class="empty-state"><div class="loading-spinner"></div></div></div>
+      </div>
+
+      <div id="tab-wins" class="tab-content">
+        <div id="winsList"><div class="empty-state"><div class="loading-spinner"></div></div></div>
+      </div>
+
+      <div id="tab-inbox" class="tab-content">
+        <div id="inboxList"><div class="empty-state"><div class="loading-spinner"></div></div></div>
+      </div>
+
+      <div id="tab-groups" class="tab-content">
+        <div id="groupsList"><div class="empty-state"><div class="loading-spinner"></div></div></div>
+      </div>
+
+      <div id="tab-towns" class="tab-content">
+        <div id="townsList"><div class="empty-state"><div class="loading-spinner"></div></div></div>
+      </div>
+
+      <div id="tab-about" class="tab-content">
+        <div id="aboutGrid" class="about-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Edit Profile Modal -->
+  <div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeEditModal()">
+    <div class="modal">
+      <h2>Edit Profile</h2>
+      <div class="edit-avatar-section" id="editAvatarSection" onclick="document.getElementById('avatarInput').click()">
+        <div id="editAvatarPreview"></div>
+        <div>
+          <div style="font-size:14px;font-weight:600;">Profile Photo</div>
+          <div class="edit-avatar-hint">Click to change</div>
+        </div>
+        <input type="file" id="avatarInput" accept="image/*" onchange="uploadAvatar(this)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Display Name</label>
+        <input class="form-input" id="editName">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bio</label>
+        <textarea class="form-textarea" id="editBio" rows="4"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">City</label>
+          <input class="form-input" id="editCity">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Zip Code</label>
+          <input class="form-input" id="editZip">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input class="form-input" id="editPhone" type="tel">
+        <div class="form-hint">Only shared when a transaction is agreed upon</div>
+      </div>
+      <div class="form-group" id="bizNameGroup" style="display:none">
+        <label class="form-label">Business Name</label>
+        <input class="form-input" id="editBizName">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Interests</label>
+        <div class="edit-niche-grid" id="editNicheGrid"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cover Photo</label>
+        <button class="btn btn-muted" type="button" onclick="document.getElementById('modalCoverInput').click()" style="font-size:12px;padding:6px 14px;">Upload Cover Image</button>
+        <input type="file" id="modalCoverInput" accept="image/*" onchange="uploadCover(this)">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-muted" onclick="closeEditModal()">Cancel</button>
+        <button class="btn btn-primary" id="saveBtn" onclick="saveProfile()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+<script src="/auth-gate.js"></script>
+<script>
+var token = localStorage.getItem('tc_token');
+var authHeaders = token ? { 'Authorization': 'Bearer ' + token } : {};
+var profileId = null;
+var currentUserId = null;
+var isOwnProfile = false;
+var profileData = null;
+var isFollowing = false;
+var editNiches = [];
+
+var NICHES = [
+  { id: 'plants', label: '\uD83C\uDF3F Plants' },
+  { id: 'fish-aquatics', label: '\uD83D\uDC20 Fish & Aquatics' },
+  { id: 'pets', label: '\uD83D\uDC3E Pets' },
+  { id: 'fashion', label: '\uD83D\uDC57 Fashion' },
+  { id: 'electronics', label: '\uD83D\uDCF1 Electronics' },
+  { id: 'home-garden', label: '\uD83C\uDFE0 Home & Garden' },
+  { id: 'art-crafts', label: '\uD83C\uDFA8 Art & Crafts' },
+  { id: 'food-kitchen', label: '\uD83C\uDF73 Food & Kitchen' },
+  { id: 'automotive', label: '\uD83D\uDE97 Automotive' },
+  { id: 'kids-toys', label: '\uD83E\uDDF8 Kids & Toys' },
+  { id: 'sports-fitness', label: '\uD83D\uDCAA Sports & Fitness' },
+  { id: 'books-media', label: '\uD83D\uDCDA Books & Media' },
+  { id: 'gaming', label: '\uD83C\uDFAE Gaming' },
+  { id: 'jewelry', label: '\uD83D\uDC8E Jewelry' },
+  { id: 'outdoor-camping', label: '\uD83E\uDEB4 Outdoor & Camping' }
+];
+
+var NICHE_MAP = {};
+NICHES.forEach(function(n) { NICHE_MAP[n.id] = n.label; });
+
+// ── Init ──
+(async function init() {
+  var pathParts = window.location.pathname.split('/profile/');
+  profileId = pathParts[1] || '';
+  if (profileId.indexOf('?') !== -1) profileId = profileId.split('?')[0];
+
+  if (token) {
+    try {
+      var meRes = await fetch('/api/auth/me', { headers: authHeaders });
+      if (meRes.ok) {
+        var me = await meRes.json();
+        currentUserId = me.id;
+      }
+    } catch(e) {}
+  }
+
+  if (!profileId && currentUserId) {
+    profileId = currentUserId;
+  } else if (!profileId) {
+    window.location.href = '/';
+    return;
+  }
+
+  isOwnProfile = currentUserId && currentUserId === profileId;
+  await loadProfile();
+})();
+
+async function loadProfile() {
+  try {
+    var res = await fetch('/api/profile/' + profileId, { headers: authHeaders });
+    if (!res.ok) {
+      document.getElementById('loadingState').innerHTML = '<div class="empty-state">Profile not found</div>';
+      return;
+    }
+    profileData = await res.json();
+    render(profileData);
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('profilePage').style.display = 'block';
+  } catch(err) {
+    document.getElementById('loadingState').innerHTML = '<div class="empty-state">Error loading profile</div>';
+  }
+}
+
+function render(p) {
+  document.title = (p.name || 'User') + ' \u2014 Treasure Coast';
+  document.getElementById('topbarTitle').textContent = p.name || 'Profile';
+
+  // Cover
+  if (p.cover_photo_url) {
+    var img = document.getElementById('coverImg');
+    img.src = p.cover_photo_url;
+    img.style.display = 'block';
+  }
+  if (isOwnProfile) document.getElementById('coverChangeBtn').style.display = 'block';
+
+  // Avatar — use avatar_url, fall back to profile_photo (Facebook)
+  var ae = document.getElementById('avatarEl');
+  var avatarSrc = p.avatar_url || p.profile_photo || null;
+  if (avatarSrc) {
+    ae.innerHTML = '<img class="avatar" src="' + esc(avatarSrc) + '" onerror="this.style.background=\'#1e293b\';this.style.opacity=\'0.5\';this.onerror=null;">';
+  } else {
+    ae.innerHTML = '<div class="avatar-placeholder">' + (p.name || '?')[0].toUpperCase() + '</div>';
+  }
+
+  // Name + type pill
+  document.getElementById('profileName').textContent = p.name || 'User';
+  var pill = document.getElementById('acctPill');
+  var acctType = p.account_type || 'personal';
+  pill.textContent = acctType === 'business' ? 'BUSINESS' : 'PERSONAL';
+  pill.className = 'acct-pill ' + (acctType === 'business' ? 'business' : 'personal');
+
+  // Community status badge
+  fetch('/api/users/' + profileId + '/community-status')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var existing = document.getElementById('communityBadge');
+      if (existing) existing.remove();
+      var badge = document.createElement('span');
+      badge.id = 'communityBadge';
+      badge.className = data.status === 'local' ? 'badge-local' : 'badge-visitor';
+      badge.textContent = data.status === 'local' ? '\uD83D\uDCCD Local' : '\u2708\uFE0F Visitor';
+      pill.insertAdjacentElement('afterend', badge);
+    })
+    .catch(function() {});
+
+  // Business name
+  if (p.business_name) {
+    var bn = document.getElementById('bizName');
+    bn.textContent = p.business_name;
+    bn.style.display = 'block';
+  }
+
+  // Meta line
+  var metaParts = [];
+  var loc = [p.location_city, p.location_state].filter(Boolean).join(', ');
+  if (loc) metaParts.push('\uD83D\uDCCD ' + loc);
+  if (p.member_since) {
+    var ms = new Date(p.member_since);
+    metaParts.push('\uD83D\uDCC5 Member since ' + ms.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
+  }
+  document.getElementById('metaLine').textContent = metaParts.join(' \u00B7 ');
+
+  // Niche pills
+  if (p.selected_niches && p.selected_niches.length) {
+    document.getElementById('nichePills').innerHTML = p.selected_niches.map(function(n) {
+      return '<span class="niche-pill">' + esc(NICHE_MAP[n] || n) + '</span>';
+    }).join('');
+  }
+
+  // Stats
+  var statsHtml = '';
+  statsHtml += '<span class="stat"><b>' + (Number(p.listing_count) || 0) + '</b> Listings</span>';
+  statsHtml += '<span class="stat"><b>' + (Number(p.total_sales) || 0) + '</b> Sales</span>';
+  statsHtml += '<span class="stat"><b id="statPurchases">0</b> Purchases</span>';
+  statsHtml += '<span class="stat"><b>' + (Number(p.review_count) || 0) + '</b> Reviews</span>';
+  if (p.avg_rating) {
+    statsHtml += '<span class="stat"><span class="star">\u2605</span> <b>' + Number(p.avg_rating).toFixed(1) + '</b></span>';
+  }
+  document.getElementById('statsRow').innerHTML = statsHtml;
+
+  // Action buttons
+  var actionsEl = document.getElementById('actionBtns');
+  if (isOwnProfile) {
+    actionsEl.innerHTML = '<button class="btn btn-outline" onclick="openEditModal()">Edit Profile</button>'
+      + '<button class="btn btn-muted" onclick="copyProfileLink()">Copy Link</button>';
+  } else if (token) {
+    isFollowing = p.is_following;
+    actionsEl.innerHTML = '<button id="followBtn" class="btn ' + (isFollowing ? 'btn-outline' : 'btn-primary') + '" onclick="toggleFollow()">' + (isFollowing ? 'Following' : 'Follow') + '</button>'
+      + '<button class="btn btn-muted" onclick="messageUser()">Message</button>';
+  }
+
+  loadListings();
+  loadReviews();
+  renderAbout(p);
+
+  // Load buyer-specific data on own profile
+  if (isOwnProfile) {
+    loadBuyerProfile();
+    loadInbox();
+  }
+}
+
+// ── Listings ──
+async function loadListings() {
+  var skeleton = document.getElementById('listingsSkeleton');
+  var grid = document.getElementById('listingsGrid');
+  var empty = document.getElementById('listingsEmpty');
+
+  try {
+    // Try profile-specific endpoint first
+    var res = await fetch('/api/profile/' + profileId + '/listings');
+    var data = res.ok ? await res.json() : null;
+    var listings = data && data.listings ? data.listings : [];
+
+    // Fallback: try /api/listings?seller_id=
+    if (!listings.length) {
+      var res2 = await fetch('/api/listings?seller_id=' + profileId);
+      if (res2.ok) {
+        var d2 = await res2.json();
+        if (d2.listings && d2.listings.length) listings = d2.listings;
+      }
+    }
+
+    skeleton.style.display = 'none';
+
+    if (!listings.length) {
+      empty.style.display = 'block';
+      return;
+    }
+
+    grid.style.display = 'grid';
+    grid.innerHTML = listings.map(function(l) {
+      var photos = typeof l.photos === 'string' ? JSON.parse(l.photos) : (l.photos || []);
+      var img = photos[0] || '';
+      return '<div class="listing-card" onclick="window.location.href=\'/listing/' + l.id + '\'">'
+        + '<div class="listing-img-wrap">'
+        + (img ? '<img class="listing-img" src="' + esc(img) + '" loading="lazy" onerror="this.style.background=\'#1e293b\';this.style.opacity=\'0.5\';this.onerror=null;">' : '<div class="listing-img"></div>')
+        + (l.condition ? '<span class="condition-badge">' + esc(l.condition) + '</span>' : '')
+        + '</div>'
+        + '<div class="listing-body">'
+        + '<div class="listing-title">' + esc(l.title) + '</div>'
+        + '<div class="listing-price">$' + Number(l.price || 0).toFixed(2) + '</div>'
+        + '</div></div>';
+    }).join('');
+  } catch(e) {
+    skeleton.style.display = 'none';
+  }
+}
+
+// ── Reviews ──
+async function loadReviews() {
+  try {
+    var res = await fetch('/api/profile/' + profileId + '/reviews');
+    if (!res.ok) return;
+    var data = await res.json();
+    if (!data.reviews || !data.reviews.length) {
+      document.getElementById('reviewsEmpty').style.display = 'block';
+      return;
+    }
+
+    if (data.total_reviews > 0) {
+      var sumEl = document.getElementById('reviewSummary');
+      sumEl.style.display = 'flex';
+      var barsHtml = '';
+      for (var i = 5; i >= 1; i--) {
+        var cnt = data.distribution[i] || 0;
+        var pct = data.total_reviews > 0 ? (cnt / data.total_reviews * 100) : 0;
+        barsHtml += '<div class="bar-row"><span>' + i + '\u2605</span><div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div><span class="bar-count">' + cnt + '</span></div>';
+      }
+      sumEl.innerHTML = '<div class="avg-block"><div class="avg-num">' + Number(data.avg_rating).toFixed(1) + '</div>'
+        + '<div class="avg-stars">' + stars(Math.round(data.avg_rating)) + '</div>'
+        + '<div class="avg-count">(' + data.total_reviews + ' review' + (data.total_reviews !== 1 ? 's' : '') + ')</div></div>'
+        + '<div class="bars-block">' + barsHtml + '</div>';
+    }
+
+    document.getElementById('reviewsList').innerHTML = data.reviews.map(function(r) {
+      var name = r.reviewer_name || r.buyer_name || 'User';
+      var initial = name[0].toUpperCase();
+      var dt = new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return '<div class="review-card">'
+        + '<div class="review-header">'
+        + '<div class="review-avatar">' + (r.reviewer_avatar ? '<img src="' + esc(r.reviewer_avatar) + '" onerror="this.style.background=\'#1e293b\';this.style.opacity=\'0.5\';this.onerror=null;">' : initial) + '</div>'
+        + '<div class="review-info"><div class="review-name">' + esc(name) + '</div><div class="review-date">' + dt + '</div></div>'
+        + '</div>'
+        + '<div class="review-stars">' + stars(r.rating) + '</div>'
+        + (r.review_text ? '<div class="review-text">' + esc(r.review_text) + '</div>' : '')
+        + '</div>';
+    }).join('');
+  } catch(e) {}
+}
+
+// ── About ──
+function renderAbout(p) {
+  var leftItems = [];
+  var rightItems = [];
+
+  // Left: Bio, Interests
+  leftItems.push({ l: 'Bio', v: p.bio ? esc(p.bio) : '<span style="color:var(--muted);font-style:italic">No bio yet</span>' });
+  if (p.selected_niches && p.selected_niches.length) {
+    var pillsHtml = '<div class="about-niche-pills">' + p.selected_niches.map(function(n) {
+      return '<span class="about-niche-pill">' + esc(NICHE_MAP[n] || n) + '</span>';
+    }).join('') + '</div>';
+    leftItems.push({ l: 'Interests', v: pillsHtml });
+  }
+
+  // Right: Location, Member since, Account type, Business name, Phone
+  var loc = [p.location_city, p.location_state].filter(Boolean).join(', ');
+  if (loc) rightItems.push({ l: 'Location', v: esc(loc) });
+  if (p.member_since) rightItems.push({ l: 'Member Since', v: new Date(p.member_since).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) });
+  var acctType = p.account_type || 'personal';
+  rightItems.push({ l: 'Account Type', v: acctType === 'business' ? 'Business' : 'Personal' });
+  if (acctType === 'business' && p.business_name) rightItems.push({ l: 'Business Name', v: esc(p.business_name) });
+
+
+  function col(items) {
+    return '<div class="about-col">' + items.map(function(i) {
+      return '<div class="about-item"><div class="about-label">' + i.l + '</div><div class="about-value">' + i.v + '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  if (!leftItems.length && !rightItems.length) {
+    document.getElementById('aboutGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1">No details available</div>';
+    return;
+  }
+  document.getElementById('aboutGrid').innerHTML = col(leftItems) + col(rightItems);
+}
+
+// ── Tabs ──
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.tab === tab); });
+  document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.toggle('active', c.id === 'tab-' + tab); });
+}
+
+// ── Follow ──
+async function toggleFollow() {
+  if (!token) { window.showAuthModal(); return; }
+  try {
+    var res = await fetch('/api/profile/follow/' + profileId, {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders)
+    });
+    if (res.ok) {
+      var data = await res.json();
+      isFollowing = data.is_following;
+      var btn = document.getElementById('followBtn');
+      btn.textContent = isFollowing ? 'Following' : 'Follow';
+      btn.className = 'btn ' + (isFollowing ? 'btn-outline' : 'btn-primary');
+    }
+  } catch(e) {}
+}
+
+// ── Message ──
+function messageUser() {
+  if (!token) { window.showAuthModal(); return; }
+  window.location.href = '/inbox?with=' + profileId;
+}
+
+// ── Copy link (clipboard only, no share sheet) ──
+function copyProfileLink() {
+  var url = window.location.href;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function() {
+      showToast('Link copied!');
+    }).catch(function() { fallbackCopy(url); });
+  } else {
+    fallbackCopy(url);
+  }
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  showToast('Link copied!');
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2000);
+}
+
+// ── Cover upload ──
+async function uploadCover(input) {
+  if (!input.files[0]) return;
+  var fd = new FormData();
+  fd.append('cover', input.files[0]);
+  try {
+    var res = await fetch('/api/profile/cover', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd });
+    if (res.ok) {
+      var data = await res.json();
+      var img = document.getElementById('coverImg');
+      img.src = data.cover_photo_url;
+      img.style.display = 'block';
+      showToast('Cover updated!');
+    }
+  } catch(e) {}
+}
+
+// ── Avatar upload ──
+async function uploadAvatar(input) {
+  if (!input.files[0]) return;
+  var fd = new FormData();
+  fd.append('avatar', input.files[0]);
+  try {
+    var res = await fetch('/api/profile/avatar', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: fd });
+    if (res.ok) {
+      var data = await res.json();
+      document.getElementById('avatarEl').innerHTML = '<img class="avatar" src="' + esc(data.avatar_url) + '">';
+      document.getElementById('editAvatarPreview').innerHTML = '<img class="avatar" src="' + esc(data.avatar_url) + '">';
+      showToast('Avatar updated!');
+    }
+  } catch(e) {}
+}
+
+// ── Edit Modal ──
+function openEditModal() {
+  var p = profileData;
+  document.getElementById('editName').value = p.name || '';
+  document.getElementById('editBio').value = p.bio || '';
+  document.getElementById('editCity').value = p.location_city || '';
+  document.getElementById('editZip').value = p.location_zip || '';
+  document.getElementById('editPhone').value = p.phone || '';
+  document.getElementById('editBizName').value = p.business_name || '';
+
+  // Show business name field only for business accounts
+  document.getElementById('bizNameGroup').style.display =
+    (p.account_type === 'business') ? 'block' : 'none';
+
+  // Avatar preview — use avatar_url, fall back to profile_photo (Facebook)
+  var preview = document.getElementById('editAvatarPreview');
+  var editAvatarSrc = p.avatar_url || p.profile_photo || null;
+  if (editAvatarSrc) {
+    preview.innerHTML = '<img class="avatar" src="' + esc(editAvatarSrc) + '">';
+  } else {
+    preview.innerHTML = '<div class="avatar-placeholder">' + (p.name || '?')[0].toUpperCase() + '</div>';
+  }
+
+  // Niche pills
+  editNiches = (p.selected_niches || []).slice();
+  renderEditNiches();
+
+  document.getElementById('editModal').classList.add('open');
+}
+
+function renderEditNiches() {
+  var grid = document.getElementById('editNicheGrid');
+  grid.innerHTML = NICHES.map(function(n) {
+    var sel = editNiches.indexOf(n.id) !== -1;
+    return '<span class="edit-niche-pill' + (sel ? ' selected' : '') + '" data-nid="' + n.id + '">' + n.label + '</span>';
+  }).join('');
+  grid.querySelectorAll('.edit-niche-pill').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var nid = el.getAttribute('data-nid');
+      var idx = editNiches.indexOf(nid);
+      if (idx === -1) { editNiches.push(nid); } else { editNiches.splice(idx, 1); }
+      el.classList.toggle('selected');
+    });
+  });
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('open');
+}
+
+async function saveProfile() {
+  var btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  try {
+    var body = {
+      name: document.getElementById('editName').value.trim() || null,
+      bio: document.getElementById('editBio').value.trim() || null,
+      location_city: document.getElementById('editCity').value.trim() || null,
+      location_zip: document.getElementById('editZip').value.trim() || null,
+      phone: document.getElementById('editPhone').value.trim() || null,
+      business_name: document.getElementById('editBizName').value.trim() || null,
+      selected_niches: editNiches.length ? editNiches : null
+    };
+    var res = await fetch('/api/profile', {
+      method: 'PUT',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders),
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      closeEditModal();
+      await loadProfile();
+      showToast('Profile saved!');
+    }
+  } catch(e) {}
+  btn.disabled = false;
+  btn.textContent = 'Save Changes';
+}
+
+// ── Buyer Profile ──
+function loadBuyerProfile() {
+  fetch('/api/buyer/profile', {
+    headers: authHeaders
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.error) return;
+
+    // Update stats
+    var sp = document.getElementById('statPurchases');
+    if (sp) sp.textContent = d.stats.total_purchases;
+
+    // Tab counts
+    var tc = document.getElementById('tabPurchaseCount');
+    if (tc && d.stats.total_purchases > 0) {
+      tc.textContent = '(' + d.stats.total_purchases + ')';
+    }
+    var tw = document.getElementById('tabWinsCount');
+    if (tw && d.stats.auction_wins > 0) {
+      tw.textContent = '(' + d.stats.auction_wins + ')';
+    }
+    var tr = document.getElementById('tabReviewCount');
+    if (tr && d.reviews && d.reviews.length > 0) {
+      tr.textContent = '(' + d.reviews.length + ')';
+    }
+
+    // PURCHASES
+    var pl = document.getElementById('purchasesList');
+    if (pl) {
+      if (!d.recent_purchases.length) {
+        pl.innerHTML = '<div class="empty-state"><span class="empty-icon">&#128722;</span>No purchases yet</div>';
+      } else {
+        var ph = '';
+        d.recent_purchases.forEach(function(o) {
+          var photos = typeof o.photos === 'string' ? JSON.parse(o.photos || '[]') : (o.photos || []);
+          var photoUrl = photos[0] || '';
+          var townChip = (o.town_slug && o.town_slug !== 'treasurecoast')
+            ? '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.18);color:#2dd4bf;font-size:9px;font-weight:600;padding:2px 6px;border-radius:20px;">&#128205; ' + esc(o.town_name || '') + '</span>' : '';
+          var amt = o.amount_cents ? '$' + (o.amount_cents / 100).toFixed(2) : '';
+          ph += '<div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;">'
+            + '<div style="width:48px;height:48px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">'
+            + (photoUrl ? '<img src="' + esc(photoUrl) + '" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">' : '&#128230;') + '</div>'
+            + '<div style="flex:1;min-width:0;">'
+            + '<div style="font-size:13px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(o.title || 'Item') + '</div>'
+            + '<div style="font-size:11px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'
+            + esc(o.seller_name || '') + ' &middot; ' + new Date(o.created_at).toLocaleDateString() + ' ' + townChip + '</div></div>'
+            + '<div style="text-align:right;flex-shrink:0;">'
+            + '<div style="font-size:14px;font-weight:700;margin-bottom:3px;">' + amt + '</div>'
+            + '<span style="font-size:9px;font-weight:700;text-transform:uppercase;padding:2px 7px;border-radius:20px;background:rgba(63,185,80,0.12);color:#3fb950;border:1px solid rgba(63,185,80,0.2);">' + esc(o.status || 'completed') + '</span>'
+            + '</div></div>';
+        });
+        pl.innerHTML = ph;
+      }
+    }
+
+    // AUCTION WINS
+    var wl = document.getElementById('winsList');
+    if (wl) {
+      if (!d.auction_wins.length) {
+        wl.innerHTML = '<div class="empty-state"><span class="empty-icon">&#9889;</span>No auction wins yet</div>';
+      } else {
+        var wh = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">';
+        d.auction_wins.forEach(function(a) {
+          var photos = typeof a.photos === 'string' ? JSON.parse(a.photos || '[]') : (a.photos || []);
+          var photoUrl = photos[0] || '';
+          var isTc = a.town_slug && a.town_slug !== 'treasurecoast';
+          var originHtml = isTc
+            ? '<div style="font-size:10px;font-weight:600;display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:6px;background:rgba(45,212,191,0.08);color:#2dd4bf;border:1px solid rgba(45,212,191,0.15);">&#128205; ' + esc(a.town_name || 'Local Town') + '</div>'
+            : '<div style="font-size:10px;color:var(--muted);">Treasure Coast</div>';
+          var bid = a.winning_bid_cents ? '$' + (a.winning_bid_cents / 100).toFixed(2) : '';
+          wh += '<div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;">'
+            + '<div style="height:110px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:36px;">'
+            + (photoUrl ? '<img src="' + esc(photoUrl) + '" style="width:100%;height:100%;object-fit:cover;">' : '&#127942;') + '</div>'
+            + '<div style="padding:10px 12px;">'
+            + '<div style="font-size:13px;font-weight:600;margin-bottom:6px;">' + esc(a.title || 'Auction Item') + '</div>'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+            + '<div style="font-size:16px;font-weight:700;color:#2dd4bf;">' + bid + '</div>'
+            + '<div style="font-size:11px;color:var(--muted);">' + new Date(a.ends_at).toLocaleDateString() + '</div></div>'
+            + originHtml + '</div></div>';
+        });
+        wh += '</div>';
+        wl.innerHTML = wh;
+      }
+    }
+
+    // REVIEWS (buyer-received reviews)
+    var rl = document.getElementById('reviewsList');
+    // Only populate if the reviews panel doesn't already have content from loadReviews()
+    // The existing reviews tab is already populated by loadReviews(), so skip
+
+    // BST GROUPS
+    var gl = document.getElementById('groupsList');
+    if (gl) {
+      if (!d.bst_groups.length) {
+        gl.innerHTML = '<div class="empty-state"><span class="empty-icon">&#128101;</span>Not in any groups yet.<br><a href="/buy-sell-trade" style="color:var(--primary);">Browse groups &rarr;</a></div>';
+      } else {
+        var gh = '';
+        d.bst_groups.forEach(function(g) {
+          gh += '<div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;margin-bottom:8px;cursor:pointer;" onclick="window.location.href=\'/groups/' + esc(g.slug || '') + '\'">'
+            + '<div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#1a2a3a,#2a4a5a);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">&#127758;</div>'
+            + '<div style="flex:1;">'
+            + '<div style="font-size:14px;font-weight:600;margin-bottom:3px;">' + esc(g.name || 'Group') + '</div>'
+            + '<div style="font-size:11px;color:var(--muted);">' + (g.member_count || 0) + ' members</div></div>'
+            + '<span style="font-size:9px;font-weight:700;text-transform:uppercase;padding:2px 7px;border-radius:20px;background:rgba(14,165,233,0.1);color:var(--primary);border:1px solid rgba(14,165,233,0.2);">' + esc(g.group_type || 'basic') + '</span>'
+            + '</div>';
+        });
+        gl.innerHTML = gh;
+      }
+    }
+
+    // TOWNS
+    var tl = document.getElementById('townsList');
+    if (tl) {
+      if (!d.towns_visited.length) {
+        tl.innerHTML = '<div class="empty-state"><span class="empty-icon">&#128506;</span>No towns visited yet</div>';
+      } else {
+        var th = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">';
+        d.towns_visited.forEach(function(t) {
+          var url = '/';
+          var spent = t.spent_cents ? '$' + (t.spent_cents / 100).toFixed(0) + ' spent' : '';
+          th += '<div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;text-align:center;cursor:pointer;transition:border-color 0.15s;" onclick="window.open(\'' + url + '\',\'_blank\')">'
+            + '<div style="font-size:30px;margin-bottom:8px;">&#127965;</div>'
+            + '<div style="font-size:14px;font-weight:600;margin-bottom:4px;">' + esc(t.name) + '</div>'
+            + '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">'
+            + (t.wins > 0 ? t.wins + ' wins &middot; ' : '') + spent + '</div>'
+            + '<span style="display:inline-block;background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.2);color:#2dd4bf;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;">Visit &rarr;</span></div>';
+        });
+        th += '</div>';
+        tl.innerHTML = th;
+      }
+    }
+  })
+  .catch(function(err) {
+    console.error('BUYER_PROFILE_LOAD_ERR', err);
+  });
+}
+
+// ── Inbox ──
+function loadInbox() {
+  var inboxEl = document.getElementById('inboxList');
+  if (!inboxEl) return;
+  inboxEl.innerHTML = '<div style="text-align:center;padding:24px;">'
+    + '<a href="/inbox" style="color:var(--primary);font-size:14px;font-weight:600;">&#128236; Open Full Inbox &rarr;</a></div>';
+}
+
+// ── Utilities ──
+function stars(n) { var s = ''; for (var i = 1; i <= 5; i++) s += i <= n ? '\u2605' : '\u2606'; return s; }
+function esc(str) { if (!str) return ''; var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+</script>
+</body>
+</html>

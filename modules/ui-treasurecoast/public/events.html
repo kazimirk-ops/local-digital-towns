@@ -1,0 +1,747 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Events — Treasure Coast</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; background: #0a0f1a; color: #e8eef6; min-height: 100vh; }
+    a { color: #0ea5e9; text-decoration: none; }
+
+    .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid #1a2636; background: #0f1722; position: sticky; top: 0; z-index: 20; }
+    .top-bar h1 { font-size: 18px; font-weight: 700; }
+    .top-bar a { color: #9fb0c3; font-size: 14px; }
+
+    .scope-tabs { display: flex; gap: 0; border-bottom: 1px solid #1a2636; background: #0a0f1a; position: sticky; top: 52px; z-index: 19; }
+    .scope-tab { flex: 1; padding: 12px 0; text-align: center; border: none; background: none; color: #64748b; font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; font-family: inherit; }
+    .scope-tab.active { color: #0ea5e9; border-bottom-color: #0ea5e9; }
+    .scope-tab:hover { color: #e8eef6; }
+
+    .sub-tabs { display: flex; gap: 0; padding: 0 20px; background: #0a0f1a; }
+    .sub-tab { padding: 10px 16px; border: none; background: none; color: #64748b; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; font-family: inherit; }
+    .sub-tab.active { color: #10b981; border-bottom-color: #10b981; }
+
+    .events-container { padding: 20px; max-width: 800px; margin: 0 auto; }
+
+    .event-card { background: #0f1722; border: 1px solid #1a2636; border-radius: 12px; overflow: hidden; margin-bottom: 16px; cursor: pointer; transition: border-color .15s; }
+    .event-card:hover { border-color: #0ea5e9; }
+    .event-cover { position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden; }
+    .event-cover img { width: 100%; height: 100%; object-fit: cover; }
+    .event-cover-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 48px; background: linear-gradient(135deg, #1a2636 0%, #0f1722 100%); }
+    .event-date-badge { position: absolute; top: 12px; left: 12px; background: #0ea5e9; border-radius: 8px; padding: 4px 10px; text-align: center; min-width: 48px; }
+    .event-date-badge .month { font-size: 10px; text-transform: uppercase; font-weight: 700; color: rgba(255,255,255,.8); letter-spacing: .05em; }
+    .event-date-badge .day { font-size: 20px; font-weight: 700; color: #fff; line-height: 1.1; }
+    .event-type-badge { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .event-type-badge.in_person { background: #065f46; color: #6ee7b7; }
+    .event-type-badge.virtual { background: #312e81; color: #a5b4fc; }
+    .event-type-badge.hybrid { background: #78350f; color: #fbbf24; }
+    .event-body { padding: 16px; }
+    .event-title { font-size: 17px; font-weight: 700; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .event-meta { font-size: 13px; color: #9fb0c3; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .event-meta .icon { font-size: 14px; }
+    .event-counts { font-size: 12px; color: #64748b; margin-top: 8px; }
+    .event-creator { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #1a2636; }
+    .event-creator img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+    .event-creator .name { font-size: 13px; color: #9fb0c3; }
+    .event-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .event-actions button { flex: 1; }
+
+    .cancelled-badge { background: #7f1d1d; color: #fca5a5; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-left: 8px; }
+
+    .btn { border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; font-family: inherit; }
+    .btn-primary { background: #0ea5e9; color: #fff; }
+    .btn-primary:hover { background: #0284c7; }
+    .btn-primary.active { background: #065f46; color: #6ee7b7; }
+    .btn-secondary { background: #1a2636; color: #e8eef6; }
+    .btn-secondary:hover { background: #243447; }
+    .btn-secondary.active { background: #78350f; color: #fbbf24; }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-danger { background: #dc2626; color: #fff; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: #64748b; }
+    .empty-state .big { font-size: 48px; margin-bottom: 12px; }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.6); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #0f1722; border: 1px solid #1a2636; border-radius: 16px; max-width: 560px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 24px; position: relative; }
+    .modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+    .modal .close-btn { position: absolute; top: 12px; right: 16px; background: none; border: none; color: #9fb0c3; font-size: 22px; cursor: pointer; }
+    .modal label { display: block; font-size: 13px; color: #9fb0c3; margin-bottom: 4px; margin-top: 12px; }
+    .modal input, .modal textarea, .modal select {
+      width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #1a2636;
+      background: #0a0f1a; color: #e8eef6; font-size: 14px; font-family: inherit;
+    }
+    .modal textarea { min-height: 80px; resize: vertical; }
+    .modal input:focus, .modal textarea:focus, .modal select:focus { outline: none; border-color: #0ea5e9; }
+
+    .pill-group { display: flex; gap: 4px; margin-top: 4px; }
+    .pill-btn { padding: 6px 14px; border: 1px solid #1a2636; background: #0a0f1a; color: #9fb0c3; border-radius: 20px; font-size: 13px; cursor: pointer; font-family: inherit; }
+    .pill-btn.active { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 24px; right: 24px; z-index: 200; padding: 14px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; color: #fff; animation: fadeIn .3s; }
+    .toast-success { background: #059669; }
+    .toast-error { background: #dc2626; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+    @media (max-width: 600px) {
+      .events-container { padding: 12px; }
+      .event-cover { aspect-ratio: 2/1; }
+      .event-actions { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <a href="/">&larr; Back</a>
+      <h1>Events</h1>
+    </div>
+    <button class="btn btn-primary btn-sm" id="createEventBtn">+ Create Event</button>
+  </div>
+
+  <div class="scope-tabs">
+    <button class="scope-tab active" data-scope="local">&#127968; Local</button>
+    <button class="scope-tab" data-scope="florida">&#127796; Florida</button>
+    <button class="scope-tab" data-scope="national">&#127758; National</button>
+  </div>
+
+  <div class="sub-tabs">
+    <button class="sub-tab active" data-status="upcoming">Upcoming</button>
+    <button class="sub-tab" data-status="past">Past</button>
+  </div>
+
+  <div class="events-container" id="eventsContainer">
+    <div class="empty-state"><div class="big">&#128197;</div><p>Loading events...</p></div>
+  </div>
+
+  <!-- Create Event Modal -->
+  <div class="modal-overlay" id="createEventModal">
+    <div class="modal">
+      <button class="close-btn" id="createEventClose">&times;</button>
+      <h3>Create Event</h3>
+
+      <div id="fbEventImportArea" style="margin-bottom:16px;">
+        <button type="button" id="fbEventImportToggle" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;font-size:12px;cursor:pointer;">&#128214; Import from Facebook event</button>
+        <div id="fbEventImportForm" style="display:none;margin-top:8px;">
+          <textarea id="fbEventText" rows="3" placeholder="Paste your Facebook event text here..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0a0f1a;color:#e2e8f0;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+          <div style="display:flex;gap:8px;margin-top:6px;align-items:center;">
+            <button type="button" id="fbEventParseBtn" style="padding:6px 14px;background:#0ea5e9;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Parse</button>
+            <span id="fbEventParseStatus" style="font-size:12px;color:#10b981;"></span>
+          </div>
+        </div>
+      </div>
+
+      <label>Cover Photo URL</label>
+      <input type="text" id="evCover" placeholder="https://... (optional)">
+      <div id="evCoverPreview" style="margin-top:6px;display:none;"><img style="max-width:100%;max-height:150px;border-radius:8px;border:1px solid #1a2636;" id="evCoverPreviewImg" referrerpolicy="no-referrer" crossorigin="anonymous"></div>
+
+      <label>Title *</label>
+      <input type="text" id="evTitle" placeholder="Event name">
+
+      <label>Description</label>
+      <textarea id="evDescription" placeholder="What's this event about?"></textarea>
+
+      <label>Event Type</label>
+      <div class="pill-group" id="evTypePills">
+        <button class="pill-btn active" data-val="in_person">In Person</button>
+        <button class="pill-btn" data-val="virtual">Virtual</button>
+        <button class="pill-btn" data-val="hybrid">Hybrid</button>
+      </div>
+
+      <label>Scope</label>
+      <div class="pill-group" id="evScopePills">
+        <button class="pill-btn active" data-val="local">Local</button>
+        <button class="pill-btn" data-val="florida">Florida</button>
+        <button class="pill-btn" data-val="national">National</button>
+      </div>
+
+      <div id="locationFields">
+        <label>Location Name</label>
+        <input type="text" id="evLocation" placeholder="Venue name">
+        <label>Address</label>
+        <input type="text" id="evAddress" placeholder="123 Main St, Stuart FL">
+      </div>
+
+      <div id="virtualField" style="display:none;">
+        <label>Virtual Link</label>
+        <input type="text" id="evVirtualLink" placeholder="Zoom / Meet / etc URL">
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><label>Starts At *</label><input type="datetime-local" id="evStartsAt"></div>
+        <div><label>Ends At</label><input type="datetime-local" id="evEndsAt"></div>
+      </div>
+
+      <label>Timezone</label>
+      <select id="evTimezone">
+        <option value="America/New_York" selected>Eastern (ET)</option>
+        <option value="America/Chicago">Central (CT)</option>
+        <option value="America/Denver">Mountain (MT)</option>
+        <option value="America/Los_Angeles">Pacific (PT)</option>
+      </select>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><label>FB Going Count</label><input type="number" id="evFbGoing" min="0" placeholder="0"></div>
+        <div><label>FB Interested Count</label><input type="number" id="evFbInterested" min="0" placeholder="0"></div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="evShowCreator" checked style="accent-color:#0ea5e9;">
+          Show my name on this event
+        </label>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="evIsPaid" style="accent-color:#0ea5e9;">
+          Paid Event (requires Stripe)
+        </label>
+      </div>
+      <div id="paidFields" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div><label>Ticket Price ($)</label><input type="number" id="evPrice" step="0.01" min="0" placeholder="25.00"></div>
+          <div><label>Max Attendees</label><input type="number" id="evMaxAttendees" min="1" placeholder="100"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+        <button class="btn btn-secondary" id="createEventCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="createEventSaveBtn">Create Event</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/auth-gate.js"></script>
+  <script>
+  (function() {
+    var TOKEN_KEY = 'tc_token';
+    var currentScope = 'local';
+    var currentStatus = 'upcoming';
+    var currentUser = null;
+
+    function getToken() { return localStorage.getItem(TOKEN_KEY); }
+
+    function apiFetch(url, opts) {
+      opts = opts || {};
+      var token = getToken();
+      if (token) {
+        opts.headers = opts.headers || {};
+        opts.headers['Authorization'] = 'Bearer ' + token;
+      }
+      return fetch(url, opts);
+    }
+
+    function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+    function fmt(n) { return '$' + Number(n || 0).toFixed(2); }
+
+    function showToast(msg, type) {
+      var t = document.createElement('div');
+      t.className = 'toast toast-' + (type || 'success');
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(function() { t.remove(); }, 3000);
+    }
+
+    function formatEventDate(iso) {
+      if (!iso) return '';
+      var d = new Date(iso);
+      return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    }
+
+    function formatEventTime(iso) {
+      if (!iso) return '';
+      var d = new Date(iso);
+      return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function monthAbbr(iso) {
+      if (!iso) return '';
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short' });
+    }
+
+    function dayNum(iso) {
+      if (!iso) return '';
+      return new Date(iso).getDate();
+    }
+
+    // Check auth — then re-render events so edit/delete buttons appear
+    apiFetch('/api/auth/me').then(function(r) {
+      if (r && r.ok) return r.json();
+      return null;
+    }).then(function(u) {
+      if (u && u.id) {
+        currentUser = u;
+        if (u.community_status === 'visitor') document.getElementById('createEventBtn').style.display = 'none';
+        loadEvents();
+      }
+    }).catch(function() {});
+
+    // ─── Load Events ─────────────────────────────────────────
+    function loadEvents() {
+      var url = '/api/events?scope=' + encodeURIComponent(currentScope) + '&status=' + encodeURIComponent(currentStatus) + '&limit=30';
+      apiFetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) { renderEvents(data.events || []); })
+        .catch(function() { renderEvents([]); });
+    }
+
+    function renderEvents(events) {
+      var container = document.getElementById('eventsContainer');
+      if (!events.length) {
+        var msg = currentStatus === 'upcoming' ? 'No upcoming events' : 'No past events';
+        container.innerHTML = '<div class="empty-state"><div class="big">&#128197;</div><p>' + msg + '</p><p style="margin-top:8px;font-size:13px;">Be the first to create one!</p></div>';
+        return;
+      }
+
+      container.innerHTML = events.map(function(e) {
+        var coverHtml;
+        if (e.cover_image_url) {
+          coverHtml = '<img src="' + escHtml(e.cover_image_url) + '" loading="lazy" alt="" referrerpolicy="no-referrer" crossorigin="anonymous">';
+        } else {
+          var emojis = { in_person: '&#127965;', virtual: '&#128187;', hybrid: '&#127760;' };
+          coverHtml = '<div class="event-cover-fallback">' + (emojis[e.event_type] || '&#128197;') + '</div>';
+        }
+
+        var typeBadge = '<span class="event-type-badge ' + escHtml(e.event_type) + '">' +
+          (e.event_type === 'in_person' ? 'IN PERSON' : e.event_type === 'virtual' ? 'VIRTUAL' : 'HYBRID') + '</span>';
+
+        var locationHtml = e.event_type === 'virtual'
+          ? '<span class="icon">&#128187;</span> Virtual Event'
+          : '<span class="icon">&#128205;</span> ' + escHtml(e.location_name || 'Location TBD');
+
+        var timeStr = formatEventDate(e.starts_at);
+        if (e.starts_at) timeStr += ' &middot; ' + formatEventTime(e.starts_at);
+        if (e.ends_at) timeStr += ' – ' + formatEventTime(e.ends_at);
+
+        var goingActive = e.my_rsvp === 'going' ? ' active' : '';
+        var interestedActive = e.my_rsvp === 'interested' ? ' active' : '';
+
+        var cancelledHtml = e.status === 'cancelled' ? '<span class="cancelled-badge">CANCELLED</span>' : '';
+
+        var priceHtml = '';
+        if (!e.is_free && e.ticket_price_cents > 0) {
+          priceHtml = ' &middot; ' + fmt(e.ticket_price_cents / 100);
+        }
+
+        return '<div class="event-card" data-id="' + e.id + '">' +
+          '<div class="event-cover">' + coverHtml +
+            '<div class="event-date-badge"><div class="month">' + monthAbbr(e.starts_at) + '</div><div class="day">' + dayNum(e.starts_at) + '</div></div>' +
+            typeBadge +
+          '</div>' +
+          '<div class="event-body">' +
+            '<div class="event-title">' + escHtml(e.title) + cancelledHtml + '</div>' +
+            '<div class="event-meta">' + locationHtml + '</div>' +
+            '<div class="event-meta"><span class="icon">&#128337;</span> ' + timeStr + '</div>' +
+            '<div class="event-counts">' + (e.going_count || 0) + ' going &middot; ' + (e.interested_count || 0) + ' interested' + priceHtml + '</div>' +
+            (e.show_creator !== false ? '<div class="event-creator">' +
+              (e.creator_avatar ? '<img src="' + escHtml(e.creator_avatar) + '">' : '<div style="width:24px;height:24px;border-radius:50%;background:#1a2636;display:flex;align-items:center;justify-content:center;font-size:12px;">&#128100;</div>') +
+              '<span class="name">' + escHtml(e.creator_name || 'Unknown') + '</span>' +
+            '</div>' : '') +
+            (e.status !== 'cancelled' ? '<div class="event-actions">' +
+              '<button class="btn btn-primary btn-sm' + goingActive + '" onclick="event.stopPropagation();toggleRsvp(' + e.id + ',\'going\')">&#128197; Going</button>' +
+              '<button class="btn btn-secondary btn-sm' + interestedActive + '" onclick="event.stopPropagation();toggleRsvp(' + e.id + ',\'interested\')">&#11088; Interested</button>' +
+              '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();shareFB(' + e.id + ',\'' + escHtml(e.title).replace(/'/g, "\\'") + '\')" style="background:#1877f2;color:#fff;border:none;font-size:11px;">FB</button>' +
+              '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();shareWA(' + e.id + ',\'' + escHtml(e.title).replace(/'/g, "\\'") + '\')" style="background:#25d366;color:#fff;border:none;font-size:11px;">WA</button>' +
+              '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();shareEvent(' + e.id + ',\'' + escHtml(e.title).replace(/'/g, "\\'") + '\')">&#128279;</button>' +
+              (currentUser && e.creator_id && currentUser.id === e.creator_id ?
+                '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();editEvent(' + e.id + ')" style="margin-left:auto;">&#9998; Edit</button>' +
+                '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();deleteEvent(' + e.id + ')" style="color:#ef4444;">&#128465; Delete</button>'
+              : '') +
+            '</div>' : '') +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    // ─── RSVP Toggle ─────────────────────────────────────────
+    window.toggleRsvp = function(eventId, status) {
+      if (!getToken()) { window.showAuthModal(); return; }
+
+      // Check if already this status — if so, un-RSVP
+      var card = document.querySelector('.event-card[data-id="' + eventId + '"]');
+      var btn = card ? card.querySelector('.btn-primary.active, .btn-secondary.active') : null;
+      var currentStatus = null;
+      if (btn) {
+        if (btn.textContent.indexOf('Going') >= 0 && status === 'going') currentStatus = 'going';
+        if (btn.textContent.indexOf('Interested') >= 0 && status === 'interested') currentStatus = 'interested';
+      }
+
+      if (currentStatus === status) {
+        // Un-RSVP
+        apiFetch('/api/events/' + eventId + '/rsvp', { method: 'DELETE' })
+          .then(function(r) { return r.json(); })
+          .then(function() { loadEvents(); })
+          .catch(function() { showToast('Failed to update RSVP', 'error'); });
+      } else {
+        apiFetch('/api/events/' + eventId + '/rsvp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: status })
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.client_secret) {
+              showToast('Payment required — Stripe checkout coming soon');
+            }
+            loadEvents();
+          })
+          .catch(function() { showToast('Failed to RSVP', 'error'); });
+      }
+    };
+
+    window.shareEvent = function(eventId, title) {
+      var url = window.location.origin + '/events/' + eventId;
+      if (navigator.share) {
+        navigator.share({ title: title, url: url });
+      } else {
+        navigator.clipboard.writeText(url).then(function() { showToast('Link copied!'); });
+      }
+    };
+
+    window.shareFB = function(eventId, title) {
+      var url = encodeURIComponent(window.location.origin + '/events/' + eventId);
+      window.open('https://www.facebook.com/sharer/sharer.php?u=' + url, '_blank', 'width=600,height=400');
+    };
+
+    window.shareWA = function(eventId, title) {
+      var url = window.location.origin + '/events/' + eventId;
+      var text = encodeURIComponent(title + ' ' + url);
+      window.open('https://wa.me/?text=' + text, '_blank');
+    };
+
+    // ─── Edit Event ─────────────────────────────────────────
+    var editingEventId = null;
+    window.editEvent = function(eventId) {
+      if (!getToken()) { window.showAuthModal(); return; }
+      editingEventId = eventId;
+      apiFetch('/api/events/' + eventId)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var ev = data.event || data;
+          document.getElementById('evTitle').value = ev.title || '';
+          document.getElementById('evDescription').value = ev.description || '';
+          document.getElementById('evCover').value = ev.cover_image_url || '';
+          document.getElementById('evLocation').value = ev.location_name || '';
+          document.getElementById('evAddress').value = ev.location_address || '';
+          document.getElementById('evVirtualLink').value = ev.virtual_link || '';
+          if (ev.starts_at) {
+            var sd = new Date(ev.starts_at);
+            document.getElementById('evStartsAt').value = sd.toISOString().slice(0, 16);
+          }
+          if (ev.ends_at) {
+            var ed = new Date(ev.ends_at);
+            document.getElementById('evEndsAt').value = ed.toISOString().slice(0, 16);
+          }
+          if (ev.timezone) document.getElementById('evTimezone').value = ev.timezone;
+          // Set event type pill
+          var typePills = document.querySelectorAll('#evTypePills .pill-btn');
+          typePills.forEach(function(p) { p.classList.remove('active'); if (p.dataset.val === ev.event_type) p.classList.add('active'); });
+          selectedEventType = ev.event_type || 'in_person';
+          document.getElementById('locationFields').style.display = (ev.event_type === 'virtual') ? 'none' : '';
+          document.getElementById('virtualField').style.display = (ev.event_type === 'in_person') ? 'none' : '';
+          // Set scope pill
+          var scopePills = document.querySelectorAll('#evScopePills .pill-btn');
+          scopePills.forEach(function(p) { p.classList.remove('active'); if (p.dataset.val === ev.scope) p.classList.add('active'); });
+          selectedScope = ev.scope || 'local';
+          // Paid
+          var isPaid = !ev.is_free && ev.ticket_price_cents > 0;
+          document.getElementById('evIsPaid').checked = isPaid;
+          document.getElementById('paidFields').style.display = isPaid ? '' : 'none';
+          if (isPaid) {
+            document.getElementById('evPrice').value = (ev.ticket_price_cents / 100).toFixed(2);
+            document.getElementById('evMaxAttendees').value = ev.max_attendees || '';
+          }
+          // Show creator + FB counts
+          document.getElementById('evShowCreator').checked = ev.show_creator !== false;
+          document.getElementById('evFbGoing').value = ev.fb_going_count || '';
+          document.getElementById('evFbInterested').value = ev.fb_interested_count || '';
+          document.getElementById('createEventSaveBtn').textContent = 'Save Changes';
+          modal.classList.add('open');
+        })
+        .catch(function() { showToast('Failed to load event', 'error'); });
+    };
+
+    // ─── Delete Event ────────────────────────────────────────
+    window.deleteEvent = function(eventId) {
+      if (!confirm('Are you sure you want to delete this event? This cannot be undone.')) return;
+      apiFetch('/api/events/' + eventId, { method: 'DELETE' })
+        .then(function(r) {
+          if (!r.ok) return r.json().then(function(d) { throw new Error(d.error); });
+          return r.json();
+        })
+        .then(function() {
+          showToast('Event deleted');
+          var card = document.querySelector('.event-card[data-id="' + eventId + '"]');
+          if (card) card.remove();
+        })
+        .catch(function(err) { showToast(err.message || 'Failed to delete event', 'error'); });
+    };
+
+    // ─── Scope Tabs ──────────────────────────────────────────
+    document.querySelectorAll('.scope-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.scope-tab').forEach(function(t) { t.classList.remove('active'); });
+        tab.classList.add('active');
+        currentScope = tab.dataset.scope;
+        loadEvents();
+      });
+    });
+
+    document.querySelectorAll('.sub-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.sub-tab').forEach(function(t) { t.classList.remove('active'); });
+        tab.classList.add('active');
+        currentStatus = tab.dataset.status;
+        loadEvents();
+      });
+    });
+
+    // ─── Create Event Modal ──────────────────────────────────
+    var modal = document.getElementById('createEventModal');
+    document.getElementById('createEventBtn').addEventListener('click', function() {
+      if (!getToken()) { window.showAuthModal(); return; }
+      if (currentUser && currentUser.community_status === 'visitor') { alert('Visitors cannot create events in this community.'); return; }
+      modal.classList.add('open');
+    });
+    document.getElementById('createEventClose').addEventListener('click', function() { modal.classList.remove('open'); editingEventId = null; document.getElementById('createEventSaveBtn').textContent = 'Create Event'; });
+    document.getElementById('createEventCancelBtn').addEventListener('click', function() { modal.classList.remove('open'); editingEventId = null; document.getElementById('createEventSaveBtn').textContent = 'Create Event'; });
+
+    // Pill selectors
+    function setupPills(containerId, onChange) {
+      var pills = document.getElementById(containerId);
+      pills.addEventListener('click', function(e) {
+        var btn = e.target.closest('.pill-btn');
+        if (!btn) return;
+        pills.querySelectorAll('.pill-btn').forEach(function(p) { p.classList.remove('active'); });
+        btn.classList.add('active');
+        if (onChange) onChange(btn.dataset.val);
+      });
+    }
+
+    var selectedEventType = 'in_person';
+    setupPills('evTypePills', function(val) {
+      selectedEventType = val;
+      document.getElementById('locationFields').style.display = (val === 'virtual') ? 'none' : '';
+      document.getElementById('virtualField').style.display = (val === 'in_person') ? 'none' : '';
+    });
+
+    var selectedScope = 'local';
+    setupPills('evScopePills', function(val) { selectedScope = val; });
+
+    // Cover image preview
+    document.getElementById('evCover').addEventListener('input', function() {
+      var url = this.value.trim();
+      var preview = document.getElementById('evCoverPreview');
+      var img = document.getElementById('evCoverPreviewImg');
+      if (url && /^https?:\/\/.+/.test(url)) {
+        img.src = url;
+        img.onload = function() { preview.style.display = ''; };
+        img.onerror = function() { preview.style.display = 'none'; };
+      } else {
+        preview.style.display = 'none';
+      }
+    });
+
+    // Paid toggle
+    document.getElementById('evIsPaid').addEventListener('change', function() {
+      document.getElementById('paidFields').style.display = this.checked ? '' : 'none';
+    });
+
+    // Facebook Event Import
+    document.getElementById('fbEventImportToggle').addEventListener('click', function() {
+      var form = document.getElementById('fbEventImportForm');
+      form.style.display = form.style.display === 'none' ? '' : 'none';
+    });
+
+    document.getElementById('fbEventParseBtn').addEventListener('click', function() {
+      var text = document.getElementById('fbEventText').value.trim();
+      if (!text) return;
+
+      var statusEl = document.getElementById('fbEventParseStatus');
+
+      // Check if user pasted a URL instead of text
+      if (/^https?:\/\//.test(text)) {
+        statusEl.style.color = '#f59e0b';
+        statusEl.textContent = 'Please paste the event text, not the link. Open the Facebook event and copy all the text.';
+        return;
+      }
+
+      var lines = text.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l; });
+      var found = [];
+
+      // Title: first non-empty line
+      if (lines.length > 0) {
+        document.getElementById('evTitle').value = lines[0];
+        found.push('title');
+      }
+
+      // Date: look for patterns like "Monday, March 3" or "March 3 at 7:00 PM" or "Mar 3, 2026"
+      var dateRegex = /(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+)?(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:,?\s+\d{4})?(?:\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm))?/i;
+      var timeRegex = /(\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm))/gi;
+
+      for (var i = 0; i < lines.length; i++) {
+        var dateMatch = lines[i].match(dateRegex);
+        if (dateMatch) {
+          try {
+            var dateStr = dateMatch[0];
+            var parsed = new Date(dateStr);
+            if (isNaN(parsed.getTime())) {
+              // Try adding current year
+              parsed = new Date(dateStr + ' 2026');
+            }
+            if (!isNaN(parsed.getTime())) {
+              // Extract time if present on same or next line
+              var timesFound = lines[i].match(timeRegex);
+              if (!timesFound && i + 1 < lines.length) timesFound = lines[i + 1].match(timeRegex);
+              if (timesFound && timesFound[0]) {
+                var tStr = timesFound[0].replace(/\s+/g, ' ').toUpperCase();
+                var tParts = tStr.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/);
+                if (tParts) {
+                  var hrs = parseInt(tParts[1]);
+                  var mins = parseInt(tParts[2] || '0');
+                  if (tParts[3] === 'PM' && hrs < 12) hrs += 12;
+                  if (tParts[3] === 'AM' && hrs === 12) hrs = 0;
+                  parsed.setHours(hrs, mins, 0, 0);
+                }
+              }
+              var iso = parsed.toISOString().slice(0, 16);
+              document.getElementById('evStartsAt').value = iso;
+              found.push('date/time');
+            }
+          } catch(e) {}
+          break;
+        }
+      }
+
+      // Location: lines with "at", address patterns, or after date
+      var locRegex = /(?:at\s+)?(\d+\s+[A-Z][\w\s,]+(?:FL|CA|NY|TX|St|Ave|Blvd|Dr|Rd|Ln|Ct|Way|Pkwy)\b.*)$/i;
+      for (var j = 1; j < lines.length; j++) {
+        var locMatch = lines[j].match(locRegex);
+        if (locMatch) {
+          document.getElementById('evAddress').value = lines[j].replace(/^at\s+/i, '');
+          found.push('address');
+          break;
+        }
+        if (/^at\s+/i.test(lines[j]) && lines[j].length > 5) {
+          document.getElementById('evLocation').value = lines[j].replace(/^at\s+/i, '');
+          found.push('location');
+          break;
+        }
+      }
+
+      // FB event link
+      var fbLinkMatch = text.match(/https?:\/\/(?:www\.)?facebook\.com\/events\/\S+/i);
+
+      // Image URL: look for image links in pasted text
+      var imgMatch = text.match(/https?:\/\/\S+\.(?:jpg|jpeg|png|webp|gif)(?:\?\S*)?/i);
+      if (!imgMatch) imgMatch = text.match(/https?:\/\/scontent[^\s"']+/i);
+      if (imgMatch) {
+        document.getElementById('evCover').value = imgMatch[0];
+        found.push('cover image');
+      }
+
+      // Going / Interested counts: "123 going" or "45 interested"
+      var goingMatch = text.match(/(\d+)\s+going/i);
+      var interestedMatch = text.match(/(\d+)\s+interested/i);
+      if (goingMatch) {
+        document.getElementById('evFbGoing').value = goingMatch[1];
+        found.push(goingMatch[1] + ' going');
+      }
+      if (interestedMatch) {
+        document.getElementById('evFbInterested').value = interestedMatch[1];
+        found.push(interestedMatch[1] + ' interested');
+      }
+
+      // Description: remaining lines (skip title and date line)
+      var descLines = lines.slice(1).filter(function(l) {
+        return !dateRegex.test(l) && !locRegex.test(l) && !/^at\s+/i.test(l)
+          && !/^\d+\s+(?:going|interested)/i.test(l);
+      });
+      if (descLines.length > 0) {
+        var desc = descLines.join('\n');
+        if (fbLinkMatch) desc += '\n\nFacebook event: ' + fbLinkMatch[0];
+        document.getElementById('evDescription').value = desc;
+        found.push('description');
+      }
+
+      statusEl.style.color = '#10b981';
+      statusEl.textContent = found.length > 0
+        ? 'Parsed: ' + found.join(', ') + ' — review and adjust before saving'
+        : 'Could not parse — please fill in manually';
+    });
+
+    // Save event
+    document.getElementById('createEventSaveBtn').addEventListener('click', function() {
+      var title = document.getElementById('evTitle').value.trim();
+      var startsAt = document.getElementById('evStartsAt').value;
+      if (!title) { showToast('Title is required', 'error'); return; }
+      if (!startsAt) { showToast('Start date is required', 'error'); return; }
+
+      var isPaid = document.getElementById('evIsPaid').checked;
+      var body = {
+        title: title,
+        description: document.getElementById('evDescription').value.trim(),
+        cover_image_url: document.getElementById('evCover').value.trim() || null,
+        event_type: selectedEventType,
+        scope: selectedScope,
+        location_name: document.getElementById('evLocation').value.trim() || null,
+        location_address: document.getElementById('evAddress').value.trim() || null,
+        virtual_link: document.getElementById('evVirtualLink').value.trim() || null,
+        starts_at: new Date(startsAt).toISOString(),
+        ends_at: document.getElementById('evEndsAt').value ? new Date(document.getElementById('evEndsAt').value).toISOString() : null,
+        timezone: document.getElementById('evTimezone').value,
+        is_free: !isPaid,
+        ticket_price_cents: isPaid ? Math.round((Number(document.getElementById('evPrice').value) || 0) * 100) : 0,
+        max_attendees: isPaid ? (Number(document.getElementById('evMaxAttendees').value) || null) : null,
+        show_creator: document.getElementById('evShowCreator').checked,
+        fb_going_count: Number(document.getElementById('evFbGoing').value) || 0,
+        fb_interested_count: Number(document.getElementById('evFbInterested').value) || 0
+      };
+
+      var isEdit = !!editingEventId;
+      var url = isEdit ? '/api/events/' + editingEventId : '/api/events';
+      var method = isEdit ? 'PUT' : 'POST';
+      apiFetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+        .then(function(r) {
+          if (!r.ok) return r.json().then(function(d) { throw new Error(d.error); });
+          return r.json();
+        })
+        .then(function() {
+          showToast(isEdit ? 'Event updated!' : 'Event created!');
+          modal.classList.remove('open');
+          editingEventId = null;
+          document.getElementById('createEventSaveBtn').textContent = 'Create Event';
+          // Reset form
+          document.getElementById('evTitle').value = '';
+          document.getElementById('evDescription').value = '';
+          document.getElementById('evCover').value = '';
+          document.getElementById('evLocation').value = '';
+          document.getElementById('evAddress').value = '';
+          document.getElementById('evVirtualLink').value = '';
+          document.getElementById('evStartsAt').value = '';
+          document.getElementById('evEndsAt').value = '';
+          document.getElementById('evIsPaid').checked = false;
+          document.getElementById('paidFields').style.display = 'none';
+          document.getElementById('evShowCreator').checked = true;
+          document.getElementById('evFbGoing').value = '';
+          document.getElementById('evFbInterested').value = '';
+          loadEvents();
+        })
+        .catch(function(err) { showToast(err.message || 'Failed to create event', 'error'); });
+    });
+
+    // ─── Init ────────────────────────────────────────────────
+    loadEvents();
+  })();
+  </script>
+</body>
+</html>

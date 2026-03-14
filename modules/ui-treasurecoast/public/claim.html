@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claim Your Business — Treasure Coast Digital</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, sans-serif; background: #f5f5f5;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 20px;
+    }
+    .card {
+      background: #fff; border-radius: 16px; padding: 36px;
+      max-width: 480px; width: 100%; box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    }
+    .logo       { font-size: 13px; color: #888; margin-bottom: 24px; }
+    h1          { font-size: 22px; margin-bottom: 6px; }
+    .address    { color: #666; margin-bottom: 24px; }
+    .urgency-box {
+      background: #fff8e1; border: 1px solid #ffe082;
+      border-radius: 10px; padding: 14px 16px; margin-bottom: 24px;
+    }
+    .timer-row      { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .timer-label    { font-size: 13px; color: #888; }
+    #claim-countdown { font-size: 22px; font-family: monospace; font-weight: 700; color: #c0392b; }
+    .urgency-box p  { font-size: 13px; color: #555; }
+    .btn-fb {
+      display: block; width: 100%; padding: 14px;
+      background: #1877f2; color: #fff; font-size: 16px; font-weight: 600;
+      border: none; border-radius: 10px; cursor: pointer;
+      text-align: center; text-decoration: none; margin-bottom: 12px;
+    }
+    .btn-fb:hover { background: #166fe5; }
+    .btn-share-fb {
+      display: flex; align-items: center; justify-content: center;
+      background: #1877f2; color: #fff !important; font-weight: 700;
+      font-size: 13px; padding: 9px 12px; border-radius: 7px;
+      text-decoration: none; margin-top: 10px; transition: background 0.15s;
+    }
+    .btn-share-fb:hover { background: #166fe5; color: #fff !important; text-decoration: none; }
+    .btn-copy-link {
+      display: block; width: 100%; background: #f0f0f0; color: #333; font-weight: 600;
+      font-size: 13px; padding: 8px 12px; border-radius: 7px; border: none; cursor: pointer;
+      margin-top: 6px; text-align: center; transition: background 0.15s; box-sizing: border-box;
+    }
+    .btn-copy-link:hover { background: #e0e0e0; }
+    .logged-in-as { font-size: 13px; color: #666; margin-bottom: 12px; text-align: center; }
+    .fine-print   { font-size: 11px; color: #aaa; text-align: center; }
+    .state-msg    { text-align: center; padding: 20px; }
+    .state-msg h2 { margin-bottom: 12px; }
+    .state-msg p  { color: #666; }
+    .topbar { position:fixed;top:0;left:0;right:0;z-index:10;background:rgba(255,255,255,0.95);border-bottom:1px solid #e5e7eb;backdrop-filter:blur(12px);padding:14px 18px; }
+    .topbar-inner { max-width:600px;margin:0 auto;display:flex;align-items:center;justify-content:space-between; }
+    .nav-btn { display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;color:#666;font-size:13px;text-decoration:none;transition:all .2s; }
+    .nav-btn:hover { color:#111;background:rgba(0,0,0,0.05); }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="nav-btn" href="/">&larr; Back to Town</a>
+    <span style="color:#999;font-size:13px;">Treasure Coast Digital</span>
+  </div>
+</div>
+<div style="height:52px;"></div>
+<div class="card" id="card">Loading...</div>
+<script>
+var token = window.location.pathname.split('/claim/')[1];
+
+var urlParams = new URLSearchParams(window.location.search);
+var fbtoken = urlParams.get('fbtoken');
+if (fbtoken) {
+  localStorage.setItem('tc_token', fbtoken);
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
+var authToken = localStorage.getItem('tc_token');
+var FB_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white" style="vertical-align:middle;margin-right:6px;margin-top:-2px"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>';
+
+function getCountdown() {
+  var now = new Date();
+  var midnight = new Date();
+  midnight.setHours(24, 0, 0, 0);
+  var diff = midnight - now;
+  var h = Math.floor(diff / 3600000);
+  var m = Math.floor((diff % 3600000) / 60000);
+  var s = Math.floor((diff % 60000) / 1000);
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function buildFbShareUrl(bizName) {
+  var shareUrl = window.location.origin + '/claim/' + token;
+  var shareQuote = '\uD83D\uDCCD ' + bizName + ' is on the Treasure Coast Digital map \u2014 help them claim it before midnight!';
+  return 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(shareUrl) + '&quote=' + encodeURIComponent(shareQuote);
+}
+
+function buildFbShareBtn(bizName) {
+  return '<a id="fb-share-claim" href="' + buildFbShareUrl(bizName) + '" target="_blank" rel="noopener" class="btn-share-fb">'
+    + FB_SVG + 'Share on Facebook</a>'
+    + '<button id="copy-link-btn" class="btn-copy-link" style="margin-top:6px;" onclick="copyPageLink(this)">\uD83D\uDD17 Copy Link</button>';
+}
+
+function attachShareTracking() {
+  var fbBtn = document.getElementById('fb-share-claim');
+  if (fbBtn) {
+    fbBtn.addEventListener('click', function() {
+      fetch('/api/seeded/share-by-token/' + token, { method: 'POST' }).catch(function() {});
+    });
+  }
+}
+
+async function copyPageLink(btn) {
+  var url = window.location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+    var original = btn.textContent;
+    btn.textContent = '\u2705 Copied!';
+    setTimeout(function() { btn.textContent = original; }, 2000);
+    fetch('/api/seeded/share-by-token/' + token, { method: 'POST' }).catch(function() {});
+  } catch (e) {
+    prompt('Copy this link to share:', url);
+  }
+}
+
+function loadClaimPage() {
+  var card = document.getElementById('card');
+
+  fetch('/api/seeded/claim/' + token)
+    .then(function(r) {
+      if (!r.ok) {
+        card.innerHTML = '<div class="state-msg"><h2>Not Found</h2><p>This link may be invalid.</p></div>';
+        return null;
+      }
+      return r.json();
+    })
+    .then(function(biz) {
+      if (!biz) return;
+
+      if (biz.removed) {
+        card.innerHTML = '<div class="state-msg"><h2 style="color:#c0392b">\u26A0\uFE0F Pin Removed</h2>'
+          + '<p>This pin was removed before it was claimed. <a href="/">Return to map</a></p></div>';
+        return;
+      }
+
+      if (biz.claimed) {
+        card.innerHTML = '<div class="state-msg"><h2 style="color:#27ae60">\u2705 Already Claimed</h2>'
+          + '<h3>' + escapeHtml(biz.name) + '</h3><p>' + escapeHtml(biz.address || '') + '</p></div>';
+        return;
+      }
+
+      var urgencyBlock = '<div class="urgency-box">'
+        + '<div class="timer-row">'
+        + '<span class="timer-label">\u23F1 Removed in:</span>'
+        + '<span id="claim-countdown">' + getCountdown() + '</span>'
+        + '</div>'
+        + '<p>Every day at midnight, unclaimed pins are permanently removed at random.</p>'
+        + '</div>';
+
+      if (authToken) {
+        fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + authToken } })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data && data.name) {
+              card.innerHTML = '<div class="logo">Treasure Coast Digital</div>'
+                + '<h1>' + escapeHtml(biz.name) + '</h1>'
+                + '<p class="address">' + escapeHtml(biz.address || '') + ', ' + escapeHtml(biz.city || '') + '</p>'
+                + urgencyBlock
+                + '<p class="logged-in-as">Logged in as <strong>' + escapeHtml(data.name) + '</strong></p>'
+                + '<button class="btn-fb" id="confirm-btn" onclick="confirmClaim()">\u2705 Confirm \u2014 Claim This Business</button>'
+                + '<p class="fine-print">This will link ' + escapeHtml(biz.name) + ' to your Facebook account.</p>'
+                + buildFbShareBtn(biz.name);
+              attachShareTracking();
+            } else {
+              showFbLogin(biz, urgencyBlock);
+            }
+            startTimer();
+          })
+          .catch(function() {
+            showFbLogin(biz, urgencyBlock);
+            startTimer();
+          });
+      } else {
+        showFbLogin(biz, urgencyBlock);
+        startTimer();
+      }
+    });
+}
+
+function showFbLogin(biz, urgencyBlock) {
+  var card = document.getElementById('card');
+  card.innerHTML = '<div class="logo">Treasure Coast Digital</div>'
+    + '<h1>' + escapeHtml(biz.name) + '</h1>'
+    + '<p class="address">' + escapeHtml(biz.address || '') + ', ' + escapeHtml(biz.city || '') + '</p>'
+    + urgencyBlock
+    + '<a href="/auth/facebook?redirect=/claim/' + token + '" class="btn-fb">Continue with Facebook to Claim</a>'
+    + '<p class="fine-print">Free forever. No credit card. Takes 30 seconds.</p>'
+    + buildFbShareBtn(biz.name);
+  attachShareTracking();
+}
+
+function startTimer() {
+  setInterval(function() {
+    var el = document.getElementById('claim-countdown');
+    if (el) el.textContent = getCountdown();
+  }, 1000);
+}
+
+function confirmClaim() {
+  var btn = document.getElementById('confirm-btn');
+  btn.textContent = 'Claiming...';
+  btn.disabled = true;
+
+  fetch('/api/seeded/claim/' + token, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + authToken
+    }
+  })
+    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, status: r.status, data: d }; }); })
+    .then(function(result) {
+      if (result.ok) {
+        var bizName = result.data.business.name;
+        var nameEsc = escapeHtml(bizName);
+        var successShareUrl = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(window.location.origin) + '&quote=' + encodeURIComponent('\uD83D\uDCCD I just claimed ' + bizName + ' on Treasure Coast Digital \u2014 check it out!');
+        document.getElementById('card').innerHTML = '<div class="state-msg">'
+          + '<h2 style="color:#27ae60;font-size:22px;">\uD83C\uDF89 You\'re on the map!</h2>'
+          + '<h3 style="margin-top:14px;font-size:18px;">' + nameEsc + '</h3>'
+          + '<p style="margin-top:12px;color:#444;font-size:14px;line-height:1.6;">'
+          + 'Congratulations \u2014 you\'re one of the first businesses on '
+          + 'Treasure Coast Digital. As an early adopter, you\'ll be the '
+          + 'first to know about new features as we build them out. '
+          + 'Stay tuned.</p>'
+          + '<a href="' + successShareUrl + '" target="_blank" rel="noopener" class="btn-share-fb" style="margin-top:20px;" onclick="fetch(\'/api/seeded/share-by-token/' + token + '\',{method:\'POST\'}).catch(function(){})">'
+          + FB_SVG + 'Share the news on Facebook</a>'
+          + '<a href="/" style="display:block;margin-top:12px;color:#20d6b4;font-size:13px;text-align:center;text-decoration:none;">\u2190 Back to the map</a>'
+          + '</div>';
+      } else if (result.status === 401) {
+        window.location.href = '/auth/facebook?redirect=/claim/' + token;
+      } else {
+        btn.textContent = result.data.error || 'Something went wrong. Try again.';
+        btn.disabled = false;
+      }
+    });
+}
+
+loadClaimPage();
+</script>
+</body>
+</html>

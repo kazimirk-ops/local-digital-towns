@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mod Dashboard | FloridaLife</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --primary: #0ea5e9;
+  --secondary: #10b981;
+  --accent: #f0c040;
+  --bg: #0a0f1a;
+  --surface: #111827;
+  --surface2: #1a2332;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --border: rgba(255,255,255,0.08);
+  --radius: 10px;
+  --radius-lg: 14px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+a { color:var(--primary); text-decoration:none; }
+a:hover { text-decoration:underline; }
+
+.site-nav { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; background:#080d14; border-bottom:1px solid var(--border); }
+.nav-brand { font-weight:700; font-size:1.1rem; color:var(--text); text-decoration:none; }
+.nav-links { display:flex; gap:18px; align-items:center; font-size:0.85rem; }
+.nav-links a { color:var(--muted); text-decoration:none; font-weight:500; }
+.nav-links a:hover { color:var(--text); }
+
+.container { max-width:960px; margin:0 auto; padding:24px 16px; }
+
+.group-selector { display:flex; align-items:center; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+.group-selector h1 { font-size:1.3rem; font-weight:700; }
+.group-select { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-family:inherit; font-size:0.85rem; cursor:pointer; }
+.group-select option { background:var(--surface); color:var(--text); }
+.group-status { display:inline-flex; align-items:center; gap:4px; font-size:0.75rem; font-weight:600; padding:3px 8px; border-radius:99px; }
+.status-active { background:#0a2e1a; color:#10b981; }
+.status-pending { background:#2e2a0a; color:#f0c040; }
+.status-suspended { background:#2e0a0a; color:#ef4444; }
+.group-meta-bar { display:flex; gap:16px; font-size:0.8rem; color:var(--muted); }
+
+.tab-bar { display:flex; gap:0; border-bottom:1px solid #1a2636; margin-bottom:24px; }
+.mod-tab { padding:12px 18px; border:none; background:none; color:#64748b; font-size:13px; font-weight:600; cursor:pointer; border-bottom:2px solid transparent; font-family:inherit; }
+.mod-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+.admin-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.admin-table th { text-align:left; padding:10px 12px; color:var(--muted); font-weight:600; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #1a2636; }
+.admin-table td { padding:10px 12px; border-bottom:1px solid #0f1a2a; color:var(--text); }
+.admin-table tr:hover { background:rgba(255,255,255,0.02); }
+
+.btn-sm { display:inline-flex; align-items:center; padding:5px 12px; border-radius:6px; border:none; font-family:inherit; font-size:0.75rem; font-weight:600; cursor:pointer; transition:opacity 0.15s; }
+.btn-sm:hover { opacity:0.85; }
+
+.filter-pills { display:flex; gap:6px; margin-bottom:16px; }
+.filter-pill { padding:5px 12px; border-radius:99px; border:1px solid #1e293b; background:none; color:var(--muted); font-family:inherit; font-size:0.75rem; font-weight:600; cursor:pointer; }
+.filter-pill.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+
+.listings-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
+.listing-card { background:var(--surface); border:1px solid #1e293b; border-radius:12px; overflow:hidden; transition:transform 0.15s,border-color 0.15s; position:relative; }
+.listing-card:hover { transform:translateY(-2px); border-color:var(--primary); }
+.listing-img { height:140px; background:#1e293b; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.listing-img img { width:100%; height:100%; object-fit:cover; }
+.listing-no-img { font-size:36px; }
+.listing-body { padding:10px; }
+.listing-title { font-weight:600; font-size:13px; color:var(--text); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.listing-price { font-size:16px; font-weight:700; color:var(--accent); margin-bottom:3px; }
+.listing-seller { font-size:11px; color:#64748b; margin-bottom:6px; }
+
+.field { margin-bottom:20px; }
+.field label { display:block; font-size:0.85rem; font-weight:600; margin-bottom:6px; color:var(--text); }
+.field input, .field textarea { width:100%; padding:10px 14px; background:#0a0f1a; border:1px solid #1e293b; border-radius:8px; color:var(--text); font-family:inherit; font-size:0.9rem; }
+.field input:focus, .field textarea:focus { outline:none; border-color:var(--primary); }
+.field textarea { min-height:80px; resize:vertical; }
+.field .hint { font-size:0.75rem; color:#64748b; margin-top:4px; }
+
+.color-presets { display:flex; gap:8px; margin-bottom:8px; }
+.color-swatch { width:32px; height:32px; border-radius:8px; border:2px solid transparent; cursor:pointer; transition:border-color 0.15s; }
+.color-swatch:hover, .color-swatch.active { border-color:var(--text); }
+
+.btn-save { padding:10px 24px; background:var(--primary); color:#fff; border:none; border-radius:8px; font-family:inherit; font-size:0.9rem; font-weight:700; cursor:pointer; transition:opacity 0.15s; }
+.btn-save:hover { opacity:0.85; }
+.btn-save:disabled { opacity:0.5; cursor:not-allowed; }
+
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:16px; margin-bottom:24px; }
+.kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:20px; }
+.kpi-label { font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px; }
+.kpi-value { font-size:1.5rem; font-weight:700; }
+.kpi-sub { font-size:0.75rem; color:#64748b; margin-top:4px; }
+
+.empty-state { text-align:center; padding:40px 20px; color:var(--muted); font-size:0.9rem; }
+.save-msg { font-size:0.85rem; color:var(--secondary); margin-left:12px; display:none; }
+
+@media (max-width:600px) {
+  .kpi-grid { grid-template-columns:1fr 1fr; }
+  .listings-grid { grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); }
+  .group-selector { flex-direction:column; align-items:flex-start; }
+}
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="/" class="nav-brand" id="navBrand">FloridaLife</a>
+  <div class="nav-links">
+    <a href="/buy-sell-trade">Buy &amp; Sell Groups</a>
+    <a href="/gigs">Services</a>
+    <a href="/dashboard">Dashboard</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div id="loading" class="empty-state">Loading...</div>
+  <div id="noGroups" class="empty-state" style="display:none;">
+    <p>You don't have any groups yet.</p>
+    <p style="margin-top:12px;"><a href="/buy-sell-trade">Create your first group &rarr;</a></p>
+  </div>
+  <div id="notLoggedIn" class="empty-state" style="display:none;">
+    <p>Please <a href="/#login">log in</a> to access the mod dashboard.</p>
+  </div>
+
+  <div id="mainContent" style="display:none;">
+    <!-- Group selector -->
+    <div class="group-selector">
+      <h1>Mod Dashboard</h1>
+      <select class="group-select" id="groupSelect" onchange="switchGroup(this.value)"></select>
+      <span class="group-status" id="groupStatusBadge"></span>
+    </div>
+    <div class="group-meta-bar" id="groupMetaBar" style="margin-bottom:20px;"></div>
+
+    <!-- Tabs -->
+    <div class="tab-bar" id="tabBar">
+      <button class="mod-tab active" data-tab="members">Members</button>
+      <button class="mod-tab" data-tab="listings">Listings</button>
+      <button class="mod-tab" data-tab="settings">Settings</button>
+      <button class="mod-tab" data-tab="analytics">Analytics</button>
+      <button class="mod-tab" data-tab="applications">Applications</button>
+    </div>
+
+    <!-- Members Tab -->
+    <div class="tab-panel active" id="panel-members">
+      <div class="filter-pills" id="memberFilter">
+        <button class="filter-pill active" data-mf="all">All</button>
+        <button class="filter-pill" data-mf="co-mod">Co-Mods Only</button>
+        <button class="filter-pill" data-mf="requests" id="requestsPill" style="display:none;">Join Requests <span id="requestsBadge" style="background:#ef4444;color:#fff;border-radius:99px;padding:1px 6px;font-size:10px;margin-left:4px;display:none;">0</span></button>
+      </div>
+      <div id="membersSection">
+        <table class="admin-table">
+          <thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Role</th><th>Actions</th></tr></thead>
+          <tbody id="membersBody"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+        </table>
+      </div>
+      <div id="joinRequestsSection" style="display:none;">
+        <table class="admin-table">
+          <thead><tr><th>Name</th><th>Email</th><th>Message</th><th>Requested</th><th>Actions</th></tr></thead>
+          <tbody id="joinRequestsBody"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Listings Tab -->
+    <div class="tab-panel" id="panel-listings">
+      <div class="listings-grid" id="modListingsGrid"></div>
+      <div id="listingsEmpty" class="empty-state" style="display:none;">No active listings from group members yet.</div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div class="tab-panel" id="panel-settings">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;">
+        <div class="field">
+          <label>Description</label>
+          <textarea id="settDesc" placeholder="Describe your group..."></textarea>
+        </div>
+        <div class="field">
+          <label>Group Rules</label>
+          <textarea id="settRules" placeholder="List your group rules..."></textarea>
+        </div>
+        <div class="field">
+          <label>Banner Color</label>
+          <div class="color-presets" id="colorPresets"></div>
+          <input type="text" id="settColor" placeholder="#0ea5e9" maxlength="7" style="max-width:140px;">
+          <div class="hint">Pick a preset or enter a hex color</div>
+        </div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <input type="checkbox" id="settPrivate" style="width:18px;height:18px;accent-color:var(--primary);cursor:pointer;">
+            Private Group
+          </label>
+          <div class="hint">When enabled, new members must request to join and be approved by a mod.</div>
+        </div>
+        <div class="field">
+          <label>Facebook Group URL</label>
+          <input type="url" id="settFbUrl" placeholder="https://facebook.com/groups/...">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+          <button class="btn-save" id="saveSettingsBtn" onclick="saveSettings()">Save Settings</button>
+          <span class="save-msg" id="saveMsg">Saved!</span>
+          <a href="#" id="previewLink" target="_blank" style="font-size:0.85rem;margin-left:auto;">Preview storefront &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics Tab -->
+    <div class="tab-panel" id="panel-analytics">
+      <div class="kpi-grid" id="analyticsGrid">
+        <div class="kpi-card"><div class="kpi-label">Members</div><div class="kpi-value" id="aMemberCount">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">New This Month</div><div class="kpi-value" id="aNewMembers">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Active Listers</div><div class="kpi-value" id="aActiveListers">—</div><div class="kpi-sub">Members with active listings</div></div>
+        <div class="kpi-card"><div class="kpi-label">Leaderboard Rank</div><div class="kpi-value" id="aRank">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Leaderboard Score</div><div class="kpi-value" id="aScore">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Visitors Today</div><div class="kpi-value" id="aVisitorsToday">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Visitors (30 Days)</div><div class="kpi-value" id="aVisitors30">—</div></div>
+      </div>
+    </div>
+
+    <!-- Applications Tab -->
+    <div class="tab-panel" id="panel-applications">
+      <div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="color:#fff;font-size:16px;">Seller Applications</h3>
+        <span id="pendingCount" style="background:#ef4444;color:#fff;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700;display:none;">0 pending</span>
+      </div>
+      <div id="applicationsList" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="color:#64748b;">Loading...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function getTownName() {
+  var map = {
+    'treasurecoast-fl.com': 'Treasure Coast',
+    'space-coastfl.com': 'Space Coast',
+    'jacksonville-floridalife.com': 'Jacksonville',
+    'miami-floridalife.com': 'Miami',
+    'orlando-floridalife.com': 'Orlando',
+    'tampa-bay-florida.com': 'Tampa Bay',
+    'fortlauderdale-fl.com': 'Fort Lauderdale',
+    'fortmyers-fl.com': 'Fort Myers',
+    'westpalmbeach-fl.com': 'West Palm Beach',
+    'localhost': 'Treasure Coast'
+  };
+  return map[window.location.hostname] || 'FloridaLife';
+}
+document.getElementById('navBrand').textContent = getTownName();
+
+var token = localStorage.getItem('tc_token');
+var currentGroupId = null;
+var allGroups = [];
+var allMembers = [];
+var memberFilterMode = 'all';
+var groupModUserId = null;
+
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+async function apiFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = opts.headers || {};
+  if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+  return fetch(url, opts);
+}
+
+async function init() {
+  if (!token) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('notLoggedIn').style.display = 'block';
+    return;
+  }
+
+  try {
+    var res = await apiFetch('/api/bst-groups/my-groups');
+    if (!res.ok) {
+      if (res.status === 401) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('notLoggedIn').style.display = 'block';
+        return;
+      }
+      throw new Error('Failed');
+    }
+    var data = await res.json();
+    allGroups = data.groups || [];
+
+    if (allGroups.length === 0) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('noGroups').style.display = 'block';
+      return;
+    }
+
+    // Check URL param for specific group
+    var urlParams = new URLSearchParams(window.location.search);
+    var requestedGroup = urlParams.get('group');
+
+    // Populate selector
+    var sel = document.getElementById('groupSelect');
+    allGroups.forEach(function(g) {
+      var opt = document.createElement('option');
+      opt.value = g.id;
+      opt.textContent = g.name;
+      if (requestedGroup && String(g.id) === requestedGroup) opt.selected = true;
+      sel.appendChild(opt);
+    });
+
+    if (allGroups.length === 1) sel.style.display = 'none';
+
+    currentGroupId = requestedGroup && allGroups.find(function(g) { return String(g.id) === requestedGroup; })
+      ? parseInt(requestedGroup) : allGroups[0].id;
+    sel.value = currentGroupId;
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+
+    updateGroupHeader();
+    loadMembers();
+  } catch (err) {
+    console.error('MOD_INIT_ERROR', err);
+    document.getElementById('loading').textContent = 'Failed to load groups.';
+  }
+}
+
+function switchGroup(id) {
+  currentGroupId = parseInt(id);
+  updateGroupHeader();
+  // Reload current tab
+  var activeTab = document.querySelector('.mod-tab.active');
+  if (activeTab) loadTab(activeTab.getAttribute('data-tab'));
+}
+
+function updateGroupHeader() {
+  var g = allGroups.find(function(gr) { return gr.id === currentGroupId; });
+  if (!g) return;
+  groupModUserId = g.mod_user_id;
+
+  var badge = document.getElementById('groupStatusBadge');
+  badge.textContent = g.status;
+  badge.className = 'group-status status-' + (g.status || 'pending');
+
+  document.getElementById('groupMetaBar').innerHTML =
+    '<span>&#128101; ' + (g.member_count || 0) + ' members</span>'
+    + '<span><a href="/groups/' + esc(g.slug) + '" target="_blank" style="font-size:0.8rem;">View storefront &rarr;</a></span>';
+
+  document.getElementById('previewLink').href = '/groups/' + (g.slug || '');
+  document.title = (g.name || 'Mod Dashboard') + ' | ' + getTownName();
+}
+
+// Tab switching
+document.getElementById('tabBar').addEventListener('click', function(e) {
+  var tab = e.target.closest('.mod-tab');
+  if (!tab) return;
+  var tabName = tab.getAttribute('data-tab');
+  document.querySelectorAll('.mod-tab').forEach(function(t) { t.classList.toggle('active', t === tab); });
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.toggle('active', p.id === 'panel-' + tabName); });
+  loadTab(tabName);
+});
+
+function loadTab(name) {
+  if (name === 'members') loadMembers();
+  else if (name === 'listings') loadListings();
+  else if (name === 'settings') loadSettings();
+  else if (name === 'analytics') loadAnalytics();
+  else if (name === 'applications') loadApplications();
+}
+
+// ── MEMBERS TAB ──
+var allJoinRequests = [];
+
+function updateRequestsPillVisibility() {
+  var g = allGroups.find(function(gr) { return gr.id === currentGroupId; });
+  var pill = document.getElementById('requestsPill');
+  pill.style.display = (g && g.is_private) ? 'inline-flex' : 'none';
+  // If hiding requests pill and it was active, switch to all
+  if (pill.style.display === 'none' && memberFilterMode === 'requests') {
+    memberFilterMode = 'all';
+    document.querySelectorAll('#memberFilter .filter-pill').forEach(function(p) { p.classList.toggle('active', p.getAttribute('data-mf') === 'all'); });
+    document.getElementById('membersSection').style.display = 'block';
+    document.getElementById('joinRequestsSection').style.display = 'none';
+    renderMembers();
+  }
+}
+
+document.getElementById('memberFilter').addEventListener('click', function(e) {
+  var pill = e.target.closest('.filter-pill');
+  if (!pill) return;
+  document.querySelectorAll('#memberFilter .filter-pill').forEach(function(p) { p.classList.remove('active'); });
+  pill.classList.add('active');
+  memberFilterMode = pill.getAttribute('data-mf');
+  if (memberFilterMode === 'requests') {
+    document.getElementById('membersSection').style.display = 'none';
+    document.getElementById('joinRequestsSection').style.display = 'block';
+    loadJoinRequests();
+  } else {
+    document.getElementById('membersSection').style.display = 'block';
+    document.getElementById('joinRequestsSection').style.display = 'none';
+    renderMembers();
+  }
+});
+
+async function loadMembers() {
+  try {
+    var res = await apiFetch('/api/bst-groups/' + currentGroupId + '/members');
+    if (!res.ok) throw new Error('Failed');
+    var data = await res.json();
+    allMembers = data.members || [];
+    renderMembers();
+    // Load join request count for badge
+    updateRequestsPillVisibility();
+    var g = allGroups.find(function(gr) { return gr.id === currentGroupId; });
+    if (g && g.is_private) {
+      try {
+        var jrRes = await apiFetch('/api/bst-groups/' + currentGroupId + '/join-requests?status=pending');
+        if (jrRes.ok) {
+          var jrData = await jrRes.json();
+          allJoinRequests = jrData.requests || [];
+          var badge = document.getElementById('requestsBadge');
+          if (allJoinRequests.length > 0) {
+            badge.textContent = allJoinRequests.length;
+            badge.style.display = 'inline';
+          } else {
+            badge.style.display = 'none';
+          }
+        }
+      } catch (e) {}
+    }
+  } catch (err) {
+    console.error('LOAD_MEMBERS_ERROR', err);
+    document.getElementById('membersBody').innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load members</td></tr>';
+  }
+}
+
+async function loadJoinRequests() {
+  try {
+    var res = await apiFetch('/api/bst-groups/' + currentGroupId + '/join-requests?status=pending');
+    if (!res.ok) throw new Error('Failed');
+    var data = await res.json();
+    allJoinRequests = data.requests || [];
+    renderJoinRequests();
+  } catch (err) {
+    console.error('LOAD_JOIN_REQUESTS_ERROR', err);
+    document.getElementById('joinRequestsBody').innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load requests</td></tr>';
+  }
+}
+
+function renderJoinRequests() {
+  var tbody = document.getElementById('joinRequestsBody');
+  if (allJoinRequests.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No pending join requests</td></tr>';
+    return;
+  }
+  tbody.innerHTML = allJoinRequests.map(function(r) {
+    return '<tr>'
+      + '<td>' + esc(r.user_name || '—') + '</td>'
+      + '<td style="font-size:12px;color:var(--muted);">' + esc(r.user_email || '') + '</td>'
+      + '<td style="font-size:12px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(r.message || '—') + '</td>'
+      + '<td style="font-size:12px;">' + (r.created_at ? new Date(r.created_at).toLocaleDateString() : '') + '</td>'
+      + '<td style="white-space:nowrap;">'
+      + '<button class="btn-sm" style="background:#0a2e1a;color:#10b981;margin-right:4px;" onclick="handleJoinRequest(' + r.id + ',\'approved\')">Approve</button>'
+      + '<button class="btn-sm" style="background:#2e0a0a;color:#ef4444;" onclick="handleJoinRequest(' + r.id + ',\'declined\')">Decline</button>'
+      + '</td></tr>';
+  }).join('');
+}
+
+async function handleJoinRequest(requestId, status) {
+  try {
+    var res = await apiFetch('/api/bst-groups/' + currentGroupId + '/join-requests/' + requestId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: status })
+    });
+    var data = await res.json();
+    if (data.success) {
+      loadJoinRequests();
+      if (status === 'approved') {
+        // Refresh member count
+        var g = allGroups.find(function(gr) { return gr.id === currentGroupId; });
+        if (g) g.member_count = (g.member_count || 0) + 1;
+        updateGroupHeader();
+      }
+    } else {
+      alert(data.error || 'Failed');
+    }
+  } catch (err) { alert('Failed to update request'); }
+}
+
+function renderMembers() {
+  var filtered = allMembers;
+  if (memberFilterMode === 'co-mod') {
+    filtered = allMembers.filter(function(m) { return m.role === 'co-mod'; });
+  }
+
+  var tbody = document.getElementById('membersBody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">' + (memberFilterMode === 'co-mod' ? 'No co-mods yet' : 'No members yet') + '</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(function(m) {
+    var roleBadge = m.role === 'mod' ? '<span style="color:#f0c040;font-weight:600;">Mod</span>'
+      : m.role === 'co-mod' ? '<span style="color:#0ea5e9;font-weight:600;">Co-Mod</span>'
+      : '<span style="color:var(--muted);">Member</span>';
+
+    var actions = '';
+    // Don't show actions for the group mod themselves
+    if (m.user_id !== groupModUserId) {
+      if (m.role === 'member') {
+        actions += '<button class="btn-sm" style="background:#1a2332;color:#0ea5e9;margin-right:4px;" onclick="promoteMember(\'' + m.user_id + '\')">Promote</button>';
+      }
+      actions += '<button class="btn-sm" style="background:#1a2332;color:#ef4444;" onclick="removeMember(\'' + m.user_id + '\',\'' + esc(m.user_name || '') + '\')">Remove</button>';
+    }
+
+    return '<tr>'
+      + '<td>' + esc(m.user_name || '—') + '</td>'
+      + '<td style="font-size:12px;color:var(--muted);">' + esc(m.user_email || '') + '</td>'
+      + '<td style="font-size:12px;">' + (m.joined_at ? new Date(m.joined_at).toLocaleDateString() : '') + '</td>'
+      + '<td>' + roleBadge + '</td>'
+      + '<td style="white-space:nowrap;">' + actions + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+async function promoteMember(userId) {
+  try {
+    var res = await apiFetch('/api/bst-groups/' + currentGroupId + '/members/' + userId + '/promote', { method: 'POST' });
+    var data = await res.json();
+    if (data.success) loadMembers();
+    else alert(data.error || 'Failed');
+  } catch (err) { alert('Failed to promote member'); }
+}
+
+async function removeMember(userId, name) {
+  if (!confirm('Remove ' + (name || 'this member') + ' from the group?')) return;
+  try {
+    var res = await apiFetch('/api/bst-groups/' + currentGroupId + '/members/' + userId, { method: 'DELETE' });
+    var data = await res.json();
+    if (data.success) {
+      loadMembers();
+      // Update local member count
+      var g = allGroups.find(function(gr) { return gr.id === currentGroupId; });
+      if (g) g.member_count = Math.max(0, (g.member_count || 1) - 1);
+      updateGroupHeader();
+    } else {
+      alert(data.error || 'Failed');
+    }
+  } catch (err) { alert('Failed to remove member'); }
+}
+
+// ── LISTINGS TAB ──
+async function loadListings() {
+  try {
+    var res = await apiFetch('/api/bst-groups/' + currentGroupId + '/listings');
+    if (!res.ok) throw new Error('Failed');
+    var data = await res.json();
+    var listings = data.listings || [];
+    var grid = document.getElementById('modListingsGrid');
+    var empty = document.getElementById('listingsEmpty');
+
+    if (listings.length === 0) {
+      grid.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    var html = '';
+    listings.forEach(function(l) {
+      var photo = '';
+      try { var photos = typeof l.photos === 'string' ? JSON.parse(l.photos) : l.photos; if (photos && photos.length) photo = photos[0]; } catch(e) {}
+      var imgHtml = photo
+        ? '<img src="' + esc(photo) + '" alt="" onerror="this.style.background=\'#1e293b\';this.style.opacity=\'0.5\';this.onerror=null;">'
+        : '<div class="listing-no-img">&#128230;</div>';
+
+      var auctionBadge = l.status === 'auction_only' ? '<div style="position:absolute;top:8px;left:8px;background:#1a1a2e;color:#f0c040;font-size:10px;font-weight:600;padding:2px 6px;border-radius:6px;">&#9889; Auction</div>' : '';
+      var displayPrice = l.status === 'auction_only'
+        ? (l.current_bid_cents
+            ? '$' + (l.current_bid_cents/100).toFixed(2) + ' (current bid)'
+            : l.starting_bid_cents
+              ? '$' + (l.starting_bid_cents/100).toFixed(2) + ' (starting bid)'
+              : '$' + parseFloat(l.price || 0).toFixed(2))
+        : '$' + parseFloat(l.price || 0).toFixed(2);
+      html += '<div class="listing-card">'
+        + auctionBadge
+        + '<div class="listing-img">' + imgHtml + '</div>'
+        + '<div class="listing-body">'
+        + '<div class="listing-title">' + esc(l.title) + '</div>'
+        + '<div class="listing-price">' + displayPrice + '</div>'
+        + '<div class="listing-seller">by ' + esc(l.seller_name) + '</div>'
+        + '</div>'
+        + '</div>';
+    });
+    grid.innerHTML = html;
+  } catch (err) {
+    console.error('LOAD_LISTINGS_ERROR', err);
+    document.getElementById('modListingsGrid').innerHTML = '<div class="empty-state">Failed to load listings</div>';
+  }
+}
+
+// ── SETTINGS TAB ──
+var COLOR_PRESETS = ['#0ea5e9', '#10b981', '#f0c040', '#ef4444', '#8b5cf6', '#ec4899'];
+
+function initColorPresets() {
+  var container = document.getElementById('colorPresets');
+  COLOR_PRESETS.forEach(function(c) {
+    var swatch = document.createElement('div');
+    swatch.className = 'color-swatch';
+    swatch.style.background = c;
+    swatch.setAttribute('data-color', c);
+    swatch.onclick = function() {
+      document.getElementById('settColor').value = c;
+      document.querySelectorAll('.color-swatch').forEach(function(s) { s.classList.remove('active'); });
+      swatch.classList.add('active');
+    };
+    container.appendChild(swatch);
+  });
+}
+
+async function loadSettings() {
+  var g = allGroups.find(function(gr) { return gr.id === currentGroupId; });
+  if (!g) return;
+  document.getElementById('settDesc').value = g.description || '';
+  document.getElementById('settRules').value = g.rules || '';
+  document.getElementById('settColor').value = g.banner_color || '';
+  document.getElementById('settFbUrl').value = g.facebook_group_url || '';
+  document.getElementById('settPrivate').checked = !!g.is_private;
+
+  // Highlight matching preset
+  document.querySelectorAll('.color-swatch').forEach(function(s) {
+    s.classList.toggle('active', s.getAttribute('data-color') === (g.banner_color || ''));
+  });
+}
+
+async function saveSettings() {
+  var btn = document.getElementById('saveSettingsBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    var body = {
+      description: document.getElementById('settDesc').value,
+      rules: document.getElementById('settRules').value,
+      banner_color: document.getElementById('settColor').value,
+      facebook_group_url: document.getElementById('settFbUrl').value,
+      is_private: document.getElementById('settPrivate').checked
+    };
+    var res = await apiFetch('/api/bst-groups/' + currentGroupId + '/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    var data = await res.json();
+    if (data.success) {
+      // Update local cache
+      var g = allGroups.find(function(gr) { return gr.id === currentGroupId; });
+      if (g) {
+        g.description = body.description;
+        g.rules = body.rules;
+        g.banner_color = body.banner_color;
+        g.facebook_group_url = body.facebook_group_url;
+        g.is_private = body.is_private;
+      }
+      // Update join requests pill visibility
+      updateRequestsPillVisibility();
+      var msg = document.getElementById('saveMsg');
+      msg.style.display = 'inline';
+      setTimeout(function() { msg.style.display = 'none'; }, 3000);
+    } else {
+      alert(data.error || 'Failed to save');
+    }
+  } catch (err) {
+    alert('Failed to save settings');
+  }
+  btn.disabled = false;
+  btn.textContent = 'Save Settings';
+}
+
+// ── ANALYTICS TAB ──
+async function loadAnalytics() {
+  try {
+    var res = await apiFetch('/api/bst-groups/' + currentGroupId + '/analytics');
+    if (!res.ok) throw new Error('Failed');
+    var data = await res.json();
+    document.getElementById('aMemberCount').textContent = data.member_count || 0;
+    document.getElementById('aNewMembers').textContent = data.new_members_this_month || 0;
+    document.getElementById('aActiveListers').textContent = data.active_listers || 0;
+    document.getElementById('aRank').textContent = data.leaderboard_rank ? '#' + data.leaderboard_rank : '—';
+    document.getElementById('aScore').textContent = data.leaderboard_score || '—';
+    document.getElementById('aVisitorsToday').textContent = data.visitors_today || 0;
+    document.getElementById('aVisitors30').textContent = data.visitors_30_days || 0;
+  } catch (err) {
+    console.error('LOAD_ANALYTICS_ERROR', err);
+  }
+}
+
+// ── APPLICATIONS TAB ──
+async function loadApplications() {
+  try {
+    var res = await apiFetch('/api/admin/seller-applications');
+    if (!res.ok) throw new Error('Failed');
+    var apps = await res.json();
+    var pending = apps.filter(function(a) { return a.status === 'pending'; });
+    var countEl = document.getElementById('pendingCount');
+    if (pending.length > 0) {
+      countEl.textContent = pending.length + ' pending';
+      countEl.style.display = 'inline';
+    } else {
+      countEl.style.display = 'none';
+    }
+    var html = '';
+    if (apps.length === 0) {
+      html = '<div style="color:#64748b;">No applications yet.</div>';
+    }
+    apps.forEach(function(a) {
+      var statusColor = a.status === 'approved' ? '#10b981' : a.status === 'rejected' ? '#ef4444' : '#f0c040';
+      html += '<div style="background:#1e293b;border:1px solid #1e3a4a;border-radius:12px;padding:16px;">'
+        + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">'
+        + '<img src="' + esc(a.profile_photo||a.avatar_url||'') + '" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" onerror="this.style.display=\'none\'">'
+        + '<div><div style="color:#fff;font-weight:700;">' + esc(a.fb_name||a.name||'Unknown') + '</div>'
+        + '<div style="color:#64748b;font-size:12px;">' + esc(a.email||'') + '</div></div>'
+        + '<span style="margin-left:auto;color:' + statusColor + ';font-size:12px;font-weight:700;text-transform:uppercase;">' + a.status + '</span>'
+        + '</div>'
+        + '<div style="color:#94a3b8;font-size:13px;margin-bottom:4px;"><strong>Sells:</strong> ' + esc(a.what_you_sell||'') + '</div>'
+        + '<div style="color:#94a3b8;font-size:13px;margin-bottom:4px;"><strong>FB:</strong> ' + (a.facebook_profile_url ? '<a href="' + esc(a.facebook_profile_url) + '" target="_blank" style="color:#0ea5e9;">' + esc(a.facebook_profile_url) + '</a>' : 'N/A') + '</div>'
+        + '<div style="color:#94a3b8;font-size:13px;margin-bottom:12px;"><strong>Heard from:</strong> ' + esc(a.how_did_you_hear||'') + '</div>'
+        + (a.status === 'pending'
+          ? '<div style="display:flex;gap:8px;">'
+          + '<button onclick="approveApp(' + a.id + ')" style="background:#10b981;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;">Approve</button>'
+          + '<button onclick="rejectApp(' + a.id + ')" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;">Reject</button>'
+          + '</div>' : '')
+        + '</div>';
+    });
+    document.getElementById('applicationsList').innerHTML = html;
+  } catch(err) {
+    console.error('LOAD_APPS_ERROR', err);
+  }
+}
+
+async function approveApp(id) {
+  if (!confirm('Approve this seller?')) return;
+  var res = await apiFetch('/api/admin/seller-applications/' + id + '/approve', { method: 'POST' });
+  if (res.ok) loadApplications();
+}
+
+async function rejectApp(id) {
+  var reason = prompt('Rejection reason (optional):');
+  var res = await apiFetch('/api/admin/seller-applications/' + id + '/reject', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason: reason || '' })
+  });
+  if (res.ok) loadApplications();
+}
+
+initColorPresets();
+init();
+</script>
+</body>
+</html>

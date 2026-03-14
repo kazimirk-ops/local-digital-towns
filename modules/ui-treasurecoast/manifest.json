@@ -1,0 +1,15 @@
+{
+  "id": "ui-treasurecoast",
+  "name": "Treasure Coast UI",
+  "layer": 5,
+  "dependencies": ["core", "auth"],
+  "description": "Treasure Coast town-facing frontend",
+  "submodules": [
+    {"id": "ui-treasurecoast.marketplace", "name": "Marketplace", "default": true},
+    {"id": "ui-treasurecoast.auctions", "name": "Auctions", "default": true},
+    {"id": "ui-treasurecoast.channels", "name": "Channels", "default": true},
+    {"id": "ui-treasurecoast.sweepstakes", "name": "Sweepstakes", "default": true},
+    {"id": "ui-treasurecoast.live-shows", "name": "Live Shows", "default": true},
+    {"id": "ui-treasurecoast.pulse", "name": "Pulse", "default": true}
+  ]
+}

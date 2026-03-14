@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rides | FloridaLife</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080d14; --surface: #101825; --border: #1a2d42;
+      --text: #e2e8f0; --muted: #94a3b8;
+      --accent: #00b4d8; --accent-hover: #0096b7;
+      --green: #22c55e; --amber: #f59e0b; --danger: #ef4444;
+      --radius: 12px;
+      --heading: 'Barlow Condensed', sans-serif;
+      --body: 'Barlow', sans-serif;
+    }
+    body { font-family: var(--body); background: var(--bg); color: var(--text); min-height: 100vh; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Nav */
+    .site-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(8,13,20,0.95); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px; display: flex; align-items: center; height: 56px; gap: 24px;
+    }
+    .nav-brand { font-family: var(--heading); font-weight: 900; font-size: 20px; color: #fff; text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .nav-brand:hover { text-decoration: none; }
+    .nav-links { display: flex; gap: 6px; margin-left: auto; }
+    .nav-links a {
+      font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--muted);
+      padding: 6px 14px; border-radius: 8px; text-decoration: none; transition: all .15s;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,.06); text-decoration: none; }
+    .nav-links a.active { color: var(--accent); background: rgba(0,180,216,.1); }
+
+    /* Hero */
+    .hero {
+      padding: 80px 20px 60px; text-align: center;
+      background: linear-gradient(180deg, rgba(0,180,216,.06) 0%, transparent 100%);
+    }
+    .hero h1 { font-family: var(--heading); font-weight: 900; font-size: 56px; color: #fff; letter-spacing: -1px; margin-bottom: 12px; }
+    .hero .sub { font-family: var(--heading); font-weight: 700; font-size: 22px; color: var(--accent); margin-bottom: 16px; }
+    .hero p { font-size: 16px; color: var(--muted); max-width: 480px; margin: 0 auto 28px; line-height: 1.6; }
+    .btn { border: none; padding: 12px 24px; border-radius: 10px; font-family: var(--body); font-weight: 600; font-size: 15px; cursor: pointer; transition: all .15s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { text-decoration: none; }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-accent:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Sections */
+    .section-wrap { max-width: 880px; margin: 0 auto; padding: 48px 20px; }
+    .section-title { font-family: var(--heading); font-weight: 800; font-size: 28px; color: #fff; margin-bottom: 24px; }
+    .section-label { font-family: var(--heading); font-weight: 800; font-size: 20px; color: #fff; margin-bottom: 14px; }
+
+    /* Ride type cards */
+    .ride-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .ride-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; cursor: pointer; transition: all .15s;
+    }
+    .ride-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .ride-card.active { border-color: var(--accent); box-shadow: 0 0 20px rgba(0,180,216,.15); }
+    .ride-icon { font-size: 32px; margin-bottom: 8px; }
+    .ride-name { font-family: var(--heading); font-weight: 800; font-size: 18px; color: #fff; }
+    .ride-desc { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+    .ride-price { font-size: 13px; color: var(--accent); font-weight: 600; margin-top: 8px; }
+
+    /* Book form */
+    .book-form {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; margin-bottom: 24px;
+    }
+    .form-row { display: flex; gap: 12px; margin-bottom: 14px; }
+    .form-row > * { flex: 1; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font-size: 14px; font-family: var(--body);
+    }
+    .form-group textarea { min-height: 70px; resize: vertical; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); cursor: pointer; }
+    .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+
+    /* Service cards */
+    .service-cards { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .svc-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+      transition: all .15s;
+    }
+    .svc-card:hover { border-color: rgba(255,255,255,.15); }
+    .svc-card.selected { border-color: var(--accent); box-shadow: 0 0 16px rgba(0,180,216,.15); }
+    .svc-card .svc-name { font-weight: 600; font-size: 15px; color: var(--text); }
+    .svc-card .svc-unit { font-size: 12px; color: var(--muted); }
+    .svc-card .svc-price { font-family: var(--heading); font-weight: 800; font-size: 20px; color: var(--accent); }
+
+    /* Quote box */
+    .quote-box {
+      background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius);
+      padding: 24px; text-align: center; margin-bottom: 28px;
+    }
+    .quote-service { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+    .quote-amount { font-family: var(--heading); font-weight: 900; font-size: 36px; color: #fff; margin-bottom: 16px; }
+    .quote-box .btn { width: 100%; justify-content: center; font-size: 16px; padding: 14px; }
+    .quote-fine { font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
+    .quote-placeholder { color: var(--muted); font-size: 14px; padding: 12px 0; }
+
+    /* Apply banner */
+    .apply-banner {
+      background: var(--surface); border: 2px solid var(--accent); border-radius: var(--radius);
+      padding: 32px; text-align: center; margin-top: 48px;
+    }
+    .apply-banner p { color: var(--muted); margin-bottom: 20px; font-size: 15px; line-height: 1.6; max-width: 520px; margin-left: auto; margin-right: auto; }
+
+    /* Error/loading */
+    .error-panel { background: rgba(239,68,68,.1); border: 1px solid var(--danger); border-radius: var(--radius); padding: 14px; text-align: center; color: var(--danger); font-size: 14px; margin-bottom: 16px; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 40px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Success toast */
+    .success-banner {
+      background: rgba(34,197,94,.1); border: 1px solid var(--green); border-radius: var(--radius);
+      padding: 20px; text-align: center; color: var(--green); font-weight: 600; margin-bottom: 24px;
+    }
+    .success-banner p { color: var(--muted); font-weight: 400; margin-top: 8px; font-size: 14px; }
+
+    .site-footer { border-top: 1px solid var(--border); padding: 32px 20px; text-align: center; font-size: 13px; color: var(--muted); }
+    .site-footer a { color: var(--muted); }
+    .site-footer a:hover { color: var(--accent); }
+
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 38px; }
+      .hero .sub { font-size: 18px; }
+      .ride-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .form-row { flex-direction: column; gap: 0; }
+      .quote-amount { font-size: 28px; }
+    }
+    @media (max-width: 480px) {
+      .ride-grid { grid-template-columns: 1fr; }
+      .hero { padding: 48px 16px 36px; }
+      .section-wrap { padding: 32px 16px; }
+      .nav-links a { padding: 6px 10px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="site-nav">
+    <a href="/" class="nav-brand" id="navBrand">FloridaLife</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/gigs">Services</a>
+      <a href="/rides" class="active">Rides</a>
+      <a href="/junk">Junk</a>
+      <a href="/leaderboard">Leaderboard</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/login" id="navLogin">Login</a>
+    </div>
+  </nav>
+
+  <!-- Success banner (shown after booking) -->
+  <div id="successBanner" style="display:none;max-width:880px;margin:20px auto 0;padding:0 20px;"></div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>Rides</h1>
+    <div class="sub">Local rides, booked in minutes.</div>
+    <p>Airport transfers, medical appointments, errands. Professional local drivers. Book and pay securely.</p>
+    <a href="#book-form" class="btn btn-accent">Book a Ride &rarr;</a>
+  </section>
+
+  <!-- Ride type cards -->
+  <section class="section-wrap">
+    <h2 class="section-title">Choose Your Ride</h2>
+    <div class="ride-grid" id="rideGrid">
+      <div class="ride-card" onclick="window._selectRideType('airport')">
+        <div class="ride-icon">&#9992;&#65039;</div>
+        <div class="ride-name">Airport Transfer</div>
+        <div class="ride-desc">MCO, PBI, FLL and more. On-time pickup guaranteed.</div>
+        <div class="ride-price">From $65</div>
+      </div>
+      <div class="ride-card" onclick="window._selectRideType('medical')">
+        <div class="ride-icon">&#127973;</div>
+        <div class="ride-name">Medical Appointment</div>
+        <div class="ride-desc">Doctor visits, dialysis, therapy. We wait for you.</div>
+        <div class="ride-price">From $45</div>
+      </div>
+      <div class="ride-card" onclick="window._selectRideType('errand')">
+        <div class="ride-icon">&#128722;</div>
+        <div class="ride-name">Errands</div>
+        <div class="ride-desc">Grocery runs, pharmacy, post office, anywhere local.</div>
+        <div class="ride-price">From $35/hr</div>
+      </div>
+      <div class="ride-card" onclick="window._selectRideType('other')">
+        <div class="ride-icon">&#128663;</div>
+        <div class="ride-name">Custom Ride</div>
+        <div class="ride-desc">Going somewhere else? We've got you.</div>
+        <div class="ride-price">From $45</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Booking form -->
+  <section class="section-wrap" id="book-form">
+    <h2 class="section-title">Your Ride Details</h2>
+
+    <div class="book-form">
+      <div class="form-group">
+        <label>Ride Type</label>
+        <select id="rideType" onchange="window._onRideTypeChange()">
+          <option value="">Select a ride type...</option>
+          <option value="airport">Airport Transfer</option>
+          <option value="medical">Medical Appointment</option>
+          <option value="errand">Errand Run</option>
+          <option value="long_distance">Long Distance</option>
+          <option value="other">Custom</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Pickup Address</label><input type="text" id="pickupAddr" placeholder="Full pickup address"></div>
+      <div class="form-group"><label>Dropoff Address</label><input type="text" id="dropoffAddr" placeholder="Full dropoff address"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Date</label><input type="date" id="rideDate"></div>
+        <div class="form-group">
+          <label>Time Window</label>
+          <select id="rideWindow">
+            <option value="early_morning">Early Morning (5 &ndash; 8am)</option>
+            <option value="morning">Morning (8am &ndash; 12pm)</option>
+            <option value="afternoon" selected>Afternoon (12 &ndash; 5pm)</option>
+            <option value="evening">Evening (5 &ndash; 9pm)</option>
+            <option value="flexible">Flexible</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Passengers</label>
+          <select id="passengers">
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+          </select>
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:14px;">
+          <label class="checkbox-row"><input type="checkbox" id="returnTrip"> Return trip needed</label>
+        </div>
+      </div>
+
+      <!-- Conditional: Airport -->
+      <div id="airportFields" style="display:none;">
+        <div class="form-group"><label>Flight Number</label><input type="text" id="flightNumber" placeholder="e.g. AA 1234"></div>
+      </div>
+
+      <!-- Conditional: Medical -->
+      <div id="medicalFields" style="display:none;">
+        <div class="form-group"><label>Appointment Time</label><input type="time" id="appointmentTime"></div>
+      </div>
+
+      <div class="form-group"><label>Special Needs</label><textarea id="specialNeeds" placeholder="Wheelchair accessible, oxygen equipment, extra luggage, etc."></textarea></div>
+      <div class="form-group"><label>Notes</label><textarea id="rideNotes" placeholder="Any other instructions for your driver"></textarea></div>
+    </div>
+
+    <!-- Service selector -->
+    <h2 class="section-label">Select a Service</h2>
+    <div class="service-cards" id="serviceCards">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Quote box -->
+    <div class="quote-box" id="quoteBox">
+      <div class="quote-placeholder">Select a service above to see pricing</div>
+    </div>
+
+    <div id="bookError" class="error-panel" style="display:none;"></div>
+  </section>
+
+  <!-- Driver apply -->
+  <section class="section-wrap">
+    <div class="apply-banner">
+      <h2 class="section-title" style="margin-bottom:12px;">Drive with Us</h2>
+      <p>Earn on your schedule. Apply to drive and start earning today.</p>
+      <a href="/gigs#apply-form" class="btn btn-accent" onclick="setTimeout(function(){if(window.switchApplyTab)switchApplyTab('individual');var r=document.getElementById('indRole');if(r)r.value='rides';},200)">Apply to Drive &rarr;</a>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 FloridaLife &middot; <a href="/">Home</a> &middot; <a href="/gigs">Gigs</a> &middot; <a href="/rides">Rides</a></p>
+  </footer>
+
+<script src="/auth-gate.js"></script>
+<script>
+(function() {
+  function getTownName() {
+    var map = {
+      'treasurecoast-fl.com': 'Treasure Coast',
+      'space-coastfl.com': 'Space Coast',
+      'jacksonville-floridalife.com': 'Jacksonville',
+      'miami-floridalife.com': 'Miami',
+      'orlando-floridalife.com': 'Orlando',
+      'tampa-bay-florida.com': 'Tampa Bay',
+      'fortlauderdale-fl.com': 'Fort Lauderdale',
+      'fortmyers-fl.com': 'Fort Myers',
+      'westpalmbeach-fl.com': 'West Palm Beach',
+      'localhost': 'Treasure Coast'
+    };
+    return map[window.location.hostname] || 'FloridaLife';
+  }
+  document.getElementById('navBrand').textContent = getTownName();
+
+  // Token
+  function getToken() {
+    try { var m = document.cookie.match(/(?:^|;\s*)token=([^;]*)/); return m ? m[1] : null; } catch(e) { return null; }
+  }
+  var token = getToken() || localStorage.getItem('tc_token');
+  if (token) {
+    var el = document.getElementById('navLogin');
+    if (el) { el.textContent = 'Dashboard'; el.href = '/dashboard'; }
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    var d = document.createElement('div'); d.appendChild(document.createTextNode(str)); return d.innerHTML;
+  }
+
+  // Check for success booking
+  var params = new URLSearchParams(window.location.search);
+  var bookedId = params.get('booked');
+  if (bookedId) {
+    var banner = document.getElementById('successBanner');
+    banner.innerHTML = '<div class="success-banner">Ride booked! Booking #' + esc(bookedId) + '<p>Your driver will be confirmed within 1 hour. You\'ll receive an email with details.</p></div>';
+    banner.style.display = 'block';
+  }
+
+  var providerId = null;
+  var services = [];
+  var selectedServiceIdx = -1;
+  var selectedRideType = '';
+
+  // Load TC Rides card
+  async function loadRidesCard() {
+    try {
+      var res = await fetch('/api/gigs/rides/card');
+      var data = await res.json();
+      if (!data.available) {
+        document.getElementById('serviceCards').innerHTML = '<p style="color:var(--muted);">Rides is not yet available in your area.</p>';
+        return;
+      }
+      providerId = data.provider_id;
+      services = data.services || [];
+      renderServices();
+    } catch(err) {
+      console.error('LOAD_RIDES_CARD_ERROR', err);
+      document.getElementById('serviceCards').innerHTML = '<p style="color:var(--muted);">Failed to load services.</p>';
+    }
+  }
+
+  function renderServices() {
+    var container = document.getElementById('serviceCards');
+    if (!services.length) {
+      container.innerHTML = '<p style="color:var(--muted);">No services available.</p>';
+      return;
+    }
+    var html = '';
+    services.forEach(function(s, i) {
+      html += '<div class="svc-card' + (selectedServiceIdx === i ? ' selected' : '') + '" onclick="window._selectService(' + i + ')">'
+        + '<div><div class="svc-name">' + esc(s.name) + '</div>' + (s.unit ? '<div class="svc-unit">' + esc(s.unit) + '</div>' : '') + '</div>'
+        + '<div class="svc-price">$' + (s.price_cents / 100).toFixed(2) + '</div>'
+        + '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  window._selectService = function(idx) {
+    selectedServiceIdx = idx;
+    renderServices();
+    updateQuote();
+  };
+
+  function updateQuote() {
+    var box = document.getElementById('quoteBox');
+    if (selectedServiceIdx < 0 || !services[selectedServiceIdx]) {
+      box.innerHTML = '<div class="quote-placeholder">Select a service above to see pricing</div>';
+      return;
+    }
+    var s = services[selectedServiceIdx];
+    var price = (s.price_cents / 100).toFixed(2);
+    box.innerHTML =
+      '<div class="quote-service">' + esc(s.name) + '</div>'
+      + '<div class="quote-amount">$' + price + '</div>'
+      + '<button class="btn btn-accent" id="confirmBookBtn" onclick="window._confirmBook()">Book &amp; Pay $' + price + ' &rarr;</button>'
+      + '<div class="quote-fine">Pay securely via Stripe &middot; Driver confirmed within 1 hour &middot; Full refund if not confirmed</div>';
+  }
+
+  // Ride type cards
+  window._selectRideType = function(type) {
+    selectedRideType = type;
+    document.getElementById('rideType').value = type;
+    updateRideTypeFields();
+    updateRideCards();
+    document.getElementById('book-form').scrollIntoView({ behavior: 'smooth' });
+  };
+
+  window._onRideTypeChange = function() {
+    selectedRideType = document.getElementById('rideType').value;
+    updateRideTypeFields();
+    updateRideCards();
+  };
+
+  function updateRideCards() {
+    document.querySelectorAll('.ride-card').forEach(function(c) { c.classList.remove('active'); });
+    if (selectedRideType) {
+      var map = { airport: 0, medical: 1, errand: 2, other: 3, long_distance: 3 };
+      var idx = map[selectedRideType];
+      if (idx !== undefined) {
+        var cards = document.querySelectorAll('.ride-card');
+        if (cards[idx]) cards[idx].classList.add('active');
+      }
+    }
+  }
+
+  function updateRideTypeFields() {
+    document.getElementById('airportFields').style.display = selectedRideType === 'airport' ? 'block' : 'none';
+    document.getElementById('medicalFields').style.display = selectedRideType === 'medical' ? 'block' : 'none';
+  }
+
+  // Book ride
+  window._confirmBook = async function() {
+    if (!token) {
+      window.showAuthModal();
+      return;
+    }
+    if (selectedServiceIdx < 0 || !providerId) return;
+
+    var btn = document.getElementById('confirmBookBtn');
+    btn.textContent = 'Processing...'; btn.disabled = true;
+    document.getElementById('bookError').style.display = 'none';
+
+    var s = services[selectedServiceIdx];
+
+    try {
+      var res = await fetch('/api/gigs/rides/book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({
+          provider_id: providerId,
+          service_name: s.name,
+          price_cents: s.price_cents,
+          ride_type: document.getElementById('rideType').value || 'other',
+          pickup_address: document.getElementById('pickupAddr').value.trim() || null,
+          dropoff_address: document.getElementById('dropoffAddr').value.trim() || null,
+          passengers: parseInt(document.getElementById('passengers').value) || 1,
+          return_trip: document.getElementById('returnTrip').checked,
+          flight_number: document.getElementById('flightNumber').value.trim() || null,
+          appointment_time: document.getElementById('appointmentTime').value || null,
+          special_needs: document.getElementById('specialNeeds').value.trim() || null,
+          scheduled_date: document.getElementById('rideDate').value || null,
+          scheduled_window: document.getElementById('rideWindow').value,
+          notes: document.getElementById('rideNotes').value.trim() || null
+        })
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Booking failed');
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        window.location.href = '/rides?booked=' + data.bookingId;
+      }
+    } catch(err) {
+      console.error('RIDES_BOOK_ERROR', err);
+      document.getElementById('bookError').textContent = err.message;
+      document.getElementById('bookError').style.display = 'block';
+      btn.textContent = 'Book & Pay'; btn.disabled = false;
+    }
+  };
+
+  // Init
+  loadRidesCard();
+})();
+</script>
+</body>
+</html>

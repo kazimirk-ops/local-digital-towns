@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Module Registry</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#0a0f1a; color:#e2e8f0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; min-height:100vh; }
+
+    .topbar { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; background:#0f1722; border-bottom:1px solid #1e293b; position:sticky; top:0; z-index:100; }
+    .topbar-left { display:flex; align-items:center; gap:12px; }
+    .topbar-left a { color:#64748b; text-decoration:none; font-size:18px; }
+    .topbar-left a:hover { color:#e2e8f0; }
+    .topbar h1 { font-size:18px; font-weight:700; }
+
+    .container { max-width:1200px; margin:0 auto; padding:24px; }
+
+    /* Platform switcher */
+    .platform-switcher { display:flex; gap:0; margin-bottom:24px; border-bottom:2px solid #1e293b; }
+    .platform-tab { padding:12px 24px; border:none; background:none; color:#64748b; font-size:14px; font-weight:700; cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px; font-family:inherit; transition:all 0.15s; white-space:nowrap; }
+    .platform-tab:hover { color:#e2e8f0; }
+    .platform-tab.active-dt { color:#0ea5e9; border-bottom-color:#0ea5e9; }
+    .platform-tab.active-pp { color:#10b981; border-bottom-color:#10b981; }
+    .platform-tab.active-sebastian { color:#a855f7; border-bottom-color:#a855f7; }
+
+    /* Stats bar */
+    .stats-bar { display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
+    .stat-card { flex:1; min-width:120px; background:#0f1722; border:1px solid #1e293b; border-radius:10px; padding:16px; text-align:center; }
+    .stat-value { font-size:28px; font-weight:800; }
+    .stat-label { font-size:11px; color:#64748b; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px; }
+
+    /* Search and filters */
+    .controls { display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; align-items:center; }
+    .search-input { flex:1; min-width:200px; padding:10px 14px; border-radius:8px; border:1px solid #1e293b; background:#0f1722; color:#e2e8f0; font-size:14px; font-family:inherit; outline:none; }
+    .search-input:focus { border-color:#0ea5e9; }
+    .filter-btn { padding:8px 16px; border-radius:8px; border:1px solid #1e293b; background:#0f1722; color:#64748b; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.15s; }
+    .filter-btn:hover { border-color:#334155; color:#e2e8f0; }
+    .filter-btn.active { background:#0ea5e9; color:#fff; border-color:#0ea5e9; }
+
+    /* Layer sections */
+    .layer-section { margin-bottom:28px; }
+    .layer-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; padding-bottom:8px; border-bottom:2px solid; }
+    .layer-header h2 { font-size:16px; font-weight:700; }
+    .layer-header .layer-count { font-size:12px; color:#64748b; }
+    .layer-0 .layer-header { border-color:#ef4444; }
+    .layer-0 .layer-header h2 { color:#ef4444; }
+    .layer-1 .layer-header { border-color:#0ea5e9; }
+    .layer-1 .layer-header h2 { color:#0ea5e9; }
+    .layer-2 .layer-header { border-color:#f59e0b; }
+    .layer-2 .layer-header h2 { color:#f59e0b; }
+    .layer-3 .layer-header { border-color:#10b981; }
+    .layer-3 .layer-header h2 { color:#10b981; }
+    .layer-4 .layer-header { border-color:#a855f7; }
+    .layer-4 .layer-header h2 { color:#a855f7; }
+    .layer-5 .layer-header { border-color:#ec4899; }
+    .layer-5 .layer-header h2 { color:#ec4899; }
+    .layer-6 .layer-header { border-color:#6366f1; }
+    .layer-6 .layer-header h2 { color:#6366f1; }
+
+    /* Module cards */
+    .module-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:12px; }
+    .module-card { background:#0f1722; border:1px solid #1e293b; border-radius:10px; cursor:pointer; transition:border-color 0.15s; overflow:hidden; }
+    .module-card:hover { border-color:#334155; }
+    .module-card.expanded { grid-column:1/-1; }
+    .module-card-header { padding:14px 16px; display:flex; align-items:center; gap:10px; }
+    .module-icon { font-size:24px; width:36px; text-align:center; }
+    .module-info { flex:1; }
+    .module-name { font-size:14px; font-weight:700; }
+    .module-desc-short { font-size:11px; color:#64748b; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px; }
+    .module-badge { padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; white-space:nowrap; }
+    .badge-active { background:#064e3b; color:#10b981; }
+    .badge-available { background:#1e293b; color:#94a3b8; }
+    .badge-locked { background:#451a03; color:#f59e0b; }
+    .badge-needs-build { background:#1e1b4b; color:#818cf8; }
+    .badge-built { background:#1e293b; color:#94a3b8; }
+
+    /* Expanded content */
+    .module-expanded { padding:0 16px 16px; display:none; border-top:1px solid #1e293b; }
+    .module-card.expanded .module-expanded { display:block; padding-top:14px; }
+    .module-card.expanded .module-desc-short { display:none; }
+
+    .detail-section { margin-bottom:14px; }
+    .detail-section h4 { font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+    .detail-desc { font-size:13px; color:#94a3b8; line-height:1.5; margin-bottom:14px; }
+
+    .dep-list { display:flex; flex-wrap:wrap; gap:6px; }
+    .dep-chip { padding:3px 10px; border-radius:6px; font-size:11px; font-weight:600; }
+    .dep-met { background:#064e3b; color:#10b981; }
+    .dep-missing { background:#450a0a; color:#ef4444; }
+
+    .manifest-list { display:flex; flex-wrap:wrap; gap:6px; }
+    .manifest-tag { padding:3px 8px; border-radius:4px; font-size:11px; background:#1e293b; color:#94a3b8; font-family:monospace; }
+
+    /* Town matrix */
+    .town-matrix { display:flex; flex-wrap:wrap; gap:6px; }
+    .town-chip { padding:3px 10px; border-radius:6px; font-size:11px; font-weight:600; }
+    .town-enabled { background:#064e3b; color:#10b981; }
+    .town-disabled { background:#1e293b; color:#64748b; }
+
+    /* Action buttons */
+    .module-actions { margin-top:14px; display:flex; gap:8px; }
+    .btn-install { padding:8px 20px; border:none; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; background:#10b981; color:#fff; }
+    .btn-install:hover { background:#059669; }
+    .btn-install:disabled { background:#334155; color:#64748b; cursor:not-allowed; }
+    .btn-uninstall { padding:8px 20px; border:none; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; background:#ef4444; color:#fff; }
+    .btn-uninstall:hover { background:#dc2626; }
+
+    .toast { position:fixed; bottom:24px; right:24px; padding:12px 20px; border-radius:8px; font-size:13px; font-weight:600; z-index:9999; animation:slideIn 0.3s ease; }
+    .toast-success { background:#064e3b; color:#10b981; border:1px solid #10b981; }
+    .toast-error { background:#450a0a; color:#ef4444; border:1px solid #ef4444; }
+    @keyframes slideIn { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+
+    .loading { text-align:center; padding:60px; color:#64748b; font-size:14px; }
+
+    /* Module inner tabs */
+    .module-tabs { display:flex; gap:0; border-bottom:1px solid #1e293b; margin-bottom:14px; }
+    .module-tab { padding:8px 16px; border:none; background:none; color:#64748b; font-size:12px; font-weight:600; cursor:pointer; border-bottom:2px solid transparent; font-family:inherit; }
+    .module-tab:hover { color:#e2e8f0; }
+    .module-tab.tab-active { color:#e2e8f0; }
+    .module-tab-content { display:none; }
+    .module-tab-content.tab-visible { display:block; }
+
+    /* UX tab styles */
+    .ux-section { margin-bottom:18px; }
+    .ux-section h4 { font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
+    .role-badges { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+    .role-badge { padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; background:#1e293b; }
+    .role-buyer { color:#0ea5e9; }
+    .role-seller { color:#10b981; }
+    .role-admin { color:#f59e0b; }
+    .role-visitor { color:#94a3b8; }
+    .role-worker { color:#a855f7; }
+    .role-member { color:#ec4899; }
+    .role-all { color:#e2e8f0; }
+
+    .step-flow { display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin-bottom:6px; }
+    .step { padding:6px 12px; border-radius:8px; font-size:13px; background:#1a2636; color:#e2e8f0; line-height:1.4; }
+    .step-arrow { color:#334155; font-size:14px; font-weight:700; }
+
+    .ux-journey-label { font-size:11px; color:#64748b; margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.3px; }
+    .ux-value { font-size:14px; color:#94a3b8; line-height:1.6; padding:10px 14px; background:#0a0f1a; border-radius:8px; border-left:3px solid #334155; margin-top:8px; }
+    .ux-what-see { font-size:13px; color:#94a3b8; line-height:1.5; margin-top:6px; }
+
+    /* Sub-modules tree */
+    .submod-tree { margin:0; padding:0; list-style:none; }
+    .submod-item { position:relative; padding:8px 0 8px 24px; border-bottom:1px solid rgba(255,255,255,0.03); display:flex; align-items:center; gap:10px; }
+    .submod-item:last-child { border-bottom:none; }
+    .submod-connector { position:absolute; left:4px; top:0; bottom:0; width:12px; }
+    .submod-connector::before { content:''; position:absolute; left:0; top:0; bottom:50%; border-left:1px solid #334155; }
+    .submod-connector::after { content:''; position:absolute; left:0; top:50%; width:12px; border-top:1px solid #334155; }
+    .submod-item:last-child .submod-connector::before { bottom:50%; }
+    .submod-icon { font-size:14px; width:20px; text-align:center; }
+    .submod-name { font-size:13px; color:#e2e8f0; font-weight:600; }
+    .submod-badge { padding:2px 8px; border-radius:10px; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
+    .submod-required { background:#1e293b; color:#64748b; }
+    .submod-optional { background:#1a2636; color:#0ea5e9; }
+    .submod-deps { font-size:10px; color:#64748b; margin-left:auto; }
+
+    /* Fee table */
+    .fee-table { width:100%; border-collapse:collapse; margin-top:8px; }
+    .fee-table th { text-align:left; font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; padding:8px 10px; border-bottom:1px solid #1e293b; }
+    .fee-table td { padding:8px 10px; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.03); }
+    .fee-table tr:last-child td { border-bottom:none; }
+    .fee-method { color:#e2e8f0; font-weight:600; }
+    .fee-amount { color:#94a3b8; }
+    .fee-local-badge { padding:2px 8px; border-radius:10px; font-size:9px; font-weight:700; background:#064e3b; color:#10b981; margin-left:6px; }
+
+    /* PP-specific: consolidation badges */
+    .consol-badge { padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; white-space:nowrap; margin-left:6px; }
+    .consol-dt-wins { background:#064e3b; color:#10b981; }
+    .consol-merge { background:#0c4a6e; color:#38bdf8; }
+    .consol-migrate { background:#451a03; color:#fbbf24; }
+    .consol-replace { background:#450a0a; color:#f87171; }
+    .consol-new { background:#2e1065; color:#c084fc; }
+    .consol-enhance { background:#1e1b4b; color:#818cf8; }
+
+    /* PP type badges */
+    .type-badge { padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; white-space:nowrap; }
+    .type-legacy { background:#450a0a; color:#f87171; }
+    .type-overlapping { background:#451a03; color:#fbbf24; }
+    .type-different { background:#2e1065; color:#c084fc; }
+    .type-unique { background:#500724; color:#f472b6; }
+
+    /* PP tables list */
+    .pp-table-list { display:flex; flex-direction:column; gap:4px; }
+    .pp-table-row { display:flex; align-items:center; gap:8px; padding:4px 8px; background:#0a0f1a; border-radius:6px; font-size:12px; }
+    .pp-table-name { font-family:monospace; color:#e2e8f0; font-weight:600; min-width:160px; }
+    .pp-table-stats { color:#64748b; font-size:11px; }
+
+    /* PP key columns */
+    .pp-key-cols { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+    .pp-key-col { padding:2px 8px; border-radius:4px; font-size:10px; font-family:monospace; background:#1a2636; color:#38bdf8; }
+
+    /* Platform differences panel */
+    .diff-panel { background:#0f1722; border:1px solid #1e293b; border-radius:10px; padding:20px; margin-bottom:24px; }
+    .diff-panel h3 { font-size:14px; font-weight:700; margin-bottom:14px; color:#e2e8f0; }
+    .diff-table { width:100%; border-collapse:collapse; }
+    .diff-table th { text-align:left; font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; padding:8px 12px; border-bottom:1px solid #1e293b; }
+    .diff-table td { padding:8px 12px; font-size:13px; border-bottom:1px solid rgba(255,255,255,0.03); }
+    .diff-table tr:last-child td { border-bottom:none; }
+    .diff-winner { color:#10b981; }
+    .diff-loser { color:#64748b; }
+    .diff-summary { margin-top:14px; padding:10px 14px; background:#0a0f1a; border-radius:8px; font-size:13px; color:#94a3b8; border-left:3px solid #10b981; }
+
+    /* PP notes block */
+    .pp-notes { font-size:13px; color:#94a3b8; line-height:1.6; padding:10px 14px; background:#0a0f1a; border-radius:8px; border-left:3px solid #334155; margin-bottom:14px; }
+    .pp-consol-note { font-size:13px; color:#94a3b8; line-height:1.5; padding:10px 14px; background:#0a0f1a; border-radius:8px; border-left:3px solid #10b981; }
+
+    /* Sebastian coming soon */
+    .coming-soon { text-align:center; padding:80px 24px; }
+    .coming-soon-icon { font-size:64px; margin-bottom:20px; }
+    .coming-soon h2 { font-size:24px; font-weight:800; margin-bottom:8px; color:#a855f7; }
+    .coming-soon p { font-size:14px; color:#64748b; margin-bottom:24px; }
+    .coming-soon-features { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+    .coming-soon-chip { padding:8px 16px; border-radius:8px; background:#1e293b; color:#c084fc; font-size:13px; font-weight:600; }
+
+    /* Sebastian badges */
+    .seb-extract { background:#064e3b; color:#10b981; }
+    .seb-merge { background:#0c4a6e; color:#38bdf8; }
+    .seb-upgrade { background:#451a03; color:#fbbf24; }
+    .seb-unique { background:#1e293b; color:#94a3b8; }
+
+    .seb-callout { background:#1a1505; border:1px solid #f59e0b; border-radius:10px; padding:16px; margin-bottom:24px; }
+    .seb-callout-title { font-size:14px; font-weight:700; color:#fbbf24; margin-bottom:6px; }
+    .seb-callout-text { font-size:13px; color:#94a3b8; line-height:1.5; }
+
+    .seb-diff-panel { background:#0f1722; border:1px solid #1e293b; border-radius:10px; padding:20px; margin-bottom:24px; }
+    .seb-diff-panel h3 { font-size:14px; font-weight:700; margin-bottom:14px; color:#e2e8f0; }
+    .seb-diff-cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .seb-diff-col h4 { font-size:12px; font-weight:700; margin-bottom:10px; }
+    .seb-diff-col.seb-wins h4 { color:#a855f7; }
+    .seb-diff-col.dt-wins h4 { color:#0ea5e9; }
+    .seb-diff-item { font-size:13px; color:#94a3b8; padding:4px 0; }
+    .seb-diff-item::before { margin-right:6px; }
+
+    /* Badge row in header */
+    .badge-row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+
+    @media(max-width:600px) {
+      .container { padding:16px; }
+      .module-grid { grid-template-columns:1fr; }
+      .stats-bar { flex-direction:column; }
+      .platform-switcher { overflow-x:auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-left">
+      <a href="/dashboard">&larr;</a>
+      <h1>Module Registry</h1>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Platform Switcher -->
+    <div class="platform-switcher" id="platformSwitcher">
+      <button class="platform-tab active-dt" data-platform="dt" onclick="switchPlatform('dt')">&#127961;&#65039; Digital Towns</button>
+      <button class="platform-tab" data-platform="pp" onclick="switchPlatform('pp')">&#127807; Plant Purge</button>
+      <button class="platform-tab" data-platform="sebastian" onclick="switchPlatform('sebastian')">&#127918; Sebastian Beta</button>
+    </div>
+
+    <!-- DT View -->
+    <div id="dtView">
+      <div class="stats-bar" id="statsBar">
+        <div class="stat-card"><div class="stat-value" id="statTotal">&mdash;</div><div class="stat-label">Total Modules</div></div>
+        <div class="stat-card"><div class="stat-value" id="statActive" style="color:#10b981;">&mdash;</div><div class="stat-label">Active</div></div>
+        <div class="stat-card"><div class="stat-value" id="statAvailable" style="color:#94a3b8;">&mdash;</div><div class="stat-label">Available</div></div>
+        <div class="stat-card"><div class="stat-value" id="statNeedsBuild" style="color:#818cf8;">&mdash;</div><div class="stat-label">Needs Build</div></div>
+      </div>
+
+      <div class="controls">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search modules...">
+        <button class="filter-btn active" data-filter="all" data-platform="dt">All</button>
+        <button class="filter-btn" data-filter="active" data-platform="dt">Active</button>
+        <button class="filter-btn" data-filter="available" data-platform="dt">Available</button>
+        <button class="filter-btn" data-filter="locked" data-platform="dt">Locked</button>
+        <button class="filter-btn" data-filter="needs-build" data-platform="dt">Needs Build</button>
+      </div>
+
+      <div id="moduleContent">
+        <div class="loading">Loading modules...</div>
+      </div>
+    </div>
+
+    <!-- PP View -->
+    <div id="ppView" style="display:none;">
+      <div class="stats-bar">
+        <div class="stat-card"><div class="stat-value" style="color:#10b981;">40</div><div class="stat-label">DB Tables</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:#0ea5e9;">210</div><div class="stat-label">API Endpoints</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:#f59e0b;">28</div><div class="stat-label">HTML Pages</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:#a855f7;">1</div><div class="stat-label">Scheduled Task</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:#f87171;">int</div><div class="stat-label">PK Type (needs UUID)</div></div>
+      </div>
+
+      <div id="ppDiffPanel"></div>
+
+      <div class="controls">
+        <input type="text" class="search-input" id="ppSearchInput" placeholder="Search Plant Purge modules...">
+        <button class="filter-btn active" data-filter="all" data-platform="pp">All</button>
+        <button class="filter-btn" data-filter="active" data-platform="pp">Active</button>
+        <button class="filter-btn" data-filter="built" data-platform="pp">Built</button>
+      </div>
+
+      <div id="ppModuleContent"></div>
+    </div>
+
+    <!-- Sebastian View -->
+    <div id="sebastianView" style="display:none;">
+      <div class="stats-bar">
+        <div class="stat-card"><div class="stat-value" style="color:#a855f7;">70</div><div class="stat-label">DB Tables</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:#0ea5e9;">62</div><div class="stat-label">Users</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:#10b981;">467</div><div class="stat-label">Listings</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:#fbbf24;">93</div><div class="stat-label">Sweep Entries</div></div>
+      </div>
+
+      <div class="seb-callout">
+        <div class="seb-callout-title">&#9889; Sweepstakes Engine Active</div>
+        <div class="seb-callout-text">55 rules configured, 11 sweepstakes, 6 users earning points. DT has the tables but zero data. Sebastian is the blueprint.</div>
+      </div>
+
+      <div id="sebDiffPanel"></div>
+
+      <div class="controls">
+        <input type="text" class="search-input" id="sebSearchInput" placeholder="Search Sebastian modules...">
+        <button class="filter-btn active" data-filter="all" data-platform="seb">All</button>
+        <button class="filter-btn" data-filter="extract" data-platform="seb">Extract</button>
+        <button class="filter-btn" data-filter="merge" data-platform="seb">Merge</button>
+        <button class="filter-btn" data-filter="upgrade" data-platform="seb">Upgrade</button>
+        <button class="filter-btn" data-filter="unique" data-platform="seb">Unique</button>
+      </div>
+
+      <div id="sebModuleContent"></div>
+    </div>
+  </div>
+
+  <script>
+    var TOKEN_KEY = 'tc_token';
+    var modules = [];
+    var currentFilter = 'all';
+    var ppFilter = 'all';
+    var searchTerm = '';
+    var ppSearchTerm = '';
+    var expandedId = null;
+    var ppExpandedId = null;
+    var activeTabMap = {}; // moduleId -> 'technical' | 'ux'
+    var currentPlatform = 'dt';
+    var sebFilter = 'all';
+    var sebSearchTerm = '';
+    var sebExpandedId = null;
+
+    var layerColors = { 0:'#ef4444', 1:'#0ea5e9', 2:'#f59e0b', 3:'#10b981', 4:'#a855f7', 5:'#ec4899', 6:'#6366f1' };
+
+    // ═══════════════════════════════════════════
+    // DT UX Data (existing)
+    // ═══════════════════════════════════════════
+    var uxData = {
+      'auth': {
+        roles: [{ icon:'&#128100;', label:'All Users', cls:'role-all' }],
+        journeys: [
+          { label:'User Journey', steps:['Visitor clicks Sign In','Enters email','Receives magic link','Clicks link','Logged in instantly'] },
+          { label:'Social Login', steps:['Clicks Continue with Facebook/Google','One-tap authorization','Logged in'] }
+        ],
+        whatSee: 'Login page with email field, Facebook button, Google button',
+        value: 'Never need to remember a password. One click with social login.'
+      },
+      'marketplace': {
+        roles: [{ icon:'&#128100;', label:'Buyer', cls:'role-buyer' }, { icon:'&#127978;', label:'Seller', cls:'role-seller' }],
+        journeys: [
+          { label:'Buyer Journey', steps:['Lands on marketplace tab','Browses product grid','Filters by niche','Filters by subcategory','Clicks product','Sees detail page','Clicks Buy','Completes Stripe checkout','Receives confirmation email'] },
+          { label:'Seller Journey', steps:['Creates listing with photo, price, description','Listing appears in marketplace','Buyer purchases','Seller gets payout via Stripe'] }
+        ],
+        whatSee: 'Product grid with photos, price tags, Ships badge, Load More button',
+        value: 'Shop local and national organic products from your town\'s marketplace.'
+      },
+      'payments': {
+        roles: [{ icon:'&#128100;', label:'Buyer', cls:'role-buyer' }, { icon:'&#127978;', label:'Seller', cls:'role-seller' }],
+        journeys: [
+          { label:'Buyer Journey', steps:['Adds item to cart','Clicks Checkout','Selects payment method','Completes payment','Receives confirmation'] },
+          { label:'Seller Journey', steps:['Connects Stripe account','Buyer purchases listing','Payment processed','Payout deposited to bank'] }
+        ],
+        whatSee: 'Stripe checkout form, payment method selection, order confirmation page',
+        value: 'Secure payments with automatic seller payouts. Multiple payment options for local and national transactions.',
+        fees: [
+          { method:'Stripe', fee:'2.9% + 30\u00a2 + 3% platform', icon:'\ud83d\udcb3', local:false },
+          { method:'Cash', fee:'0% \u2014 free', icon:'\ud83d\udcb5', local:true },
+          { method:'Venmo', fee:'1% platform', icon:'\ud83d\udcb8', local:true },
+          { method:'PayPal', fee:'2% platform', icon:'\ud83c\udd7f\ufe0f', local:false },
+          { method:'Cash App', fee:'1% platform', icon:'\ud83d\udc9a', local:true },
+          { method:'Zelle', fee:'0% \u2014 bank transfer', icon:'\ud83c\udfe6', local:true },
+          { method:'Crypto', fee:'0.5% platform', icon:'\ud83d\udd37', local:false }
+        ]
+      },
+      'auctions': {
+        roles: [{ icon:'&#128100;', label:'Buyer (Bidder)', cls:'role-buyer' }, { icon:'&#127978;', label:'Seller (Host)', cls:'role-seller' }],
+        journeys: [
+          { label:'Buyer Journey', steps:['Sees auction countdown timer','Enters bid amount','Clicks Bid','Gets outbid notification','Rebids','Wins auction','Stripe charges automatically','Seller ships'] },
+          { label:'Seller Journey', steps:['Creates auction with start price and end time','Shares link','Watches bids come in','Auction closes automatically','Payment collected','Fulfill order'] }
+        ],
+        whatSee: 'Auction cards with countdown timers, current bid, bid count, Bid Now button',
+        value: 'Win rare items at competitive prices. Sell anything fast with automatic payment collection.'
+      },
+      'map': {
+        roles: [{ icon:'&#128065;&#65039;', label:'Visitor', cls:'role-visitor' }, { icon:'&#127978;', label:'Business Owner', cls:'role-seller' }],
+        journeys: [
+          { label:'Visitor Journey', steps:['Opens site','Sees interactive map of their town','Clustered pins show local businesses','Clicks cluster','Pins expand','Clicks business pin','Sees name, category, phone, website, hours'] },
+          { label:'Business Owner Journey', steps:['Sees their business on map','Clicks Claim','Verifies ownership','Can update hours, photos, description'] }
+        ],
+        whatSee: 'Full-screen Leaflet map, teal cluster pins with numbers, business detail popups',
+        value: 'Discover every local business in your town in one place.'
+      },
+      'gigs': {
+        roles: [{ icon:'&#128100;', label:'Customer', cls:'role-buyer' }, { icon:'&#128296;', label:'Worker', cls:'role-worker' }],
+        journeys: [
+          { label:'Customer Journey', steps:['Clicks Gigs tab','Browses by category (lawn care, cleaning, handyman)','Clicks worker profile','Sees rating, price, availability','Clicks Book','Selects date/time','Pays via Stripe','Worker confirms','Service completed','Both leave reviews'] },
+          { label:'Worker Journey', steps:['Applies to be a gig provider','Admin approves','Profile appears in gigs directory','Gets booking notifications','Completes jobs','Builds rating and reputation'] }
+        ],
+        whatSee: 'Category grid, worker profile cards with photos and ratings, booking calendar',
+        value: 'Hire trusted local workers. Earn money doing what you\'re good at.'
+      },
+      'email-capture': {
+        roles: [{ icon:'&#128065;&#65039;', label:'Visitor', cls:'role-visitor' }],
+        journeys: [
+          { label:'Popup Journey', steps:['Visitor browses site for 30 seconds','Email popup appears','Reads "Join [Town]\'s free local marketplace..."','Enters email','Clicks Notify Me','Confirmation shown','Popup closes','Email stored in town\'s list'] },
+          { label:'Listing Page', steps:['Visitor views a listing','Sees "Notify me of local deals" button','Clicks','Enters email inline','Confirmation shown'] }
+        ],
+        whatSee: 'Centered modal popup with dark background overlay, or inline email form on listing page',
+        value: 'Get notified of new local drops and exclusive member deals.'
+      },
+      'leaderboard': {
+        roles: [{ icon:'&#128100;', label:'Active Member', cls:'role-member' }],
+        journeys: [
+          { label:'User Journey', steps:['Member shares a listing','Gets points','Shares more','Climbs leaderboard','Sees their rank on leaderboard page','Competes with other town members for top spot'] }
+        ],
+        whatSee: 'Ranked list of top community members with scores, share counts, click rates',
+        value: 'Compete with your neighbors. Top sharers get recognition and future rewards.'
+      },
+      'bst-groups': {
+        roles: [{ icon:'&#128100;', label:'Community Member', cls:'role-member' }],
+        journeys: [
+          { label:'User Journey', steps:['Clicks BST tab','Sees local buy/sell/trade groups','Joins a group','Posts item for sale with photo and price','Other members comment or DM to buy','Transaction happens'] }
+        ],
+        whatSee: 'Group cards with member counts, recent activity, Join button',
+        value: 'Buy and sell with people in your actual neighborhood.'
+      },
+      'plant-purge': {
+        roles: [{ icon:'&#128100;', label:'Plant Collector', cls:'role-buyer' }, { icon:'&#127978;', label:'Seller', cls:'role-seller' }],
+        journeys: [
+          { label:'Buyer Journey', steps:['Plant Purge customer sees rare plant auction','Clicks link','Lands on town page','Clicks "Continue with Plant Purge"','Instantly logged in (no second registration)','Bids on plant','Wins','Seller ships'] },
+          { label:'Seller Journey', steps:['Creates auction on their town','Checks "Broadcast to Plant Purge"','Listing appears on plantpurge.com','National buyers see it','More bids, higher price'] }
+        ],
+        whatSee: 'Town auction page with Plant Purge badge showing broadcast status',
+        value: 'Collectors get access to rare plants nationally. Sellers get national exposure from their local town.'
+      },
+      'tag-system': {
+        roles: [{ icon:'&#128100;', label:'All Users', cls:'role-all' }],
+        journeys: [
+          { label:'Automatic Tagging', steps:['User wins an auction','Automatically tagged "auction-winner"','Visits Tampa Bay','Tagged "tampa-bay-visitor"','Completes 5 orders','Tagged "5-star-shipper"','Profile shows trust badges'] }
+        ],
+        whatSee: 'Trust badges on profiles, reputation score, town participation history',
+        value: 'Your reputation follows you everywhere. Build trust once, use it in every town.'
+      },
+      'game-mechanics': {
+        roles: [{ icon:'&#128100;', label:'Active Member', cls:'role-member' }],
+        journeys: [
+          { label:'User Journey', steps:['Member logs in','Sees daily challenge card','Completes challenge (share a listing, make a purchase, post in BST)','Earns points','Achievement unlocked toast appears','Climbs leaderboard','Redeems points for rewards'] }
+        ],
+        whatSee: 'Points badge in nav, daily challenge card on home screen, achievement toast popups, rewards catalog',
+        value: 'Getting rewarded for being an active community member makes participation feel like a game.'
+      },
+      'poke-purge': {
+        roles: [{ icon:'&#128100;', label:'Pokemon Collector', cls:'role-buyer' }, { icon:'&#127978;', label:'Seller', cls:'role-seller' }],
+        journeys: [
+          { label:'Buyer Journey', steps:['Poke Purge customer sees rare card auction','Clicks link','Lands on town page','SSO login from Poke Purge','Bids on card','Wins','Seller ships'] },
+          { label:'Seller Journey', steps:['Creates auction on their town','Checks "Broadcast to Poke Purge"','Listing appears on pokepurge.com','National buyers see it'] }
+        ],
+        whatSee: 'Town auction page with Poke Purge badge showing broadcast status',
+        value: 'Pokemon card collectors get access to rare cards nationally. Sellers reach a national audience.'
+      }
+    };
+
+    // ═══════════════════════════════════════════
+    // Plant Purge Module Data (hardcoded from audit)
+    // ═══════════════════════════════════════════
+    var ppModules = [
+      // L0 — Core Infrastructure
+      {
+        id:'auth-pp', name:'Auth (Password + Google)', icon:'\ud83d\udd10', layer:0, layer_name:'Core Infrastructure',
+        status:'active', type:'legacy', consolidation:'replace', consolLabel:'\ud83d\udd01 REPLACE WITH DT',
+        tables:[ {name:'users',rows:17,cols:35}, {name:'session',rows:83,cols:3} ],
+        notes:'Uses password_hash + google_id. No magic links. Needs SSO bridge to connect with DT auth.',
+        consolNote:'Migrate PP users to DT auth via email match',
+        submodules:[ {name:'Password Auth',optional:false}, {name:'Google OAuth',optional:false} ]
+      },
+      {
+        id:'feature-flags-pp', name:'Feature Flags', icon:'\ud83d\udea9', layer:0, layer_name:'Core Infrastructure',
+        status:'active', type:'different', consolidation:'merge', consolLabel:'\ud83d\udd04 MERGE',
+        tables:[ {name:'feature_flags',rows:76,cols:6} ],
+        notes:'PP uses platform_slug + group_slug (2-level scoping). DT uses town_slug (1-level). PP has group-level flags per BST group.',
+        consolNote:'DT wins on structure, but group-level flags are unique to PP and worth preserving'
+      },
+      {
+        id:'invoices', name:'Invoices & Billing', icon:'\ud83e\uddfe', layer:0, layer_name:'Core Infrastructure',
+        status:'active', type:'unique', consolidation:'migrate', consolLabel:'\u27a1\ufe0f MIGRATE TO DT',
+        tables:[ {name:'invoices',rows:101,cols:32} ],
+        notes:'PP\'s primary payment record. 32 columns including payment method, shipping, taxes, status. More complete than DT\'s listing_orders.',
+        consolNote:'invoices replaces/enhances DT listing_orders',
+        keyColumns:['subtotal_cents','tax_cents','shipping_cents','discount_cents','payment_method','tracking_number','shipped_at','delivered_at','refund_status','notes','seller_notes']
+      },
+      {
+        id:'shipments', name:'Shipments & Tracking', icon:'\ud83d\udce6', layer:0, layer_name:'Core Infrastructure',
+        status:'active', type:'unique', consolidation:'migrate', consolLabel:'\u27a1\ufe0f MIGRATE TO DT',
+        tables:[ {name:'shipments',rows:2,cols:30} ],
+        notes:'Full Shippo integration with label generation, tracking, dimensions, weights. DT has roadie fields on users table but no shipments table.',
+        consolNote:'Add shipments table to DT'
+      },
+      // L1 — Marketplace
+      {
+        id:'listings-pp', name:'Listings', icon:'\ud83c\udff7\ufe0f', layer:1, layer_name:'Marketplace',
+        status:'active', type:'overlapping', consolidation:'dt-wins', consolLabel:'\u2705 DT WINS',
+        tables:[ {name:'listings',rows:2651,cols:23} ],
+        notes:'PP has base_shipping_rate, per_item_shipping_rate, grade, channel, list_nationally, claimed_by_invoice_id that DT doesn\'t. DT has community_id, niche, payment method flags, ship dimensions that PP doesn\'t.',
+        consolNote:'DT wins \u2014 PP listings need 6 columns added to DT listings: base_shipping_rate, per_item_shipping_rate, grade, channel, list_nationally',
+        keyColumns:['base_shipping_rate','per_item_shipping_rate','grade','channel','list_nationally','claimed_by_invoice_id'],
+        submodules:[ {name:'Plant Listings',optional:false}, {name:'Flash Sales',optional:true}, {name:'Group Buys',optional:true} ]
+      },
+      {
+        id:'buyer-profiles', name:'Buyer Profiles', icon:'\ud83d\udc64', layer:1, layer_name:'Marketplace',
+        status:'active', type:'unique', consolidation:'migrate', consolLabel:'\u27a1\ufe0f MIGRATE TO DT',
+        tables:[ {name:'buyer_profiles',rows:5,cols:25} ],
+        notes:'Separate buyer identity layer. 25 cols including purchase history, preferences, trust score, shipping address stored separately.',
+        consolNote:'Merge into DT users table + new buyer_profiles table'
+      },
+      {
+        id:'deposits', name:'Deposits System', icon:'\ud83d\udcb0', layer:1, layer_name:'Marketplace',
+        status:'built', type:'unique', consolidation:'migrate', consolLabel:'\u27a1\ufe0f MIGRATE TO DT',
+        tables:[ {name:'deposits',rows:0,cols:15} ],
+        notes:'Hold deposits on high-value items before full payment. DT has deposit_amount_cents on listings but no deposits tracking table.',
+        consolNote:'Add deposits table to DT'
+      },
+      {
+        id:'group-buys', name:'Group Buys', icon:'\ud83d\udc65', layer:1, layer_name:'Marketplace',
+        status:'built', type:'unique', consolidation:'new', consolLabel:'\ud83c\udd95 NEW IN DT',
+        tables:[ {name:'group_buys',rows:0,cols:9}, {name:'group_buy_claims',rows:0,cols:7} ],
+        notes:'Multiple buyers pool to buy in bulk at discount. Not in DT at all.',
+        consolNote:'Build as new module in DT'
+      },
+      // L2 — Auctions
+      {
+        id:'auctions-pp', name:'Auction Engine', icon:'\ud83d\udd28', layer:2, layer_name:'Auctions',
+        status:'active', type:'overlapping', consolidation:'dt-wins', consolLabel:'\u2705 DT WINS',
+        tables:[ {name:'auctions',rows:41,cols:18}, {name:'auction_bids',rows:5,cols:10}, {name:'auction_orders',rows:4,cols:9}, {name:'bidder_scores',rows:3,cols:9} ],
+        notes:'Core is nearly identical to DT. DT adds community_id, scope, cash_only, payment_retry_deadline. PP has auction_orders table DT doesn\'t.',
+        consolNote:'DT wins \u2014 migrate PP auctions data to DT, add auction_orders table to DT'
+      },
+      // L3 — Seller Tools
+      {
+        id:'network-levels', name:'Network Levels (Gamification)', icon:'\ud83d\udcca', layer:3, layer_name:'Seller Tools',
+        status:'active', type:'unique', consolidation:'migrate', consolLabel:'\u27a1\ufe0f MIGRATE TO DT',
+        tables:[ {name:'network_levels',rows:61,cols:9} ],
+        notes:'Seller reputation levels with 61 levels seeded. XP-based progression. Not in DT \u2014 closest is leaderboard_scores.',
+        consolNote:'Migrate to DT as part of game-mechanics module'
+      },
+      {
+        id:'referrals', name:'Referral System', icon:'\ud83d\udd17', layer:3, layer_name:'Seller Tools',
+        status:'built', type:'unique', consolidation:'migrate', consolLabel:'\u27a1\ufe0f MIGRATE TO DT',
+        tables:[ {name:'referrers',rows:0,cols:7}, {name:'referral_earnings',rows:0,cols:8} ],
+        notes:'Seller referral program. PP users table has referred_by, referred_by_code, referral_code. DT users table has referral_code only.',
+        consolNote:'Add referrers + referral_earnings tables to DT'
+      },
+      {
+        id:'wallet', name:'Wallet & Transactions', icon:'\ud83d\udcb3', layer:3, layer_name:'Seller Tools',
+        status:'built', type:'unique', consolidation:'new', consolLabel:'\ud83c\udd95 NEW IN DT',
+        tables:[ {name:'wallet_transactions',rows:0,cols:8} ],
+        notes:'Internal wallet for credits, refunds, payouts. Not in DT.',
+        consolNote:'Build as new module in DT'
+      },
+      {
+        id:'donations-pp', name:'Donations (Regen)', icon:'\ud83c\udf31', layer:3, layer_name:'Seller Tools',
+        status:'active', type:'unique', consolidation:'enhance', consolLabel:'\ud83d\udd27 ENHANCE DT',
+        tables:[ {name:'donations',rows:51,cols:10} ],
+        notes:'PP has regen_pct on users table \u2014 each seller donates a % of sales to regenerative agriculture. 51 donation records. DT has ag_donations tied to auction orders only. PP version is broader \u2014 any sale type.',
+        consolNote:'Enhance DT ag_donations to support any sale type, not just auctions'
+      },
+      // L4 — Community
+      {
+        id:'bst-groups-pp', name:'BST Groups', icon:'\ud83c\udfe0', layer:4, layer_name:'Community',
+        status:'active', type:'overlapping', consolidation:'merge', consolLabel:'\ud83d\udd04 MERGE',
+        tables:[ {name:'pp_bst_groups',rows:1,cols:16}, {name:'pp_bst_group_members',rows:2,cols:6}, {name:'pp_bst_group_listings',rows:4,cols:5}, {name:'pp_bst_group_applications',rows:0,cols:13}, {name:'pp_bst_join_requests',rows:0,cols:8} ],
+        notes:'PP has 16-col groups table (DT has fewer), group applications, join requests, and a group_listings bridge table DT doesn\'t have. PP uses pp_bst_ prefix, DT uses bst_ prefix.',
+        consolNote:'PP\'s group_applications + group_listings bridge are worth adding to DT'
+      },
+      {
+        id:'messaging-pp', name:'Direct Messages', icon:'\ud83d\udcac', layer:4, layer_name:'Community',
+        status:'built', type:'overlapping', consolidation:'dt-wins', consolLabel:'\u2705 DT WINS',
+        tables:[ {name:'direct_messages',rows:0,cols:8}, {name:'dm_conversations',rows:0,cols:8} ],
+        notes:'PP has read boolean, DT has is_read. Nearly identical schemas. Type differences on all IDs (text vs uuid).',
+        consolNote:'PP messages migrate to DT schema'
+      },
+      {
+        id:'reviews-pp', name:'Reviews', icon:'\u2b50', layer:4, layer_name:'Community',
+        status:'built', type:'different', consolidation:'merge', consolLabel:'\ud83d\udd04 MERGE',
+        tables:[ {name:'reviews',rows:0,cols:9}, {name:'reviews_of_buyers',rows:0,cols:7}, {name:'seller_feedback',rows:0,cols:5} ],
+        notes:'PP ties reviews to invoices/buyer_profiles. DT ties reviews to orders with reviewer/reviewee pattern. PP has reviews_of_buyers (buyers reviewed) and seller_feedback separately.',
+        consolNote:'Adopt DT schema but add reviews_of_buyers concept'
+      },
+      // L5 — Growth
+      {
+        id:'automation-pp', name:'Automation / ManyChat', icon:'\ud83e\udd16', layer:5, layer_name:'Growth',
+        status:'active', type:'overlapping', consolidation:'merge', consolLabel:'\ud83d\udd04 MERGE',
+        tables:[ {name:'automation_config',rows:0,cols:14} ],
+        notes:'PP has channel + webhook_secret cols DT doesn\'t. PP\'s automation is per-group, DT\'s is per-community.',
+        consolNote:'Add channel and webhook_secret columns to DT automation_config'
+      },
+      {
+        id:'vp-applications', name:'VP Applications', icon:'\ud83d\udccb', layer:5, layer_name:'Growth',
+        status:'built', type:'unique', consolidation:'merge', consolLabel:'\ud83d\udd04 MERGE',
+        tables:[ {name:'vp_applications',rows:0,cols:10} ],
+        notes:'Vice President / town moderator applications. Similar concept to DT\'s mod-apply but more formal.',
+        consolNote:'Merge with DT\'s mod-apply module'
+      }
+    ];
+
+    // Platform Differences data
+    var platformDiffs = [
+      { pattern:'Primary Keys', pp:'integer', dt:'uuid', winner:'dt' },
+      { pattern:'Auth', pp:'password + Google', dt:'magic link + social', winner:'dt' },
+      { pattern:'Photo Storage', pp:'text JSON', dt:'jsonb', winner:'dt' },
+      { pattern:'Price Type', pp:'double precision', dt:'numeric', winner:'dt' },
+      { pattern:'Scoping', pp:'platform_slug + group_slug', dt:'community_id', winner:'dt' },
+      { pattern:'Code Structure', pp:'monolith (1 file)', dt:'monolith (routes planned)', winner:'dt' },
+      { pattern:'Shipping', pp:'shipments table (30 cols)', dt:'roadie fields on users', winner:'pp' },
+      { pattern:'Billing', pp:'invoices (32 cols)', dt:'listing_orders', winner:'pp' },
+      { pattern:'Gamification', pp:'network_levels (61 levels)', dt:'leaderboard_scores', winner:'pp' },
+      { pattern:'Referrals', pp:'built (referrers + earnings)', dt:'not built', winner:'pp' }
+    ];
+
+    // ═══════════════════════════════════════════
+    // Sebastian Module Data (hardcoded from audit)
+    // ═══════════════════════════════════════════
+    var sebModules = [
+      // L0 — Core Infrastructure
+      {
+        id:'seb-auth', name:'Auth System', icon:'\ud83d\udd10', layer:0, layer_name:'Core Infrastructure',
+        badge:'merge', badgeLabel:'\ud83d\udcb5 MERGE',
+        tables:[ {name:'auth_codes',rows:83,cols:6}, {name:'magic_links',rows:0,cols:4}, {name:'signup_login_tokens',rows:4,cols:6}, {name:'sessions',rows:37,cols:4} ],
+        notes:'Auth codes + magic links (same as DT) plus signup_login_tokens for persistent login. Also has passwordhash on users table.',
+        extractNote:'DT has same auth_codes + magic_links. Merge signup_login_tokens into DT.',
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'All Users',cls:'role-all'}], journeys:[{label:'Login Flow',steps:['Enter email','Receive 6-digit code','Enter code','Session created','Logged in']}], whatSee:'Email input, code verification screen', value:'Passwordless login via email codes. Persistent tokens keep you logged in.' }
+      },
+      {
+        id:'seb-trust-system', name:'Trust Tier System', icon:'\ud83d\udee1\ufe0f', layer:0, layer_name:'Core Infrastructure',
+        badge:'extract', badgeLabel:'\ud83d\udfe2 EXTRACT',
+        tables:[ {name:'trust_applications',rows:0,cols:23}, {name:'trust_events',rows:0,cols:6} ],
+        notes:'5-tier trust system (0=new, 1=basic, 2=verified, 3=trusted, 4=admin). GPS presence verification with lat/lng/accuracy. Identity verification workflow. trusttier on users + town_memberships.',
+        extractNote:'DT has no trust tier system. Extract this entire module into DT.',
+        keyColumns:['trusttier','presenceverifiedat','presencelat','presencelng','presenceaccuracymeters','identitymethod','identitystatus','presencestatus'],
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'All Users',cls:'role-all'},{icon:'\ud83d\udd27',label:'Admin',cls:'role-admin'}], journeys:[{label:'Trust Upgrade',steps:['User applies for higher tier','Submits address + identity','GPS presence verified','Admin reviews','Tier upgraded','New permissions unlocked']}], whatSee:'Trust badge on profile, tier upgrade application form, GPS verification prompt', value:'Higher trust = more marketplace access. Verified residents get priority in local transactions.' }
+      },
+      // L1 — Town Engine
+      {
+        id:'seb-town-membership', name:'Town Membership', icon:'\ud83c\udfe0', layer:1, layer_name:'Town Engine',
+        badge:'merge', badgeLabel:'\ud83d\udcb5 MERGE',
+        tables:[ {name:'town_memberships',rows:39,cols:7}, {name:'towns',rows:0,cols:5}, {name:'districts',rows:0,cols:4} ],
+        notes:'Town memberships with trustlevel and trusttier per town. Districts subdivide towns. DT uses communities + community_memberships.',
+        extractNote:'Merge trust-aware memberships into DT community_memberships.',
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'Resident',cls:'role-member'}], journeys:[{label:'Join Town',steps:['Visit town page','Click Join','Assigned visitor trust level','Complete verification','Trust tier upgraded']}], whatSee:'Town landing page, membership status, trust level badge', value:'Be part of your local community. Higher trust levels unlock more features.' }
+      },
+      {
+        id:'seb-places', name:'Places (Storefronts)', icon:'\ud83c\udfea', layer:1, layer_name:'Town Engine',
+        badge:'merge', badgeLabel:'\ud83d\udcb5 MERGE',
+        tables:[ {name:'places',rows:4,cols:27} ],
+        notes:'Sebastian\'s version of businesses/stores. 27 cols including sellertype, visibilitylevel, pickupzone, meetupinstructions, verifiedstatus, deposit_mode, ghost_timeout_hours, facebook_api_key, followercount. DT has businesses table.',
+        extractNote:'Merge best columns from places into DT businesses.',
+        keyColumns:['sellertype','visibilitylevel','pickupzone','meetupinstructions','deposit_mode','ghost_timeout_hours','facebook_api_key','followercount','storetype'],
+        ux:{ roles:[{icon:'\ud83c\udfe2',label:'Business Owner',cls:'role-seller'},{icon:'\ud83d\udc64',label:'Buyer',cls:'role-buyer'}], journeys:[{label:'Business Setup',steps:['Apply as local business','Admin approves','Create storefront','Set hours, pickup zone, photos','Publish listings','Customers find you']}], whatSee:'Storefront profile with banner, avatar, hours, pickup zone, verified badge', value:'Your digital storefront in the town marketplace.' }
+      },
+      // L2 — Commerce
+      {
+        id:'seb-listings', name:'Listings', icon:'\ud83c\udff7\ufe0f', layer:2, layer_name:'Commerce',
+        badge:'merge', badgeLabel:'\ud83d\udcb5 MERGE',
+        tables:[ {name:'listings',rows:467,cols:33}, {name:'bids',rows:0,cols:6}, {name:'cart_items',rows:4,cols:8} ],
+        notes:'33-col listings with embedded auction fields (startbidcents, minincrementcents, reservecents, buynowcents, auctionstatus), service listing fields (service_form_fields, service_cta_label), variants (variantsjson), listing types (item/service/event). DT separates auctions into their own table.',
+        extractNote:'DT wins on separation of concerns (auctions table). Merge service listing fields + variants + listingtype into DT.',
+        keyColumns:['listingtype','exchangetype','variantsjson','service_form_fields','service_cta_label','service_thank_you','google_calendar_url','offercategory','compensationtype'],
+        ux:{ roles:[{icon:'\ud83c\udfe2',label:'Seller',cls:'role-seller'},{icon:'\ud83d\udc64',label:'Buyer',cls:'role-buyer'}], journeys:[{label:'Create Listing',steps:['Choose type: item, service, or event','Add photos, description, price','Set variants if applicable','For services: configure inquiry form','Publish','Buyers browse and purchase']},{label:'Service Inquiry',steps:['Buyer sees service listing','Fills out custom form','Seller receives inquiry','Responds with quote']}], whatSee:'Product grid with items, services, and events. Service listings have custom inquiry forms.', value:'Sell products, offer services, or promote events \u2014 all from one listing system.' }
+      },
+      {
+        id:'seb-orders', name:'Orders & Checkout', icon:'\ud83d\udce6', layer:2, layer_name:'Commerce',
+        badge:'upgrade', badgeLabel:'\ud83d\udfe1 UPGRADE',
+        tables:[ {name:'orders',rows:14,cols:28}, {name:'order_items',rows:14,cols:8}, {name:'payments',rows:26,cols:6} ],
+        notes:'28-col orders with deposit integration (deposit_id, deposit_status, deposit_amount), Uber delivery (uber_quote_id, uber_delivery_id, delivery_status, delivery_address jsonb), tipping (servicegratuitycents), fulfillment tracking. DT has simpler listing_orders.',
+        extractNote:'DT orders need deposit fields, delivery integration, and tipping. Upgrade DT to match.',
+        keyColumns:['deposit_id','deposit_status','deposit_amount','delivery_address','delivery_fee_cents','uber_quote_id','uber_delivery_id','delivery_status','servicegratuitycents','fulfillmenttype'],
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'Buyer',cls:'role-buyer'},{icon:'\ud83c\udfe2',label:'Seller',cls:'role-seller'}], journeys:[{label:'Buyer Checkout',steps:['Add items to cart','Choose fulfillment: pickup or delivery','Pay deposit or full amount','Optionally add tip','Order confirmed','Track delivery or pick up']},{label:'Seller Fulfillment',steps:['Receive order notification','Confirm availability','Mark as ready','Buyer picks up or delivery dispatched','Order completed']}], whatSee:'Cart page, checkout with payment + delivery options, order tracking', value:'Flexible checkout with deposits, tipping, and delivery tracking.' }
+      },
+      {
+        id:'seb-invoices', name:'Invoices & Deposits', icon:'\ud83e\uddfe', layer:2, layer_name:'Commerce',
+        badge:'extract', badgeLabel:'\ud83d\udfe2 EXTRACT',
+        tables:[ {name:'invoices',rows:1,cols:23}, {name:'deposits',rows:0,cols:19} ],
+        notes:'Seller-created invoices with Stripe payment links (stripe_payment_link_url). Deposit system with forfeiture (forfeited_at, ghost_timeout_hours, expires_at). DT has neither.',
+        extractNote:'Extract both tables into DT. Invoices enable seller-initiated billing. Deposits protect against ghost buyers.',
+        keyColumns:['stripe_payment_link_id','stripe_payment_link_url','deposit_percent','ghost_timeout_hours','forfeited_at','expires_at'],
+        ux:{ roles:[{icon:'\ud83c\udfe2',label:'Seller',cls:'role-seller'},{icon:'\ud83d\udc64',label:'Buyer',cls:'role-buyer'}], journeys:[{label:'Invoice Flow',steps:['Seller creates invoice with line items','Sets deposit mode and due date','Buyer receives payment link','Pays via Stripe','Seller gets notification']},{label:'Deposit Protection',steps:['Buyer places order','5% deposit held','Buyer ghosts (no pickup)','48h timeout expires','Deposit forfeited to seller']}], whatSee:'Invoice builder with line items and send button. Deposit status on order page.', value:'Get paid upfront with invoices. Deposits protect sellers from ghost buyers.' }
+      },
+      {
+        id:'seb-shipments', name:'Shipments & Tracking', icon:'\ud83d\ude9a', layer:2, layer_name:'Commerce',
+        badge:'extract', badgeLabel:'\ud83d\udfe2 EXTRACT',
+        tables:[ {name:'shipments',rows:0,cols:26} ],
+        notes:'Full Shippo integration: from/to addresses, dimensions, selected_rate (jsonb), label_url, tracking_number, tracking_url, carrier, service. DT has roadie fields on users but no shipments table.',
+        extractNote:'Extract shipments table + Shippo integration into DT.',
+        keyColumns:['shippo_shipment_id','selected_rate','label_url','tracking_number','tracking_url','carrier','service','weight_oz','length_in','width_in','height_in'],
+        ux:{ roles:[{icon:'\ud83c\udfe2',label:'Seller',cls:'role-seller'},{icon:'\ud83d\udc64',label:'Buyer',cls:'role-buyer'}], journeys:[{label:'Ship an Order',steps:['Seller enters package dimensions','Shippo returns rate quotes','Seller selects carrier/rate','Label generated','Tracking number shared with buyer','Buyer tracks package']}], whatSee:'Shipping form with dimensions, rate comparison, label download, tracking link', value:'Compare shipping rates, print labels, and share tracking \u2014 all in one place.' }
+      },
+      // L3 — Sweepstakes Engine
+      {
+        id:'seb-sweepstakes', name:'Sweepstakes Engine', icon:'\ud83c\udfb0', layer:3, layer_name:'Sweepstakes Engine',
+        badge:'upgrade', badgeLabel:'\ud83d\udfe1 UPGRADE',
+        tables:[ {name:'sweepstakes',rows:11,cols:13}, {name:'sweep_rules',rows:55,cols:13}, {name:'sweep_ledger',rows:93,cols:8} ],
+        notes:'THE core game system. 55 rules across 7 action types: message_send (1pt), listing_create (2pt), purchase (3pt), review_left (2pt), listing_mark_sold (1pt), social_share (1-100pt). Rules are per-sweepstake. Ledger tracks all point credits/debits. DT has these tables but zero data.',
+        extractNote:'DT has tables, needs configuration. Extract Sebastian\'s 55 rules as blueprint.',
+        keyColumns:['rule_type','amount','buyer_amount','seller_amount','daily_cap','cooldown_seconds','entrycost','maxentriesperuserperday'],
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'Community Member',cls:'role-member'},{icon:'\ud83c\udfe2',label:'Business Donor',cls:'role-seller'},{icon:'\ud83d\udd27',label:'Admin',cls:'role-admin'}], journeys:[{label:'Earn Points',steps:['User sends a message (+1pt)','Creates a listing (+2pt)','Makes a purchase (+3pt)','Leaves a review (+2pt)','Points appear in balance']},{label:'Enter Sweepstake',steps:['Browse active sweepstakes','See prize and entry cost','Spend points to enter','More entries = higher chance','Draw happens at end date','Winner notified']}], whatSee:'Points balance in nav, sweepstake cards with prizes and countdown timers, entry button', value:'Every action earns points. Spend points to win real prizes from local businesses.' }
+      },
+      {
+        id:'seb-sweep-actions', name:'Sweep Actions & Draws', icon:'\ud83c\udfc6', layer:3, layer_name:'Sweepstakes Engine',
+        badge:'extract', badgeLabel:'\ud83d\udfe2 EXTRACT',
+        tables:[ {name:'sweep_award_events',rows:72,cols:6}, {name:'sweepstake_entries',rows:17,cols:7}, {name:'sweep_draws',rows:1,cols:13} ],
+        notes:'72 award events tracked (orders, listings, shares). 17 entries across sweepstakes. 1 completed draw with winner selection, claim flow (claimedat, claimedmessage, claimedphotourl). Unique event_key prevents duplicate awards.',
+        extractNote:'Extract event tracking + draw/claim system. DT has tables but no data or claim flow.',
+        keyColumns:['event_key','snapshotjson','claimedat','claimedmessage','claimedphotourl','claimedpostedmessageid'],
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'Winner',cls:'role-member'},{icon:'\ud83d\udd27',label:'Admin',cls:'role-admin'}], journeys:[{label:'Prize Draw',steps:['Sweepstake end date arrives','Admin triggers draw','System selects random winner weighted by entries','Winner notified','Winner claims prize','Posts photo proof','Shared to channel']}], whatSee:'Draw animation, winner announcement card, claim form with photo upload', value:'Transparent, fair prize draws. Winners share their prize photos with the community.' }
+      },
+      {
+        id:'seb-prizes', name:'Prizes & Giveaways', icon:'\ud83c\udf81', layer:3, layer_name:'Sweepstakes Engine',
+        badge:'extract', badgeLabel:'\ud83d\udfe2 EXTRACT',
+        tables:[ {name:'prize_offers',rows:14,cols:18}, {name:'prize_awards',rows:0,cols:12}, {name:'giveaway_offers',rows:14,cols:17} ],
+        notes:'Businesses donate prizes (prize_offers: valuecents, prizetype, fulfillmentmethod). Giveaway_offers bridge businesses to sweepstakes with reward (free_month subscription). 14 prizes donated ($10-$100k value). DT has prize_offers/awards but no giveaway_offers.',
+        extractNote:'Extract giveaway_offers table. This incentivizes businesses to donate prizes.',
+        keyColumns:['prizetype','fulfillmentmethod','rewardtype','estimatedvalue','donorplaceid','donordisplayname'],
+        ux:{ roles:[{icon:'\ud83c\udfe2',label:'Business Donor',cls:'role-seller'},{icon:'\ud83d\udc64',label:'Winner',cls:'role-member'}], journeys:[{label:'Donate a Prize',steps:['Business clicks Donate Prize','Enters title, value, photo','Selects fulfillment: pickup or ship','Submits for review','Admin approves','Prize linked to sweepstake','Business gets free month subscription as reward']},{label:'Win a Prize',steps:['User enters sweepstake','Draw selects winner','Winner contacts donor via DM','Picks up prize','Posts proof photo']}], whatSee:'Prize catalog with photos and values, donation form, winner claim flow', value:'Businesses donate prizes, get free subscription months. Members win real local prizes.' }
+      },
+      {
+        id:'seb-social-shares', name:'Social Shares', icon:'\ud83d\udce3', layer:3, layer_name:'Sweepstakes Engine',
+        badge:'extract', badgeLabel:'\ud83d\udfe2 EXTRACT',
+        tables:[ {name:'social_shares',rows:9,cols:7} ],
+        notes:'Tracks shares to Facebook, Twitter, clipboard. Links to sweepstakes for bonus entries. 9 shares recorded across 3 users. DT has no dedicated share tracking table.',
+        extractNote:'Extract social_shares table into DT.',
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'Community Member',cls:'role-member'}], journeys:[{label:'Share for Points',steps:['User sees sweepstake','Clicks Share to Facebook/Twitter','Share tracked','Bonus sweep points awarded','More entries in the draw']}], whatSee:'Share buttons on sweepstake cards (Facebook, Twitter, Copy Link)', value:'Share sweepstakes with friends, earn bonus entries.' }
+      },
+      // L4 — Community
+      {
+        id:'seb-channels', name:'Channels', icon:'\ud83d\udcfa', layer:4, layer_name:'Community',
+        badge:'merge', badgeLabel:'\ud83d\udcb5 MERGE',
+        tables:[ {name:'channels',rows:14,cols:6}, {name:'channel_messages',rows:14,cols:8}, {name:'channel_memberships',rows:0,cols:5}, {name:'message_threads',rows:17,cols:5} ],
+        notes:'Public/private channels with threaded messages. 14 channels, 14 messages, 17 threads. DT has same structure via channels table.',
+        extractNote:'Merge \u2014 same structure, combine data patterns.',
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'Community Member',cls:'role-member'}], journeys:[{label:'Channel Chat',steps:['Browse town channels','Join a channel','Post message with optional image','Reply in thread','Community discusses']}], whatSee:'Channel list sidebar, message feed with threads, image attachments', value:'Real-time community discussion organized by topic.' }
+      },
+      {
+        id:'seb-channel-moderation', name:'Channel Moderation', icon:'\ud83d\udee1\ufe0f', layer:4, layer_name:'Community',
+        badge:'extract', badgeLabel:'\ud83d\udfe2 EXTRACT',
+        tables:[ {name:'channel_mutes',rows:0,cols:6}, {name:'channel_requests',rows:0,cols:10} ],
+        notes:'Per-channel user muting (muted_by_user_id, reason). Channel creation requests with admin review. DT has neither.',
+        extractNote:'Extract both tables into DT for community moderation.',
+        ux:{ roles:[{icon:'\ud83d\udd27',label:'Admin',cls:'role-admin'},{icon:'\ud83d\udc64',label:'Member',cls:'role-member'}], journeys:[{label:'Mute Disruptive User',steps:['Admin sees problem user in channel','Clicks Mute','Enters reason','User muted from that channel','Can unmute later']},{label:'Request New Channel',steps:['Member clicks Request Channel','Enters name, description, reason','Admin reviews','Approves or declines','Channel created if approved']}], whatSee:'Mute button on user messages, channel request form, admin moderation panel', value:'Keep channels healthy with targeted muting. Let the community propose new channels.' }
+      },
+      {
+        id:'seb-direct-messaging', name:'Direct Messaging', icon:'\ud83d\udcac', layer:4, layer_name:'Community',
+        badge:'merge', badgeLabel:'\ud83d\udcb5 MERGE',
+        tables:[ {name:'direct_conversations',rows:1,cols:5}, {name:'direct_messages',rows:4,cols:6} ],
+        notes:'1-on-1 DMs between users. Same concept as DT. Sebastian uses usera/userb integer IDs.',
+        extractNote:'Merge \u2014 DT has same structure with uuid IDs.',
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'All Users',cls:'role-all'}], journeys:[{label:'Send DM',steps:['Click user profile','Click Message','Type message','Send','Recipient sees notification']}], whatSee:'DM inbox, conversation thread, message input', value:'Private messaging for buyer-seller coordination and community connections.' }
+      },
+      {
+        id:'seb-events', name:'Events', icon:'\ud83d\udcc5', layer:4, layer_name:'Community',
+        badge:'upgrade', badgeLabel:'\ud83d\udfe1 UPGRADE',
+        tables:[ {name:'events_v1',rows:3,cols:21}, {name:'event_rsvps',rows:0,cols:6} ],
+        notes:'21-col event system with organizer details (name, email, phone), category, imageurl, admin review workflow (reviewedat, decisionreason). RSVP tracking. DT has events_v1 but simpler.',
+        extractNote:'Sebastian events have richer organizer fields and review workflow. Upgrade DT.',
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'Organizer',cls:'role-member'},{icon:'\ud83d\udc64',label:'Attendee',cls:'role-visitor'}], journeys:[{label:'Create Event',steps:['Click Create Event','Enter title, description, date, location','Add organizer contact info','Upload event image','Submit for admin review','Published to town calendar']},{label:'RSVP',steps:['Browse event calendar','Click event','See details and organizer info','Click RSVP','Confirmed']}], whatSee:'Event calendar grid, event detail page with image and organizer info, RSVP button', value:'Discover and create local events. RSVP to show interest.' }
+      },
+      {
+        id:'seb-pulse', name:'Daily Pulse', icon:'\ud83d\udcca', layer:4, layer_name:'Community',
+        badge:'merge', badgeLabel:'\ud83d\udcb5 MERGE',
+        tables:[ {name:'daily_pulses',rows:1,cols:8}, {name:'pulse_exports',rows:0,cols:7} ],
+        notes:'Daily town digest with metrics (metricsjson) and highlights (highlightsjson). Pulse exports to Facebook (exporttype, pulsedata, posttext). DT has daily_pulses but no pulse_exports.',
+        extractNote:'Merge \u2014 add pulse_exports table to DT for social media publishing.',
+        ux:{ roles:[{icon:'\ud83d\udd27',label:'Admin',cls:'role-admin'},{icon:'\ud83d\udc64',label:'Resident',cls:'role-visitor'}], journeys:[{label:'Publish Pulse',steps:['System generates daily metrics','Admin reviews and edits','Publishes pulse to town','Exports to Facebook page','Community sees town activity summary']}], whatSee:'Daily digest card with metrics, highlights, and export-to-Facebook button', value:'Stay informed about your town\'s daily activity at a glance.' }
+      },
+      // L5 — Subscriptions & Billing
+      {
+        id:'seb-business-subscriptions', name:'Business Subscriptions', icon:'\ud83d\udcb3', layer:5, layer_name:'Subscriptions & Billing',
+        badge:'extract', badgeLabel:'\ud83d\udfe2 EXTRACT',
+        tables:[ {name:'business_subscriptions',rows:2,cols:13}, {name:'business_applications',rows:2,cols:15} ],
+        notes:'Stripe subscription billing for business storefronts. Plans: free_trial, paid tiers. Includes trial period, cancellation tracking. Linked to places (storefronts). DT has no business billing.',
+        extractNote:'Extract into DT. Revenue model for the platform.',
+        keyColumns:['plan','trialendsat','stripecustomerid','stripesubscriptionid','currentperiodstart','currentperiodend','canceledat'],
+        ux:{ roles:[{icon:'\ud83c\udfe2',label:'Business Owner',cls:'role-seller'}], journeys:[{label:'Subscribe',steps:['Business applies','Admin approves','Free trial starts','Trial ends','Choose paid plan','Enter payment via Stripe','Monthly billing begins']}], whatSee:'Subscription status page, plan comparison, Stripe checkout for upgrade', value:'Start free, upgrade when you\'re ready. Stripe handles billing automatically.' }
+      },
+      {
+        id:'seb-user-subscriptions', name:'User Subscriptions', icon:'\ud83d\udc51', layer:5, layer_name:'Subscriptions & Billing',
+        badge:'extract', badgeLabel:'\ud83d\udfe2 EXTRACT',
+        tables:[ {name:'user_subscriptions',rows:0,cols:12} ],
+        notes:'Stripe subscription billing for individual users. Plans: user tier. Includes trial end, cancellation, Stripe IDs. DT has no user billing.',
+        extractNote:'Extract into DT. Enables premium user features.',
+        keyColumns:['plan','stripecustomerid','stripesubscriptionid','trialend','canceledat'],
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'User',cls:'role-member'}], journeys:[{label:'Go Premium',steps:['User sees premium features','Clicks Upgrade','Selects plan','Pays via Stripe','Premium badge appears','Access to premium features']}], whatSee:'Premium upgrade page, plan comparison, Stripe checkout', value:'Unlock premium features with a monthly subscription.' }
+      },
+      {
+        id:'seb-referrals', name:'Referral System', icon:'\ud83d\udd17', layer:5, layer_name:'Subscriptions & Billing',
+        badge:'merge', badgeLabel:'\ud83d\udcb5 MERGE',
+        tables:[ {name:'referrers',rows:0,cols:5}, {name:'referral_earnings',rows:0,cols:6}, {name:'referral_transactions',rows:0,cols:8} ],
+        notes:'Referral program with commission_percent (5% default). referral_transactions tracks credits per referred user/subscription. Users have referralcode, referralbalancecents, referralearningstotal on users table. DT has referral_code on users only.',
+        extractNote:'Merge referral tables + transaction tracking into DT.',
+        keyColumns:['commission_percent','ref_code','referralbalancecents','referralearningstotal','referred_by_code'],
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'Referrer',cls:'role-member'},{icon:'\ud83d\udc64',label:'New User',cls:'role-visitor'}], journeys:[{label:'Refer a Friend',steps:['User copies referral link','Friend signs up with link','Friend makes a purchase or subscribes','Referrer earns commission','Credits added to referral balance']}], whatSee:'Referral code on profile, share referral link button, earnings dashboard', value:'Earn credits by bringing new members to your town.' }
+      },
+      // L6 — Trust & Safety
+      {
+        id:'seb-ghost-protection', name:'Ghost Protection', icon:'\ud83d\udc7b', layer:6, layer_name:'Trust & Safety',
+        badge:'upgrade', badgeLabel:'\ud83d\udfe1 UPGRADE',
+        tables:[ {name:'ghost_reports',rows:0,cols:7} ],
+        notes:'Full anti-ghosting system: ghostingpercent + ghostreportcount on users, ghost_timeout_hours on places (48h default), deposit forfeiture flow. DT has basic ghost_reports only.',
+        extractNote:'Upgrade DT with ghosting percentage tracking and deposit forfeiture.',
+        keyColumns:['ghostingpercent','ghostreportcount','ghost_timeout_hours'],
+        ux:{ roles:[{icon:'\ud83c\udfe2',label:'Seller',cls:'role-seller'},{icon:'\ud83d\udc64',label:'Buyer',cls:'role-buyer'}], journeys:[{label:'Ghost Report',steps:['Buyer doesn\'t pick up order','Seller reports ghost','Buyer\'s ghost percentage increases','After 48h timeout, deposit forfeited','Buyer flagged for future transactions']}], whatSee:'Ghost report button on order, buyer ghosting percentage on profile, deposit forfeiture notice', value:'Protect sellers from no-show buyers. Deposits and reputation tracking keep transactions honest.' }
+      },
+      {
+        id:'seb-resident-verification', name:'Resident Verification', icon:'\ud83c\udfe0', layer:6, layer_name:'Trust & Safety',
+        badge:'unique', badgeLabel:'\u26aa UNIQUE',
+        tables:[ {name:'resident_applications',rows:0,cols:14}, {name:'resident_verification_requests',rows:0,cols:12} ],
+        notes:'Two-step verification: (1) resident_applications with address, yearsintown, status. (2) resident_verification_requests with admin review. Sebastian-specific for local residency proof.',
+        extractNote:'Evaluate for DT \u2014 may be useful for towns requiring local residency proof.',
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'Resident',cls:'role-member'},{icon:'\ud83d\udd27',label:'Admin',cls:'role-admin'}], journeys:[{label:'Verify Residency',steps:['User applies as resident','Enters address, years in town','Admin reviews application','If approved, resident badge granted','Access to resident-only features']}], whatSee:'Resident application form, verification status badge, admin review queue', value:'Prove you\'re a local. Verified residents get priority access.' }
+      },
+      {
+        id:'seb-disputes', name:'Disputes & Reviews', icon:'\u2696\ufe0f', layer:6, layer_name:'Trust & Safety',
+        badge:'merge', badgeLabel:'\ud83d\udcb5 MERGE',
+        tables:[ {name:'disputes',rows:0,cols:9}, {name:'reviews',rows:0,cols:9} ],
+        notes:'Order disputes with resolution workflow (resolvedat, resolutionnote). Reviews with reviewer/reviewee pattern (same as DT). DT has same structure.',
+        extractNote:'Merge \u2014 same schema.',
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'Buyer',cls:'role-buyer'},{icon:'\ud83c\udfe2',label:'Seller',cls:'role-seller'}], journeys:[{label:'File Dispute',steps:['Buyer has issue with order','Files dispute with reason','Admin reviews','Resolution decided','Both parties notified']},{label:'Leave Review',steps:['Order completed','Buyer rates seller 1-5 stars','Adds text review','Review appears on profile']}], whatSee:'Dispute form on order page, star rating + text review form, reviews on profiles', value:'Fair dispute resolution and transparent reviews build marketplace trust.' }
+      },
+      {
+        id:'seb-support', name:'Support Requests', icon:'\ud83c\udd98', layer:6, layer_name:'Trust & Safety',
+        badge:'merge', badgeLabel:'\ud83d\udcb5 MERGE',
+        tables:[ {name:'support_requests',rows:0,cols:14} ],
+        notes:'Bug reports and support tickets with type, page, device, useragent, admin notes. DT has same table.',
+        extractNote:'Merge \u2014 same structure.',
+        ux:{ roles:[{icon:'\ud83d\udc64',label:'All Users',cls:'role-all'},{icon:'\ud83d\udd27',label:'Admin',cls:'role-admin'}], journeys:[{label:'Submit Ticket',steps:['User encounters issue','Clicks Support','Selects type (bug, question, feedback)','Describes issue','Submits','Admin reviews and responds']}], whatSee:'Support form with type selector, issue description, admin response thread', value:'Get help when you need it. Every ticket gets reviewed.' }
+      }
+    ];
+
+    // Sebastian platform diffs
+    var sebDiffs = {
+      sebWins: [
+        'Trust tier system (5 levels + GPS)',
+        'Full sweepstakes engine (live data)',
+        'Deposits + ghost forfeiture',
+        'Invoices + Stripe payment links',
+        'Shippo shipping integration',
+        'Service listing forms',
+        'Business + user subscriptions',
+        'Channel moderation tools'
+      ],
+      dtWins: [
+        'Feature flags system',
+        'Multi-community architecture',
+        'Niche/category system',
+        'BST groups',
+        'Auctions (separate table)',
+        'Module registry itself'
+      ]
+    };
+
+    // ═══════════════════════════════════════════
+    // Helper functions
+    // ═══════════════════════════════════════════
+    function getToken() { return localStorage.getItem(TOKEN_KEY); }
+
+    function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+    function showToast(msg, type) {
+      var t = document.createElement('div');
+      t.className = 'toast toast-' + (type || 'success');
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(function() { t.remove(); }, 3000);
+    }
+
+    // ═══════════════════════════════════════════
+    // Platform Switcher
+    // ═══════════════════════════════════════════
+    function switchPlatform(platform) {
+      currentPlatform = platform;
+      // Update tab buttons
+      document.querySelectorAll('.platform-tab').forEach(function(btn) {
+        btn.className = 'platform-tab';
+        if (btn.dataset.platform === platform) {
+          btn.classList.add('active-' + platform);
+        }
+      });
+      // Toggle views
+      document.getElementById('dtView').style.display = platform === 'dt' ? '' : 'none';
+      document.getElementById('ppView').style.display = platform === 'pp' ? '' : 'none';
+      document.getElementById('sebastianView').style.display = platform === 'sebastian' ? '' : 'none';
+
+      if (platform === 'pp') renderPPView();
+      if (platform === 'sebastian') renderSebastianView();
+    }
+
+    // ═══════════════════════════════════════════
+    // DT Module Logic (existing)
+    // ═══════════════════════════════════════════
+    function getModuleStatus(m) {
+      if (m.installed && m.enabled) return 'active';
+      var man = m.manifest || {};
+      var hasTables = (man.tables || []).length > 0;
+      var hasRoutes = (man.routes || []).length > 0;
+      var hasPages = (man.pages || []).length > 0;
+      if (!hasTables && !hasRoutes && !hasPages) return 'needs-build';
+      if (!m.all_deps_met) return 'locked';
+      return 'available';
+    }
+
+    function statusBadgeHtml(status) {
+      var map = {
+        'active': '<span class="module-badge badge-active">&#10003; ACTIVE</span>',
+        'available': '<span class="module-badge badge-available">&#11036; AVAILABLE</span>',
+        'locked': '<span class="module-badge badge-locked">&#128274; LOCKED</span>',
+        'needs-build': '<span class="module-badge badge-needs-build">&#128296; NEEDS BUILD</span>'
+      };
+      return map[status] || '';
+    }
+
+    function renderModules() {
+      var content = document.getElementById('moduleContent');
+      var filtered = modules.filter(function(m) {
+        var status = getModuleStatus(m);
+        if (currentFilter !== 'all' && status !== currentFilter) return false;
+        if (searchTerm) {
+          var s = searchTerm.toLowerCase();
+          return (m.name || '').toLowerCase().indexOf(s) !== -1
+            || (m.description || '').toLowerCase().indexOf(s) !== -1
+            || (m.id || '').toLowerCase().indexOf(s) !== -1;
+        }
+        return true;
+      });
+
+      var layers = {};
+      filtered.forEach(function(m) {
+        var key = m.layer + '';
+        if (!layers[key]) layers[key] = { layer: m.layer, layer_name: m.layer_name, modules: [] };
+        layers[key].modules.push(m);
+      });
+
+      var totalActive = 0, totalAvailable = 0, totalNeedsBuild = 0;
+      modules.forEach(function(m) {
+        var st = getModuleStatus(m);
+        if (st === 'active') totalActive++;
+        else if (st === 'available') totalAvailable++;
+        else if (st === 'needs-build') totalNeedsBuild++;
+      });
+      document.getElementById('statTotal').textContent = modules.length;
+      document.getElementById('statActive').textContent = totalActive;
+      document.getElementById('statAvailable').textContent = totalAvailable;
+      document.getElementById('statNeedsBuild').textContent = totalNeedsBuild;
+
+      var sortedKeys = Object.keys(layers).sort(function(a, b) { return parseInt(a) - parseInt(b); });
+
+      if (!sortedKeys.length) {
+        content.innerHTML = '<div class="loading">No modules match your filter.</div>';
+        return;
+      }
+
+      var html = '';
+      sortedKeys.forEach(function(key) {
+        var layer = layers[key];
+        html += '<div class="layer-section layer-' + layer.layer + '">';
+        html += '<div class="layer-header"><h2>L' + layer.layer + ' \u2014 ' + escHtml(layer.layer_name) + '</h2>';
+        html += '<span class="layer-count">' + layer.modules.length + ' module' + (layer.modules.length !== 1 ? 's' : '') + '</span></div>';
+        html += '<div class="module-grid">';
+
+        layer.modules.forEach(function(m) {
+          var status = getModuleStatus(m);
+          var isExpanded = expandedId === m.id;
+          html += '<div class="module-card' + (isExpanded ? ' expanded' : '') + '" data-id="' + escHtml(m.id) + '" onclick="toggleExpand(\'' + escHtml(m.id) + '\')">';
+          html += '<div class="module-card-header">';
+          html += '<div class="module-icon">' + (m.icon || '') + '</div>';
+          html += '<div class="module-info"><div class="module-name">' + escHtml(m.name) + '</div>';
+          html += '<div class="module-desc-short">' + escHtml(m.description) + '</div></div>';
+          html += statusBadgeHtml(status);
+          html += '</div>';
+
+          html += '<div class="module-expanded">';
+
+          var hasUx = !!uxData[m.id];
+          var curTab = activeTabMap[m.id] || 'technical';
+          var lc = layerColors[m.layer] || '#64748b';
+
+          if (hasUx) {
+            html += '<div class="module-tabs" onclick="event.stopPropagation();">';
+            html += '<button class="module-tab' + (curTab === 'technical' ? ' tab-active' : '') + '" style="' + (curTab === 'technical' ? 'border-bottom-color:' + lc + ';color:#e2e8f0;' : '') + '" onclick="switchModuleTab(\'' + escHtml(m.id) + '\',\'technical\')">&#9881;&#65039; Technical</button>';
+            html += '<button class="module-tab' + (curTab === 'ux' ? ' tab-active' : '') + '" style="' + (curTab === 'ux' ? 'border-bottom-color:' + lc + ';color:#e2e8f0;' : '') + '" onclick="switchModuleTab(\'' + escHtml(m.id) + '\',\'ux\')">&#128100; User Experience</button>';
+            html += '</div>';
+          }
+
+          // Technical tab
+          html += '<div class="module-tab-content' + (curTab === 'technical' ? ' tab-visible' : '') + '">';
+          html += '<div class="detail-desc">' + escHtml(m.description) + '</div>';
+
+          var deps = m.deps || [];
+          if (deps.length) {
+            html += '<div class="detail-section"><h4>Dependencies</h4><div class="dep-list">';
+            deps.forEach(function(d) {
+              html += '<span class="dep-chip ' + (d.installed ? 'dep-met' : 'dep-missing') + '">' + escHtml(d.id) + (d.installed ? ' &#10003;' : ' &#10007;') + '</span>';
+            });
+            html += '</div></div>';
+          }
+
+          var man = m.manifest || {};
+          if ((man.tables || []).length) {
+            html += '<div class="detail-section"><h4>Tables</h4><div class="manifest-list">';
+            man.tables.forEach(function(t) { html += '<span class="manifest-tag">' + escHtml(t) + '</span>'; });
+            html += '</div></div>';
+          }
+          if ((man.routes || []).length) {
+            html += '<div class="detail-section"><h4>Routes</h4><div class="manifest-list">';
+            man.routes.forEach(function(r) { html += '<span class="manifest-tag">' + escHtml(r) + '</span>'; });
+            html += '</div></div>';
+          }
+          if ((man.pages || []).length) {
+            html += '<div class="detail-section"><h4>Pages</h4><div class="manifest-list">';
+            man.pages.forEach(function(p) { html += '<span class="manifest-tag">' + escHtml(p) + '</span>'; });
+            html += '</div></div>';
+          }
+          if ((man.feature_flags || []).length) {
+            html += '<div class="detail-section"><h4>Feature Flags</h4><div class="manifest-list">';
+            man.feature_flags.forEach(function(f) { html += '<span class="manifest-tag">' + escHtml(f) + '</span>'; });
+            html += '</div></div>';
+          }
+
+          if (m.towns.length) {
+            html += '<div class="detail-section"><h4>Town Matrix</h4><div class="town-matrix">';
+            m.towns.forEach(function(t) {
+              html += '<span class="town-chip ' + (t.enabled ? 'town-enabled' : 'town-disabled') + '">' + escHtml(t.community_name) + '</span>';
+            });
+            html += '</div></div>';
+          }
+
+          // Sub-modules
+          var subs = (man.submodules || []);
+          if (subs.length) {
+            html += '<div class="detail-section"><h4>Sub-modules</h4>';
+            html += '<ul class="submod-tree">';
+            subs.forEach(function(sub) {
+              var subDeps = sub.dependencies || [];
+              var subDepsMet = subDeps.every(function(sd) {
+                if (sd.indexOf('/') !== -1) return true;
+                var found = modules.find(function(mm) { return mm.id === sd; });
+                return found && found.installed && found.enabled;
+              });
+              var subIcon = sub.optional ? (subDepsMet ? '&#9989;' : '&#128274;') : '&#9989;';
+              html += '<li class="submod-item">';
+              html += '<span class="submod-connector"></span>';
+              html += '<span class="submod-icon">' + subIcon + '</span>';
+              html += '<span class="submod-name">' + escHtml(sub.name) + '</span>';
+              html += '<span class="submod-badge ' + (sub.optional ? 'submod-optional' : 'submod-required') + '">' + (sub.optional ? 'optional' : 'required') + '</span>';
+              if (subDeps.length && sub.optional) {
+                var extDeps = subDeps.filter(function(sd) { return sd.indexOf('/') === -1; });
+                if (extDeps.length && !subDepsMet) {
+                  html += '<span class="submod-deps">[needs: ' + escHtml(extDeps.join(', ')) + ']</span>';
+                }
+              }
+              html += '</li>';
+            });
+            html += '</ul></div>';
+          }
+
+          html += '</div>'; // end technical tab
+
+          // UX tab
+          if (hasUx) {
+            html += '<div class="module-tab-content' + (curTab === 'ux' ? ' tab-visible' : '') + '">';
+            var ux = uxData[m.id];
+
+            html += '<div class="ux-section"><h4>Who Uses It</h4><div class="role-badges">';
+            ux.roles.forEach(function(r) {
+              html += '<span class="role-badge ' + r.cls + '">' + r.icon + ' ' + escHtml(r.label) + '</span>';
+            });
+            html += '</div></div>';
+
+            ux.journeys.forEach(function(j) {
+              html += '<div class="ux-section">';
+              html += '<div class="ux-journey-label">' + escHtml(j.label) + '</div>';
+              html += '<div class="step-flow">';
+              j.steps.forEach(function(step, idx) {
+                if (idx > 0) html += '<span class="step-arrow">&#8594;</span>';
+                html += '<span class="step">' + escHtml(step) + '</span>';
+              });
+              html += '</div></div>';
+            });
+
+            html += '<div class="ux-section"><h4>What They See</h4>';
+            html += '<div class="ux-what-see">' + escHtml(ux.whatSee) + '</div></div>';
+
+            html += '<div class="ux-section"><h4>Value to User</h4>';
+            html += '<div class="ux-value">' + escHtml(ux.value) + '</div></div>';
+
+            if (ux.fees) {
+              html += '<div class="ux-section"><h4>Payment Methods &amp; Fees</h4>';
+              html += '<table class="fee-table"><thead><tr><th>Method</th><th>Fee</th><th></th></tr></thead><tbody>';
+              ux.fees.forEach(function(f) {
+                html += '<tr>';
+                html += '<td class="fee-method">' + f.icon + ' ' + escHtml(f.method) + '</td>';
+                html += '<td class="fee-amount">' + escHtml(f.fee) + '</td>';
+                html += '<td>' + (f.local ? '<span class="fee-local-badge">&#128205; LOCAL</span>' : '') + '</td>';
+                html += '</tr>';
+              });
+              html += '</tbody></table></div>';
+            }
+
+            html += '</div>'; // end ux tab
+          }
+
+          // Actions
+          html += '<div class="module-actions" onclick="event.stopPropagation();">';
+          if (status === 'active') {
+            html += '<button class="btn-uninstall" onclick="uninstallModule(\'' + escHtml(m.id) + '\')">Uninstall</button>';
+          } else if (status === 'available') {
+            html += '<button class="btn-install" onclick="installModule(\'' + escHtml(m.id) + '\')">Install</button>';
+          } else if (status === 'locked') {
+            var missingDeps = deps.filter(function(d) { return !d.installed; }).map(function(d) { return d.id; });
+            html += '<button class="btn-install" disabled>Requires: ' + escHtml(missingDeps.join(', ')) + '</button>';
+          } else {
+            html += '<button class="btn-install" disabled>Not yet built</button>';
+          }
+          html += '</div>';
+
+          html += '</div>'; // module-expanded
+          html += '</div>'; // module-card
+        });
+
+        html += '</div></div>';
+      });
+
+      content.innerHTML = html;
+    }
+
+    function toggleExpand(id) {
+      if (currentPlatform === 'pp') {
+        ppExpandedId = ppExpandedId === id ? null : id;
+        renderPPModules();
+      } else if (currentPlatform === 'sebastian') {
+        sebExpandedId = sebExpandedId === id ? null : id;
+        renderSebModules();
+      } else {
+        expandedId = expandedId === id ? null : id;
+        renderModules();
+      }
+    }
+
+    function switchModuleTab(moduleId, tab) {
+      activeTabMap[moduleId] = tab;
+      if (currentPlatform === 'pp') renderPPModules();
+      else if (currentPlatform === 'sebastian') renderSebModules();
+      else renderModules();
+    }
+
+    function loadModules() {
+      var tk = getToken();
+      if (!tk) { document.getElementById('moduleContent').innerHTML = '<div class="loading">Please log in as admin.</div>'; return; }
+      fetch('/api/admin/modules', { headers: { 'Authorization': 'Bearer ' + tk } })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) { document.getElementById('moduleContent').innerHTML = '<div class="loading">' + escHtml(data.error) + '</div>'; return; }
+          modules = data.modules || [];
+          renderModules();
+        })
+        .catch(function() { document.getElementById('moduleContent').innerHTML = '<div class="loading">Failed to load modules.</div>'; });
+    }
+
+    function installModule(id) {
+      var tk = getToken();
+      fetch('/api/admin/modules/' + id + '/install', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + tk, 'Content-Type': 'application/json' }
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) {
+          var msg = data.error;
+          if (data.missing) msg += ': ' + data.missing.join(', ');
+          showToast(msg, 'error');
+          return;
+        }
+        showToast('Module installed', 'success');
+        loadModules();
+      })
+      .catch(function() { showToast('Install failed', 'error'); });
+    }
+
+    function uninstallModule(id) {
+      if (!confirm('Uninstall this module? Feature flags will be disabled.')) return;
+      var tk = getToken();
+      fetch('/api/admin/modules/' + id + '/uninstall', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + tk, 'Content-Type': 'application/json' }
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) {
+          var msg = data.error;
+          if (data.dependents) msg += ': ' + data.dependents.join(', ');
+          showToast(msg, 'error');
+          return;
+        }
+        showToast('Module uninstalled', 'success');
+        loadModules();
+      })
+      .catch(function() { showToast('Uninstall failed', 'error'); });
+    }
+
+    // ═══════════════════════════════════════════
+    // Plant Purge View
+    // ═══════════════════════════════════════════
+    function renderPPView() {
+      renderPPDiffPanel();
+      renderPPModules();
+    }
+
+    function renderPPDiffPanel() {
+      var dtWins = platformDiffs.filter(function(d) { return d.winner === 'dt'; }).length;
+      var ppWins = platformDiffs.filter(function(d) { return d.winner === 'pp'; }).length;
+
+      var html = '<div class="diff-panel">';
+      html += '<h3>Platform Differences</h3>';
+      html += '<table class="diff-table">';
+      html += '<thead><tr><th>Pattern</th><th>\ud83c\udf3f Plant Purge</th><th>\ud83c\udfd9\ufe0f Digital Towns</th></tr></thead>';
+      html += '<tbody>';
+      platformDiffs.forEach(function(d) {
+        html += '<tr>';
+        html += '<td style="color:#e2e8f0;font-weight:600;">' + escHtml(d.pattern) + '</td>';
+        html += '<td class="' + (d.winner === 'pp' ? 'diff-winner' : 'diff-loser') + '">' + escHtml(d.pp) + (d.winner === 'pp' ? ' \u2705' : '') + '</td>';
+        html += '<td class="' + (d.winner === 'dt' ? 'diff-winner' : 'diff-loser') + '">' + escHtml(d.dt) + (d.winner === 'dt' ? ' \u2705' : '') + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      html += '<div class="diff-summary">DT wins: <strong>' + dtWins + '/10</strong> patterns &nbsp;\u00b7&nbsp; PP wins: <strong>' + ppWins + '/10</strong> patterns (shipping, billing, gamification, referrals)</div>';
+      html += '</div>';
+
+      document.getElementById('ppDiffPanel').innerHTML = html;
+    }
+
+    function getPPStatus(m) {
+      if (m.status === 'active') return 'active';
+      return 'built';
+    }
+
+    function ppStatusBadgeHtml(m) {
+      var st = m.status;
+      if (st === 'active' && m.type === 'unique') {
+        return '<span class="module-badge badge-active">\u2713 ACTIVE \u00b7 PP ONLY</span>';
+      }
+      if (st === 'active') {
+        return '<span class="module-badge badge-active">\u2713 ACTIVE</span>';
+      }
+      if (st === 'built' && m.type === 'unique') {
+        return '<span class="module-badge badge-built">\u25a1 BUILT \u00b7 PP ONLY</span>';
+      }
+      return '<span class="module-badge badge-built">\u25a1 BUILT</span>';
+    }
+
+    function ppTypeBadgeHtml(type) {
+      var map = {
+        'legacy': '<span class="type-badge type-legacy">LEGACY</span>',
+        'overlapping': '<span class="type-badge type-overlapping">OVERLAPPING</span>',
+        'different': '<span class="type-badge type-different">DIFFERENT</span>',
+        'unique': '<span class="type-badge type-unique">UNIQUE TO PP</span>'
+      };
+      return map[type] || '';
+    }
+
+    function ppConsolBadgeHtml(consol, label) {
+      var clsMap = {
+        'dt-wins': 'consol-dt-wins',
+        'merge': 'consol-merge',
+        'migrate': 'consol-migrate',
+        'replace': 'consol-replace',
+        'new': 'consol-new',
+        'enhance': 'consol-enhance'
+      };
+      var cls = clsMap[consol] || 'consol-merge';
+      return '<span class="consol-badge ' + cls + '">' + (label || '') + '</span>';
+    }
+
+    function renderPPModules() {
+      var content = document.getElementById('ppModuleContent');
+
+      var filtered = ppModules.filter(function(m) {
+        var st = getPPStatus(m);
+        if (ppFilter !== 'all' && st !== ppFilter) return false;
+        if (ppSearchTerm) {
+          var s = ppSearchTerm.toLowerCase();
+          return (m.name || '').toLowerCase().indexOf(s) !== -1
+            || (m.notes || '').toLowerCase().indexOf(s) !== -1
+            || (m.id || '').toLowerCase().indexOf(s) !== -1;
+        }
+        return true;
+      });
+
+      var layers = {};
+      filtered.forEach(function(m) {
+        var key = m.layer + '';
+        if (!layers[key]) layers[key] = { layer: m.layer, layer_name: m.layer_name, modules: [] };
+        layers[key].modules.push(m);
+      });
+
+      var sortedKeys = Object.keys(layers).sort(function(a, b) { return parseInt(a) - parseInt(b); });
+
+      if (!sortedKeys.length) {
+        content.innerHTML = '<div class="loading">No modules match your filter.</div>';
+        return;
+      }
+
+      var html = '';
+      sortedKeys.forEach(function(key) {
+        var layer = layers[key];
+        html += '<div class="layer-section layer-' + layer.layer + '">';
+        html += '<div class="layer-header"><h2>L' + layer.layer + ' \u2014 ' + escHtml(layer.layer_name) + '</h2>';
+        html += '<span class="layer-count">' + layer.modules.length + ' module' + (layer.modules.length !== 1 ? 's' : '') + '</span></div>';
+        html += '<div class="module-grid">';
+
+        layer.modules.forEach(function(m) {
+          var isExpanded = ppExpandedId === m.id;
+          html += '<div class="module-card' + (isExpanded ? ' expanded' : '') + '" data-id="' + escHtml(m.id) + '" onclick="toggleExpand(\'' + escHtml(m.id) + '\')">';
+          html += '<div class="module-card-header">';
+          html += '<div class="module-icon">' + (m.icon || '') + '</div>';
+          html += '<div class="module-info"><div class="module-name">' + escHtml(m.name) + '</div>';
+          html += '<div class="module-desc-short">' + escHtml(m.notes || '').substring(0, 60) + '</div></div>';
+          html += '<div class="badge-row">';
+          html += ppStatusBadgeHtml(m);
+          html += ppConsolBadgeHtml(m.consolidation, m.consolLabel);
+          html += '</div>';
+          html += '</div>';
+
+          // Expanded details
+          html += '<div class="module-expanded">';
+
+          // Type badge row
+          html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">';
+          html += ppTypeBadgeHtml(m.type);
+          html += ppConsolBadgeHtml(m.consolidation, m.consolLabel);
+          html += '</div>';
+
+          // Notes
+          html += '<div class="pp-notes">' + escHtml(m.notes) + '</div>';
+
+          // Tables
+          if (m.tables && m.tables.length) {
+            html += '<div class="detail-section"><h4>Tables</h4>';
+            html += '<div class="pp-table-list">';
+            m.tables.forEach(function(t) {
+              html += '<div class="pp-table-row">';
+              html += '<span class="pp-table-name">' + escHtml(t.name) + '</span>';
+              html += '<span class="pp-table-stats">' + t.rows + ' rows \u00b7 ' + t.cols + ' cols</span>';
+              html += '</div>';
+            });
+            html += '</div></div>';
+          }
+
+          // Key columns PP has that DT doesn't
+          if (m.keyColumns && m.keyColumns.length) {
+            html += '<div class="detail-section"><h4>Key Columns (PP has, DT doesn\'t)</h4>';
+            html += '<div class="pp-key-cols">';
+            m.keyColumns.forEach(function(col) {
+              html += '<span class="pp-key-col">' + escHtml(col) + '</span>';
+            });
+            html += '</div></div>';
+          }
+
+          // Sub-modules
+          if (m.submodules && m.submodules.length) {
+            html += '<div class="detail-section"><h4>Sub-modules</h4>';
+            html += '<ul class="submod-tree">';
+            m.submodules.forEach(function(sub) {
+              html += '<li class="submod-item">';
+              html += '<span class="submod-connector"></span>';
+              html += '<span class="submod-icon">\u2705</span>';
+              html += '<span class="submod-name">' + escHtml(sub.name) + '</span>';
+              html += '<span class="submod-badge ' + (sub.optional ? 'submod-optional' : 'submod-required') + '">' + (sub.optional ? 'optional' : 'required') + '</span>';
+              html += '</li>';
+            });
+            html += '</ul></div>';
+          }
+
+          // Consolidation plan
+          html += '<div class="detail-section"><h4>Consolidation Plan</h4>';
+          html += '<div class="pp-consol-note">' + escHtml(m.consolNote) + '</div>';
+          html += '</div>';
+
+          html += '</div>'; // module-expanded
+          html += '</div>'; // module-card
+        });
+
+        html += '</div></div>';
+      });
+
+      content.innerHTML = html;
+    }
+
+    // ═══════════════════════════════════════════
+    // Sebastian Beta View
+    // ═══════════════════════════════════════════
+    function renderSebastianView() {
+      renderSebDiffPanel();
+      renderSebModules();
+    }
+
+    function sebBadgeHtml(type) {
+      var map = {
+        'extract': '<span class="seb-extract">EXTRACT</span>',
+        'merge': '<span class="seb-merge">MERGE</span>',
+        'upgrade': '<span class="seb-upgrade">UPGRADE</span>',
+        'unique': '<span class="seb-unique">UNIQUE</span>'
+      };
+      return map[type] || '';
+    }
+
+    function renderSebDiffPanel() {
+      var sw = sebDiffs.sebWins;
+      var dw = sebDiffs.dtWins;
+
+      var html = '<div class="seb-diff-panel">';
+      html += '<h3 style="color:#e2e8f0;margin:0 0 14px 0;font-size:16px;">Platform Comparison \u2014 Sebastian vs Digital Towns</h3>';
+      html += '<div class="seb-diff-cols">';
+
+      // Sebastian wins
+      html += '<div>';
+      html += '<h4 style="color:#a855f7;margin:0 0 10px 0;font-size:14px;">\ud83c\udfae Sebastian Wins (' + sw.length + ')</h4>';
+      html += '<ul style="list-style:none;padding:0;margin:0;">';
+      sw.forEach(function(item) {
+        html += '<li style="color:#94a3b8;font-size:13px;padding:4px 0;border-bottom:1px solid #1e293b;">' + escHtml(item) + '</li>';
+      });
+      html += '</ul></div>';
+
+      // DT wins
+      html += '<div>';
+      html += '<h4 style="color:#0ea5e9;margin:0 0 10px 0;font-size:14px;">\ud83c\udfd9\ufe0f Digital Towns Wins (' + dw.length + ')</h4>';
+      html += '<ul style="list-style:none;padding:0;margin:0;">';
+      dw.forEach(function(item) {
+        html += '<li style="color:#94a3b8;font-size:13px;padding:4px 0;border-bottom:1px solid #1e293b;">' + escHtml(item) + '</li>';
+      });
+      html += '</ul></div>';
+
+      html += '</div></div>';
+
+      document.getElementById('sebDiffPanel').innerHTML = html;
+    }
+
+    function renderSebModules() {
+      var content = document.getElementById('sebModuleContent');
+
+      var filtered = sebModules.filter(function(m) {
+        if (sebFilter !== 'all' && m.badge !== sebFilter) return false;
+        if (sebSearchTerm) {
+          var s = sebSearchTerm.toLowerCase();
+          return (m.name || '').toLowerCase().indexOf(s) !== -1
+            || (m.notes || '').toLowerCase().indexOf(s) !== -1
+            || (m.id || '').toLowerCase().indexOf(s) !== -1;
+        }
+        return true;
+      });
+
+      var layers = {};
+      filtered.forEach(function(m) {
+        var key = m.layer + '';
+        if (!layers[key]) layers[key] = { layer: m.layer, layer_name: m.layer_name, modules: [] };
+        layers[key].modules.push(m);
+      });
+
+      var sortedKeys = Object.keys(layers).sort(function(a, b) { return parseInt(a) - parseInt(b); });
+
+      if (!sortedKeys.length) {
+        content.innerHTML = '<div class="loading">No modules match your filter.</div>';
+        return;
+      }
+
+      var html = '';
+      sortedKeys.forEach(function(key) {
+        var layer = layers[key];
+        html += '<div class="layer-section layer-' + layer.layer + '">';
+        html += '<div class="layer-header"><h2>L' + layer.layer + ' \u2014 ' + escHtml(layer.layer_name) + '</h2>';
+        html += '<span class="layer-count">' + layer.modules.length + ' module' + (layer.modules.length !== 1 ? 's' : '') + '</span></div>';
+        html += '<div class="module-grid">';
+
+        layer.modules.forEach(function(m) {
+          var isExpanded = sebExpandedId === m.id;
+          html += '<div class="module-card' + (isExpanded ? ' expanded' : '') + '" data-id="' + escHtml(m.id) + '" onclick="toggleExpand(\'' + escHtml(m.id) + '\')">';
+          html += '<div class="module-card-header">';
+          html += '<div class="module-icon">' + (m.icon || '') + '</div>';
+          html += '<div class="module-info"><div class="module-name">' + escHtml(m.name) + '</div>';
+          html += '<div class="module-desc-short">' + escHtml(m.notes || '').substring(0, 60) + '</div></div>';
+          html += '<div class="badge-row">' + sebBadgeHtml(m.badge) + '</div>';
+          html += '</div>';
+
+          // Expanded details
+          html += '<div class="module-expanded">';
+
+          // Badge + tables count
+          html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">';
+          html += sebBadgeHtml(m.badge);
+          html += '<span style="color:#64748b;font-size:12px;">' + m.tables.length + ' table' + (m.tables.length !== 1 ? 's' : '') + '</span>';
+          html += '</div>';
+
+          // Notes
+          html += '<div class="pp-notes">' + escHtml(m.notes) + '</div>';
+
+          // Extract note
+          if (m.extractNote) {
+            html += '<div style="background:#0f172a;border-left:3px solid #a855f7;padding:10px 14px;margin:10px 0;border-radius:6px;">';
+            html += '<div style="color:#a855f7;font-size:11px;font-weight:700;margin-bottom:4px;">EXTRACTION NOTE</div>';
+            html += '<div style="color:#cbd5e1;font-size:13px;">' + escHtml(m.extractNote) + '</div>';
+            html += '</div>';
+          }
+
+          // Tables
+          if (m.tables && m.tables.length) {
+            html += '<div class="detail-section"><h4>Tables</h4>';
+            html += '<div class="pp-table-list">';
+            m.tables.forEach(function(t) {
+              html += '<div class="pp-table-row">';
+              html += '<span class="pp-table-name">' + escHtml(t.name) + '</span>';
+              html += '<span class="pp-table-stats">' + t.rows + ' rows \u00b7 ' + t.cols + ' cols</span>';
+              html += '</div>';
+            });
+            html += '</div></div>';
+          }
+
+          // Key columns
+          if (m.keyColumns && m.keyColumns.length) {
+            html += '<div class="detail-section"><h4>Key Columns (Sebastian-specific)</h4>';
+            html += '<div class="pp-key-cols">';
+            m.keyColumns.forEach(function(col) {
+              html += '<span class="pp-key-col">' + escHtml(col) + '</span>';
+            });
+            html += '</div></div>';
+          }
+
+          // UX tab content
+          var tabId = activeTabMap[m.id] || 'audit';
+          html += '<div class="module-tabs" onclick="event.stopPropagation();">';
+          html += '<button class="mod-tab' + (tabId === 'audit' ? ' active' : '') + '" onclick="switchModuleTab(\'' + escHtml(m.id) + '\', \'audit\')">Audit</button>';
+          html += '<button class="mod-tab' + (tabId === 'ux' ? ' active' : '') + '" onclick="switchModuleTab(\'' + escHtml(m.id) + '\', \'ux\')">UX</button>';
+          html += '</div>';
+
+          if (tabId === 'audit') {
+            html += '<div class="audit-tab">';
+            html += '<div class="detail-section"><h4>Notes</h4>';
+            html += '<div style="color:#94a3b8;font-size:13px;">' + escHtml(m.notes) + '</div></div>';
+            if (m.extractNote) {
+              html += '<div class="detail-section"><h4>Extraction Strategy</h4>';
+              html += '<div style="color:#cbd5e1;font-size:13px;">' + escHtml(m.extractNote) + '</div></div>';
+            }
+            html += '</div>';
+          }
+
+          if (tabId === 'ux') {
+            var ux = m.ux || {};
+            html += '<div class="ux-tab">';
+
+            // Roles
+            if (ux.roles && ux.roles.length) {
+              html += '<div class="ux-section"><h4>User Roles</h4><div class="ux-roles">';
+              ux.roles.forEach(function(r) {
+                html += '<span class="ux-role">' + escHtml(r) + '</span>';
+              });
+              html += '</div></div>';
+            }
+
+            // Journeys
+            if (ux.journeys && ux.journeys.length) {
+              html += '<div class="ux-section"><h4>User Journeys</h4>';
+              ux.journeys.forEach(function(j) {
+                html += '<div class="ux-journey"><div class="journey-name">' + escHtml(j.name) + '</div><div class="journey-steps">';
+                j.steps.forEach(function(step, idx) {
+                  if (idx > 0) html += '<span class="step-arrow">&#8594;</span>';
+                  html += '<span class="step">' + escHtml(step) + '</span>';
+                });
+                html += '</div></div>';
+              });
+            }
+
+            // What They See
+            if (ux.whatSee) {
+              html += '<div class="ux-section"><h4>What They See</h4>';
+              html += '<div class="ux-what-see">' + escHtml(ux.whatSee) + '</div></div>';
+            }
+
+            // Value
+            if (ux.value) {
+              html += '<div class="ux-section"><h4>Value to User</h4>';
+              html += '<div class="ux-value">' + escHtml(ux.value) + '</div></div>';
+            }
+
+            html += '</div>'; // end ux tab
+          }
+
+          html += '</div>'; // module-expanded
+          html += '</div>'; // module-card
+        });
+
+        html += '</div></div>';
+      });
+
+      content.innerHTML = html;
+    }
+
+    // ═══════════════════════════════════════════
+    // Event listeners
+    // ═══════════════════════════════════════════
+
+    // DT search
+    document.getElementById('searchInput').addEventListener('input', function() {
+      searchTerm = this.value;
+      renderModules();
+    });
+
+    // PP search
+    document.getElementById('ppSearchInput').addEventListener('input', function() {
+      ppSearchTerm = this.value;
+      renderPPModules();
+    });
+
+    // Sebastian search
+    document.getElementById('sebSearchInput').addEventListener('input', function() {
+      sebSearchTerm = this.value;
+      renderSebModules();
+    });
+
+    // Filter buttons (all platforms)
+    document.querySelectorAll('.filter-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var platform = btn.dataset.platform;
+        if (platform === 'dt') {
+          currentFilter = btn.dataset.filter;
+          document.querySelectorAll('.filter-btn[data-platform="dt"]').forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          renderModules();
+        } else if (platform === 'pp') {
+          ppFilter = btn.dataset.filter;
+          document.querySelectorAll('.filter-btn[data-platform="pp"]').forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          renderPPModules();
+        } else if (platform === 'seb') {
+          sebFilter = btn.dataset.filter;
+          document.querySelectorAll('.filter-btn[data-platform="seb"]').forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          renderSebModules();
+        }
+      });
+    });
+
+    // Init
+    loadModules();
+  </script>
+</body>
+</html>

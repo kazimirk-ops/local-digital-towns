@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Become a Seller — Treasure Coast Digital</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0a1628;
+    color:#fff;
+    font-family:-apple-system,system-ui,'Segoe UI',sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px 16px;
+  }
+  .card {
+    background:#0d1b2e;
+    border:1px solid #1e3a5f;
+    border-radius:20px;
+    padding:40px 32px;
+    max-width:480px;
+    width:100%;
+  }
+  .card-title {
+    font-size:22px;
+    font-weight:800;
+    margin-bottom:6px;
+    text-align:center;
+  }
+  .card-sub {
+    color:#94a3b8;
+    font-size:14px;
+    text-align:center;
+    margin-bottom:28px;
+    line-height:1.5;
+  }
+  .field { margin-bottom:18px; }
+  .field label {
+    display:block;
+    font-size:13px;
+    font-weight:600;
+    color:#94a3b8;
+    margin-bottom:6px;
+  }
+  .field input, .field textarea, .field select {
+    width:100%;
+    padding:12px 14px;
+    border-radius:10px;
+    border:1px solid #1e3a5f;
+    background:#0a1628;
+    color:#fff;
+    font-size:14px;
+    font-family:inherit;
+    outline:none;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus {
+    border-color:#0ea5e9;
+  }
+  .field textarea { resize:vertical; min-height:80px; }
+  .checkbox-row {
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    margin-bottom:24px;
+  }
+  .checkbox-row input[type="checkbox"] {
+    margin-top:3px;
+    accent-color:#0ea5e9;
+    width:18px;
+    height:18px;
+    flex-shrink:0;
+  }
+  .checkbox-row label {
+    font-size:13px;
+    color:#94a3b8;
+    line-height:1.5;
+    cursor:pointer;
+  }
+  .btn-submit {
+    width:100%;
+    padding:14px;
+    border-radius:12px;
+    border:none;
+    background:#0ea5e9;
+    color:#fff;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    transition:background 0.2s;
+  }
+  .btn-submit:hover { background:#0c8dcc; }
+  .btn-submit:disabled { opacity:0.5; cursor:not-allowed; }
+  .status-box {
+    text-align:center;
+    padding:32px 20px;
+  }
+  .status-icon {
+    font-size:48px;
+    margin-bottom:16px;
+  }
+  .status-title {
+    font-size:20px;
+    font-weight:700;
+    margin-bottom:8px;
+  }
+  .status-text {
+    color:#94a3b8;
+    font-size:14px;
+    line-height:1.5;
+  }
+  .back-link {
+    display:block;
+    text-align:center;
+    margin-top:20px;
+    color:#0ea5e9;
+    text-decoration:none;
+    font-size:14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div id="loading" style="text-align:center;color:#64748b;padding:40px 0;">Loading...</div>
+
+  <div id="formView" style="display:none;">
+    <div class="card-title">Become a Seller</div>
+    <div class="card-sub">Apply to list items, host auctions, and sell in your local digital town.</div>
+
+    <div class="field">
+      <label>Full Name</label>
+      <input type="text" id="fullName" placeholder="Your full name">
+    </div>
+    <div class="field">
+      <label>What do you sell?</label>
+      <textarea id="whatYouSell" placeholder="Describe what you plan to sell..."></textarea>
+    </div>
+    <div class="field">
+      <label>Your Facebook Profile URL</label>
+      <input type="text" id="fbUrl" placeholder="https://facebook.com/yourprofile">
+    </div>
+    <div class="field">
+      <label>How did you hear about us?</label>
+      <select id="heardFrom">
+        <option value="">Select one...</option>
+        <option value="Facebook Ad">Facebook Ad</option>
+        <option value="Friend">Friend</option>
+        <option value="BST Group">BST Group</option>
+        <option value="PlantPurges">PlantPurges</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="agreeRules">
+      <label for="agreeRules">I agree to community rules — no scams, honest listings, local meetups only</label>
+    </div>
+    <button class="btn-submit" id="submitBtn" onclick="submitApplication()">Submit Application &rarr;</button>
+    <div id="errorMsg" style="color:#ef4444;font-size:13px;text-align:center;margin-top:12px;display:none;"></div>
+  </div>
+
+  <div id="pendingView" style="display:none;">
+    <div class="status-box">
+      <div class="status-icon">&#9203;</div>
+      <div class="status-title" style="color:#f0c040;">Application Under Review</div>
+      <div class="status-text">We've received your seller application. We'll review and notify you within 24 hours.</div>
+    </div>
+    <a href="/" class="back-link">&larr; Back to Home</a>
+  </div>
+
+  <div id="approvedView" style="display:none;">
+    <div class="status-box">
+      <div class="status-icon">&#9989;</div>
+      <div class="status-title" style="color:#10b981;">You're Approved!</div>
+      <div class="status-text">You can now create listings, host auctions, and sell in your local digital town.</div>
+    </div>
+    <a href="/" class="back-link">&larr; Start Selling</a>
+  </div>
+
+  <div id="rejectedView" style="display:none;">
+    <div class="status-box">
+      <div class="status-icon">&#10060;</div>
+      <div class="status-title" style="color:#ef4444;">Application Not Approved</div>
+      <div class="status-text" id="rejectionText">Your application was not approved at this time.</div>
+    </div>
+    <a href="/" class="back-link">&larr; Back to Home</a>
+  </div>
+
+  <div id="successView" style="display:none;">
+    <div class="status-box">
+      <div class="status-icon">&#127881;</div>
+      <div class="status-title" style="color:#10b981;">Application Submitted!</div>
+      <div class="status-text">We'll review and notify you within 24 hours.</div>
+    </div>
+    <a href="/" class="back-link">&larr; Back to Home</a>
+  </div>
+</div>
+
+<script>
+(function() {
+  var token = localStorage.getItem('tc_token');
+  if (!token) { window.location.href = '/'; return; }
+
+  var headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+
+  // Load user info + check status
+  Promise.all([
+    fetch('/api/auth/me', { headers: headers }).then(function(r) { return r.ok ? r.json() : Promise.reject(); }),
+    fetch('/api/seller/status', { headers: headers }).then(function(r) { return r.ok ? r.json() : Promise.reject(); })
+  ])
+  .then(function(results) {
+    var user = results[0];
+    var statusData = results[1];
+
+    document.getElementById('loading').style.display = 'none';
+
+    if (statusData.seller_status === 'approved') {
+      document.getElementById('approvedView').style.display = 'block';
+      return;
+    }
+    if (statusData.seller_status === 'pending') {
+      document.getElementById('pendingView').style.display = 'block';
+      return;
+    }
+    if (statusData.seller_status === 'rejected' && statusData.application) {
+      var rejText = document.getElementById('rejectionText');
+      if (statusData.application.rejection_reason) {
+        rejText.textContent = 'Reason: ' + statusData.application.rejection_reason;
+      }
+      document.getElementById('rejectedView').style.display = 'block';
+      return;
+    }
+
+    // Show form
+    document.getElementById('formView').style.display = 'block';
+    document.getElementById('fullName').value = user.name || '';
+  })
+  .catch(function() { window.location.href = '/'; });
+
+  window.submitApplication = function() {
+    var fullName = document.getElementById('fullName').value.trim();
+    var whatYouSell = document.getElementById('whatYouSell').value.trim();
+    var fbUrl = document.getElementById('fbUrl').value.trim();
+    var heardFrom = document.getElementById('heardFrom').value;
+    var agreeRules = document.getElementById('agreeRules').checked;
+    var errorMsg = document.getElementById('errorMsg');
+    var btn = document.getElementById('submitBtn');
+
+    errorMsg.style.display = 'none';
+
+    if (!fullName) { errorMsg.textContent = 'Please enter your full name'; errorMsg.style.display = 'block'; return; }
+    if (!whatYouSell) { errorMsg.textContent = 'Please describe what you sell'; errorMsg.style.display = 'block'; return; }
+    if (!agreeRules) { errorMsg.textContent = 'You must agree to the community rules'; errorMsg.style.display = 'block'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting...';
+
+    fetch('/api/seller/apply', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({
+        full_name: fullName,
+        what_you_sell: whatYouSell,
+        facebook_profile_url: fbUrl,
+        how_did_you_hear: heardFrom,
+        agreed_to_rules: true
+      })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        document.getElementById('formView').style.display = 'none';
+        document.getElementById('successView').style.display = 'block';
+      } else if (data.message) {
+        errorMsg.textContent = data.message;
+        errorMsg.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Submit Application \u2192';
+      } else {
+        errorMsg.textContent = data.error || 'Something went wrong';
+        errorMsg.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Submit Application \u2192';
+      }
+    })
+    .catch(function() {
+      errorMsg.textContent = 'Network error — please try again';
+      errorMsg.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Submit Application \u2192';
+    });
+  };
+})();
+</script>
+</body>
+</html>

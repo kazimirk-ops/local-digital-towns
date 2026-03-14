@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome — Treasure Coast Digital</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0a1628;
+    color:#fff;
+    font-family:-apple-system,system-ui,'Segoe UI',sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .card {
+    background:#0d1b2e;
+    border:1px solid #1e3a5f;
+    border-radius:20px;
+    padding:40px 32px;
+    max-width:420px;
+    width:92%;
+    text-align:center;
+  }
+  .avatar {
+    width:72px;
+    height:72px;
+    border-radius:50%;
+    border:3px solid #0ea5e9;
+    margin:0 auto 12px;
+    object-fit:cover;
+  }
+  .user-name {
+    font-size:20px;
+    font-weight:700;
+    margin-bottom:4px;
+  }
+  .welcome-text {
+    color:#94a3b8;
+    font-size:14px;
+    margin-bottom:28px;
+  }
+  .question {
+    font-size:17px;
+    font-weight:700;
+    margin-bottom:20px;
+  }
+  .btn-row {
+    display:flex;
+    gap:12px;
+    margin-bottom:12px;
+  }
+  .btn-choice {
+    flex:1;
+    padding:16px 12px;
+    border-radius:14px;
+    border:2px solid #1e3a5f;
+    background:#0a1628;
+    color:#fff;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    transition:all 0.2s;
+  }
+  .btn-choice:hover { border-color:#0ea5e9; background:#0c1e35; }
+  .btn-choice.active { border-color:#0ea5e9; background:#0ea5e920; }
+  .panel { display:none; margin-top:24px; text-align:left; }
+  .panel.show { display:block; }
+  .label {
+    font-size:13px;
+    font-weight:600;
+    color:#94a3b8;
+    margin-bottom:6px;
+  }
+  select, input[type="text"] {
+    width:100%;
+    padding:12px 14px;
+    border-radius:10px;
+    border:1px solid #1e3a5f;
+    background:#0a1628;
+    color:#fff;
+    font-size:14px;
+    margin-bottom:16px;
+    outline:none;
+  }
+  select:focus, input[type="text"]:focus { border-color:#0ea5e9; }
+  .hint {
+    color:#64748b;
+    font-size:13px;
+    margin-bottom:16px;
+    line-height:1.5;
+  }
+  .btn-submit {
+    width:100%;
+    padding:14px;
+    border-radius:12px;
+    border:none;
+    background:#0ea5e9;
+    color:#fff;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    transition:background 0.2s;
+  }
+  .btn-submit:hover { background:#0c8dcc; }
+  .btn-submit:disabled { opacity:0.5; cursor:not-allowed; }
+  .btn-secondary {
+    width:100%;
+    padding:12px;
+    border-radius:12px;
+    border:1px solid #1e3a5f;
+    background:transparent;
+    color:#94a3b8;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    margin-top:10px;
+    transition:all 0.2s;
+  }
+  .btn-secondary:hover { border-color:#0ea5e9; color:#fff; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <img id="userAvatar" class="avatar" src="" alt="" style="display:none;">
+  <div id="userName" class="user-name"></div>
+  <div class="welcome-text">Welcome! One quick question to get you started.</div>
+
+  <div id="stepLocation">
+    <div class="question">Where are you located?</div>
+    <div class="btn-row">
+      <button class="btn-choice" onclick="selectFlorida()">I'm in Florida</button>
+      <button class="btn-choice" onclick="selectOutside()">I'm outside Florida</button>
+    </div>
+  </div>
+
+  <div id="panelFlorida" class="panel">
+    <div class="label">Select your town</div>
+    <select id="townSelect">
+      <option value="">Choose your town...</option>
+    </select>
+    <button class="btn-submit" onclick="submitFlorida()">Set My Home Town &rarr;</button>
+  </div>
+
+  <div id="panelOutside" class="panel">
+    <div class="hint">You can browse and bid on any town as a visitor.</div>
+    <div class="label">Want to sell in your area? Enter your city/town name to request it be built</div>
+    <input type="text" id="requestedTown" placeholder="e.g. Austin, TX">
+    <button class="btn-submit" onclick="submitOutside(true)">Request My Town &rarr;</button>
+    <button class="btn-secondary" onclick="submitOutside(false)">Continue as Visitor</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  var token = localStorage.getItem('tc_token');
+  if (!token) { window.location.href = '/'; return; }
+
+  var headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+
+  // Load user info
+  fetch('/api/auth/me', { headers: headers })
+    .then(function(r) { return r.ok ? r.json() : Promise.reject(); })
+    .then(function(user) {
+      if (user.profile_complete) { window.location.href = '/'; return; }
+      var av = document.getElementById('userAvatar');
+      if (user.avatar_url || user.profile_photo) {
+        av.src = user.avatar_url || user.profile_photo;
+        av.style.display = 'block';
+      }
+      document.getElementById('userName').textContent = user.name || 'Welcome!';
+    })
+    .catch(function() { window.location.href = '/'; });
+
+  // Load Florida towns
+  fetch('/api/towns/florida')
+    .then(function(r) { return r.json(); })
+    .then(function(towns) {
+      var sel = document.getElementById('townSelect');
+      towns.forEach(function(t) {
+        var opt = document.createElement('option');
+        opt.value = t.slug;
+        opt.textContent = t.name;
+        sel.appendChild(opt);
+      });
+    })
+    .catch(function() {});
+
+  window.selectFlorida = function() {
+    document.querySelectorAll('.btn-choice').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.btn-choice')[0].classList.add('active');
+    document.getElementById('panelFlorida').classList.add('show');
+    document.getElementById('panelOutside').classList.remove('show');
+  };
+
+  window.selectOutside = function() {
+    document.querySelectorAll('.btn-choice').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.btn-choice')[1].classList.add('active');
+    document.getElementById('panelOutside').classList.add('show');
+    document.getElementById('panelFlorida').classList.remove('show');
+  };
+
+  window.submitFlorida = function() {
+    var slug = document.getElementById('townSelect').value;
+    if (!slug) { alert('Please select a town'); return; }
+    submitProfile({ is_florida_resident: true, home_town_slug: slug });
+  };
+
+  window.submitOutside = function(withRequest) {
+    var body = { is_florida_resident: false };
+    if (withRequest) {
+      var town = document.getElementById('requestedTown').value.trim();
+      if (!town) { alert('Please enter your city/town name'); return; }
+      body.requested_town = town;
+    }
+    submitProfile(body);
+  };
+
+  function submitProfile(body) {
+    var btns = document.querySelectorAll('.btn-submit, .btn-secondary');
+    btns.forEach(function(b) { b.disabled = true; });
+
+    fetch('/api/auth/complete-profile', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(body)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        window.location.href = '/';
+      } else {
+        alert(data.error || 'Something went wrong');
+        btns.forEach(function(b) { b.disabled = false; });
+      }
+    })
+    .catch(function() {
+      alert('Network error — please try again');
+      btns.forEach(function(b) { b.disabled = false; });
+    });
+  }
+})();
+</script>
+</body>
+</html>
