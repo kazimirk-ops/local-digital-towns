@@ -509,7 +509,7 @@
 
     // ===== Community loading =====
     function loadCommunities() {
-      fetch('/api/admin/communities', { credentials:'same-origin' })
+      fetch('/api/communities/list', { credentials:'same-origin' })
         .then(function(r) { return r.json(); })
         .then(function(data) {
           communities = data.communities || data || [];
@@ -546,17 +546,15 @@
     // ===== Feature flags =====
     function loadFeatureFlags() {
       if (!selectedSlug) { featureFlags = {}; renderModules(); return; }
-      fetch('/api/admin/feature-flags?slug=' + encodeURIComponent(selectedSlug), { credentials:'same-origin' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          featureFlags = data.flags || data || {};
-          renderModules();
-        })
-        .catch(function(err) {
-          console.error('Failed to load flags:', err);
-          featureFlags = {};
-          renderModules();
-        });
+      // Pull flags from already-loaded communities data
+      var comm = communities.find(function(c) { return (c.slug || c.id) === selectedSlug; });
+      if (comm && comm.feature_flags) {
+        featureFlags = typeof comm.feature_flags === 'string' ? JSON.parse(comm.feature_flags) : comm.feature_flags;
+        renderModules();
+        return;
+      }
+      featureFlags = {};
+      renderModules();
     }
 
     // ===== Install / Uninstall =====
@@ -585,7 +583,7 @@
           return;
         }
         showToast(mod.name + ' installed', 'success');
-        loadFeatureFlags();
+        loadCommunities();
       })
       .catch(function() { showToast('Install failed', 'error'); });
     }
@@ -616,7 +614,7 @@
           return;
         }
         showToast(mod.name + ' uninstalled', 'success');
-        loadFeatureFlags();
+        loadCommunities();
       })
       .catch(function() { showToast('Uninstall failed', 'error'); });
     }

@@ -2143,6 +2143,16 @@ app.put("/api/admin/users/:id/suspend", async (req, res) => {
   }
 });
 
+// GET /api/communities/list — public community list (for admin-modules page behind staging gate)
+app.get("/api/communities/list", async (req, res) => {
+  try {
+    const result = await db.query("SELECT slug, name, feature_flags FROM communities ORDER BY name");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/admin/communities — list all communities
 app.get("/api/admin/communities", async (req, res) => {
   const admin = await requireAdmin(req, res); if (!admin) return;
