@@ -220,7 +220,8 @@ app.get("/staging-auth", (req, res) => {
 
 // ─── Staging logout ───
 app.get("/staging-logout", (req, res) => {
-  res.setHeader("Set-Cookie", "staging_access=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax");
+  const secure = (req.headers["x-forwarded-proto"] || "").includes("https");
+  res.setHeader("Set-Cookie", "staging_access=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax" + (secure ? "; Secure" : ""));
   res.redirect("/");
 });
 
