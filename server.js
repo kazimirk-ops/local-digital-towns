@@ -218,6 +218,23 @@ app.get("/staging-auth", (req, res) => {
   res.type("html").send(STAGING_LOGIN_HTML);
 });
 
+// ─── Staging logout ───
+app.get("/staging-logout", (req, res) => {
+  res.clearCookie("staging_access");
+  res.redirect("/");
+});
+
+// ─── Module test harness (requires staging cookie) ───
+app.get("/module-tests", (req, res) => {
+  const cookies = (req.headers.cookie || "").split(";").reduce((a, c) => {
+    const [k, v] = c.trim().split("=");
+    if (k) a[k] = v || "";
+    return a;
+  }, {});
+  if (cookies["staging_access"] !== "true") return res.redirect("/");
+  res.sendFile(path.join(__dirname, "public", "module-tests.html"));
+});
+
 // ─── Public test harness (bypasses staging gate) ───
 app.get("/test", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "test.html"));

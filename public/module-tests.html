@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module Tests — Digital Towns</title>
+<style>
+  :root { --bg:#070b10; --panel:#0f1623; --border:#1e293b; --accent:#06b6d4; --text:#e2e8f0; --muted:#64748b; --ok:#22c55e; --err:#ef4444; }
+  *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); display:flex; min-height:100vh; }
+  .sidebar { width:240px; background:var(--panel); border-right:1px solid var(--border); padding:20px 0; flex-shrink:0; overflow-y:auto; }
+  .sidebar h2 { padding:0 16px 12px; font-size:14px; color:var(--accent); letter-spacing:2px; text-transform:uppercase; }
+  .mod-btn { display:flex; align-items:center; gap:8px; width:100%; padding:10px 16px; border:none; background:none; color:var(--text); font-size:13px; cursor:pointer; text-align:left; font-family:inherit; border-left:3px solid transparent; }
+  .mod-btn:hover { background:rgba(255,255,255,0.03); }
+  .mod-btn.active { background:rgba(6,182,212,0.08); border-left-color:var(--accent); color:var(--accent); }
+  .mod-icon { font-size:16px; width:22px; text-align:center; }
+  .main { flex:1; padding:24px 32px; overflow-y:auto; }
+  .main h1 { font-size:22px; margin-bottom:4px; }
+  .main .sub { color:var(--muted); font-size:13px; margin-bottom:24px; }
+  .test-card { background:var(--panel); border:1px solid var(--border); border-radius:8px; margin-bottom:12px; overflow:hidden; }
+  .test-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; }
+  .test-method { font-size:11px; font-weight:700; color:var(--ok); background:rgba(34,197,94,0.1); padding:2px 8px; border-radius:4px; margin-right:8px; }
+  .test-path { font-family:monospace; font-size:13px; color:var(--text); }
+  .test-btn { padding:6px 16px; border:1px solid var(--accent); background:none; color:var(--accent); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .test-btn:hover { background:rgba(6,182,212,0.1); }
+  .test-btn.loading { opacity:0.5; cursor:wait; }
+  .test-result { display:none; padding:12px 16px; border-top:1px solid var(--border); font-family:monospace; font-size:12px; white-space:pre-wrap; word-break:break-all; max-height:300px; overflow-y:auto; line-height:1.5; }
+  .test-result.ok { border-left:3px solid var(--ok); }
+  .test-result.fail { border-left:3px solid var(--err); }
+  .status-bar { display:flex; gap:12px; margin-bottom:20px; }
+  .status-pill { font-size:12px; padding:4px 10px; border-radius:12px; background:var(--panel); border:1px solid var(--border); }
+  .back { display:inline-block; margin-bottom:16px; color:var(--muted); text-decoration:none; font-size:13px; }
+  .back:hover { color:var(--text); }
+  @media(max-width:700px){ .sidebar{display:none;} .main{padding:16px;} }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <h2>Modules</h2>
+  <div id="modList"></div>
+</div>
+<div class="main">
+  <a href="/" class="back">&larr; Back to Dashboard</a>
+  <h1 id="modTitle">Module Tests</h1>
+  <div class="sub" id="modSub">Select a module to test its endpoints.</div>
+  <div class="status-bar" id="statusBar"></div>
+  <div id="tests"></div>
+</div>
+
+<script>
+var MODULES = [
+  { id:'core', icon:'\u2699', name:'Core', endpoints:[
+    { method:'GET', path:'/api/stats' },
+    { method:'GET', path:'/api/communities/list' }
+  ]},
+  { id:'auth', icon:'\uD83D\uDD11', name:'Auth', endpoints:[
+    { method:'GET', path:'/api/auth/me' }
+  ]},
+  { id:'listings', icon:'\uD83D\uDED2', name:'Listings', endpoints:[
+    { method:'GET', path:'/api/listings' }
+  ]},
+  { id:'orders', icon:'\uD83D\uDCE6', name:'Orders', endpoints:[
+    { method:'GET', path:'/api/orders' }
+  ]},
+  { id:'payments', icon:'\uD83D\uDCB3', name:'Payments', endpoints:[
+    { method:'GET', path:'/api/payments/connect/status' }
+  ]},
+  { id:'channels', icon:'\uD83D\uDCAC', name:'Channels', endpoints:[
+    { method:'GET', path:'/api/channels' }
+  ]},
+  { id:'bst-groups', icon:'\uD83C\uDFEA', name:'BST Groups', endpoints:[
+    { method:'GET', path:'/api/bst-groups' }
+  ]},
+  { id:'sweepstakes', icon:'\uD83C\uDFB0', name:'Sweepstakes', endpoints:[
+    { method:'GET', path:'/api/sweep/balance' },
+    { method:'GET', path:'/api/sweepstakes' },
+    { method:'GET', path:'/api/sweep/rules' }
+  ]},
+  { id:'pulse', icon:'\uD83D\uDCE1', name:'Pulse', endpoints:[
+    { method:'GET', path:'/api/pulse/today' }
+  ]},
+  { id:'achievements', icon:'\uD83C\uDFC6', name:'Achievements', endpoints:[
+    { method:'GET', path:'/api/leaderboard' }
+  ]},
+  { id:'gigs', icon:'\uD83D\uDD27', name:'Gigs', endpoints:[
+    { method:'GET', path:'/api/gig-categories' }
+  ]},
+  { id:'businesses', icon:'\uD83D\uDCCD', name:'Businesses', endpoints:[
+    { method:'GET', path:'/api/businesses' }
+  ]},
+  { id:'notifications', icon:'\uD83D\uDD14', name:'Notifications', endpoints:[
+    { method:'GET', path:'/api/notifications/unread-count' }
+  ]},
+  { id:'referrals', icon:'\uD83D\uDD17', name:'Referrals', endpoints:[
+    { method:'GET', path:'/api/referrals/code' }
+  ]},
+  { id:'trust', icon:'\uD83D\uDEE1', name:'Trust', endpoints:[
+    { method:'GET', path:'/api/trust/status' }
+  ]}
+];
+
+var currentMod = null;
+
+function buildList() {
+  var html = '';
+  MODULES.forEach(function(m) {
+    html += '<button class="mod-btn" data-id="' + m.id + '" onclick="selectMod(\'' + m.id + '\')">'
+      + '<span class="mod-icon">' + m.icon + '</span>' + m.name
+      + '</button>';
+  });
+  document.getElementById('modList').innerHTML = html;
+}
+
+function selectMod(id) {
+  currentMod = MODULES.find(function(m) { return m.id === id; });
+  if (!currentMod) return;
+
+  // Active state
+  document.querySelectorAll('.mod-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.id === id);
+  });
+
+  document.getElementById('modTitle').textContent = currentMod.name;
+  document.getElementById('modSub').textContent = currentMod.endpoints.length + ' endpoint(s) to test';
+  document.getElementById('statusBar').innerHTML = '';
+
+  var html = '';
+  currentMod.endpoints.forEach(function(ep, i) {
+    html += '<div class="test-card">'
+      + '<div class="test-header">'
+      + '<div><span class="test-method">' + ep.method + '</span><span class="test-path">' + ep.path + '</span></div>'
+      + '<button class="test-btn" id="btn-' + i + '" onclick="runTest(' + i + ')">Test</button>'
+      + '</div>'
+      + '<div class="test-result" id="res-' + i + '"></div>'
+      + '</div>';
+  });
+  document.getElementById('tests').innerHTML = html;
+}
+
+async function runTest(i) {
+  var ep = currentMod.endpoints[i];
+  var btn = document.getElementById('btn-' + i);
+  var res = document.getElementById('res-' + i);
+  btn.classList.add('loading');
+  btn.textContent = '...';
+  res.style.display = 'block';
+  res.className = 'test-result';
+  res.textContent = 'Loading...';
+
+  try {
+    var r = await fetch(ep.path, { credentials: 'same-origin' });
+    var text = await r.text();
+    try { text = JSON.stringify(JSON.parse(text), null, 2); } catch(e) {}
+    res.textContent = r.status + ' ' + r.statusText + '\n\n' + text;
+    res.classList.add(r.ok ? 'ok' : 'fail');
+  } catch(e) {
+    res.textContent = 'NETWORK ERROR: ' + e.message;
+    res.classList.add('fail');
+  }
+
+  btn.classList.remove('loading');
+  btn.textContent = 'Test';
+}
+
+buildList();
+</script>
+</body>
+</html>
