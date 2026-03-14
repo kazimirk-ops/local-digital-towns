@@ -36,7 +36,10 @@ module.exports = function mountAuth(app, db) {
     if (o.httpOnly) p.push("HttpOnly");
     if (o.secure) p.push("Secure");
     if (o.maxAge != null) p.push(`Max-Age=${o.maxAge}`);
-    res.setHeader("Set-Cookie", p.join("; "));
+    const existing = res.getHeader("Set-Cookie") || [];
+    const arr = Array.isArray(existing) ? existing : (existing ? [existing] : []);
+    arr.push(p.join("; "));
+    res.setHeader("Set-Cookie", arr);
   }
 
   function normalizeEmail(e) {
@@ -202,6 +205,9 @@ module.exports = function mountAuth(app, db) {
   app.get("/api/auth/google", (req, res) => {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) return res.status(500).json({ error: "Google OAuth not configured" });
+    // Store post-login redirect destination
+    const redir = req.query.redirect || "/town";
+    setCookie(res, "auth_redirect", redir, { httpOnly: true, maxAge: 600, secure: isHttpsRequest(req) });
     const baseUrl = process.env.BASE_URL || "https://digitaltowns.app";
     const redirectUri = encodeURIComponent(baseUrl + "/api/auth/google/callback");
     const scope = encodeURIComponent("openid email profile");
@@ -261,7 +267,9 @@ module.exports = function mountAuth(app, db) {
 
       const s = await createSession(userRow.id);
       setCookie(res, "sid", s.sid, { httpOnly: true, maxAge: 60 * 60 * 24 * 30, secure: isHttpsRequest(req) });
-      res.redirect("/");
+      const redirectTo = parseCookies(req).auth_redirect || "/town";
+      setCookie(res, "auth_redirect", "", { httpOnly: true, maxAge: 0, secure: isHttpsRequest(req) });
+      res.redirect(redirectTo);
     } catch (err) {
       console.error("GOOGLE_AUTH_ERROR", err?.message);
       res.redirect("/login.html?error=auth_failed");
@@ -277,6 +285,9 @@ module.exports = function mountAuth(app, db) {
   app.get("/api/auth/facebook/start", (req, res) => {
     const fbAppId = process.env.FACEBOOK_APP_ID;
     if (!fbAppId) return res.status(500).json({ error: "Facebook OAuth not configured" });
+    // Store post-login redirect destination
+    const redir = req.query.redirect || "/town";
+    setCookie(res, "auth_redirect", redir, { httpOnly: true, maxAge: 600, secure: isHttpsRequest(req) });
     const baseUrl = process.env.BASE_URL || "https://digitaltowns.app";
     const redirectUri = baseUrl + "/api/auth/facebook/callback";
 
@@ -369,7 +380,9 @@ module.exports = function mountAuth(app, db) {
 
       const s = await createSession(userRow.id);
       setCookie(res, "sid", s.sid, { httpOnly: true, maxAge: 60 * 60 * 24 * 30, secure: isHttpsRequest(req) });
-      res.redirect("/");
+      const redirectTo = parseCookies(req).auth_redirect || "/town";
+      setCookie(res, "auth_redirect", "", { httpOnly: true, maxAge: 0, secure: isHttpsRequest(req) });
+      res.redirect(redirectTo);
     } catch (err) {
       console.error("FB_CALLBACK_ERROR", err?.message);
       res.redirect("/login.html?error=fb_server_error");
