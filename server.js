@@ -239,7 +239,7 @@ document.cookie.split(';').forEach(function(c) {
 });
 try { localStorage.clear(); } catch(e){}
 try { sessionStorage.clear(); } catch(e){}
-window.location.replace('/');
+window.location.replace('/staging-auth');
 </script>
 </body>
 </html>`);
