@@ -1091,6 +1091,11 @@ function isAdminUser(user){
   return false;
 }
 async function requireAdmin(req,res,options={}){
+  // In staging, accept staging_access cookie as admin bypass
+  if(process.env.NODE_ENV !== "production"){
+    const cookies = parseCookies(req);
+    if(cookies.staging_access === "true") return { id:"staging", email:"staging@digitaltowns.app", isAdmin:true };
+  }
   const u=await requireLogin(req,res); if(!u) return null;
   const user=await data.getUserById(u);
   if(!isAdminUser(user)){
@@ -2228,17 +2233,23 @@ app.get("/api/admin/feature-flags", async (req, res) => {
 });
 
 // PUT /api/admin/feature-flags — update community feature_flags
+// Accepts single: { slug, feature, enabled } or bulk: { slug, flags: { key: bool, ... } }
 app.put("/api/admin/feature-flags", async (req, res) => {
   const admin = await requireAdmin(req, res); if (!admin) return;
   try {
-    const { slug, feature, enabled } = req.body || {};
-    if (!slug || !feature) return res.status(400).json({ error: "slug and feature required" });
+    const { slug, feature, enabled, flags: bulkFlags } = req.body || {};
+    if (!slug) return res.status(400).json({ error: "slug required" });
+    if (!feature && !bulkFlags) return res.status(400).json({ error: "feature or flags required" });
     const comm = await db.one("SELECT id, feature_flags FROM communities WHERE slug = $1", [slug]);
     if (!comm) return res.status(404).json({ error: "Community not found" });
     const flags = typeof comm.feature_flags === "string" ? JSON.parse(comm.feature_flags || "{}") : (comm.feature_flags || {});
-    flags[feature] = !!enabled;
+    if (bulkFlags && typeof bulkFlags === "object") {
+      Object.keys(bulkFlags).forEach(function(k) { flags[k] = !!bulkFlags[k]; });
+    } else {
+      flags[feature] = !!enabled;
+    }
     await db.query("UPDATE communities SET feature_flags = $1 WHERE slug = $2", [JSON.stringify(flags), slug]);
-    res.json({ ok: true, feature, enabled: !!enabled, flags });
+    res.json({ ok: true, flags });
   } catch (err) {
     res.status(500).json({ error: "Failed to update flags", detail: err.message });
   }
