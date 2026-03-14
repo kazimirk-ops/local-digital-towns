@@ -2065,20 +2065,29 @@ app.get("/api/modules", async (req, res) => {
 
       // Build submodules with enabled state from flags
       const submodules = (manifest.submodules || []).map(function(sub) {
+        // Handle string submodule IDs (some manifests use string arrays)
+        if (typeof sub === "string") {
+          return { id: sub, name: sub, description: "", default: true, enabled: !!flags[sub], frontend: sub.startsWith("ui-") };
+        }
         return {
           id: sub.id,
           name: sub.name,
-          description: sub.description || "",
+          description: sub.description || sub.desc || "",
           default: sub.default !== undefined ? sub.default : true,
-          enabled: flags[sub.id] !== undefined ? !!flags[sub.id] : (sub.default !== undefined ? sub.default : true)
+          enabled: flags[sub.id] !== undefined ? !!flags[sub.id] : (sub.default !== undefined ? sub.default : true),
+          frontend: sub.frontend || (sub.id && sub.id.startsWith("ui-")) || false
         };
       });
+
+      // Normalize layer to number
+      var layerNum = typeof manifest.layer === "number" ? manifest.layer : parseInt(String(manifest.layer).replace(/\D/g, "")) || 0;
 
       result.push({
         id: manifest.id,
         name: manifest.name,
         version: manifest.version,
-        layer: manifest.layer,
+        layer: layerNum,
+        description: manifest.description || "",
         dependencies: manifest.dependencies || [],
         status: isInstalled ? "ACTIVE" : "INACTIVE",
         installed_at: installedMap[manifest.id] || null,
@@ -2114,7 +2123,7 @@ app.post("/api/admin/modules/:id/install", async (req, res) => {
       var subId = typeof sub === "string" ? sub : sub.id;
       if (subId) { flags[subId] = true; enabled.push(subId); }
     });
-    await db.query("UPDATE communities SET feature_flags = $1 WHERE slug = $2", [JSON.stringify(flags), slug]);
+    await db.query("UPDATE communities SET feature_flags = feature_flags || $1::jsonb WHERE slug = $2", [JSON.stringify(flags), slug]);
     // Record in migrations
     await db.query("INSERT INTO migrations (module_name, applied_at) VALUES ($1, now()) ON CONFLICT (module_name) DO NOTHING", [moduleId]);
     res.json({ ok: true, flags_enabled: enabled });
@@ -2142,7 +2151,7 @@ app.post("/api/admin/modules/:id/uninstall", async (req, res) => {
       var subId = typeof sub === "string" ? sub : sub.id;
       if (subId) { flags[subId] = false; disabled.push(subId); }
     });
-    await db.query("UPDATE communities SET feature_flags = $1 WHERE slug = $2", [JSON.stringify(flags), slug]);
+    await db.query("UPDATE communities SET feature_flags = feature_flags || $1::jsonb WHERE slug = $2", [JSON.stringify(flags), slug]);
     res.json({ ok: true, flags_disabled: disabled });
   } catch (err) {
     res.status(500).json({ error: "Uninstall failed", detail: err.message });

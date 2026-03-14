@@ -40,4 +40,4 @@ INSERT INTO communities (slug, name, domain, status, feature_flags)
 VALUES ('digitaltowns', 'Digital Towns Staging',
         'digitaltowns.app', 'active',
         '{"core": true, "tags": true, "auth": true, "places": true}')
-ON CONFLICT (slug) DO UPDATE SET feature_flags = '{"core": true, "tags": true, "auth": true, "places": true}';
+ON CONFLICT (slug) DO NOTHING;

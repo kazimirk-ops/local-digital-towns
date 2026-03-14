@@ -140,7 +140,7 @@
       <div class="stat-card"><div class="stat-value" id="statTotal">&mdash;</div><div class="stat-label">Total Modules</div></div>
       <div class="stat-card"><div class="stat-value" id="statActive" style="color:#10b981;">&mdash;</div><div class="stat-label">Active</div></div>
       <div class="stat-card"><div class="stat-value" id="statAvailable" style="color:#94a3b8;">&mdash;</div><div class="stat-label">Available</div></div>
-      <div class="stat-card"><div class="stat-value" id="statNeedsBuild" style="color:#818cf8;">&mdash;</div><div class="stat-label">Needs Build</div></div>
+      <div class="stat-card"><div class="stat-value" id="statNeedsBuild" style="color:#818cf8;">0</div><div class="stat-label">Inactive</div></div>
     </div>
 
     <div class="controls">
@@ -179,300 +179,19 @@
     };
     var layerColors = { 0:'#ef4444', 1:'#3b82f6', 2:'#8b5cf6', 3:'#10b981', 4:'#f59e0b', 5:'#06b6d4' };
 
-    // ===== Module Registry (hardcoded from manifests) =====
-    var modules = [
-      // L0 - Foundation
-      {
-        id:'core', name:'Core Framework', icon:'\u{1F3D7}', layer:0, layerGroup:'Foundation',
-        description:'Platform core, middleware, config. Migrations table, communities, users, sessions. Always runs first.',
-        dependencies:[],
-        submodules:[
-          { id:'core.sessions', name:'Session Management', desc:'Cookie-based session tracking', frontend:false },
-          { id:'core.communities', name:'Communities', desc:'Community records and configuration', frontend:false },
-          { id:'core.users', name:'User Accounts', desc:'User registration and profiles', frontend:false }
-        ]
-      },
-      {
-        id:'auth', name:'Authentication', icon:'\u{1F510}', layer:0, layerGroup:'Foundation',
-        description:'Email OTP, Google, Facebook login. Phone verification, ID scan, GPS presence.',
-        dependencies:['core'],
-        submodules:[
-          { id:'auth.facebook', name:'Facebook OAuth', desc:'Login with Facebook', frontend:false },
-          { id:'auth.google', name:'Google OAuth', desc:'Login with Google', frontend:false },
-          { id:'auth.email-otp', name:'Email OTP', desc:'6-digit email verification', frontend:false },
-          { id:'auth.phone-verify', name:'Phone Verification', desc:'SMS code verification', frontend:false },
-          { id:'auth.id-scan', name:'ID Scan', desc:'Stripe Identity document scan', frontend:false },
-          { id:'auth.gps-presence', name:'GPS Presence', desc:'Physical location verification', frontend:false }
-        ]
-      },
-      {
-        id:'places', name:'Places', icon:'\u{1F4CD}', layer:0, layerGroup:'Foundation',
-        description:'Geographic places and communities. Towns, regions, states, countries. Self-referencing hierarchy. Domain routing. Geo-filtering.',
-        dependencies:['core'],
-        submodules:[
-          { id:'places.memberships', name:'Memberships', desc:'Join/leave places', frontend:false },
-          { id:'places.requests', name:'Town Requests', desc:'Town request form', frontend:false },
-          { id:'places.geo-filter', name:'Geo Filter', desc:'Haversine radius filtering', frontend:false },
-          { id:'places.network-levels', name:'Network Levels', desc:'PP level/progress system', frontend:false },
-          { id:'places.genesis', name:'Town Genesis', desc:'Town genesis map (L3)', frontend:false }
-        ]
-      },
-      {
-        id:'tags', name:'Tag System', icon:'\u{1F3F7}', layer:0, layerGroup:'Foundation',
-        description:'Universal tagging for users, listings, and events. Content, behavioral, and interest tags.',
-        dependencies:['core'],
-        submodules:[
-          { id:'tags.content', name:'Content Tags', desc:'Niche routing tags', frontend:false },
-          { id:'tags.behavioral', name:'Behavioral Tags', desc:'Auto-applied system tags', frontend:false },
-          { id:'tags.interest', name:'Interest Tags', desc:'Built from user actions', frontend:false },
-          { id:'tags.location', name:'Location Tags', desc:'From shipping/purchase address', frontend:false },
-          { id:'tags.events', name:'Tag Events', desc:'tag_events accumulation table', frontend:false }
-        ]
-      },
-      // L0 - Community
-      {
-        id:'channels', name:'Discussion Groups & Channels', icon:'\u{1F4AC}', layer:0, layerGroup:'Community',
-        description:'Channels, threaded messages, DMs, channel requests, muting.',
-        dependencies:['core','places','auth'],
-        submodules:[
-          { id:'channels.threads', name:'Threads', desc:'Threaded replies', frontend:false },
-          { id:'channels.images', name:'Image Uploads', desc:'Image uploads in messages', frontend:false },
-          { id:'channels.dm', name:'Direct Messages', desc:'Direct messages', frontend:false },
-          { id:'channels.muting', name:'Muting', desc:'Mute/block users', frontend:false },
-          { id:'channels.requests', name:'Channel Requests', desc:'User channel creation requests', frontend:false },
-          { id:'ui-base.channels', name:'Channels UI', desc:'Channels + DMs page', frontend:true }
-        ]
-      },
-      {
-        id:'bst-groups', name:'BST Groups', icon:'\u{1F3EA}', layer:0, layerGroup:'Community',
-        description:'Buy/Sell/Trade groups with mod dashboard, join requests, analytics.',
-        dependencies:['core','places','auth'],
-        submodules:[
-          { id:'bst-groups.mod-tools', name:'Mod Tools', desc:'Moderator dashboard', frontend:false },
-          { id:'bst-groups.leaderboard', name:'Leaderboard', desc:'Sales leaderboard', frontend:false },
-          { id:'bst-groups.listings-crosspost', name:'Listings Crosspost', desc:'Post listings into groups', frontend:false },
-          { id:'bst-groups.private-groups', name:'Private Groups', desc:'Private group support', frontend:false },
-          { id:'bst-groups.applications', name:'Group Applications', desc:'Apply to create group', frontend:false },
-          { id:'ui-base.bst', name:'BST Groups UI', desc:'BST groups page', frontend:true }
-        ]
-      },
-      {
-        id:'gigs', name:'Gigs & Local Services', icon:'\u{1F527}', layer:0, layerGroup:'Community',
-        description:'Gig categories, providers, bookings, reviews, service inquiries.',
-        dependencies:['core','places','auth'],
-        submodules:[
-          { id:'gigs.rides', name:'Rides', desc:'Local transportation', frontend:false },
-          { id:'gigs.stripe', name:'Stripe Payments', desc:'Stripe payment for bookings', frontend:false },
-          { id:'gigs.reviews', name:'Provider Reviews', desc:'Provider reviews', frontend:false },
-          { id:'gigs.applications', name:'Provider Applications', desc:'Provider applications', frontend:false },
-          { id:'gigs.service-inquiries', name:'Service Inquiries', desc:'Custom inquiry forms', frontend:false },
-          { id:'ui-base.gigs', name:'Gigs UI', desc:'Gigs + services page', frontend:true }
-        ]
-      },
-      {
-        id:'pulse', name:'Town Pulse', icon:'\u{1F4E1}', layer:0, layerGroup:'Community',
-        description:'Daily digest, activity feed, Facebook export, pulse posts.',
-        dependencies:['core','places','auth'],
-        submodules:[
-          { id:'pulse.daily-digest', name:'Daily Digest', desc:'Auto-generated daily stats', frontend:false },
-          { id:'pulse.facebook-export', name:'Facebook Export', desc:'Copy post for Facebook', frontend:false },
-          { id:'pulse.tides', name:'Tide Data', desc:'NOAA tide data', frontend:false },
-          { id:'pulse.posts', name:'Community Posts', desc:'Community contributed posts', frontend:false },
-          { id:'pulse.weather', name:'Weather Feed', desc:'Weather feed', frontend:false },
-          { id:'pulse.events', name:'Events Feed', desc:'Upcoming events feed', frontend:false },
-          { id:'ui-base.pulse', name:'Pulse UI', desc:'Community pulse page', frontend:true }
-        ]
-      },
-      {
-        id:'businesses', name:'Map & Businesses', icon:'\u{1F4CD}', layer:0, layerGroup:'Community',
-        description:'Business listings, seeded map pins, claim flow, Haversine geo filter, local business applications.',
-        dependencies:['core','places'],
-        submodules:[
-          { id:'businesses.claims', name:'Business Claims', desc:'Claim business listing', frontend:false },
-          { id:'businesses.reviews', name:'Business Reviews', desc:'Business reviews', frontend:false },
-          { id:'businesses.seeded-pins', name:'Seeded Pins', desc:'Auto-seeded map pins', frontend:false },
-          { id:'businesses.applications', name:'Business Applications', desc:'Apply to list business', frontend:false },
-          { id:'ui-base.businesses', name:'Businesses UI', desc:'Business map page', frontend:true }
-        ]
-      },
-      // L1 - Commerce
-      {
-        id:'listings', name:'Listings', icon:'\u{1F3F7}', layer:1, layerGroup:'Commerce',
-        description:'Marketplace listings, buy-now, auctions, digital items, local delivery, moderation queue.',
-        dependencies:['core','places','auth','tags'],
-        submodules:[
-          { id:'listings.auctions', name:'Auctions', desc:'Auction listings with bidding', frontend:false },
-          { id:'listings.buy-now', name:'Buy Now', desc:'Fixed-price listings', frontend:false },
-          { id:'listings.digital', name:'Digital Items', desc:'Digital item delivery', frontend:false },
-          { id:'listings.delivery', name:'Local Delivery', desc:'Local delivery support', frontend:false },
-          { id:'listings.moderation', name:'Moderation Queue', desc:'Listing review queue', frontend:false },
-          { id:'listings.variants', name:'Variants & Options', desc:'Product variants', frontend:false },
-          { id:'ui-base.marketplace', name:'Marketplace UI', desc:'Town marketplace page', frontend:true },
-          { id:'ui-base.auctions', name:'Auctions UI', desc:'Town auctions page', frontend:true }
-        ]
-      },
-      {
-        id:'orders', name:'Orders & Invoices', icon:'\u{1F4E6}', layer:1, layerGroup:'Commerce',
-        description:'Order management, invoices, deposits, buyer profiles, auction orders, refunds.',
-        dependencies:['core','listings','auth'],
-        submodules:[
-          { id:'orders.invoices', name:'Invoices', desc:'Invoice generation', frontend:false },
-          { id:'orders.deposits', name:'Deposits', desc:'Payment deposits', frontend:false },
-          { id:'orders.buyer-profiles', name:'Buyer Profiles', desc:'Buyer identity layer', frontend:false },
-          { id:'orders.auction-orders', name:'Auction Orders', desc:'Auction order tracking', frontend:false },
-          { id:'orders.refunds', name:'Refunds', desc:'Refund processing', frontend:false },
-          { id:'ui-base.orders', name:'Orders UI', desc:'Order history + invoices page', frontend:true }
-        ]
-      },
-      {
-        id:'payments', name:'Payments', icon:'\u{1F4B3}', layer:1, layerGroup:'Commerce',
-        description:'Stripe Connect, wallet, deposits, cash/Venmo/PayPal, refunds.',
-        dependencies:['core','orders','auth'],
-        submodules:[
-          { id:'payments.stripe-connect', name:'Stripe Connect', desc:'Seller payment onboarding', frontend:false },
-          { id:'payments.wallet', name:'Wallet & Credits', desc:'Internal wallet system', frontend:false },
-          { id:'payments.deposits', name:'Deposit Payments', desc:'Deposit payment processing', frontend:false },
-          { id:'payments.cash', name:'Cash/Venmo/PayPal', desc:'Alternative payment methods', frontend:false },
-          { id:'payments.refunds', name:'Refunds', desc:'Refund processing', frontend:false },
-          { id:'ui-base.payments', name:'Payments UI', desc:'Stripe Connect onboarding', frontend:true }
-        ]
-      },
-      {
-        id:'shipping', name:'Shipping', icon:'\u{1F69A}', layer:1, layerGroup:'Commerce',
-        description:'Shippo integration, rate quotes, label generation, tracking.',
-        dependencies:['core','orders','auth'],
-        submodules:[
-          { id:'shipping.shippo', name:'Shippo', desc:'Shippo API integration', frontend:false },
-          { id:'shipping.rates', name:'Rate Quotes', desc:'Shipping rate calculation', frontend:false },
-          { id:'shipping.labels', name:'Label Generation', desc:'Print shipping labels', frontend:false },
-          { id:'shipping.tracking', name:'Tracking', desc:'Package tracking', frontend:false },
-          { id:'shipping.local-delivery', name:'Local Delivery', desc:'Local delivery option', frontend:false },
-          { id:'ui-base.shipping', name:'Shipping UI', desc:'Shipment tracking page', frontend:true }
-        ]
-      },
-      {
-        id:'notifications', name:'Notifications', icon:'\u{1F514}', layer:1, layerGroup:'Commerce',
-        description:'In-app notifications, email notifications, order updates, message notifications.',
-        dependencies:['core','auth'],
-        submodules:[
-          { id:'notifications.in-app', name:'In-App Notifications', desc:'Real-time notifications', frontend:false },
-          { id:'notifications.email', name:'Email Notifications', desc:'Email delivery', frontend:false },
-          { id:'notifications.order-updates', name:'Order Updates', desc:'Order status emails', frontend:false },
-          { id:'notifications.messages', name:'Message Notifications', desc:'New message alerts', frontend:false },
-          { id:'ui-base.notifications', name:'Notifications UI', desc:'Notification center page', frontend:true }
-        ]
-      },
-      // L2 - Engagement
-      {
-        id:'sweepstakes', name:'Sweepstakes', icon:'\u{1F3B0}', layer:2, layerGroup:'Engagement',
-        description:'Spin wheel, prize offers, daily point cap, social sharing bonus, admin draw tool.',
-        dependencies:['core','auth','notifications'],
-        submodules:[
-          { id:'sweepstakes.wheel', name:'Spin Wheel', desc:'Interactive spin wheel', frontend:false },
-          { id:'sweepstakes.prize-offers', name:'Prize Offers', desc:'Prize configuration', frontend:false },
-          { id:'sweepstakes.daily-cap', name:'Daily Point Cap', desc:'Daily earning limits', frontend:false },
-          { id:'sweepstakes.social-bonus', name:'Social Sharing Bonus', desc:'Points for sharing', frontend:false },
-          { id:'sweepstakes.admin-draw', name:'Admin Draw Tool', desc:'Manual prize draws', frontend:false },
-          { id:'ui-base.sweep', name:'Sweepstakes UI', desc:'Sweep wheel + balance page', frontend:true }
-        ]
-      },
-      {
-        id:'achievements', name:'Achievements & Leaderboard', icon:'\u{1F3C6}', layer:2, layerGroup:'Engagement',
-        description:'Leaderboard, badges, share tracking, nightly score job, monthly champion.',
-        dependencies:['core','auth'],
-        submodules:[
-          { id:'achievements.leaderboard', name:'Leaderboard', desc:'Ranked member list', frontend:false },
-          { id:'achievements.badges', name:'Badges', desc:'Achievement badges', frontend:false },
-          { id:'achievements.shares', name:'Share Tracking', desc:'Social share tracking', frontend:false },
-          { id:'achievements.nightly-cron', name:'Nightly Score Job', desc:'Automated score calculation', frontend:false },
-          { id:'achievements.monthly-champion', name:'Monthly Champion', desc:'Monthly top member', frontend:false },
-          { id:'ui-base.leaderboard', name:'Leaderboard UI', desc:'Leaderboard + badges page', frontend:true }
-        ]
-      },
-      {
-        id:'live-shows', name:'Live Shows', icon:'\u{1F4FA}', layer:2, layerGroup:'Engagement',
-        description:'Video streaming, show schedule, live chat, bookmarks, in-stream purchases.',
-        dependencies:['core','auth','listings'],
-        submodules:[
-          { id:'live-shows.video', name:'Video Streaming', desc:'Live video feed', frontend:false },
-          { id:'live-shows.schedule', name:'Show Schedule', desc:'Upcoming shows', frontend:false },
-          { id:'live-shows.chat', name:'Live Chat', desc:'Real-time show chat', frontend:false },
-          { id:'live-shows.bookmarks', name:'Bookmarks', desc:'Save favorite shows', frontend:false },
-          { id:'live-shows.in-stream-buy', name:'In-Stream Purchases', desc:'Buy during stream', frontend:false },
-          { id:'ui-base.live', name:'Live Shows UI', desc:'Live shows + schedule page', frontend:true }
-        ]
-      },
-      {
-        id:'referrals', name:'Referrals', icon:'\u{1F517}', layer:2, layerGroup:'Engagement',
-        description:'Referral codes, commissions, credits, cashout.',
-        dependencies:['core','auth'],
-        submodules:[
-          { id:'referrals.codes', name:'Referral Codes', desc:'Generate referral codes', frontend:false },
-          { id:'referrals.commissions', name:'Commissions', desc:'Commission tracking', frontend:false },
-          { id:'referrals.credits', name:'Credits', desc:'Referral credit rewards', frontend:false },
-          { id:'referrals.cashout', name:'Cashout', desc:'Cash out referral earnings', frontend:false },
-          { id:'ui-base.referrals', name:'Referrals UI', desc:'Referral code + earnings page', frontend:true }
-        ]
-      },
-      // L4 - Trust & Safety
-      {
-        id:'trust', name:'Trust & Verification', icon:'\u{1F6E1}', layer:4, layerGroup:'Trust & Safety',
-        description:'Trust tiers, identity verification, resident verification, business subscriptions, trust gates.',
-        dependencies:['core','auth','places'],
-        submodules:[
-          { id:'trust.tiers', name:'Trust Tiers', desc:'Tiered trust levels', frontend:false },
-          { id:'trust.identity', name:'Identity Verification', desc:'ID verification flow', frontend:false },
-          { id:'trust.resident', name:'Resident Verification', desc:'Local resident check', frontend:false },
-          { id:'trust.business', name:'Business Verification', desc:'Business identity check', frontend:false },
-          { id:'trust.gates', name:'Trust Gates', desc:'Feature gating by trust level', frontend:false },
-          { id:'ui-base.trust', name:'Trust UI', desc:'Verification flow page', frontend:true }
-        ]
-      },
-      {
-        id:'disputes', name:'Disputes & Ghost Reports', icon:'\u{2696}', layer:4, layerGroup:'Trust & Safety',
-        description:'Order disputes, ghost reports, bidding suspension, trust events, admin resolution.',
-        dependencies:['core','auth','orders','trust'],
-        submodules:[
-          { id:'disputes.orders', name:'Order Disputes', desc:'Dispute order issues', frontend:false },
-          { id:'disputes.ghost', name:'Ghost Reports', desc:'Report ghost buyers/sellers', frontend:false },
-          { id:'disputes.bidding', name:'Bidding Suspension', desc:'Suspend bidding privileges', frontend:false },
-          { id:'disputes.admin', name:'Admin Resolution', desc:'Admin dispute tools', frontend:false },
-          { id:'disputes.events', name:'Trust Events', desc:'Trust event logging', frontend:false },
-          { id:'ui-base.disputes', name:'Disputes UI', desc:'Disputes + ghost reports page', frontend:true }
-        ]
-      },
-      // L5 - Frontend
-      {
-        id:'ui-base', name:'Base Town UI', icon:'\u{1F5A5}', layer:5, layerGroup:'Frontend',
-        description:'Clean base town frontend shell. Install sub-modules from other modules to add pages.',
-        dependencies:['core','auth'],
-        submodules:[
-          { id:'ui-base.marketplace', name:'Marketplace', desc:'Marketplace page', frontend:true },
-          { id:'ui-base.auctions', name:'Auctions', desc:'Auctions page', frontend:true },
-          { id:'ui-base.channels', name:'Channels', desc:'Channels page', frontend:true },
-          { id:'ui-base.bst', name:'BST Groups', desc:'BST groups page', frontend:true },
-          { id:'ui-base.sweep', name:'Sweepstakes', desc:'Sweepstakes page', frontend:true },
-          { id:'ui-base.pulse', name:'Pulse', desc:'Pulse page', frontend:true },
-          { id:'ui-base.businesses', name:'Business Map', desc:'Business map page', frontend:true },
-          { id:'ui-base.gigs', name:'Gigs & Services', desc:'Gigs page', frontend:true },
-          { id:'ui-base.leaderboard', name:'Leaderboard', desc:'Leaderboard page', frontend:true },
-          { id:'ui-base.live', name:'Live Shows', desc:'Live shows page', frontend:true }
-        ]
-      },
-      {
-        id:'ui-treasurecoast', name:'Treasure Coast UI', icon:'\u{1F3D6}', layer:5, layerGroup:'Frontend',
-        description:'TC-specific frontend theme with marketplace, auctions, channels, sweepstakes, live shows, pulse.',
-        dependencies:['core','auth'],
-        submodules:[
-          { id:'ui-treasurecoast.marketplace', name:'Marketplace', desc:'TC marketplace page', frontend:true },
-          { id:'ui-treasurecoast.auctions', name:'Auctions', desc:'TC auctions page', frontend:true },
-          { id:'ui-treasurecoast.channels', name:'Channels', desc:'TC channels page', frontend:true },
-          { id:'ui-treasurecoast.sweepstakes', name:'Sweepstakes', desc:'TC sweepstakes page', frontend:true },
-          { id:'ui-treasurecoast.live-shows', name:'Live Shows', desc:'TC live shows page', frontend:true },
-          { id:'ui-treasurecoast.pulse', name:'Pulse', desc:'TC pulse page', frontend:true }
-        ]
-      }
-    ];
+    // ===== Module Registry (loaded dynamically from /api/modules) =====
+    var modules = [];
+
+    // Icon map for modules (manifests don't include icons)
+    var moduleIcons = {
+      'core':'\u{1F3D7}', 'auth':'\u{1F510}', 'places':'\u{1F4CD}', 'tags':'\u{1F3F7}',
+      'channels':'\u{1F4AC}', 'bst-groups':'\u{1F3EA}', 'gigs':'\u{1F527}', 'pulse':'\u{1F4E1}',
+      'businesses':'\u{1F4CD}', 'listings':'\u{1F3F7}', 'orders':'\u{1F4E6}', 'payments':'\u{1F4B3}',
+      'shipping':'\u{1F69A}', 'notifications':'\u{1F514}', 'sweepstakes':'\u{1F3B0}',
+      'achievements':'\u{1F3C6}', 'live-shows':'\u{1F4FA}', 'referrals':'\u{1F517}',
+      'trust':'\u{1F6E1}', 'disputes':'\u{2696}', 'ui-base':'\u{1F5A5}',
+      'ui-treasurecoast':'\u{1F3D6}', 'niche-network':'\u{1F310}'
+    };
 
     // ===== Helpers =====
     function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
@@ -488,15 +207,13 @@
     function getModuleStatus(m) {
       var flag = featureFlags[m.id];
       if (flag === true) return 'active';
-      if (flag === false) return 'available';
-      return 'needs-build';
+      return 'available';
     }
 
     function statusBadgeHtml(status) {
       var map = {
         'active': '<span class="module-badge badge-active">\u2713 ACTIVE</span>',
-        'available': '<span class="module-badge badge-available">\u25A1 AVAILABLE</span>',
-        'needs-build': '<span class="module-badge badge-needs-build">\u{1F527} NEEDS BUILD</span>'
+        'available': '<span class="module-badge badge-available">\u25A1 AVAILABLE</span>'
       };
       return map[status] || '';
     }
@@ -543,18 +260,52 @@
       loadFeatureFlags();
     }
 
-    // ===== Feature flags =====
+    // ===== Feature flags + dynamic module loading =====
     function loadFeatureFlags() {
       if (!selectedSlug) { featureFlags = {}; renderModules(); return; }
       // Pull flags from already-loaded communities data
       var comm = communities.find(function(c) { return (c.slug || c.id) === selectedSlug; });
       if (comm && comm.feature_flags) {
         featureFlags = typeof comm.feature_flags === 'string' ? JSON.parse(comm.feature_flags) : comm.feature_flags;
-        renderModules();
-        return;
+      } else {
+        featureFlags = {};
       }
-      featureFlags = {};
-      renderModules();
+      // Load modules dynamically from API
+      loadModules();
+    }
+
+    function loadModules() {
+      var url = '/api/modules';
+      if (selectedSlug) url += '?community=' + encodeURIComponent(selectedSlug);
+      fetch(url, { credentials:'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var apiModules = data.modules || [];
+          modules = apiModules.map(function(m) {
+            return {
+              id: m.id,
+              name: m.name,
+              icon: moduleIcons[m.id] || '\u{1F4E6}',
+              layer: m.layer,
+              layerGroup: layerNames[m.layer] || ('Layer ' + m.layer),
+              description: m.description || '',
+              dependencies: m.dependencies || [],
+              submodules: (m.submodules || []).map(function(s) {
+                return {
+                  id: s.id,
+                  name: s.name,
+                  desc: s.description || '',
+                  frontend: s.frontend || false
+                };
+              })
+            };
+          });
+          renderModules();
+        })
+        .catch(function(err) {
+          console.error('Failed to load modules:', err);
+          renderModules();
+        });
     }
 
     // ===== Install / Uninstall =====
@@ -630,17 +381,17 @@
       });
 
       // Compute stats (from all modules, not just filtered)
-      var totalActive = 0, totalAvailable = 0, totalNeedsBuild = 0;
+      var totalActive = 0, totalAvailable = 0;
       modules.forEach(function(m) {
         var st = getModuleStatus(m);
         if (st === 'active') totalActive++;
-        else if (st === 'available') totalAvailable++;
-        else if (st === 'needs-build') totalNeedsBuild++;
+        else totalAvailable++;
       });
       document.getElementById('statTotal').textContent = modules.length;
       document.getElementById('statActive').textContent = totalActive;
       document.getElementById('statAvailable').textContent = totalAvailable;
-      document.getElementById('statNeedsBuild').textContent = totalNeedsBuild;
+      var nbEl = document.getElementById('statNeedsBuild');
+      if (nbEl) nbEl.textContent = '0';
 
       // Group by layer + layerGroup
       var sections = {};
@@ -732,15 +483,13 @@
           html += '<div class="module-actions" onclick="event.stopPropagation();">';
           if (status === 'active') {
             html += '<button class="btn-uninstall" onclick="uninstallModule(\'' + escHtml(m.id) + '\')">Uninstall</button>';
-          } else if (status === 'available') {
+          } else {
             if (areDependenciesMet(m)) {
               html += '<button class="btn-install" onclick="installModule(\'' + escHtml(m.id) + '\')">Install</button>';
             } else {
               var missing = deps.filter(function(d) { return featureFlags[d] !== true; });
               html += '<button class="btn-install" disabled>Requires: ' + escHtml(missing.join(', ')) + '</button>';
             }
-          } else {
-            html += '<button class="btn-install" disabled>Not yet built</button>';
           }
           html += '</div>';
 
