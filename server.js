@@ -99,6 +99,7 @@ try {
         imgSrc: ["'self'", "data:", "https:", "blob:"],
         connectSrc: ["'self'", "https://api.stripe.com", "https://graph.facebook.com", "https://api.tidesandcurrents.noaa.gov", "wss:", "https://accounts.google.com", "https://oauth2.googleapis.com", "https://www.googleapis.com", "https://www.googletagmanager.com", "https://www.google-analytics.com", "https://*.basemaps.cartocdn.com"],
         frameSrc: ["'self'", "https://js.stripe.com", "https://www.facebook.com"],
+        scriptSrcAttr: ["'unsafe-inline'"],
       }
     },
     crossOriginEmbedderPolicy: false,
