@@ -31,7 +31,7 @@
     + '<div style="font-size:40px;margin-bottom:16px;">&#127965;</div>'
     + '<h2 id="gateTitle" style="color:#fff;font-size:22px;font-weight:800;margin:0 0 8px;">Join Treasure Coast &mdash; It\'s Free</h2>'
     + '<p id="gateSubtitle" style="color:#94a3b8;font-size:14px;margin:0 0 28px;line-height:1.5;">See full listings, place bids, and connect with local sellers. Florida\'s first digital town.</p>'
-    + '<a id="fbAuthBtn" href="/auth/facebook" style="display:flex;align-items:center;justify-content:center;gap:10px;background:#1877f2;color:#fff;text-decoration:none;padding:14px 24px;border-radius:12px;font-weight:700;font-size:15px;margin-bottom:12px;transition:background 0.2s;" onmouseover="this.style.background=\'#1464d8\'" onmouseout="this.style.background=\'#1877f2\'">'
+    + '<a id="fbAuthBtn" href="/api/auth/facebook/start" style="display:flex;align-items:center;justify-content:center;gap:10px;background:#1877f2;color:#fff;text-decoration:none;padding:14px 24px;border-radius:12px;font-weight:700;font-size:15px;margin-bottom:12px;transition:background 0.2s;" onmouseover="this.style.background=\'#1464d8\'" onmouseout="this.style.background=\'#1877f2\'">'
     + '<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>'
     + 'Continue with Facebook</a>'
     + '<a id="googleAuthBtn" href="/api/auth/google" style="display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#1a1a1a;text-decoration:none;padding:14px 24px;border-radius:12px;font-weight:700;font-size:15px;margin-bottom:12px;transition:background 0.2s;box-sizing:border-box;" onmouseover="this.style.background=\'#f0f0f0\'" onmouseout="this.style.background=\'#fff\'">'
@@ -97,7 +97,7 @@
     if (subtitle && subEl) subEl.textContent = subtitle;
     // Set login URLs with return redirect
     var btn = document.getElementById('fbAuthBtn');
-    if (btn) btn.href = '/auth/facebook?redirect=' + encodeURIComponent(returnPath);
+    if (btn) btn.href = '/api/auth/facebook/start?redirect=' + encodeURIComponent(returnPath);
     var gBtn = document.getElementById('googleAuthBtn');
     if (gBtn) gBtn.href = '/api/auth/google?redirect=' + encodeURIComponent(returnPath);
     modal.style.display = 'flex';

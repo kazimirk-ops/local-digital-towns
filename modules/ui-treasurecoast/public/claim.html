@@ -199,7 +199,7 @@ function showFbLogin(biz, urgencyBlock) {
     + '<h1>' + escapeHtml(biz.name) + '</h1>'
     + '<p class="address">' + escapeHtml(biz.address || '') + ', ' + escapeHtml(biz.city || '') + '</p>'
     + urgencyBlock
-    + '<a href="/auth/facebook?redirect=/claim/' + token + '" class="btn-fb">Continue with Facebook to Claim</a>'
+    + '<a href="/api/auth/facebook/start?redirect=/claim/' + token + '" class="btn-fb">Continue with Facebook to Claim</a>'
     + '<p class="fine-print">Free forever. No credit card. Takes 30 seconds.</p>'
     + buildFbShareBtn(biz.name);
   attachShareTracking();
@@ -243,7 +243,7 @@ function confirmClaim() {
           + '<a href="/" style="display:block;margin-top:12px;color:#20d6b4;font-size:13px;text-align:center;text-decoration:none;">\u2190 Back to the map</a>'
           + '</div>';
       } else if (result.status === 401) {
-        window.location.href = '/auth/facebook?redirect=/claim/' + token;
+        window.location.href = '/api/auth/facebook/start?redirect=/claim/' + token;
       } else {
         btn.textContent = result.data.error || 'Something went wrong. Try again.';
         btn.disabled = false;
