@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Digital Sebastian | First Digital Town | DigitalTowns</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { overflow:hidden; background:#5aa8c4; font-family:'Special Elite',serif; touch-action:none; }
+canvas { position:fixed; top:0; left:0; z-index:0; }
+
+/* START SCREEN */
+#start {
+  position:fixed; inset:0; z-index:100;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(2,10,25,0.30);
+  transition:opacity 0.8s ease;
+}
+#start.gone { opacity:0; pointer-events:none; }
+#card {
+  background:rgba(4,18,38,0.82);
+  border:1px solid rgba(100,180,255,0.30);
+  border-radius:16px;
+  padding:40px 52px;
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+  box-shadow:0 10px 60px rgba(0,0,0,0.55);
+  max-width:92vw;
+}
+#card .wave { font-size:54px; }
+#card h1 {
+  font-family:'Playfair Display',serif;
+  font-size:clamp(36px,6vw,62px);
+  font-weight:700; font-style:italic;
+  color:#fff;
+  text-shadow:0 2px 30px rgba(40,130,220,0.7);
+  line-height:1.05; text-align:center;
+}
+#card .tagline {
+  font-family:'Playfair Display',serif;
+  font-size:clamp(14px,2.2vw,20px);
+  font-style:italic; color:#7ac8ff;
+  text-align:center;
+}
+#card .rule { width:160px; height:1px; background:linear-gradient(to right,transparent,#4a9ade,transparent); }
+#card .meta { font-size:11px; color:rgba(180,225,255,0.65); letter-spacing:4px; text-transform:uppercase; text-align:center; line-height:2.3; }
+#card .stats { display:flex; gap:28px; }
+#card .stat-val { font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:#fff; text-align:center; text-shadow:0 0 18px rgba(100,200,255,0.4); }
+#card .stat-lbl { font-size:8px; color:rgba(150,210,255,0.55); letter-spacing:3px; text-transform:uppercase; text-align:center; margin-top:2px; }
+#enter-btn {
+  padding:16px 54px;
+  background:linear-gradient(135deg,#2288cc,#0a4a80);
+  border:none; border-radius:6px;
+  color:#fff; font-family:'Special Elite',serif;
+  font-size:14px; letter-spacing:5px; text-transform:uppercase;
+  cursor:pointer;
+  box-shadow:0 0 36px rgba(30,140,210,0.35);
+  transition:transform 0.2s, box-shadow 0.2s;
+}
+#enter-btn:hover { transform:translateY(-3px); box-shadow:0 6px 48px rgba(30,140,210,0.55); }
+#card .note { font-size:9px; color:rgba(180,225,255,0.4); letter-spacing:3px; text-transform:uppercase; }
+
+/* HUD */
+#hud {
+  position:fixed; top:0; left:0; right:0; z-index:30;
+  padding:10px 18px;
+  display:none; flex-direction:row; justify-content:space-between; align-items:center;
+  background:linear-gradient(to bottom,rgba(5,20,40,0.85),transparent);
+  pointer-events:none;
+}
+#hud-logo { display:flex; align-items:center; gap:10px; }
+#hud-icon { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#1e7ab8,#0a3d6b); display:flex; align-items:center; justify-content:center; font-size:17px; }
+#hud-name { font-family:'Playfair Display',serif; font-size:15px; color:#cce8ff; font-style:italic; }
+#hud-sub { font-size:8px; color:rgba(150,210,255,0.5); letter-spacing:3px; text-transform:uppercase; }
+#hud-area { background:rgba(5,20,40,0.7); border:1px solid rgba(100,180,255,0.25); border-radius:20px; padding:6px 14px; font-size:10px; color:#8bd0ff; letter-spacing:2px; text-transform:uppercase; }
+
+/* VIEW TOGGLE */
+#vtoggle {
+  position:fixed; top:58px; left:50%; transform:translateX(-50%); z-index:30;
+  display:none; flex-direction:row;
+  background:rgba(5,15,30,0.88); border:1px solid rgba(100,180,255,0.3);
+  border-radius:30px; overflow:hidden;
+  backdrop-filter:blur(6px); pointer-events:all;
+}
+.vbtn { padding:9px 22px; font-family:'Special Elite',serif; font-size:10px; letter-spacing:3px; text-transform:uppercase; color:rgba(150,210,255,0.55); background:none; border:none; cursor:pointer; transition:all 0.2s; }
+.vbtn.active { background:linear-gradient(135deg,rgba(30,120,200,0.6),rgba(10,60,120,0.6)); color:#fff; }
+.vbtn:hover:not(.active) { color:#a8d8ff; background:rgba(100,180,255,0.08); }
+
+/* WEATHER */
+#weather { position:fixed; top:58px; left:18px; z-index:30; display:none; background:rgba(5,15,30,0.78); border:1px solid rgba(100,180,255,0.18); border-radius:7px; padding:8px 12px; pointer-events:none; }
+#w-temp { font-size:20px; color:#a8d8ff; font-weight:bold; }
+#w-desc { font-size:8px; color:rgba(150,210,255,0.45); letter-spacing:2px; text-transform:uppercase; margin-top:2px; }
+
+/* COMPASS */
+#compass { position:fixed; top:58px; right:18px; z-index:30; display:none; width:38px; height:38px; border-radius:50%; background:rgba(5,15,30,0.78); border:1px solid rgba(100,180,255,0.18); align-items:center; justify-content:center; pointer-events:none; }
+#cn { font-size:12px; color:#ff6655; font-weight:bold; }
+
+/* CROSSHAIR */
+#xhair { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; z-index:20; display:none; }
+#xhair::before, #xhair::after { content:''; position:absolute; background:rgba(100,190,255,0.75); border-radius:1px; }
+#xhair::before { width:1px; height:16px; left:50%; transform:translateX(-50%); }
+#xhair::after { width:16px; height:1px; top:50%; transform:translateY(-50%); }
+
+/* HINT */
+#hint { position:fixed; bottom:88px; left:50%; transform:translateX(-50%); z-index:30; display:none; background:rgba(5,20,40,0.9); border:1px solid rgba(100,180,255,0.35); color:#8bd0ff; padding:9px 20px; border-radius:22px; font-size:10px; letter-spacing:3px; text-transform:uppercase; pointer-events:none; white-space:nowrap; opacity:0; transition:opacity 0.3s; }
+#hint.show { opacity:1; }
+
+/* CONTROLS BAR */
+#ctrl { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:30; display:none; flex-direction:row; gap:14px; pointer-events:none; }
+.ck { display:flex; align-items:center; gap:4px; color:rgba(255,255,255,0.3); font-size:8px; letter-spacing:1px; }
+.kk { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.13); border-radius:3px; padding:2px 5px; font-size:7px; color:rgba(255,255,255,0.45); font-family:monospace; }
+
+/* MINIMAP */
+#minimap { position:fixed; bottom:18px; right:18px; z-index:30; display:none; width:108px; height:108px; background:rgba(5,15,30,0.85); border:1px solid rgba(100,180,255,0.22); border-radius:4px; overflow:hidden; }
+#mm-title { position:absolute; top:4px; left:50%; transform:translateX(-50%); font-size:7px; color:rgba(150,210,255,0.4); letter-spacing:2px; text-transform:uppercase; white-space:nowrap; }
+#mm-dot { position:absolute; width:6px; height:6px; background:#4ab8ff; border-radius:50%; transform:translate(-50%,-50%); box-shadow:0 0 5px rgba(74,184,255,0.9); left:50%; top:60%; }
+#mm-n { position:absolute; bottom:3px; left:50%; transform:translateX(-50%); font-size:7px; color:rgba(150,210,255,0.35); }
+
+/* MAP OVERLAY (bird's eye labels) */
+#map-overlay { position:fixed; inset:0; z-index:35; pointer-events:none; display:none; }
+#map-overlay.show { display:block; pointer-events:none; }
+.lm-pin { position:absolute; transform:translate(-50%,-50%); pointer-events:all !important; cursor:pointer; text-align:center; }
+.lm-dot { width:12px; height:12px; border-radius:50%; background:#00ccff; border:2px solid rgba(255,255,255,0.85); box-shadow:0 0 10px rgba(0,200,255,0.85); margin:0 auto 3px; animation:pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.35);} }
+.lm-label { font-family:'Special Elite',serif; font-size:9px; color:#fff; background:rgba(5,15,35,0.82); border:1px solid rgba(100,180,255,0.3); border-radius:4px; padding:2px 7px; white-space:nowrap; text-shadow:0 1px 3px rgba(0,0,0,0.9); }
+
+/* MAP LEGEND */
+#legend { position:fixed; bottom:130px; right:18px; z-index:30; display:none; background:rgba(5,15,30,0.9); border:1px solid rgba(100,180,255,0.22); border-radius:8px; padding:12px 14px; min-width:155px; pointer-events:none; }
+#legend.show { display:block; }
+.leg-title { font-size:9px; color:rgba(150,210,255,0.7); letter-spacing:3px; text-transform:uppercase; margin-bottom:8px; border-bottom:1px solid rgba(100,180,255,0.15); padding-bottom:6px; }
+.leg-row { display:flex; align-items:center; gap:7px; margin-bottom:5px; font-size:9px; color:rgba(180,225,255,0.7); }
+.leg-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+/* MAP INSTRUCTIONS */
+#mapinstr { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:30; display:none; background:rgba(5,15,30,0.82); border:1px solid rgba(100,180,255,0.2); border-radius:20px; padding:6px 18px; font-size:9px; color:rgba(150,210,255,0.6); letter-spacing:2px; text-transform:uppercase; white-space:nowrap; }
+#mapinstr.show { display:block; }
+
+/* INFO PANEL */
+#panel { position:fixed; right:-390px; top:0; bottom:0; width:370px; z-index:50; background:linear-gradient(180deg,#081828,#040e1a); border-left:1px solid rgba(100,180,255,0.18); transition:right 0.4s cubic-bezier(0.25,0.46,0.45,0.94); display:flex; flex-direction:column; overflow:hidden; }
+#panel.open { right:0; }
+#panel-close { position:absolute; top:13px; right:13px; background:none; border:1px solid rgba(255,255,255,0.18); color:rgba(255,255,255,0.5); width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; z-index:1; }
+#panel-hero { height:160px; display:flex; align-items:center; justify-content:center; font-size:68px; background:#081828; flex-shrink:0; }
+#panel-body { padding:18px; overflow-y:auto; flex:1; scrollbar-width:thin; scrollbar-color:rgba(100,180,255,0.2) transparent; }
+.p-tag { display:inline-block; font-size:8px; letter-spacing:4px; text-transform:uppercase; color:#4a9ade; border:1px solid rgba(74,154,222,0.3); padding:3px 10px; border-radius:14px; margin-bottom:10px; }
+.p-name { font-family:'Playfair Display',serif; font-size:20px; font-weight:700; color:#a8d8ff; line-height:1.2; margin-bottom:6px; }
+.p-addr { font-size:10px; color:rgba(100,180,255,0.5); letter-spacing:2px; text-transform:uppercase; margin-bottom:10px; }
+.p-desc { font-size:12px; color:rgba(150,200,255,0.65); line-height:1.9; margin-bottom:14px; }
+.p-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:14px; }
+.pg-cell { background:rgba(255,255,255,0.03); border:1px solid rgba(100,180,255,0.1); border-radius:5px; padding:9px; text-align:center; }
+.pg-l { font-size:7px; color:rgba(100,180,255,0.45); letter-spacing:3px; text-transform:uppercase; margin-bottom:2px; }
+.pg-v { font-size:12px; color:#a8d8ff; font-weight:600; }
+.p-tags { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:14px; }
+.ptag { font-size:8px; padding:3px 9px; border-radius:12px; background:rgba(100,180,255,0.08); color:rgba(100,180,255,0.6); border:1px solid rgba(100,180,255,0.15); }
+.p-closebtn { width:100%; padding:12px; background:linear-gradient(135deg,#1e7ab8,#0a4a80); border:none; border-radius:5px; color:#a8d8ff; font-family:'Special Elite',serif; font-size:10px; letter-spacing:3px; text-transform:uppercase; cursor:pointer; }
+
+/* MOBILE JOYSTICKS */
+#jl, #jr { position:fixed; bottom:65px; width:105px; height:105px; border-radius:50%; background:rgba(255,255,255,0.04); border:1px solid rgba(100,180,255,0.2); display:none; align-items:center; justify-content:center; z-index:40; touch-action:none; }
+#jl { left:20px; } #jr { right:20px; }
+.jknob { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,rgba(100,180,255,0.4),rgba(10,60,110,0.5)); border:1px solid rgba(100,180,255,0.35); pointer-events:none; }
+@media(pointer:coarse){ #jl,#jr { display:flex; } }
+</style>
+</head>
+<body>
+
+<!-- START SCREEN -->
+<div id="start">
+  <div id="card">
+    <div class="wave">&#x1F30A;</div>
+    <h1>Digital Sebastian</h1>
+    <div class="tagline">Sebastian, Florida &mdash; First Digital Town</div>
+    <div class="rule"></div>
+    <div class="meta">DigitalTowns &nbsp;&middot;&nbsp; Indian River County &nbsp;&middot;&nbsp; Treasure Coast</div>
+    <div class="stats">
+      <div><div class="stat-val">27,992</div><div class="stat-lbl">Population</div></div>
+      <div><div class="stat-val">15</div><div class="stat-lbl">Landmarks</div></div>
+      <div><div class="stat-val">156 mi</div><div class="stat-lbl">Indian River Lagoon</div></div>
+    </div>
+    <div id="email-form" style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;">
+      <input id="email-input" type="email" placeholder="your@email.com"
+        style="width:100%;max-width:320px;padding:14px 20px;background:rgba(255,255,255,0.07);border:1px solid rgba(100,180,255,0.3);border-radius:6px;color:#fff;font-family:'Special Elite',serif;font-size:14px;letter-spacing:2px;outline:none;text-align:center;"
+        onkeydown="if(event.key==='Enter')submitEmail()">
+      <button id="enter-btn" onclick="submitEmail()">&#x1F6B6; Enter Sebastian</button>
+      <div id="email-msg" style="font-size:10px;color:#7ac8ff;letter-spacing:2px;min-height:16px;text-align:center;"></div>
+    </div>
+    <div class="note">Walk the streets &nbsp;&middot;&nbsp; Bird&rsquo;s-eye map &nbsp;&middot;&nbsp; 15 landmarks</div>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="hud-logo">
+    <div id="hud-icon">&#x1F30A;</div>
+    <div>
+      <div id="hud-name">Digital Sebastian</div>
+      <div id="hud-sub">DigitalTowns &middot; FL</div>
+    </div>
+  </div>
+  <div id="hud-area">Riverfront District</div>
+</div>
+
+<div id="weather"><div id="w-temp">78&deg;F</div><div id="w-desc">SE Wind &middot; 8 mph</div></div>
+<div id="compass"><div id="cn">N</div></div>
+<div id="xhair"></div>
+<div id="hint"></div>
+
+<div id="ctrl">
+  <div class="ck"><span class="kk">W A S D</span>&nbsp;Walk</div>
+  <div class="ck"><span class="kk">Mouse</span>&nbsp;Look</div>
+  <div class="ck"><span class="kk">E</span>&nbsp;Interact</div>
+  <div class="ck"><span class="kk">V</span>&nbsp;Map</div>
+</div>
+
+<div id="jl"><div class="jknob" id="kl"></div></div>
+<div id="jr"><div class="jknob" id="kr"></div></div>
+
+<div id="minimap">
+  <div id="mm-title">Sebastian FL</div>
+  <div id="mm-dot"></div>
+  <div id="mm-n">N &#x2191;</div>
+</div>
+
+<!-- VIEW TOGGLE -->
+<div id="vtoggle">
+  <button class="vbtn active" id="btn-walk" onclick="setWalk()">&#x1F6B6; Street</button>
+  <button class="vbtn" id="btn-bird" onclick="setBird()">&#x1F5FA; Bird&rsquo;s-Eye</button>
+</div>
+
+<!-- BIRD'S EYE OVERLAY -->
+<div id="map-overlay"></div>
+
+<!-- MAP LEGEND -->
+<div id="legend">
+  <div class="leg-title">Map Legend</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#00ccff"></div>Landmark &mdash; click to visit</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#1a7aaa"></div>Indian River Lagoon</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#2a5a10"></div>Nature</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#222"></div>Roads</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#c8a860"></div>Residential</div>
+</div>
+<div id="mapinstr">Bird&rsquo;s-Eye &nbsp;&middot;&nbsp; WASD to pan &nbsp;&middot;&nbsp; Click landmark</div>
+
+<!-- INFO PANEL -->
+<div id="panel">
+  <button id="panel-close" onclick="closePanel()">&#x2715;</button>
+  <div id="panel-hero"><span id="p-icon">&#x1F30A;</span></div>
+  <div id="panel-body"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function() {
+'use strict';
+
+// ---
+var LM = [
+  { id:'riverview',     name:'Riverview Park',                        icon:'&#x1F333;', type:'City Park',               dist:'Riverfront',      known:'Clambake Festival',       addr:'Indian River Dr, Sebastian FL', tags:['Waterfront','Splash Pad','Events','Fishing','Free'],        desc:'Sebastian\'s main gathering space on the Indian River Lagoon. Open park with pavilions, Splash Pad, fishing dock, boat tie-up, and a stage for the annual Clambake, River Days, and Fine Arts Festival.',                x:-20, z:8  },
+  { id:'mainstreet',    name:'Main Street Park & Boat Ramp',          icon:'&#x2693;',  type:'Park & Boat Ramp',         dist:'Riverfront',      known:'Heritage Circle',         addr:'Main St & Indian River Dr',     tags:['Boat Ramp','Fishing Pier','Panoramic Views','Free'],        desc:'Where Main Street meets the lagoon. Public boat ramp, fishing pier, Heritage Circle with the historic Hardee Oak tree, and panoramic views across to Pelican Island.',                                                  x:-20, z:14 },
+  { id:'mulligans',     name:"Mulligan's Beach House",                 icon:'&#x1F37B;', type:'Restaurant & Bar',         dist:'Riverfront',      known:'Sunset Views',            addr:'806 Indian River Dr',           tags:['Waterfront','Live Music','Seafood','Happy Hour'],           desc:'Beloved waterfront sports bar with floor-to-ceiling windows overlooking the lagoon. Fresh Florida seafood, cold drinks, weekly live music, and some of the best sunset views on the Treasure Coast.',                   x:-21, z:18 },
+  { id:'squidlips',     name:'Squid Lips Waterfront Restaurant',       icon:'&#x1F41F;', type:'Seafood Restaurant',       dist:'Riverfront',      known:'Grouper Sandwiches',      addr:'1660 Indian River Dr',          tags:['Dock & Dine','Seafood','Outdoor Dining','Casual'],          desc:'Popular casual waterfront eatery with an outdoor deck that hangs directly over the Indian River. Famous for grouper sandwiches, lobster bisque, and dock-and-dine boat access.',                                        x:-22, z:22 },
+  { id:'fishermans',    name:"Fisherman's Landing Sebastian",          icon:'&#x1F6A3;', type:'Working Waterfront',       dist:'Waterfront Heritage', known:'Hook-to-Cook Seafood', addr:'1540 Indian River Dr',          tags:['Historic','Fish Market','Museum','Commercial Fishing'],     desc:'One of Florida\'s last authentic working waterfronts. Commercial boats unload daily catches at the dock. Wholesale and retail fish market, casual eatery, and a museum of Sebastian\'s 150-year fishing heritage.',     x:-22, z:-8 },
+  { id:'pelican',       name:'Pelican Island Natl Wildlife Refuge',    icon:'&#x1F985;', type:'Natl Wildlife Refuge',     dist:'Indian River Lagoon', known:"America's 1st Refuge", addr:'4055 Wildlife Way',             tags:['Historic','Birdwatching','Free','ADA','Roosevelt 1903'],    desc:"America's VERY FIRST National Wildlife Refuge, established by President Roosevelt in 1903. An ADA boardwalk and observation tower overlook the mangrove island teeming with pelicans, storks, and anhingas.",          x:-38, z:-10},
+  { id:'mashmonkeys',   name:'Mash Monkeys Brewing Company',           icon:'&#x1F37A;', type:'Craft Brewery',            dist:'US-1 Corridor',   known:'Rotating Craft Taps',     addr:'1829 US Hwy 1',                 tags:['Craft Beer','Live Music','Dog Friendly','Food Trucks'],     desc:'One of Sebastian\'s two celebrated craft breweries. Playful, community-focused taproom with rotating small-batch taps, an outdoor patio, food trucks, and live music nights.',                                          x:4,   z:6  },
+  { id:'pareidolia',    name:'Pareidolia Brewing Co.',                  icon:'&#x1F3A8;', type:'Craft Brewery & Taproom', dist:'US-1 Corridor',   known:'#1 Pub Sebastian 2024',   addr:'706 Cleveland St',              tags:['Craft Beer','Local Art','Live Music','Award Winning'],      desc:"Sebastian's artsy craft brewery. Named for the phenomenon of seeing patterns in randomness. Filled with local art, experimental brews, and live music. Voted #1 Best Pub in Sebastian 2024.",                          x:5,   z:12 },
+  { id:'inlet',         name:'Sebastian Inlet State Park',             icon:'&#x1F30A;', type:'State Park',               dist:'Barrier Island',  known:'First Peak Surf Break',   addr:'9700 S Hwy A1A',                tags:['Surfing','Fishing','Camping','Treasure Museum','State Park'], desc:"Where the Indian River meets the Atlantic. World-famous 'First Peak' and 'Monster Hole' surf breaks. World-class snook and redfish fishing from both jetties. McLarty Treasure Museum covers the 1715 Spanish fleet.", x:35,  z:-20},
+  { id:'skydive',       name:'Skydive Sebastian',                      icon:'&#x1FA82;', type:'Skydiving',                dist:'Airport District',known:'Lagoon Views 14,000 ft',  addr:'400 Airport Dr W',              tags:['Skydiving','Tandem Available','Adventure','Scenic Views'],  desc:'Premier drop zone at Sebastian Municipal Airport. Tandem skydives deliver breathtaking overhead views of the Indian River Lagoon, Pelican Island, and the Atlantic. One of Florida\'s top skydiving destinations.',      x:12,  z:20 },
+  { id:'melfisher',     name:'Mel Fisher Treasure Museum',             icon:'&#x1F4B0;', type:'History Museum',           dist:'US-1 Corridor',   known:'1715 Spanish Gold',       addr:'1322 US Hwy 1',                 tags:['Museum','1715 Shipwreck','Spanish Gold','Family Friendly'], desc:'On July 31, 1715, a hurricane sank 11 Spanish galleons off this coast. Displays authentic recovered gold bars, silver coins, emeralds, and jewelry from the wreck that still holds hundreds of millions underwater.',  x:3,   z:-4 },
+  { id:'villagesquare', name:'The Village Square',                     icon:'&#x1F3EA;', type:'Shopping Plaza',           dist:'US-1 Corridor',   known:'Outdoor Music & Fountain', addr:'US Hwy 1, Sebastian FL',        tags:['Shopping','Dining','Live Music','Outdoor Space','Free Parking'], desc:'Sebastian\'s charming main plaza with 10+ shops, boutiques, restaurants, and a central cobblestone courtyard with a fountain. Hosts free outdoor music and community events.',                                       x:7,   z:0  },
+  { id:'chamber',       name:'Sebastian River Chamber of Commerce',    icon:'&#x1F3DB;', type:'Civic',                    dist:'Downtown',        known:'Heritage Circle & Hardee Oak', addr:'700 Main St',               tags:['Civic','Visitor Info','Downtown Anchor','Heritage Circle'], desc:'The civic hub of Sebastian at the Main Street intersection. Heritage Circle park sits across the street with the legendary Hardee Oak, one of Sebastian\'s oldest trees, and panoramic lagoon views.',                  x:-2,  z:2  },
+  { id:'preserve',      name:"St. Sebastian River Preserve",           icon:'&#x1F332;', type:'State Preserve',           dist:'Wilderness West', known:'60+ Miles of Trails',     addr:'West of Sebastian, IRC',        tags:['Hiking','Kayaking','Manatee Viewing','Horseback','Camping'],desc:'22,000-acre wilderness west of town. Pine flatwoods, cypress domes, and the Sebastian River headwaters. 60+ miles of trails. Manatee Overlook for wildlife viewing November through March.',                              x:-40, z:15 },
+  { id:'airport',       name:'Sebastian Municipal Airport (X26)',      icon:'&#x2708;',  type:'General Aviation Airport', dist:'Airport District', known:'Skydiving & Flight Training', addr:'202 Airport Dr',            tags:['Aviation','Skydiving','Flight Training','Scenic'],          desc:'General aviation airport west of US-1. Home to Skydive Sebastian, flight training, and private aircraft. Hub for aerial sightseeing over the Indian River Lagoon and Treasure Coast.',                                  x:14,  z:14 },
+];
+
+// ---
+var scene, camera, renderer;
+var PI2 = Math.PI / 2;
+var euler, vel, ray, savedPos, savedEuler;
+var glowMeshes = [];
+var birds = [], clouds = [], boats = [];
+var water, sunLight;
+var prev = 0;
+
+// ---
+var active = false;
+var birdsEye = false;
+var moveF=false, moveB=false, moveL=false, moveR=false;
+var isLocked = false;
+var walkSpeed = 12;
+var mapX = 0, mapZ = 0;
+var jL = {on:false, sx:0, sy:0, dx:0, dy:0};
+var jR = {on:false, sx:0, sy:0, dx:0, dy:0};
+
+// ---
+window.addEventListener('load', function() {
+  initThree();
+  buildWorld();
+  setupLights();
+  setupInput();
+  setupMobile();
+  window.addEventListener('resize', onResize);
+  prev = performance.now();
+  requestAnimationFrame(loop);
+});
+
+function submitEmail() {
+  var email = document.getElementById('email-input').value.trim();
+  var msg = document.getElementById('email-msg');
+
+  if (!email || !email.includes('@')) {
+    msg.style.color = '#ff6655';
+    msg.textContent = 'Please enter a valid email';
+    return;
+  }
+
+  msg.style.color = '#7ac8ff';
+  msg.textContent = 'Welcome to Sebastian...';
+
+  // Fire and forget — save email
+  fetch('/api/email-capture', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      email: email,
+      source: 'sebastian-intro',
+      url: window.location.href
+    })
+  }).catch(function(){});
+
+  // Enter the town after short delay
+  setTimeout(function() {
+    var startEl = document.getElementById('start');
+    startEl.classList.add('gone');
+    setTimeout(function() {
+      startEl.style.display = 'none';
+      var hud = document.getElementById('hud');
+      var vtoggle = document.getElementById('vtoggle');
+      var ctrl = document.getElementById('ctrl');
+      var minimap = document.getElementById('minimap');
+      if(hud) hud.style.display = 'flex';
+      if(vtoggle) vtoggle.style.display = 'flex';
+      if(ctrl) ctrl.style.display = 'flex';
+      if(minimap) minimap.style.display = 'block';
+      active = true;
+      setWalk();
+    }, 800);
+  }, 600);
+}
+
+document.getElementById('panel-close').addEventListener('click', closePanel);
+
+// ---
+function initThree() {
+  euler     = new THREE.Euler(0,0,0,'YXZ');
+  vel       = new THREE.Vector3();
+  ray       = new THREE.Raycaster();
+  savedPos  = new THREE.Vector3(-5,1.7,28);
+  savedEuler= new THREE.Euler(0,Math.PI,0,'YXZ');
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x6bb8d4);
+  scene.fog = new THREE.FogExp2(0x7ac4d8, 0.017);
+
+  camera = new THREE.PerspectiveCamera(68, innerWidth/innerHeight, 0.1, 600);
+  // Start in bird's-eye
+  camera.position.set(-5, 80, 0);
+  euler.set(-PI2, 0, 0, 'YXZ');
+  camera.quaternion.setFromEuler(euler);
+  birdsEye = true;
+  mapX = -5; mapZ = 0;
+
+  renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  document.body.appendChild(renderer.domElement);
+}
+
+function onResize() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+}
+
+// ---
+function mat(c,r,m) { return new THREE.MeshStandardMaterial({color:c, roughness:r!=null?r:0.82, metalness:m||0}); }
+function box(w,h,d) { return new THREE.BoxGeometry(w,h,d); }
+function cyl(rt,rb,h,s) { return new THREE.CylinderGeometry(rt,rb,h,s||10); }
+function place(mesh, x,y,z) { mesh.position.set(x,y,z); scene.add(mesh); return mesh; }
+
+// ---
+function buildWorld() {
+  buildTerrain();
+  buildRoads();
+  buildWater();
+  buildRiverfront();
+  buildUS1();
+  buildResidential();
+  buildBarrierIsland();
+  buildNature();
+  buildAirport();
+  placeGlowMarkers();
+  addBoats();
+  addBirds();
+  addClouds();
+}
+
+function buildTerrain() {
+  var g = place(new THREE.Mesh(new THREE.PlaneGeometry(400,400), mat(0x3b6b22,1)), 0,0,0);
+  g.rotation.x = -PI2; g.receiveShadow = true;
+  var low = place(new THREE.Mesh(new THREE.PlaneGeometry(12,300), mat(0x2d5e1a,1)), -17,0.005,0);
+  low.rotation.x = -PI2;
+  var mud = place(new THREE.Mesh(new THREE.PlaneGeometry(4,300), mat(0x8a7050,0.95)), -22,0.008,0);
+  mud.rotation.x = -PI2;
+}
+
+function buildRoads() {
+  road(5,0,200,9,false);    // US-1
+  road(-16,0,200,5.5,false); // Indian River Drive
+  road(18,0,120,6,false);   // Sebastian Blvd
+  [-22,-15,-8,0,8,16,24].forEach(function(z){ road(-5.5,z,22,5,true); });
+  road(-5.5,14,22,6,true);  // Main Street
+  sidewalk(-13.5,0,200,1.8,false);
+  sidewalk(1.5,0,200,1.8,false);
+  parking(-8,10,10,8);
+}
+
+function road(cx,cz,len,w,horiz) {
+  var geo = horiz ? box(len,0.04,w) : box(w,0.04,len);
+  var r = place(new THREE.Mesh(geo, mat(0x222222,0.98)), cx,0.012,cz);
+  r.receiveShadow = true;
+  var stripe = new THREE.Mesh(horiz ? box(len,0.01,0.14) : box(0.14,0.01,len), mat(0xddcc00,0.9));
+  place(stripe, cx,0.025,cz);
+}
+
+function sidewalk(cx,cz,len,w,horiz) {
+  var sw = new THREE.Mesh(horiz ? box(len,0.03,w) : box(w,0.03,len), mat(0x9a908a,0.95));
+  place(sw, cx,0.018,cz);
+}
+
+function parking(cx,cz,w,d) {
+  var lot = place(new THREE.Mesh(box(w,0.02,d), mat(0x2a2830,0.97)), cx,0.016,cz);
+}
+
+function buildWater() {
+  water = new THREE.Mesh(new THREE.PlaneGeometry(60,400), new THREE.MeshStandardMaterial({color:0x1a7aaa, roughness:0.08, metalness:0.35, transparent:true, opacity:0.88}));
+  water.rotation.x = -PI2;
+  water.position.set(-55,0.01,0);
+  scene.add(water);
+  var shallow = place(new THREE.Mesh(new THREE.PlaneGeometry(6,200), mat(0x2a8aaa,0.2,0.3)), -26,0.015,0);
+  shallow.rotation.x = -PI2;
+}
+
+function buildRiverfront() {
+  // Riverview Park
+  var park = place(new THREE.Mesh(box(20,0.04,18), mat(0x3a8a3a,0.98)), -20,0.02,8);
+  park.rotation.x = 0;
+  // Pavilion roof
+  place(new THREE.Mesh(box(10,0.3,7), mat(0x7a5a35,0.8)), -18,3.5,6);
+  [[- 4.5,3],[4.5,3],[-4.5,-3],[4.5,-3]].forEach(function(p){ place(new THREE.Mesh(cyl(0.15,0.15,3.5), mat(0x6a4a28,0.8)), -18+p[0],1.75,6+p[1]); });
+  // Splash pad
+  place(new THREE.Mesh(new THREE.CylinderGeometry(4,4,0.08,24), mat(0x3a8aaa,0.3,0.2)), -22,0.04,12);
+  // Flagpole
+  place(new THREE.Mesh(cyl(0.07,0.07,9), mat(0xaaaaaa,0.4,0.8)), -27,4.5,7);
+  place(new THREE.Mesh(box(3,2,0.04), mat(0xcc3322,0.8)), -25.5,8,7);
+  // Fishing pier
+  place(new THREE.Mesh(box(2,0.18,16), mat(0x5a3a18,0.9)), -23,0.5,4);
+  // Mulligans
+  var mull = place(new THREE.Mesh(box(12,6.5,9), mat(0x3a5a7a,0.75)), -21.5,3.25,18);
+  mull.castShadow = true;
+  place(new THREE.Mesh(box(10,5,0.2), mat(0x5588aa,0.1,0.4)), -21.5,3.5,14.4);
+  // Squid Lips
+  var sq = place(new THREE.Mesh(box(10,5,8), mat(0x1a5a3a,0.8)), -22,2.5,22);
+  sq.castShadow = true;
+  // Fishermans Landing
+  var fl = place(new THREE.Mesh(box(14,5,9), mat(0x6b4a2a,0.85)), -22,2.5,-8);
+  fl.castShadow = true;
+  place(new THREE.Mesh(box(15,0.25,10), mat(0x7a7a76,0.45,0.5)), -22,5.12,-8);
+  addDock(-25,-8,16,3);
+  // Main Street boat ramp area
+  place(new THREE.Mesh(box(6,0.08,12), mat(0x4a4a44,0.9)), -21,0.04,14);
+  buildOakTree(-11.5,0,13.5,4.5,5.5);
+  var hc = place(new THREE.Mesh(new THREE.CylinderGeometry(5,5,0.04,20), mat(0x4a8a3a,0.98)), -10,0.02,3);
+  // Small buildings
+  [[-20,0,-16,8,4.5,7,0x7a6040],[-20,0,-24,9,4,7,0x4a5a6a],[-19,0,28,7,4,6,0x5a7a4a]].forEach(function(b){
+    var bl = place(new THREE.Mesh(box(b[3],b[4],b[5]), mat(b[6],0.82)), b[0],b[4]/2,b[2]);
+    bl.castShadow = true;
+  });
+  // Marina
+  addDock(-24,2,24,3.5);
+  addDock(-24,8,20,2.5);
+}
+
+function buildUS1() {
+  // Mash Monkeys
+  var mm = place(new THREE.Mesh(box(11,7,9), mat(0x3a2a4a,0.78)), 4,3.5,6);
+  mm.castShadow = true;
+  [0,2.5].forEach(function(dz){ place(new THREE.Mesh(cyl(0.9,0.9,4,12), mat(0x8a8a9a,0.25,0.7)), 8,3,5+dz); });
+  // Pareidolia
+  var par = place(new THREE.Mesh(box(10,6.5,9), mat(0x2a1a3a,0.8)), 5,3.25,12);
+  par.castShadow = true;
+  [[0xd4501a,2,12],[0x2a7ab8,4,11.5],[0xc8b820,0,12.5]].forEach(function(p){
+    place(new THREE.Mesh(box(2.5,4,0.15), mat(p[0],0.7)), p[1],3,p[2]+4.58);
+  });
+  // Mel Fisher
+  var mf = place(new THREE.Mesh(box(10,5,8), mat(0xc8923a,0.72)), 3,2.5,-4);
+  mf.castShadow = true;
+  place(new THREE.Mesh(new THREE.ConeGeometry(7,2.5,4), mat(0x5a3a12,0.85)), 3,6.25,-4).rotation.y = Math.PI/4;
+  // Village Square
+  place(new THREE.Mesh(box(14,5,8), mat(0x9a8060,0.78)), 8,2.5,0).castShadow = true;
+  place(new THREE.Mesh(box(8,5,12), mat(0x8a7050,0.8)), 12,2.5,8).castShadow = true;
+  place(new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.7,0.5,16), mat(0x9a8888,0.45,0.2)), 8,0.25,0);
+  place(new THREE.Mesh(box(16,0.04,14), mat(0xb0a090,0.95)), 8,0.022,3);
+  // Chamber
+  var ch = place(new THREE.Mesh(box(8,5,7), mat(0x5a4828,0.78)), -2,2.5,2);
+  ch.castShadow = true;
+  // US-1 buildings east
+  [[9.5,-22,8,5,9,0x7a6a54],[9.5,-12,10,6,9,0x6a7a8a],[10,-2,9,7,8,0x8a7a64],[9.5,16,10,5,9,0x5a6a7a],[9.5,26,8,4,8,0x7a5a4a]].forEach(function(b){
+    var bl = place(new THREE.Mesh(box(b[2],b[3],b[4]), mat(b[5],0.82)), b[0],b[3]/2,b[1]);
+    bl.castShadow = true;
+  });
+  // US-1 buildings west
+  [[-0.5,-18,8,5,9,0x8a7a5a],[-0.5,-8,9,5.5,8,0x6a8a7a],[-0.5,20,8,5,8,0x7a6880],[-0.5,28,9,4,7,0x5a6878]].forEach(function(b){
+    var bl = place(new THREE.Mesh(box(b[2],b[3],b[4]), mat(b[5],0.82)), b[0],b[3]/2,b[1]);
+    bl.castShadow = true;
+  });
+}
+
+function buildResidential() {
+  [[16,-25,5,3],[16,18,5,3],[22,-10,4,4],[22,8,4,4],[-8,-25,4,3],[-8,25,4,3]].forEach(function(b){
+    buildHood(b[0],b[1],b[2],b[3]);
+  });
+}
+
+function buildHood(cx,cz,cols,rows) {
+  var hcs = [0xd4a870,0xb09070,0xc8b090,0xa08060,0xd0c0a0,0xb8a080];
+  for(var r=0;r<rows;r++) {
+    for(var c=0;c<cols;c++) {
+      var hx = cx+c*6-(cols-1)*3, hz = cz+r*6-(rows-1)*3;
+      var h = 3.2+Math.random()*2;
+      var house = place(new THREE.Mesh(box(3.8,h,4.2), mat(hcs[Math.floor(Math.random()*hcs.length)],0.88)), hx,h/2,hz);
+      house.castShadow = true;
+      var roof = place(new THREE.Mesh(new THREE.ConeGeometry(3.4,1.8,4), mat(0x5a3a18,0.88)), hx,h+0.9,hz);
+      roof.rotation.y = Math.PI/4;
+    }
+  }
+}
+
+function buildBarrierIsland() {
+  var isl = place(new THREE.Mesh(new THREE.PlaneGeometry(25,300), mat(0xd4b870,0.95)), -78,0.01,0);
+  isl.rotation.x = -PI2;
+  var beach = place(new THREE.Mesh(new THREE.PlaneGeometry(10,300), mat(0xeedd99,0.92)), -72,0.015,0);
+  beach.rotation.x = -PI2;
+  road(-83,0,300,5,false);
+  // Pelican Island
+  place(new THREE.Mesh(new THREE.CylinderGeometry(10,12,0.4,14), mat(0x2d5a1a,0.98)), -50,0.2,-15);
+  for(var mi=0;mi<6;mi++) buildMangrove(-50+Math.sin(mi)*5,-15+Math.cos(mi)*5,1.5+Math.random());
+  // Inlet
+  place(new THREE.Mesh(box(4,1.2,35), mat(0x4a4a44,0.9)), 30,0.6,-30);
+  place(new THREE.Mesh(box(4,1.2,35), mat(0x4a4a44,0.9)), 40,0.6,-30);
+  place(new THREE.Mesh(box(20,0.6,5), mat(0x6a6a66,0.75)), 35,1.3,-12);
+  // Observation tower
+  place(new THREE.Mesh(box(2.5,8,2.5), mat(0x6a6a6a,0.65,0.2)), -46,4.5,-18).castShadow=true;
+  place(new THREE.Mesh(box(6,0.3,6), mat(0x5a5a5a,0.7)), -46,8.65,-18);
+  var bw = place(new THREE.Mesh(box(2,0.15,20), mat(0x6a4a20,0.9)), -46,0.07,-8);
+}
+
+function buildNature() {
+  var palms = [[-17,0],[-17,5],[-17,10],[-17,-5],[-17,-12],[-17,-20],[-17,20],[-17,28],[-13,8],[-13,14],[-14,22],[5,-15],[5,22],[0,28],[-5,-20],[-50,-5],[-50,-20],[-48,0],[12,-20],[12,30]];
+  palms.forEach(function(p){ buildPalm(p[0],p[1]); });
+  [[-10,14],[-11,3],[4,-16],[20,0],[18,-18]].forEach(function(p){ buildOakTree(p[0],0,p[1],4,5); });
+  // Preserve
+  var pg = place(new THREE.Mesh(box(35,0.04,60), mat(0x235a10,0.98)), -40,0.02,10);
+  for(var pi=0;pi<20;pi++) buildPalm(-40+(Math.random()-0.5)*32, 10+(Math.random()-0.5)*58);
+  var rv = place(new THREE.Mesh(box(5,0.06,60), mat(0x2a6a8a,0.15,0.4)), -45,0.03,10);
+}
+
+function buildPalm(x,z) {
+  var h = 4.5+Math.random()*4;
+  var trunk = place(new THREE.Mesh(cyl(0.1,0.17,h), mat(0x8b6b4a,0.88)), x,h/2,z);
+  trunk.castShadow = true;
+  trunk.rotation.z = (Math.random()-0.5)*0.18;
+  for(var fi=0;fi<7;fi++) {
+    var frond = place(new THREE.Mesh(new THREE.ConeGeometry(0.12,2.8+Math.random()*0.8,5), mat(0x2a6a1a,0.9)), x+Math.sin(fi*0.9)*0.4, h+0.5, z+Math.cos(fi*0.9)*0.4);
+    frond.rotation.set(0.65+Math.random()*0.25, fi*0.9, 0);
+  }
+}
+
+function buildOakTree(x,y,z,cr,h) {
+  cr=cr||4; h=h||5;
+  place(new THREE.Mesh(cyl(0.3,0.4,h), mat(0x4a3520,0.9)), x,h/2,z).castShadow=true;
+  place(new THREE.Mesh(new THREE.SphereGeometry(cr,10,10), mat(0x2d6b1a,0.95)), x,h+cr*0.5,z).castShadow=true;
+  var moss = place(new THREE.Mesh(new THREE.SphereGeometry(cr*1.05,8,8), mat(0x556655,0.9)), x+0.3,h+cr*0.35,z-0.3);
+  moss.scale.set(1,0.55,1);
+}
+
+function buildMangrove(x,z,h) {
+  h=h||2;
+  place(new THREE.Mesh(cyl(0.08,0.12,h), mat(0x3a2810,0.9)), x,h/2,z);
+  place(new THREE.Mesh(new THREE.SphereGeometry(1.5,8,8), mat(0x1a5a1a,0.95)), x,h+0.8,z);
+}
+
+function addDock(x,z,len,w) {
+  place(new THREE.Mesh(box(w,0.2,len), mat(0x5a3a18,0.88)), x,0.7,z);
+  var n = Math.max(2,Math.floor(len/3));
+  for(var i=0;i<n;i++) place(new THREE.Mesh(cyl(0.09,0.11,1.5), mat(0x4a2a10,0.9)), x,0.1,z-len/2+i*(len/Math.max(1,n-1)));
+}
+
+function buildAirport() {
+  var rwy = place(new THREE.Mesh(box(10,0.05,70), mat(0x1a1a1a,0.98)), 14,0.025,18);
+  place(new THREE.Mesh(box(14,5,10), mat(0xddd8cc,0.72)), 10,2.5,18).castShadow=true;
+  place(new THREE.Mesh(cyl(0.8,0.8,7), mat(0xeeeedd,0.6)), 8,3.5,24);
+  place(new THREE.Mesh(box(16,7,14), mat(0x8a8898,0.7)), 22,3.5,22).castShadow=true;
+  // Parachute in sky
+  place(new THREE.Mesh(new THREE.SphereGeometry(3,10,6,0,Math.PI*2,0,Math.PI/2), mat(0xff4422,0.8)), 20,50,18);
+  place(new THREE.Mesh(cyl(0.03,0.08,4), mat(0xffffff,0.8)), 20,46,18);
+  place(new THREE.Mesh(box(0.5,1,0.4), mat(0x2255aa,0.8)), 20,44.5,18);
+}
+
+// ---
+function placeGlowMarkers() {
+  var glowMat = new THREE.MeshStandardMaterial({color:0x00ccff, emissive:0x00ccff, emissiveIntensity:3.5, roughness:0.2});
+  var ringMat = new THREE.MeshStandardMaterial({color:0x00ccff, emissive:0x00ccff, emissiveIntensity:2.0});
+  LM.forEach(function(lm) {
+    var disc = new THREE.Mesh(new THREE.CylinderGeometry(1.8,1.8,0.12,20), glowMat.clone());
+    disc.position.set(lm.x, 0.06, lm.z);
+    disc.userData.lm = lm;
+    scene.add(disc);
+    glowMeshes.push(disc);
+    var ring = new THREE.Mesh(new THREE.TorusGeometry(2.1,0.05,6,28), ringMat.clone());
+    ring.position.set(lm.x,1.8,lm.z);
+    ring.rotation.x = PI2;
+    scene.add(ring);
+    var pt = new THREE.PointLight(0x0088cc,1.2,10);
+    pt.position.set(lm.x,2,lm.z);
+    scene.add(pt);
+  });
+}
+
+// ---
+function addBoats() {
+  [[-45,-5],[-48,8],[-42,-18],[-50,20],[-55,5]].forEach(function(p,i) {
+    var g = new THREE.Group();
+    var hull = new THREE.Mesh(box(2.5,0.8,7), mat(0xeeeeee,0.6));
+    hull.position.y = 0.8; g.add(hull);
+    var cab = new THREE.Mesh(box(2,1.5,3), mat(0xdddddd,0.7));
+    cab.position.set(0,1.95,0.5); g.add(cab);
+    if(i%2===0) {
+      var mast = new THREE.Mesh(cyl(0.07,0.07,8), mat(0xcccccc,0.5,0.5));
+      mast.position.set(0,4.8,0); g.add(mast);
+    }
+    g.position.set(p[0],0,p[1]);
+    scene.add(g);
+    boats.push({mesh:g, ang:Math.random()*Math.PI*2});
+  });
+}
+
+// ---
+function addBirds() {
+  for(var i=0;i<10;i++) {
+    var b = new THREE.Group();
+    var w1 = new THREE.Mesh(box(1.4,0.06,0.5), mat(0xfafafa,0.6));
+    w1.rotation.z=0.3; w1.position.x=-0.4; b.add(w1);
+    var w2 = new THREE.Mesh(box(1.4,0.06,0.5), mat(0xfafafa,0.6));
+    w2.rotation.z=-0.3; w2.position.x=0.4; b.add(w2);
+    b.add(new THREE.Mesh(new THREE.SphereGeometry(0.18,6,6), mat(i>5?0x9a8060:0xfafafa,0.6)));
+    b.position.set((Math.random()-0.5)*80, 8+Math.random()*18, (Math.random()-0.5)*80);
+    b.userData = {cx:(Math.random()-0.5)*60, cz:(Math.random()-0.5)*60, r:12+Math.random()*20, spd:0.2+Math.random()*0.25, ang:Math.random()*Math.PI*2, fspd:0.06+Math.random()*0.04, fa:0, h:8+Math.random()*18};
+    scene.add(b); birds.push(b);
+  }
+}
+
+// ---
+function addClouds() {
+  for(var i=0;i<18;i++) {
+    var c = new THREE.Group();
+    for(var p=0;p<5+Math.floor(Math.random()*5);p++) {
+      var puff = new THREE.Mesh(new THREE.SphereGeometry(3+Math.random()*3.5,8,8), new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,transparent:true,opacity:0.82}));
+      puff.position.set((Math.random()-0.5)*7,(Math.random()-0.5)*2.5,(Math.random()-0.5)*4);
+      c.add(puff);
+    }
+    c.position.set((Math.random()-0.5)*250, 22+Math.random()*18, (Math.random()-0.5)*250);
+    c.userData.spd = (Math.random()-0.5)*0.025;
+    scene.add(c); clouds.push(c);
+  }
+}
+
+// ---
+function setupLights() {
+  scene.add(new THREE.AmbientLight(0x9ac0d8, 0.9));
+  sunLight = new THREE.DirectionalLight(0xfff8e8, 1.6);
+  sunLight.position.set(40,60,30);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 4096;
+  sunLight.shadow.mapSize.height = 4096;
+  sunLight.shadow.camera.left = -100;
+  sunLight.shadow.camera.right = 100;
+  sunLight.shadow.camera.top = 100;
+  sunLight.shadow.camera.bottom = -100;
+  sunLight.shadow.camera.far = 350;
+  scene.add(sunLight);
+  var fill = new THREE.DirectionalLight(0xb0d0f0, 0.5);
+  fill.position.set(-60,25,-20); scene.add(fill);
+  var wg = new THREE.PointLight(0x1a9acc, 0.6, 45);
+  wg.position.set(-55,2,0); scene.add(wg);
+}
+
+// ---
+function setWalk() {
+  birdsEye = false;
+  // Restore fog for street view
+  scene.fog = new THREE.FogExp2(0x7ac4d8, 0.017);
+  document.getElementById('btn-walk').className = 'vbtn active';
+  document.getElementById('btn-bird').className = 'vbtn';
+  document.getElementById('map-overlay').className = '';
+  document.getElementById('legend').className = '';
+  document.getElementById('mapinstr').className = '';
+  if(active) {
+    ['hud','vtoggle','weather','compass','xhair','ctrl','minimap','hint'].forEach(function(id){
+      var e = document.getElementById(id);
+      if(e) {
+        if(id==='hud'||id==='vtoggle') e.style.display='flex';
+        else if(id==='weather'||id==='compass') e.style.display='block';
+        else if(id==='ctrl') e.style.display='flex';
+        else if(id==='minimap') e.style.display='block';
+        else if(id==='xhair') e.style.display='block';
+        else e.style.display='block';
+      }
+    });
+  }
+  camera.position.copy(savedPos);
+  camera.position.y = 1.7;
+  euler.copy(savedEuler);
+  camera.quaternion.setFromEuler(euler);
+  clearOverlay();
+}
+
+function setBird() {
+  // Save walk state
+  savedPos.copy(camera.position);
+  savedEuler.copy(euler);
+  birdsEye = true;
+  mapX = camera.position.x; mapZ = camera.position.z;
+  // Kill fog so the overhead view is clear
+  scene.fog = null;
+  document.getElementById('btn-walk').className = 'vbtn';
+  document.getElementById('btn-bird').className = 'vbtn active';
+  document.getElementById('map-overlay').className = 'show';
+  document.getElementById('legend').className = 'show';
+  document.getElementById('mapinstr').className = 'show';
+  document.getElementById('xhair').style.display = 'none';
+  document.getElementById('ctrl').style.display = 'none';
+  if(isLocked) document.exitPointerLock();
+  buildOverlay();
+  // Position pins right away, don't wait for next loop frame
+  updatePinPositions();
+}
+
+function buildOverlay() {
+  var ov = document.getElementById('map-overlay');
+  ov.innerHTML = '';
+  LM.forEach(function(lm) {
+    var pin = document.createElement('div');
+    pin.className = 'lm-pin';
+    pin.innerHTML = '<div class="lm-dot"></div><div class="lm-label">'+lm.name+'</div>';
+    pin.addEventListener('click', function() {
+      setWalk();
+      camera.position.set(lm.x+3,1.7,lm.z+6);
+      savedPos.set(lm.x+3,1.7,lm.z+6);
+      euler.set(0,Math.PI,0,'YXZ');
+      savedEuler.copy(euler);
+      camera.quaternion.setFromEuler(euler);
+      setTimeout(function(){ showPanel(lm); }, 350);
+    });
+    pin._lm = lm;
+    ov.appendChild(pin);
+  });
+}
+
+function clearOverlay() {
+  var ov = document.getElementById('map-overlay');
+  if(ov) ov.innerHTML = '';
+}
+
+function updatePinPositions() {
+  var ov = document.getElementById('map-overlay');
+  if(!ov) return;
+  var pins = ov.querySelectorAll('.lm-pin');
+  LM.forEach(function(lm,i) {
+    var v = new THREE.Vector3(lm.x, 0, lm.z);
+    v.project(camera);
+    var sx = (v.x*0.5+0.5)*window.innerWidth;
+    var sy = (-v.y*0.5+0.5)*window.innerHeight;
+    if(pins[i]) {
+      pins[i].style.left = sx+'px';
+      pins[i].style.top  = sy+'px';
+      pins[i].style.display = (v.z<1) ? 'block' : 'none';
+    }
+  });
+}
+
+// ---
+function showPanel(lm) {
+  var hero = document.getElementById('panel-hero');
+  if(hero) hero.innerHTML = '<span style="font-size:68px">'+lm.icon+'</span>';
+  var body = document.getElementById('panel-body');
+  if(!body) return;
+  body.innerHTML =
+    '<div class="p-tag">'+lm.dist+' District</div>'+
+    '<div class="p-name">'+lm.name+'</div>'+
+    '<div class="p-addr">'+lm.addr+'</div>'+
+    '<div class="p-desc">'+lm.desc+'</div>'+
+    '<div class="p-grid">'+
+      '<div class="pg-cell"><div class="pg-l">Type</div><div class="pg-v">'+lm.type+'</div></div>'+
+      '<div class="pg-cell"><div class="pg-l">District</div><div class="pg-v">'+lm.dist+'</div></div>'+
+      '<div class="pg-cell"><div class="pg-l">Known For</div><div class="pg-v">'+lm.known+'</div></div>'+
+    '</div>'+
+    '<div class="p-tags">'+lm.tags.map(function(t){return '<span class="ptag">'+t+'</span>';}).join('')+'</div>'+
+    '<button class="p-closebtn" onclick="closePanel()">Keep Exploring</button>';
+  var panel = document.getElementById('panel');
+  if(panel) panel.classList.add('open');
+  if(isLocked) document.exitPointerLock();
+}
+
+window.closePanel = function() {
+  var panel = document.getElementById('panel');
+  if(panel) panel.classList.remove('open');
+};
+
+// ---
+function setupInput() {
+  renderer.domElement.addEventListener('click', function() {
+    if(!active) return;
+    var panel = document.getElementById('panel');
+    if(panel && panel.classList.contains('open')) return;
+    if(birdsEye) return;
+    if(!isLocked) renderer.domElement.requestPointerLock();
+    else doInteract();
+  });
+
+  document.addEventListener('pointerlockchange', function() {
+    isLocked = document.pointerLockElement === renderer.domElement;
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if(!isLocked || birdsEye) return;
+    euler.setFromQuaternion(camera.quaternion);
+    euler.y -= e.movementX * 0.0018;
+    euler.x -= e.movementY * 0.0018;
+    euler.x = Math.max(-PI2*0.82, Math.min(PI2*0.82, euler.x));
+    camera.quaternion.setFromEuler(euler);
+  });
+
+  document.addEventListener('wheel', function(e) {
+    walkSpeed = Math.max(4, Math.min(30, walkSpeed - e.deltaY*0.01));
+  });
+
+  document.addEventListener('keydown', function(e) {
+    switch(e.code) {
+      case 'KeyW': case 'ArrowUp':    moveF=true; break;
+      case 'KeyS': case 'ArrowDown':  moveB=true; break;
+      case 'KeyA': case 'ArrowLeft':  moveL=true; break;
+      case 'KeyD': case 'ArrowRight': moveR=true; break;
+      case 'KeyE': doInteract(); break;
+      case 'KeyV': if(active){ birdsEye ? setWalk() : setBird(); } break;
+      case 'Escape': closePanel(); break;
+      case 'ShiftLeft': case 'ShiftRight': walkSpeed=24; break;
+    }
+  });
+
+  document.addEventListener('keyup', function(e) {
+    switch(e.code) {
+      case 'KeyW': case 'ArrowUp':    moveF=false; break;
+      case 'KeyS': case 'ArrowDown':  moveB=false; break;
+      case 'KeyA': case 'ArrowLeft':  moveL=false; break;
+      case 'KeyD': case 'ArrowRight': moveR=false; break;
+      case 'ShiftLeft': case 'ShiftRight': walkSpeed=12; break;
+    }
+  });
+}
+
+function doInteract() {
+  ray.setFromCamera({x:0,y:0}, camera);
+  var hits = ray.intersectObjects(glowMeshes, false);
+  if(hits.length > 0 && hits[0].distance < 14) showPanel(hits[0].object.userData.lm);
+}
+
+// ---
+function setupMobile() {
+  var jlEl = document.getElementById('jl');
+  var jrEl = document.getElementById('jr');
+  var kl   = document.getElementById('kl');
+  var kr   = document.getElementById('kr');
+  if(!jlEl||!jrEl) return;
+
+  function jStart(j,el,e) {
+    var r = el.getBoundingClientRect();
+    j.on=true; j.sx=r.left+r.width/2; j.sy=r.top+r.height/2; e.preventDefault();
+  }
+  function jMove(j,knob,e) {
+    if(!j.on) return;
+    var t = e.touches?e.touches[0]:e;
+    var dx=t.clientX-j.sx, dy=t.clientY-j.sy;
+    var dist = Math.min(38, Math.sqrt(dx*dx+dy*dy));
+    var ang  = Math.atan2(dy,dx);
+    j.dx=Math.cos(ang)*(dist/38); j.dy=Math.sin(ang)*(dist/38);
+    knob.style.transform='translate('+Math.cos(ang)*dist+'px,'+Math.sin(ang)*dist+'px)';
+    e.preventDefault();
+  }
+  function jEnd(j,knob){ j.on=false;j.dx=0;j.dy=0;knob.style.transform=''; }
+
+  jlEl.addEventListener('touchstart',function(e){jStart(jL,jlEl,e);},{passive:false});
+  jrEl.addEventListener('touchstart',function(e){jStart(jR,jrEl,e);},{passive:false});
+  document.addEventListener('touchmove',function(e){jMove(jL,kl,e);jMove(jR,kr,e);},{passive:false});
+  document.addEventListener('touchend',function(e){
+    var lr=jlEl.getBoundingClientRect(),rr=jrEl.getBoundingClientRect();
+    for(var i=0;i<e.changedTouches.length;i++){
+      var t=e.changedTouches[i];
+      if(t.clientX>lr.left&&t.clientX<lr.right&&t.clientY>lr.top&&t.clientY<lr.bottom) jEnd(jL,kl);
+      if(t.clientX>rr.left&&t.clientX<rr.right&&t.clientY>rr.top&&t.clientY<rr.bottom) jEnd(jR,kr);
+    }
+  });
+}
+
+// ---
+function getArea(x,z) {
+  if(x<-18) return 'Riverfront District';
+  if(x>10&&z>10) return 'Airport District';
+  if(x<-30) return 'Indian River Lagoon';
+  if(z<-15) return 'South Sebastian';
+  if(z>20)  return 'North Sebastian';
+  if(x<0)   return 'Downtown Waterfront';
+  return 'US-1 Corridor';
+}
+
+// ---
+function checkNearby() {
+  var hint = document.getElementById('hint');
+  if(!hint) return;
+  ray.setFromCamera({x:0,y:0}, camera);
+  var hits = ray.intersectObjects(glowMeshes, false);
+  if(hits.length>0 && hits[0].distance<14) {
+    hint.innerHTML = hits[0].object.userData.lm.name + ' &nbsp;&mdash;&nbsp; Press E';
+    hint.classList.add('show');
+  } else {
+    hint.classList.remove('show');
+  }
+}
+
+// ---
+function loop(now) {
+  requestAnimationFrame(loop);
+  var dt = Math.min((now - prev) / 1000, 0.1);
+  prev = now;
+
+  if(birdsEye) {
+    // Intro auto-pan or manual pan
+    var panSpd = 30;
+    if(!active) {
+      mapX = Math.sin(now*0.00018)*30;
+      mapZ = Math.cos(now*0.00012)*20;
+    } else {
+      if(moveF) mapZ -= panSpd*dt;
+      if(moveB) mapZ += panSpd*dt;
+      if(moveL) mapX -= panSpd*dt;
+      if(moveR) mapX += panSpd*dt;
+      if(jL.on){ mapX+=jL.dx*panSpd*dt*2; mapZ+=jL.dy*panSpd*dt*2; }
+      mapX = Math.max(-100, Math.min(50,  mapX));
+      mapZ = Math.max(-55,  Math.min(55,  mapZ));
+    }
+    camera.position.set(mapX, 80, mapZ);
+    euler.set(-PI2, 0, 0, 'YXZ');
+    camera.quaternion.setFromEuler(euler);
+    if(active) updatePinPositions();
+
+  } else {
+    vel.x -= vel.x*10*dt;
+    vel.z -= vel.z*10*dt;
+    var fwd = new THREE.Vector3(-Math.sin(euler.y),0,-Math.cos(euler.y));
+    var rgt = new THREE.Vector3( Math.cos(euler.y),0,-Math.sin(euler.y));
+    if(moveF) vel.z -= walkSpeed*dt;
+    if(moveB) vel.z += walkSpeed*dt;
+    if(moveL) vel.x -= walkSpeed*dt;
+    if(moveR) vel.x += walkSpeed*dt;
+    if(jL.on){ vel.z+=jL.dy*walkSpeed*dt*2.2; vel.x+=jL.dx*walkSpeed*dt*2.2; }
+    if(jR.on){
+      euler.setFromQuaternion(camera.quaternion);
+      euler.y -= jR.dx*0.045; euler.x -= jR.dy*0.045;
+      euler.x = Math.max(-PI2*0.82, Math.min(PI2*0.82, euler.x));
+      camera.quaternion.setFromEuler(euler);
+    }
+    var mv = new THREE.Vector3();
+    mv.addScaledVector(fwd,-vel.z*dt);
+    mv.addScaledVector(rgt,-vel.x*dt);
+    camera.position.add(mv);
+    camera.position.x = Math.max(-100,Math.min(50,  camera.position.x));
+    camera.position.z = Math.max(-55, Math.min(55,  camera.position.z));
+    camera.position.y = 1.7;
+
+    // Minimap
+    var md = document.getElementById('mm-dot');
+    if(md){
+      md.style.left = ((camera.position.x+100)/150*100)+'%';
+      md.style.top  = ((camera.position.z+55)/110*100)+'%';
+    }
+    // Area
+    var ha = document.getElementById('hud-area');
+    if(ha) ha.textContent = getArea(camera.position.x, camera.position.z);
+    // Compass
+    var cn = document.getElementById('compass');
+    if(cn) cn.style.transform = 'rotate('+(-euler.y*180/Math.PI)+'deg)';
+
+    checkNearby();
+  }
+
+  // Animate water
+  if(water) water.material.opacity = 0.85+Math.sin(now*0.0008)*0.05;
+
+  // Animate birds
+  birds.forEach(function(b) {
+    b.userData.ang += b.userData.spd*dt;
+    b.userData.fa  += b.userData.fspd;
+    b.position.x = b.userData.cx + Math.sin(b.userData.ang)*b.userData.r;
+    b.position.z = b.userData.cz + Math.cos(b.userData.ang)*b.userData.r;
+    b.position.y = b.userData.h  + Math.sin(now*0.0015+b.userData.ang)*0.8;
+    b.rotation.y = b.userData.ang + PI2;
+    var f = Math.sin(b.userData.fa)*0.45;
+    b.children[0].rotation.z =  0.3+f;
+    b.children[1].rotation.z = -0.3-f;
+  });
+
+  // Drift clouds
+  clouds.forEach(function(c) {
+    c.position.x += c.userData.spd;
+    if(c.position.x>150) c.position.x=-150;
+    if(c.position.x<-150) c.position.x=150;
+  });
+
+  // Bob boats
+  boats.forEach(function(b) {
+    b.mesh.position.y = Math.sin(now*0.001+b.ang)*0.08;
+  });
+
+  // Pulse glow markers
+  glowMeshes.forEach(function(m) {
+    m.material.emissiveIntensity = 2.8 + Math.sin(now*0.003)*1.2;
+  });
+
+  renderer.render(scene, camera);
+}
+
+// expose for HTML onclick
+window.setWalk = setWalk;
+window.setBird = setBird;
+
+})();
+</script>
+</body>
+</html>

@@ -223,6 +223,11 @@ app.get("/test", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "test.html"));
 });
 
+// ─── /sebastian-intro — 3D intro page served without staging gate ───
+app.get("/sebastian-intro", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "sebastian-intro.html"));
+});
+
 // ─── /town — ui-base town shell served without staging gate ───
 try { require('./modules/ui-base/routes')(app, db); } catch(e) { console.error('ui-base:', e.message); }
 
@@ -2213,6 +2218,30 @@ app.get("/api/communities/list", async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/email-capture — save email from intro pages (public, no auth)
+app.post("/api/email-capture", async (req, res) => {
+  try {
+    const { email, source, url } = req.body || {};
+    if (!email) return res.json({ ok: false });
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS email_captures (
+        id SERIAL PRIMARY KEY,
+        email TEXT NOT NULL,
+        source TEXT DEFAULT '',
+        url TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT now()
+      )
+    `);
+    await db.query(
+      "INSERT INTO email_captures (email, source, url) VALUES ($1, $2, $3)",
+      [email, source || "", url || ""]
+    );
+    res.json({ ok: true });
+  } catch(e) {
+    res.json({ ok: false });
   }
 });
 
