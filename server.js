@@ -217,6 +217,11 @@ app.get("/staging-auth", (req, res) => {
   res.type("html").send(STAGING_LOGIN_HTML);
 });
 
+// ─── Public test harness (bypasses staging gate) ───
+app.get("/test", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "test.html"));
+});
+
 // Staging password gate — only protects admin routes, not the public town UI
 const ADMIN_GATE_PATHS = ["/admin", "/admin-modules", "/admin-towns", "/communities", "/users", "/docs", "/genesis"];
 app.use((req, res, next) => {

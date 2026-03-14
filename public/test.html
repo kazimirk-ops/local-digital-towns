@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Harness — Digital Towns</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0f1a;
+      --panel: #0d1424;
+      --panel-2: #151d2e;
+      --border: rgba(255,255,255,0.08);
+      --muted: #64748b;
+      --text: #e2e8f0;
+      --accent: #10b981;
+      --primary: #0ea5e9;
+      --danger: #ef4444;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Space Grotesk', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .topbar {
+      background: var(--panel); border-bottom: 1px solid var(--border);
+      padding: 14px 24px; display: flex; align-items: center; gap: 16px;
+    }
+    .topbar h1 { font-size: 18px; font-weight: 700; }
+    .topbar .tag { font-size: 11px; background: rgba(16,185,129,0.15); color: var(--accent); padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+
+    .container { max-width: 800px; margin: 0 auto; padding: 24px 20px; }
+
+    .section { margin-bottom: 28px; }
+    .section-title { font-size: 14px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+
+    .card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px; margin-bottom: 12px;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 8px; border: none;
+      font-family: inherit; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-google { background: #fff; color: #333; }
+    .btn-facebook { background: #1877f2; color: #fff; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-sm { padding: 6px 14px; font-size: 13px; }
+
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+    .field input, .field textarea, .field select {
+      width: 100%; padding: 10px 12px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--panel-2);
+      color: var(--text); font-family: inherit; font-size: 14px;
+    }
+    .field input:focus, .field textarea:focus { outline: none; border-color: var(--primary); }
+    .field textarea { min-height: 60px; resize: vertical; }
+
+    .inline-fields { display: flex; gap: 12px; }
+    .inline-fields .field { flex: 1; }
+
+    .status-bar {
+      background: var(--panel-2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 16px; font-size: 13px;
+      color: var(--muted); margin-bottom: 16px;
+    }
+    .status-bar.ok { border-color: rgba(16,185,129,0.3); color: var(--accent); }
+    .status-bar.err { border-color: rgba(239,68,68,0.3); color: var(--danger); }
+
+    .user-info { display: flex; align-items: center; gap: 16px; }
+    .user-info .avatar {
+      width: 48px; height: 48px; border-radius: 50%; background: var(--panel-2);
+      display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: var(--muted);
+    }
+    .user-info .details { flex: 1; }
+    .user-info .name { font-size: 16px; font-weight: 700; }
+    .user-info .meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+    .badge-green { background: rgba(16,185,129,0.15); color: var(--accent); }
+    .badge-blue { background: rgba(14,165,233,0.15); color: var(--primary); }
+    .badge-red { background: rgba(239,68,68,0.15); color: var(--danger); }
+
+    .results {
+      background: var(--panel-2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; max-height: 400px;
+      overflow-y: auto; font-size: 13px; font-family: 'JetBrains Mono', monospace;
+      white-space: pre-wrap; word-break: break-all; color: var(--muted);
+    }
+    .results:empty { display: none; }
+
+    .listing-card {
+      display: flex; gap: 12px; padding: 12px;
+      background: var(--panel-2); border-radius: 8px; margin-bottom: 8px;
+    }
+    .listing-card .lc-info { flex: 1; }
+    .listing-card .lc-title { font-size: 14px; font-weight: 600; }
+    .listing-card .lc-price { font-size: 14px; color: var(--accent); font-weight: 700; margin-top: 4px; }
+    .listing-card .lc-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .lb-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-rank { width: 28px; text-align: center; font-weight: 700; color: var(--accent); }
+    .lb-name { flex: 1; font-size: 14px; font-weight: 500; }
+    .lb-score { font-size: 14px; font-weight: 700; color: var(--primary); }
+
+    #loggedOutSection { display: block; }
+    #loggedInSection { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <h1>Digital Towns</h1>
+    <span class="tag">TEST HARNESS</span>
+  </div>
+
+  <div class="container">
+
+    <div id="statusBar" class="status-bar">Not logged in</div>
+
+    <!-- ── Auth Section ── -->
+    <div class="section" id="loggedOutSection">
+      <div class="section-title">Login</div>
+      <div class="card">
+        <div class="btn-row">
+          <a href="/api/auth/google" class="btn btn-google">
+            <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            Login with Google
+          </a>
+          <a href="/auth/facebook" class="btn btn-facebook">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            Login with Facebook
+          </a>
+        </div>
+
+        <div style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:14px;">or email OTP</div>
+
+        <div id="otpStep1">
+          <div class="inline-fields">
+            <div class="field"><input type="email" id="otpEmail" placeholder="you@example.com"></div>
+            <div><button class="btn btn-primary" onclick="requestCode()">Send Code</button></div>
+          </div>
+        </div>
+        <div id="otpStep2" style="display:none;">
+          <div class="inline-fields">
+            <div class="field"><input type="text" id="otpCode" placeholder="6-digit code" maxlength="6" inputmode="numeric" style="letter-spacing:4px;text-align:center;font-size:18px;font-family:monospace;"></div>
+            <div><button class="btn btn-accent" onclick="verifyCode()">Verify</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── User Info (shown when logged in) ── -->
+    <div class="section" id="loggedInSection">
+      <div class="section-title">Logged In</div>
+      <div class="card">
+        <div class="user-info" id="userInfoDisplay">
+          <div class="avatar" id="userAvatar">?</div>
+          <div class="details">
+            <div class="name" id="userName">—</div>
+            <div class="meta" id="userMeta">—</div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Sweep Balance ── -->
+    <div class="section">
+      <div class="section-title">Sweep Balance</div>
+      <div class="card">
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" onclick="loadSweepBalance()">Check Balance</button>
+        </div>
+        <div id="sweepResult" class="results"></div>
+      </div>
+    </div>
+
+    <!-- ── Post Listing ── -->
+    <div class="section">
+      <div class="section-title">Post Test Listing</div>
+      <div class="card">
+        <div class="inline-fields">
+          <div class="field"><label>Title</label><input type="text" id="listTitle" placeholder="Test listing title"></div>
+          <div class="field"><label>Price ($)</label><input type="number" id="listPrice" placeholder="10.00" step="0.01"></div>
+        </div>
+        <div class="field"><label>Description</label><textarea id="listDesc" placeholder="Test listing description"></textarea></div>
+        <div class="inline-fields">
+          <div class="field">
+            <label>Category</label>
+            <select id="listCategory">
+              <option value="other">Other</option>
+              <option value="electronics">Electronics</option>
+              <option value="clothing">Clothing</option>
+              <option value="home">Home</option>
+              <option value="plants">Plants</option>
+            </select>
+          </div>
+          <div class="field"><label>Condition</label>
+            <select id="listCondition">
+              <option value="new">New</option>
+              <option value="like-new">Like New</option>
+              <option value="used">Used</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-accent" onclick="postListing()">Post Listing</button>
+        <div id="postResult" class="results" style="margin-top:12px;"></div>
+      </div>
+    </div>
+
+    <!-- ── View Listings ── -->
+    <div class="section">
+      <div class="section-title">Listings</div>
+      <div class="card">
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" onclick="loadListings()">Load Listings</button>
+        </div>
+        <div id="listingsContainer"></div>
+        <div id="listingsResult" class="results"></div>
+      </div>
+    </div>
+
+    <!-- ── Leaderboard ── -->
+    <div class="section">
+      <div class="section-title">Leaderboard</div>
+      <div class="card">
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" onclick="loadLeaderboard()">Load Leaderboard</button>
+        </div>
+        <div id="leaderboardContainer"></div>
+        <div id="leaderboardResult" class="results"></div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+(function() {
+  var token = localStorage.getItem('tc_token');
+
+  // Pick up token from URL (after OAuth redirect)
+  var params = new URLSearchParams(window.location.search);
+  var fbtoken = params.get('fbtoken') || params.get('token');
+  if (fbtoken) {
+    token = fbtoken;
+    localStorage.setItem('tc_token', token);
+    window.history.replaceState({}, '', '/test');
+  }
+
+  function authHeaders() {
+    var h = { 'Content-Type': 'application/json' };
+    if (token) h['Authorization'] = 'Bearer ' + token;
+    return h;
+  }
+
+  function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function setStatus(msg, type) {
+    var el = document.getElementById('statusBar');
+    el.textContent = msg;
+    el.className = 'status-bar' + (type === 'ok' ? ' ok' : type === 'err' ? ' err' : '');
+  }
+
+  // ── Auth state ──
+  function checkAuth() {
+    if (!token) {
+      document.getElementById('loggedOutSection').style.display = 'block';
+      document.getElementById('loggedInSection').style.display = 'none';
+      setStatus('Not logged in');
+      return;
+    }
+    fetch('/api/auth/me', { headers: authHeaders() })
+      .then(function(r) { return r.ok ? r.json() : Promise.reject(r); })
+      .then(function(user) {
+        document.getElementById('loggedOutSection').style.display = 'none';
+        document.getElementById('loggedInSection').style.display = 'block';
+        document.getElementById('userName').textContent = user.name || user.email || 'User #' + user.id;
+        var meta = user.email || '';
+        if (user.trust_tier) meta += ' | Trust: ' + user.trust_tier;
+        if (user.is_admin) meta += ' | Admin';
+        document.getElementById('userMeta').textContent = meta;
+        document.getElementById('userAvatar').textContent = (user.name || 'U')[0].toUpperCase();
+        setStatus('Logged in as ' + (user.name || user.email), 'ok');
+      })
+      .catch(function() {
+        token = null;
+        localStorage.removeItem('tc_token');
+        document.getElementById('loggedOutSection').style.display = 'block';
+        document.getElementById('loggedInSection').style.display = 'none';
+        setStatus('Token expired or invalid', 'err');
+      });
+  }
+
+  // ── Email OTP ──
+  var otpEmail = '';
+  window.requestCode = function() {
+    var email = document.getElementById('otpEmail').value.trim();
+    if (!email) return;
+    otpEmail = email;
+    fetch('/api/auth/request-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.error) { setStatus('OTP error: ' + d.error, 'err'); return; }
+      document.getElementById('otpStep1').style.display = 'none';
+      document.getElementById('otpStep2').style.display = 'block';
+      setStatus('Code sent to ' + email, 'ok');
+    })
+    .catch(function(e) { setStatus('Request failed: ' + e.message, 'err'); });
+  };
+
+  window.verifyCode = function() {
+    var code = document.getElementById('otpCode').value.trim();
+    if (!code || code.length !== 6) return;
+    fetch('/api/auth/verify-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: otpEmail, code: code })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.error) { setStatus('Verify error: ' + d.error, 'err'); return; }
+      if (d.token) {
+        token = d.token;
+        localStorage.setItem('tc_token', token);
+        checkAuth();
+      }
+    })
+    .catch(function(e) { setStatus('Verify failed: ' + e.message, 'err'); });
+  };
+
+  window.logout = function() {
+    token = null;
+    localStorage.removeItem('tc_token');
+    document.getElementById('loggedOutSection').style.display = 'block';
+    document.getElementById('loggedInSection').style.display = 'none';
+    setStatus('Logged out');
+  };
+
+  // ── Sweep Balance ──
+  window.loadSweepBalance = function() {
+    var el = document.getElementById('sweepResult');
+    el.textContent = 'Loading...';
+    fetch('/api/sweep/balance', { headers: authHeaders() })
+      .then(function(r) { return r.json(); })
+      .then(function(d) { el.textContent = JSON.stringify(d, null, 2); })
+      .catch(function(e) { el.textContent = 'Error: ' + e.message; });
+  };
+
+  // ── Post Listing ──
+  window.postListing = function() {
+    if (!token) { setStatus('Login required to post', 'err'); return; }
+    var el = document.getElementById('postResult');
+    el.textContent = 'Posting...';
+    var priceCents = Math.round(parseFloat(document.getElementById('listPrice').value || '0') * 100);
+    fetch('/api/listings', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify({
+        title: document.getElementById('listTitle').value || 'Test Listing',
+        description: document.getElementById('listDesc').value || 'Test description',
+        price_cents: priceCents || 1000,
+        category: document.getElementById('listCategory').value,
+        condition: document.getElementById('listCondition').value,
+        photos: []
+      })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { el.textContent = JSON.stringify(d, null, 2); })
+    .catch(function(e) { el.textContent = 'Error: ' + e.message; });
+  };
+
+  // ── Load Listings ──
+  window.loadListings = function() {
+    var container = document.getElementById('listingsContainer');
+    var raw = document.getElementById('listingsResult');
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;">Loading...</div>';
+    raw.textContent = '';
+    fetch('/api/listings', { headers: authHeaders() })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var items = d.listings || d.items || d || [];
+        if (!Array.isArray(items)) { raw.textContent = JSON.stringify(d, null, 2); container.innerHTML = ''; return; }
+        if (!items.length) { container.innerHTML = '<div style="color:var(--muted);font-size:13px;">No listings found</div>'; return; }
+        container.innerHTML = items.slice(0, 20).map(function(l) {
+          return '<div class="listing-card">'
+            + '<div class="lc-info">'
+            + '<div class="lc-title">' + esc(l.title) + '</div>'
+            + '<div class="lc-price">$' + ((l.price_cents || 0) / 100).toFixed(2) + '</div>'
+            + '<div class="lc-meta">' + esc(l.category || '') + ' &middot; ' + esc(l.condition || '') + '</div>'
+            + '</div></div>';
+        }).join('');
+        raw.textContent = 'Showing ' + Math.min(items.length, 20) + ' of ' + items.length + ' listings';
+      })
+      .catch(function(e) { container.innerHTML = ''; raw.textContent = 'Error: ' + e.message; });
+  };
+
+  // ── Leaderboard ──
+  window.loadLeaderboard = function() {
+    var container = document.getElementById('leaderboardContainer');
+    var raw = document.getElementById('leaderboardResult');
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;">Loading...</div>';
+    raw.textContent = '';
+    fetch('/api/leaderboard/treasure-coast', { headers: authHeaders() })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var entries = d.leaderboard || d.entries || d || [];
+        if (!Array.isArray(entries)) { raw.textContent = JSON.stringify(d, null, 2); container.innerHTML = ''; return; }
+        if (!entries.length) { container.innerHTML = '<div style="color:var(--muted);font-size:13px;">No leaderboard data</div>'; return; }
+        container.innerHTML = entries.slice(0, 15).map(function(e, i) {
+          return '<div class="lb-row">'
+            + '<div class="lb-rank">#' + (i + 1) + '</div>'
+            + '<div class="lb-name">' + esc(e.name || e.user_name || 'User') + '</div>'
+            + '<div class="lb-score">' + (e.score || e.total_score || 0) + '</div>'
+            + '</div>';
+        }).join('');
+      })
+      .catch(function(e) { container.innerHTML = ''; raw.textContent = 'Error: ' + e.message; });
+  };
+
+  // Init
+  checkAuth();
+})();
+</script>
+</body>
+</html>
