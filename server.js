@@ -222,7 +222,27 @@ app.get("/staging-auth", (req, res) => {
 app.get("/staging-logout", (req, res) => {
   const secure = (req.headers["x-forwarded-proto"] || "").includes("https");
   res.setHeader("Set-Cookie", "staging_access=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax" + (secure ? "; Secure" : ""));
-  res.redirect("/");
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  res.send(`<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+</head>
+<body>
+<script>
+document.cookie.split(';').forEach(function(c) {
+  document.cookie = c.trim().split('=')[0] + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+});
+try { localStorage.clear(); } catch(e){}
+try { sessionStorage.clear(); } catch(e){}
+window.location.replace('/');
+</script>
+</body>
+</html>`);
 });
 
 // ─── Module test harness (requires staging cookie) ───
