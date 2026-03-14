@@ -1,0 +1,19 @@
+{
+  "id": "ui-base",
+  "name": "Base Town UI",
+  "layer": 5,
+  "dependencies": ["core", "auth"],
+  "description": "Clean base town frontend. Install sub-modules to add features.",
+  "submodules": [
+    {"id": "ui-base.marketplace", "name": "Marketplace", "default": false},
+    {"id": "ui-base.auctions", "name": "Auctions", "default": false},
+    {"id": "ui-base.channels", "name": "Channels", "default": false},
+    {"id": "ui-base.bst", "name": "BST Groups", "default": false},
+    {"id": "ui-base.sweep", "name": "Sweepstakes", "default": false},
+    {"id": "ui-base.pulse", "name": "Pulse", "default": false},
+    {"id": "ui-base.businesses", "name": "Business Map", "default": false},
+    {"id": "ui-base.gigs", "name": "Gigs & Services", "default": false},
+    {"id": "ui-base.leaderboard", "name": "Leaderboard", "default": false},
+    {"id": "ui-base.live", "name": "Live Shows", "default": false}
+  ]
+}

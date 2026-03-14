@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Channels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/town/assets/ui-base.css">
+<style>
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.tab-btn {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+}
+
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.chat-layout {
+  display: flex;
+  height: calc(100vh - 56px - 48px);
+}
+
+.channel-list {
+  width: 300px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  background: var(--panel);
+}
+
+.channel-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--muted);
+  transition: background 0.1s;
+}
+
+.channel-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+}
+
+.channel-item.active {
+  background: rgba(6, 182, 212, 0.06);
+  color: var(--accent);
+  border-left: 3px solid var(--accent);
+}
+
+.channel-item .channel-name {
+  font-weight: 600;
+}
+
+.channel-item .channel-hash {
+  color: var(--muted);
+  margin-right: 6px;
+}
+
+.chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.chat-header {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  font-weight: 700;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.chat-header .channel-hash {
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.msg-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.msg-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.msg-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.msg-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.msg-sender {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.msg-time {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.msg-bubble {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.chat-input-bar {
+  border-top: 1px solid var(--border);
+  padding: 12px;
+  display: flex;
+  gap: 8px;
+  background: var(--panel);
+  flex-shrink: 0;
+}
+
+.chat-input-bar input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #0a0e14;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.chat-input-bar input:focus {
+  border-color: var(--accent);
+}
+
+.chat-input-bar button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.chat-input-bar button:hover {
+  opacity: 0.85;
+}
+
+.chat-input-bar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chat-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.conv-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+
+.conv-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.conv-item.active {
+  background: rgba(6, 182, 212, 0.06);
+}
+
+.conv-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.conv-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.conv-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.conv-preview {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: flex;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .channel-list {
+    width: 220px;
+  }
+}
+
+@media (max-width: 480px) {
+  .channel-list {
+    width: 100%;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <div class="main">
+    <div class="topbar" id="topbar"></div>
+
+    <div id="moduleDisabled" class="module-disabled" style="display:none;">
+      <h2>Channels Not Available</h2>
+      <p>This feature has not been enabled for this community.</p>
+    </div>
+
+    <div id="pageContent" style="display:none;">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="channels" onclick="switchTab('channels')">Channels</button>
+        <button class="tab-btn" data-tab="dm" onclick="switchTab('dm')">Direct Messages</button>
+      </div>
+
+      <div id="tabChannels" class="tab-panel active" style="height:calc(100vh - 56px - 48px);">
+        <div class="chat-layout" style="height:100%;width:100%;">
+          <div class="channel-list" id="channelList">
+            <div class="spinner" id="channelSpinner"></div>
+          </div>
+          <div class="chat-area" id="channelChatArea">
+            <div class="chat-placeholder" id="channelPlaceholder">
+              Select a channel to start chatting
+            </div>
+            <div id="channelChat" style="display:none;flex:1;flex-direction:column;">
+              <div class="chat-header" id="channelChatHeader">
+                <span class="channel-hash">#</span>
+                <span id="channelChatName"></span>
+              </div>
+              <div class="messages" id="channelMessages"></div>
+              <div class="chat-input-bar">
+                <input type="text" id="channelMsgInput" placeholder="Type a message..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChannelMessage();}">
+                <button onclick="sendChannelMessage()" id="channelSendBtn">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tabDm" class="tab-panel" style="height:calc(100vh - 56px - 48px);">
+        <div class="chat-layout" style="height:100%;width:100%;">
+          <div class="channel-list" id="dmConvList">
+            <div class="spinner" id="dmSpinner"></div>
+          </div>
+          <div class="chat-area" id="dmChatArea">
+            <div class="chat-placeholder" id="dmPlaceholder">
+              Select a conversation
+            </div>
+            <div id="dmChat" style="display:none;flex:1;flex-direction:column;">
+              <div class="chat-header" id="dmChatHeader"></div>
+              <div class="messages" id="dmMessages"></div>
+              <div class="chat-input-bar">
+                <input type="text" id="dmMsgInput" placeholder="Type a message..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendDmMessage();}">
+                <button onclick="sendDmMessage()" id="dmSendBtn">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/town/assets/ui-base.js"></script>
+<script>
+var activeChannelId = null;
+var activeDmId = null;
+var channelPollTimer = null;
+var dmPollTimer = null;
+
+/* ── Tab switching ── */
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  document.getElementById('tabChannels').classList.toggle('active', tab === 'channels');
+  document.getElementById('tabDm').classList.toggle('active', tab === 'dm');
+
+  if (tab === 'channels') {
+    loadChannels();
+  } else {
+    loadDmConversations();
+  }
+}
+
+/* ── Channels Tab ── */
+async function loadChannels() {
+  var data = await UB.api('/api/channels');
+  if (data.error) {
+    document.getElementById('channelList').innerHTML = '<div class="empty-state"><p>Failed to load channels.</p></div>';
+    return;
+  }
+  var channels = data.channels || data || [];
+  renderChannelList(channels);
+}
+
+function renderChannelList(channels) {
+  var list = document.getElementById('channelList');
+  if (!channels.length) {
+    list.innerHTML = '<div class="empty-state"><p>No channels yet.</p></div>';
+    return;
+  }
+  var html = '';
+  channels.forEach(function(ch) {
+    var isActive = ch.id === activeChannelId;
+    html += '<div class="channel-item' + (isActive ? ' active' : '') + '" data-id="' + ch.id + '" onclick="openChannel(' + ch.id + ')">'
+      + '<span class="channel-hash">#</span>'
+      + '<span class="channel-name">' + UB.esc(ch.name) + '</span>'
+      + '</div>';
+  });
+  list.innerHTML = html;
+}
+
+async function openChannel(id) {
+  activeChannelId = id;
+
+  // Highlight active
+  document.querySelectorAll('#channelList .channel-item').forEach(function(el) {
+    el.classList.toggle('active', parseInt(el.dataset.id) === id);
+  });
+
+  document.getElementById('channelPlaceholder').style.display = 'none';
+  var chatEl = document.getElementById('channelChat');
+  chatEl.style.display = 'flex';
+
+  // Find channel name
+  var activeEl = document.querySelector('#channelList .channel-item.active .channel-name');
+  document.getElementById('channelChatName').textContent = activeEl ? activeEl.textContent : '';
+
+  document.getElementById('channelMsgInput').value = '';
+  await loadChannelMessages(id);
+  document.getElementById('channelMsgInput').focus();
+
+  // Start polling every 5 seconds
+  if (channelPollTimer) clearInterval(channelPollTimer);
+  channelPollTimer = setInterval(function() {
+    if (activeChannelId === id) loadChannelMessages(id);
+  }, 5000);
+}
+
+async function loadChannelMessages(id) {
+  var data = await UB.api('/api/channels/' + id + '/messages');
+  if (data.error) return;
+  var messages = data.messages || data || [];
+  renderMessages(messages, 'channelMessages');
+}
+
+function renderMessages(messages, containerId) {
+  var container = document.getElementById(containerId);
+  if (!messages || !messages.length) {
+    container.innerHTML = '<div class="empty-state"><p>No messages yet. Start the conversation!</p></div>';
+    return;
+  }
+  var wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+  var html = '';
+  messages.forEach(function(m) {
+    var name = m.sender_name || m.user_name || 'Unknown';
+    var initial = name[0].toUpperCase();
+    var time = UB.timeAgo(m.created_at || m.timestamp);
+    html += '<div class="msg-row">'
+      + '<div class="msg-avatar">' + initial + '</div>'
+      + '<div class="msg-body">'
+      + '<div class="msg-meta">'
+      + '<span class="msg-sender">' + UB.esc(name) + '</span>'
+      + '<span class="msg-time">' + time + '</span>'
+      + '</div>'
+      + '<div class="msg-bubble">' + UB.esc(m.message || m.text || '') + '</div>'
+      + '</div></div>';
+  });
+  container.innerHTML = html;
+  if (wasAtBottom || container.scrollTop === 0) {
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+async function sendChannelMessage() {
+  if (!activeChannelId) return;
+  var input = document.getElementById('channelMsgInput');
+  var text = input.value.trim();
+  if (!text) return;
+
+  var btn = document.getElementById('channelSendBtn');
+  btn.disabled = true;
+
+  var data = await UB.api('/api/channels/' + activeChannelId + '/messages', {
+    method: 'POST',
+    body: { message: text }
+  });
+
+  if (!data.error) {
+    input.value = '';
+    await loadChannelMessages(activeChannelId);
+  } else {
+    UB.toast('Failed to send message', 'error');
+  }
+  btn.disabled = false;
+  input.focus();
+}
+
+/* ── DM Tab ── */
+async function loadDmConversations() {
+  var data = await UB.api('/api/dm/conversations');
+  if (data.error) {
+    document.getElementById('dmConvList').innerHTML = '<div class="empty-state"><p>Failed to load conversations.</p></div>';
+    return;
+  }
+  var conversations = data.conversations || data || [];
+  renderDmConvList(conversations);
+}
+
+function renderDmConvList(conversations) {
+  var list = document.getElementById('dmConvList');
+  if (!conversations.length) {
+    list.innerHTML = '<div class="empty-state"><p>No conversations yet.</p></div>';
+    return;
+  }
+  var html = '';
+  conversations.forEach(function(c) {
+    var isActive = c.id === activeDmId;
+    var name = c.other_user_name || c.name || 'User';
+    var initial = name[0].toUpperCase();
+    html += '<div class="conv-item' + (isActive ? ' active' : '') + '" data-id="' + c.id + '" onclick="openDm(' + c.id + ')">'
+      + '<div class="conv-avatar">' + initial + '</div>'
+      + '<div class="conv-info">'
+      + '<div class="conv-name">' + UB.esc(name) + '</div>'
+      + '<div class="conv-preview">' + UB.esc(c.last_message || '') + '</div>'
+      + '</div></div>';
+  });
+  list.innerHTML = html;
+}
+
+async function openDm(id) {
+  activeDmId = id;
+
+  document.querySelectorAll('#dmConvList .conv-item').forEach(function(el) {
+    el.classList.toggle('active', parseInt(el.dataset.id) === id);
+  });
+
+  document.getElementById('dmPlaceholder').style.display = 'none';
+  var chatEl = document.getElementById('dmChat');
+  chatEl.style.display = 'flex';
+
+  var activeEl = document.querySelector('#dmConvList .conv-item.active .conv-name');
+  document.getElementById('dmChatHeader').textContent = activeEl ? activeEl.textContent : 'Conversation';
+
+  document.getElementById('dmMsgInput').value = '';
+  await loadDmMessages(id);
+  document.getElementById('dmMsgInput').focus();
+
+  // Start polling every 5 seconds
+  if (dmPollTimer) clearInterval(dmPollTimer);
+  dmPollTimer = setInterval(function() {
+    if (activeDmId === id) loadDmMessages(id);
+  }, 5000);
+}
+
+async function loadDmMessages(id) {
+  var data = await UB.api('/api/dm/conversations/' + id + '/messages');
+  if (data.error) return;
+  var messages = data.messages || data || [];
+  renderMessages(messages, 'dmMessages');
+}
+
+async function sendDmMessage() {
+  if (!activeDmId) return;
+  var input = document.getElementById('dmMsgInput');
+  var text = input.value.trim();
+  if (!text) return;
+
+  var btn = document.getElementById('dmSendBtn');
+  btn.disabled = true;
+
+  var data = await UB.api('/api/dm/conversations/' + activeDmId + '/messages', {
+    method: 'POST',
+    body: { message: text }
+  });
+
+  if (!data.error) {
+    input.value = '';
+    await loadDmMessages(activeDmId);
+  } else {
+    UB.toast('Failed to send message', 'error');
+  }
+  btn.disabled = false;
+  input.focus();
+}
+
+/* ── Init ── */
+(async function() {
+  var flags = await UB.init('/town/channels', 'Channels');
+
+  if (!UB.hasFlag(flags, 'ui-base.channels')) {
+    document.getElementById('moduleDisabled').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('pageContent').style.display = 'block';
+  loadChannels();
+})();
+</script>
+</body>
+</html>

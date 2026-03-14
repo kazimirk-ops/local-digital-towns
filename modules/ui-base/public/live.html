@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Shows</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+  <style>
+    .section-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+    .live-card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; position: relative;
+    }
+    .live-badge {
+      position: absolute; top: 12px; right: 12px;
+      background: var(--danger); color: #fff; font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 4px; text-transform: uppercase;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .live-badge .dot { width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: pulse-dot 1.5s infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+    .card-host { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .card-title { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+    .card-viewers { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+    .schedule-time { font-size: 13px; color: var(--accent); margin-bottom: 12px; }
+    .remind-text { font-size: 13px; color: var(--muted); cursor: pointer; }
+    .remind-text:hover { color: var(--accent); }
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 0; width: 100%; max-width: 600px; display: flex; flex-direction: column; max-height: 80vh;
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+    }
+    .modal-header h3 { font-size: 16px; font-weight: 700; }
+    .modal-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
+    .modal-close:hover { color: var(--text); }
+    .stream-placeholder {
+      background: #000; padding: 40px 20px; text-align: center; color: var(--muted); font-size: 14px;
+      min-height: 160px; display: flex; align-items: center; justify-content: center;
+    }
+    .chat-area { flex: 1; display: flex; flex-direction: column; min-height: 0; max-height: 300px; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 12px 20px; display: flex; flex-direction: column; gap: 6px; }
+    .chat-msg { font-size: 13px; line-height: 1.4; }
+    .chat-msg .chat-author { font-weight: 600; color: var(--accent); margin-right: 6px; }
+    .chat-input-row {
+      display: flex; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); flex-shrink: 0;
+    }
+    .chat-input-row input {
+      flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font-family: inherit; font-size: 13px;
+    }
+    .chat-input-row input:focus { outline: none; border-color: var(--accent); }
+    .chat-input-row button {
+      background: var(--accent); color: #fff; border: none; border-radius: 8px;
+      padding: 10px 16px; font-weight: 600; font-size: 13px; cursor: pointer;
+    }
+    .chat-input-row button:hover { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </div>
+  <div id="modalRoot"></div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+  (function() {
+    var chatInterval = null;
+    var watchingRoomId = null;
+
+    async function boot() {
+      var flags = await UB.init('/town/live', 'Live Shows');
+      if (!UB.hasFlag(flags, 'ui-base.live')) { UB.showDisabled('Live Shows'); return; }
+      loadShows();
+    }
+
+    async function loadShows() {
+      var el = document.getElementById('pageContent');
+      var liveData = await UB.api('/api/live-rooms?status=live');
+      var schedData = await UB.api('/api/live-schedule');
+      var liveRooms = Array.isArray(liveData) ? liveData : (liveData.rooms || []);
+      var scheduled = Array.isArray(schedData) ? schedData : (schedData.shows || schedData.schedule || []);
+      if (!liveRooms.length && !scheduled.length) {
+        el.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128250;</div><p>No live shows right now. Check back soon!</p></div>';
+        return;
+      }
+      var html = '';
+      if (liveRooms.length) {
+        html += '<div class="section-title">Live Now</div><div class="grid grid-3 mb-lg">';
+        liveRooms.forEach(function(r) {
+          html += '<div class="live-card">'
+            + '<span class="live-badge"><span class="dot"></span> LIVE</span>'
+            + '<div class="card-host">' + UB.esc(r.host_name || r.host || '') + '</div>'
+            + '<div class="card-title">' + UB.esc(r.title || '') + '</div>'
+            + '<div class="card-viewers">' + (r.viewer_count || 0) + ' watching</div>'
+            + '<button class="btn btn-primary btn-sm" onclick="openWatch(\'' + UB.esc(r.id) + '\',\'' + UB.esc(r.title || '') + '\')">Watch</button>'
+            + '</div>';
+        });
+        html += '</div>';
+      }
+      if (scheduled.length) {
+        html += '<div class="section-title">Scheduled</div><div class="grid grid-3">';
+        scheduled.forEach(function(s) {
+          var time = s.scheduled_at || s.start_time || '';
+          var display = time ? new Date(time).toLocaleString() : 'TBD';
+          html += '<div class="live-card">'
+            + '<div class="card-host">' + UB.esc(s.host_name || s.host || '') + '</div>'
+            + '<div class="card-title">' + UB.esc(s.title || '') + '</div>'
+            + '<div class="schedule-time">' + UB.esc(display) + '</div>'
+            + '<span class="remind-text" onclick="UB.toast(\'Reminder set!\',\'success\')">Remind Me</span>'
+            + '</div>';
+        });
+        html += '</div>';
+      }
+      el.innerHTML = html;
+    }
+
+    window.openWatch = function(roomId, title) {
+      watchingRoomId = roomId;
+      var root = document.getElementById('modalRoot');
+      root.innerHTML = '<div class="modal-overlay" onclick="closeWatch(event)">'
+        + '<div class="modal" onclick="event.stopPropagation()">'
+        + '<div class="modal-header"><h3>' + UB.esc(title || 'Live Stream') + '</h3>'
+        + '<button class="modal-close" onclick="closeWatch()">&times;</button></div>'
+        + '<div class="stream-placeholder">Live stream viewer - connect to room</div>'
+        + '<div class="chat-area">'
+        + '<div class="chat-messages" id="chatMessages"></div>'
+        + '<div class="chat-input-row">'
+        + '<input type="text" id="chatInput" placeholder="Say something..." maxlength="500" onkeydown="if(event.key===\'Enter\')sendChat()">'
+        + '<button onclick="sendChat()">Send</button>'
+        + '</div></div></div></div>';
+      loadChat(roomId);
+      chatInterval = setInterval(function() { loadChat(roomId); }, 3000);
+    };
+
+    async function loadChat(roomId) {
+      var data = await UB.api('/api/live-rooms/' + roomId + '/chat');
+      var msgs = Array.isArray(data) ? data : (data.messages || []);
+      var el = document.getElementById('chatMessages');
+      if (!el) return;
+      el.innerHTML = '';
+      msgs.forEach(function(m) {
+        var div = document.createElement('div');
+        div.className = 'chat-msg';
+        div.innerHTML = '<span class="chat-author">' + UB.esc(m.user_name || m.author || 'User') + '</span>'
+          + '<span>' + UB.esc(m.message || m.text || '') + '</span>';
+        el.appendChild(div);
+      });
+      el.scrollTop = el.scrollHeight;
+    }
+
+    window.sendChat = async function() {
+      if (!watchingRoomId) return;
+      var input = document.getElementById('chatInput');
+      var msg = input.value.trim();
+      if (!msg) return;
+      input.value = '';
+      var data = await UB.api('/api/live-rooms/' + watchingRoomId + '/chat', {
+        method: 'POST', body: { message: msg }
+      });
+      if (data.error) { UB.toast('Failed to send message', 'error'); return; }
+      loadChat(watchingRoomId);
+    };
+
+    window.closeWatch = function(e) {
+      if (e && e.target !== e.currentTarget) return;
+      if (chatInterval) { clearInterval(chatInterval); chatInterval = null; }
+      watchingRoomId = null;
+      document.getElementById('modalRoot').innerHTML = '';
+    };
+
+    boot();
+  })();
+  </script>
+</body>
+</html>

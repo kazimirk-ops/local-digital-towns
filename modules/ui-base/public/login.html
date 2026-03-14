@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Digital Towns</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #070b10;
+      --panel: #0f1623;
+      --border: #1e293b;
+      --accent: #06b6d4;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --danger: #ef4444;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 40px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-logo {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .login-subtitle {
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0a0e14;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 15px;
+    }
+
+    .field input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn:hover {
+      opacity: 0.85;
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .error-msg {
+      color: var(--danger);
+      font-size: 13px;
+      margin-bottom: 12px;
+      text-align: center;
+      display: none;
+    }
+
+    .info-msg {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      color: var(--text);
+    }
+
+    #codeStep {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="login-logo">Digital Towns</div>
+    <div class="login-subtitle">Sign in with your email</div>
+
+    <!-- Step 1: Email -->
+    <div id="emailStep">
+      <div class="field">
+        <label for="email">Email address</label>
+        <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="error-msg" id="emailError"></div>
+      <button class="btn" id="sendCodeBtn" onclick="sendCode()">Send Login Code</button>
+    </div>
+
+    <!-- Step 2: Code -->
+    <div id="codeStep">
+      <div class="info-msg" id="codeSent" style="display:block;">
+        We sent a 6-digit code to your email.
+      </div>
+      <div class="field">
+        <label for="code">Verification code</label>
+        <input type="text" id="code" placeholder="123456" maxlength="6" autocomplete="one-time-code">
+      </div>
+      <div class="error-msg" id="codeError"></div>
+      <button class="btn" id="verifyBtn" onclick="verifyCode()">Verify & Sign In</button>
+      <a class="back-link" onclick="showEmailStep()">Use a different email</a>
+    </div>
+  </div>
+
+  <script>
+    var userEmail = '';
+
+    function showError(id, msg) {
+      var el = document.getElementById(id);
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    function hideError(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+
+    function showEmailStep() {
+      document.getElementById('emailStep').style.display = 'block';
+      document.getElementById('codeStep').style.display = 'none';
+      hideError('emailError');
+      hideError('codeError');
+    }
+
+    async function sendCode() {
+      hideError('emailError');
+      var email = document.getElementById('email').value.trim();
+      if (!email) {
+        showError('emailError', 'Please enter your email address.');
+        return;
+      }
+
+      var btn = document.getElementById('sendCodeBtn');
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+
+      try {
+        var r = await fetch('/auth/request-code', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email })
+        });
+
+        if (!r.ok) {
+          var data = await r.json().catch(function() { return {}; });
+          showError('emailError', data.error || 'Failed to send code. Try again.');
+          btn.disabled = false;
+          btn.textContent = 'Send Login Code';
+          return;
+        }
+
+        userEmail = email;
+        document.getElementById('emailStep').style.display = 'none';
+        document.getElementById('codeStep').style.display = 'block';
+      } catch(e) {
+        showError('emailError', 'Network error. Please try again.');
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Send Login Code';
+    }
+
+    async function verifyCode() {
+      hideError('codeError');
+      var code = document.getElementById('code').value.trim();
+      if (!code) {
+        showError('codeError', 'Please enter the verification code.');
+        return;
+      }
+
+      var btn = document.getElementById('verifyBtn');
+      btn.disabled = true;
+      btn.textContent = 'Verifying...';
+
+      try {
+        var r = await fetch('/auth/verify-code', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: userEmail, code: code })
+        });
+
+        if (!r.ok) {
+          var data = await r.json().catch(function() { return {}; });
+          showError('codeError', data.error || 'Invalid code. Try again.');
+          btn.disabled = false;
+          btn.textContent = 'Verify & Sign In';
+          return;
+        }
+
+        window.location.href = '/town';
+      } catch(e) {
+        showError('codeError', 'Network error. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Verify & Sign In';
+      }
+    }
+
+    // Allow Enter key to submit
+    document.getElementById('email').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') sendCode();
+    });
+    document.getElementById('code').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') verifyCode();
+    });
+  </script>
+</body>
+</html>

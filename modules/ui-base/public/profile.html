@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile | Digital Towns</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+  <style>
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 24px;
+    }
+    .avatar-circle {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .profile-info h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .profile-email {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .profile-meta {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .trust-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 10px;
+      border-radius: 4px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    .trust-1 { background: rgba(100,116,139,0.2); color: var(--muted); }
+    .trust-2 { background: rgba(6,182,212,0.15); color: var(--accent); }
+    .trust-3 { background: rgba(16,185,129,0.15); color: var(--green); }
+    .trust-4 { background: rgba(245,158,11,0.15); color: var(--gold); }
+    .trust-5 { background: rgba(245,158,11,0.2); color: var(--gold); }
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      padding: 12px 20px;
+      border: none;
+      background: none;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      font-family: inherit;
+      transition: color 0.15s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .balance-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 24px;
+    }
+    .balance-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    .balance-label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .listing-card {
+      padding: 16px;
+    }
+    .listing-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .listing-price {
+      font-size: 14px;
+      color: var(--green);
+      font-weight: 600;
+    }
+    .listing-status {
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .login-prompt {
+      text-align: center;
+      padding: 80px 20px;
+    }
+    .login-prompt h2 {
+      font-size: 20px;
+      margin-bottom: 12px;
+      color: var(--muted);
+    }
+    .login-prompt a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .login-prompt a:hover {
+      text-decoration: underline;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+        <div class="spinner" id="loader"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+    (async function() {
+      await UB.init('/town/profile', 'Profile');
+
+      document.getElementById('loader').remove();
+      var page = document.getElementById('pageContent');
+
+      // No flag check — always visible
+
+      if (!UB.currentUser) {
+        page.innerHTML = '<div class="login-prompt">'
+          + '<h2>Please log in to view your profile</h2>'
+          + '<a href="/town/login">Go to Login</a>'
+          + '</div>';
+        return;
+      }
+
+      var user = UB.currentUser;
+      var initial = (user.display_name || user.email || 'U')[0].toUpperCase();
+      var tierNum = user.trust_tier || user.tier || 1;
+      var tierLabel = 'Tier ' + tierNum;
+      var tierClass = 'trust-' + Math.min(tierNum, 5);
+      var memberSince = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A';
+
+      page.innerHTML =
+        '<div class="card mb-lg">'
+        + '<div class="profile-header">'
+        +   '<div class="avatar-circle">' + initial + '</div>'
+        +   '<div class="profile-info">'
+        +     '<h2>' + UB.esc(user.display_name || user.email) + '<span class="trust-badge ' + tierClass + '">' + tierLabel + '</span></h2>'
+        +     '<div class="profile-email">' + UB.esc(user.email || '') + '</div>'
+        +     '<div class="profile-meta">Member since ' + memberSince + '</div>'
+        +   '</div>'
+        + '</div>'
+        + '</div>'
+        + '<div class="tab-bar" id="tabBar">'
+        +   '<button class="tab-btn active" data-tab="listings">My Listings</button>'
+        +   '<button class="tab-btn" data-tab="sweep">Sweep Balance</button>'
+        +   '<button class="tab-btn" data-tab="settings">Settings</button>'
+        + '</div>'
+        + '<div class="tab-panel active" id="panel-listings"><div class="spinner"></div></div>'
+        + '<div class="tab-panel" id="panel-sweep"><div class="spinner"></div></div>'
+        + '<div class="tab-panel" id="panel-settings"></div>';
+
+      // Tab switching
+      document.getElementById('tabBar').addEventListener('click', function(e) {
+        var btn = e.target.closest('.tab-btn');
+        if (!btn) return;
+        var tab = btn.getAttribute('data-tab');
+        document.querySelectorAll('.tab-btn').forEach(function(t) {
+          t.classList.toggle('active', t.getAttribute('data-tab') === tab);
+        });
+        document.querySelectorAll('.tab-panel').forEach(function(p) {
+          p.classList.toggle('active', p.id === 'panel-' + tab);
+        });
+      });
+
+      // Load all tabs
+      loadListings();
+      loadSweepBalance();
+      buildSettings();
+
+      async function loadListings() {
+        var panel = document.getElementById('panel-listings');
+        var data = await UB.api('/api/listings?mine=1');
+        var listings = Array.isArray(data) ? data : (data.listings || []);
+
+        if (listings.length === 0) {
+          panel.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128230;</div><p>You have no listings yet.</p></div>';
+          return;
+        }
+
+        var html = '<div class="grid grid-3">';
+        listings.forEach(function(l) {
+          html += '<div class="card listing-card">'
+            + '<div class="listing-title">' + UB.esc(l.title || l.name || 'Untitled') + '</div>';
+          if (l.price != null) {
+            html += '<div class="listing-price">' + UB.formatPrice(l.price) + '</div>';
+          }
+          if (l.status) {
+            var statusClass = l.status === 'active' ? 'text-green' : 'text-muted';
+            html += '<div class="listing-status ' + statusClass + '">' + UB.esc(l.status) + '</div>';
+          }
+          html += '</div>';
+        });
+        html += '</div>';
+        panel.innerHTML = html;
+      }
+
+      async function loadSweepBalance() {
+        var panel = document.getElementById('panel-sweep');
+        var data = await UB.api('/api/sweep/balance');
+
+        if (data.error) {
+          panel.innerHTML = '<div class="empty-state"><p>Could not load sweep balance</p></div>';
+          return;
+        }
+
+        var balance = data.balance || data.points || 0;
+        panel.innerHTML =
+          '<div class="card balance-card">'
+          + '<div>'
+          +   '<div class="balance-value">' + UB.esc(String(balance)) + '</div>'
+          +   '<div class="balance-label">Sweep Points</div>'
+          + '</div>'
+          + '</div>';
+      }
+
+      function buildSettings() {
+        var panel = document.getElementById('panel-settings');
+        var currentName = user.display_name || '';
+
+        panel.innerHTML =
+          '<div class="card" style="max-width:480px;">'
+          + '<h3 class="section-title">Update Profile</h3>'
+          + '<div class="field">'
+          +   '<label for="settingsName">Display Name</label>'
+          +   '<input type="text" id="settingsName" value="' + UB.esc(currentName) + '" placeholder="Your display name">'
+          + '</div>'
+          + '<button class="btn btn-primary" id="saveSettingsBtn">Save</button>'
+          + '</div>';
+
+        document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+      }
+
+      async function saveSettings() {
+        var btn = document.getElementById('saveSettingsBtn');
+        var nameInput = document.getElementById('settingsName');
+        var newName = nameInput.value.trim();
+        if (!newName) {
+          UB.toast('Display name cannot be empty', 'error');
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        var res = await UB.api('/api/auth/me', {
+          method: 'PATCH',
+          body: { display_name: newName }
+        });
+
+        btn.disabled = false;
+        btn.textContent = 'Save';
+
+        if (res.error) {
+          UB.toast(res.error, 'error');
+          return;
+        }
+
+        UB.toast('Profile updated!', 'success');
+        // Update local user
+        UB.currentUser.display_name = newName;
+        UB.buildTopbar('Profile');
+      }
+    })();
+  </script>
+</body>
+</html>

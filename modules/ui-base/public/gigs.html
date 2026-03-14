@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gigs & Services</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+  <style>
+    .section-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+    .category-card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; text-align: center; cursor: pointer; transition: border-color 0.15s;
+    }
+    .category-card:hover { border-color: var(--accent); }
+    .category-card .cat-icon { font-size: 32px; margin-bottom: 8px; }
+    .category-card .cat-name { font-size: 15px; font-weight: 600; }
+    .category-card .cat-count { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .provider-card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;
+    }
+    .provider-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .provider-bio { font-size: 13px; color: var(--muted); margin-bottom: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .provider-rate { font-size: 15px; font-weight: 600; color: var(--accent); margin-bottom: 6px; }
+    .stars { color: var(--gold); font-size: 14px; letter-spacing: 1px; margin-bottom: 12px; }
+    .back-link { font-size: 14px; color: var(--accent); cursor: pointer; margin-bottom: 16px; display: inline-block; }
+    .back-link:hover { text-decoration: underline; }
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; width: 100%; max-width: 440px;
+    }
+    .modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </div>
+  <div id="modalRoot"></div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+  (function() {
+    var selectedCategory = null;
+
+    async function boot() {
+      var flags = await UB.init('/town/gigs', 'Gigs & Services');
+      if (!UB.hasFlag(flags, 'ui-base.gigs')) { UB.showDisabled('Gigs & Services'); return; }
+      loadCategories();
+    }
+
+    async function loadCategories() {
+      var data = await UB.api('/api/gigs/categories');
+      var el = document.getElementById('pageContent');
+      if (data.error) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128736;</div><p>Could not load categories.</p></div>'; return; }
+      var cats = Array.isArray(data) ? data : (data.categories || []);
+      if (!cats.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128736;</div><p>No service categories available yet.</p></div>'; return; }
+      var html = '<div class="section-title">Browse Services</div><div class="grid grid-4" id="catGrid">';
+      cats.forEach(function(c) {
+        html += '<div class="category-card" onclick="loadProviders(\'' + UB.esc(c.slug || c.id || c.name) + '\',\'' + UB.esc(c.name) + '\')">'
+          + '<div class="cat-icon">' + (c.icon || '&#128736;') + '</div>'
+          + '<div class="cat-name">' + UB.esc(c.name) + '</div>'
+          + (c.count != null ? '<div class="cat-count">' + c.count + ' providers</div>' : '')
+          + '</div>';
+      });
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    window.loadProviders = async function(category, label) {
+      selectedCategory = category;
+      var el = document.getElementById('pageContent');
+      el.innerHTML = '<div class="spinner"></div>';
+      var data = await UB.api('/api/gigs/providers?category=' + encodeURIComponent(category));
+      var providers = Array.isArray(data) ? data : (data.providers || []);
+      var html = '<span class="back-link" onclick="backToCategories()">&larr; All Categories</span>';
+      html += '<div class="section-title">' + UB.esc(label || category) + '</div>';
+      if (!providers.length) {
+        html += '<div class="empty-state"><div class="empty-icon">&#128100;</div><p>No providers in this category yet.</p></div>';
+        el.innerHTML = html; return;
+      }
+      html += '<div class="grid grid-3">';
+      providers.forEach(function(p) {
+        var stars = renderStars(p.rating || 0);
+        html += '<div class="provider-card">'
+          + '<div class="provider-name">' + UB.esc(p.name || p.display_name) + '</div>'
+          + '<div class="provider-bio">' + UB.esc(p.bio || p.description || '') + '</div>'
+          + '<div class="provider-rate">' + UB.esc(p.rate || '') + '</div>'
+          + '<div class="stars">' + stars + '</div>'
+          + '<button class="btn btn-primary btn-sm" onclick="openBooking(\'' + UB.esc(p.id) + '\',\'' + UB.esc(p.name || p.display_name) + '\')">Book</button>'
+          + '</div>';
+      });
+      html += '</div>';
+      el.innerHTML = html;
+    };
+
+    function renderStars(rating) {
+      var n = Math.round(rating);
+      var s = '';
+      for (var i = 0; i < 5; i++) s += i < n ? '&#9733;' : '&#9734;';
+      return s;
+    }
+
+    window.backToCategories = function() {
+      selectedCategory = null;
+      loadCategories();
+    };
+
+    window.openBooking = function(providerId, providerName) {
+      var root = document.getElementById('modalRoot');
+      root.innerHTML = '<div class="modal-overlay" onclick="closeModal(event)">'
+        + '<div class="modal" onclick="event.stopPropagation()">'
+        + '<h3>Book ' + UB.esc(providerName) + '</h3>'
+        + '<div class="field"><label>Date</label><input type="date" id="bookDate"></div>'
+        + '<div class="field"><label>Time</label><select id="bookTime">'
+        + '<option value="09:00">9:00 AM</option><option value="10:00">10:00 AM</option>'
+        + '<option value="11:00">11:00 AM</option><option value="12:00">12:00 PM</option>'
+        + '<option value="13:00">1:00 PM</option><option value="14:00">2:00 PM</option>'
+        + '<option value="15:00">3:00 PM</option><option value="16:00">4:00 PM</option>'
+        + '<option value="17:00">5:00 PM</option></select></div>'
+        + '<div class="field"><label>Notes</label><textarea id="bookNotes" rows="3" placeholder="Any details about the service you need..."></textarea></div>'
+        + '<div class="modal-actions">'
+        + '<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>'
+        + '<button class="btn btn-primary" id="submitBookBtn" onclick="submitBooking(\'' + UB.esc(providerId) + '\')">Submit Booking</button>'
+        + '</div></div></div>';
+    };
+
+    window.submitBooking = async function(providerId) {
+      var dateVal = document.getElementById('bookDate').value;
+      var timeVal = document.getElementById('bookTime').value;
+      var notes = document.getElementById('bookNotes').value.trim();
+      if (!dateVal) { UB.toast('Please select a date', 'error'); return; }
+      var btn = document.getElementById('submitBookBtn');
+      btn.disabled = true; btn.textContent = 'Submitting...';
+      var scheduledDate = dateVal + 'T' + timeVal + ':00';
+      var data = await UB.api('/api/gigs/bookings', {
+        method: 'POST',
+        body: { provider_id: providerId, service_name: selectedCategory || '', scheduled_date: scheduledDate, notes: notes }
+      });
+      if (data.error) { UB.toast(data.error, 'error'); btn.disabled = false; btn.textContent = 'Submit Booking'; return; }
+      UB.toast('Booking submitted!', 'success');
+      closeModal();
+    };
+
+    window.closeModal = function(e) {
+      if (e && e.target !== e.currentTarget) return;
+      document.getElementById('modalRoot').innerHTML = '';
+    };
+
+    boot();
+  })();
+  </script>
+</body>
+</html>

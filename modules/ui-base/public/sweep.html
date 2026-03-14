@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sweepstakes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+  <style>
+    .sweep-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
+    .balance-card { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+    .balance-num { font-size: 40px; font-weight: 700; color: var(--accent); }
+    .balance-label { font-size: 14px; color: var(--muted); }
+    .sweep-card { margin-bottom: 16px; }
+    .sweep-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    .sweep-card p { font-size: 13px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
+    .sweep-meta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .sweep-meta span { font-size: 12px; color: var(--muted); }
+    .countdown { color: var(--gold); font-weight: 600; }
+    .wheel-wrap { text-align: center; }
+    .wheel-wrap canvas { display: block; margin: 0 auto 16px; cursor: pointer; }
+    .section-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: var(--text); }
+    .rules-list { list-style: none; }
+    .rules-list li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .rules-list li:last-child { border-bottom: none; }
+    .rules-pts { color: var(--green); font-weight: 600; }
+    .lb-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; }
+    .lb-rank { width: 24px; height: 24px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+    .lb-name { flex: 1; }
+    .lb-pts { color: var(--gold); font-weight: 600; }
+    @media (max-width: 768px) {
+      .sweep-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+
+        <!-- Balance -->
+        <div class="card balance-card" id="balanceCard">
+          <div>
+            <div class="balance-num" id="balanceNum">--</div>
+            <div class="balance-label">Sweep Points</div>
+          </div>
+        </div>
+
+        <div class="sweep-grid">
+          <!-- Left: Sweepstakes List -->
+          <div>
+            <div class="section-title">Active Sweepstakes</div>
+            <div id="sweepList"><div class="spinner"></div></div>
+          </div>
+
+          <!-- Right: Wheel + Rules + Leaderboard -->
+          <div>
+            <!-- Spin Wheel -->
+            <div class="card wheel-wrap mb-md">
+              <div class="section-title">Spin the Wheel</div>
+              <canvas id="wheelCanvas" width="280" height="280"></canvas>
+              <button class="btn btn-primary" id="spinBtn">Spin!</button>
+            </div>
+
+            <!-- Rules -->
+            <div class="card mb-md">
+              <div class="section-title">How to Earn Points</div>
+              <ul class="rules-list" id="rulesList">
+                <li style="color:var(--muted);">Loading...</li>
+              </ul>
+            </div>
+
+            <!-- Leaderboard -->
+            <div class="card">
+              <div class="section-title">Top 5 Leaderboard</div>
+              <div id="leaderboard"><span style="color:var(--muted);font-size:13px;">Loading...</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+  (async function() {
+    var flags = await UB.init('/town/sweep', 'Sweepstakes');
+    if (!UB.hasFlag(flags, 'ui-base.sweep')) { UB.showDisabled('Sweepstakes'); return; }
+
+    // ── Load data ──
+    loadBalance();
+    loadSweepstakes();
+    loadRules();
+    loadLeaderboard();
+    initWheel();
+
+    // ── Balance ──
+    async function loadBalance() {
+      var data = await UB.api('/api/sweep/balance');
+      var el = document.getElementById('balanceNum');
+      el.textContent = (data && !data.error) ? (data.points != null ? data.points : 0) : 0;
+    }
+
+    // ── Sweepstakes list ──
+    async function loadSweepstakes() {
+      var data = await UB.api('/api/sweepstakes');
+      var container = document.getElementById('sweepList');
+      if (!data || data.error || !Array.isArray(data) || data.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">&#127922;</div><p>No active sweepstakes right now.</p></div>';
+        return;
+      }
+      var html = '';
+      data.forEach(function(s) {
+        var statusClass = s.status === 'active' ? 'badge-green' : 'badge-gold';
+        var cd = countdownStr(s.ends_at);
+        html += '<div class="card sweep-card">'
+          + '<div class="flex-between mb-sm"><h3>' + UB.esc(s.name) + '</h3>'
+          + '<span class="badge ' + statusClass + '">' + UB.esc(s.status || 'active') + '</span></div>'
+          + '<p>' + UB.esc(s.description || '') + '</p>'
+          + '<div class="sweep-meta">'
+          + (s.prize ? '<span>Prize: <strong style="color:var(--gold);">' + UB.esc(s.prize) + '</strong></span>' : '')
+          + '<span>Entries: ' + (s.entry_count || 0) + '</span>'
+          + (cd ? '<span class="countdown">' + cd + '</span>' : '')
+          + '</div>'
+          + '<button class="btn btn-primary btn-sm" onclick="enterSweep(\'' + s.id + '\', this)">Enter (1 pt)</button>'
+          + '</div>';
+      });
+      container.innerHTML = html;
+    }
+
+    function countdownStr(dt) {
+      if (!dt) return '';
+      var diff = new Date(dt).getTime() - Date.now();
+      if (diff <= 0) return 'Ended';
+      var d = Math.floor(diff / 86400000);
+      var h = Math.floor((diff % 86400000) / 3600000);
+      var m = Math.floor((diff % 3600000) / 60000);
+      if (d > 0) return d + 'd ' + h + 'h left';
+      if (h > 0) return h + 'h ' + m + 'm left';
+      return m + 'm left';
+    }
+
+    window.enterSweep = async function(id, btn) {
+      btn.disabled = true;
+      btn.textContent = 'Entering...';
+      var res = await UB.api('/api/sweepstakes/' + id + '/enter', {
+        method: 'POST',
+        body: { points: 1 }
+      });
+      if (res && !res.error) {
+        UB.toast('Entry submitted! Good luck!', 'success');
+        loadBalance();
+      } else {
+        UB.toast(res.error || 'Could not enter. Try again.', 'error');
+      }
+      btn.disabled = false;
+      btn.textContent = 'Enter (1 pt)';
+    };
+
+    // ── Rules ──
+    async function loadRules() {
+      var data = await UB.api('/api/sweep/rules');
+      var el = document.getElementById('rulesList');
+      if (!data || data.error || !Array.isArray(data) || data.length === 0) {
+        el.innerHTML = '<li style="color:var(--muted);">No rules available.</li>';
+        return;
+      }
+      var html = '';
+      data.forEach(function(r) {
+        html += '<li><span>' + UB.esc(r.action || r.name) + '</span><span class="rules-pts">+' + (r.points || 0) + ' pts</span></li>';
+      });
+      el.innerHTML = html;
+    }
+
+    // ── Leaderboard ──
+    async function loadLeaderboard() {
+      var data = await UB.api('/api/sweep/leaderboard');
+      var el = document.getElementById('leaderboard');
+      if (!data || data.error || !Array.isArray(data) || data.length === 0) {
+        el.innerHTML = '<span style="color:var(--muted);font-size:13px;">No entries yet.</span>';
+        return;
+      }
+      var html = '';
+      data.slice(0, 5).forEach(function(u, i) {
+        html += '<div class="lb-row">'
+          + '<div class="lb-rank">' + (i + 1) + '</div>'
+          + '<span class="lb-name">' + UB.esc(u.name || u.display_name || 'Anonymous') + '</span>'
+          + '<span class="lb-pts">' + (u.points || 0) + '</span>'
+          + '</div>';
+      });
+      el.innerHTML = html;
+    }
+
+    // ── Spin Wheel ──
+    function initWheel() {
+      var canvas = document.getElementById('wheelCanvas');
+      var ctx = canvas.getContext('2d');
+      var size = 280, cx = size / 2, cy = size / 2, radius = 120;
+      var segments = [
+        { label: '1 Point',   color: 'var(--accent)' },
+        { label: '2 Points',  color: 'var(--green)' },
+        { label: '5 Points',  color: 'var(--gold)' },
+        { label: 'Try Again', color: 'var(--danger)' },
+        { label: 'Bonus!',    color: '#8b5cf6' },
+        { label: '1 Point',   color: '#ec4899' },
+        { label: '3 Points',  color: '#14b8a6' },
+        { label: 'Lucky!',    color: '#f97316' }
+      ];
+      // Resolve CSS variables to hex for canvas
+      var colorMap = {
+        'var(--accent)': '#06b6d4',
+        'var(--green)':  '#10b981',
+        'var(--gold)':   '#f59e0b',
+        'var(--danger)': '#ef4444'
+      };
+      function resolveColor(c) { return colorMap[c] || c; }
+
+      var numSeg = segments.length;
+      var arc = (2 * Math.PI) / numSeg;
+      var angle = 0;
+      var spinning = false;
+
+      function draw() {
+        ctx.clearRect(0, 0, size, size);
+        // Draw segments
+        for (var i = 0; i < numSeg; i++) {
+          var start = angle + i * arc;
+          var end = start + arc;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, radius, start, end);
+          ctx.closePath();
+          ctx.fillStyle = resolveColor(segments[i].color);
+          ctx.fill();
+          ctx.strokeStyle = '#0f1623';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          // Label
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(start + arc / 2);
+          ctx.fillStyle = '#fff';
+          ctx.font = '600 12px Space Grotesk, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(segments[i].label, radius * 0.62, 0);
+          ctx.restore();
+        }
+        // Center circle
+        ctx.beginPath();
+        ctx.arc(cx, cy, 28, 0, 2 * Math.PI);
+        ctx.fillStyle = '#0f1623';
+        ctx.fill();
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#e2e8f0';
+        ctx.font = '700 13px Space Grotesk, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('SPIN', cx, cy);
+        // Pointer triangle at top
+        ctx.beginPath();
+        ctx.moveTo(cx - 10, cy - radius - 14);
+        ctx.lineTo(cx + 10, cy - radius - 14);
+        ctx.lineTo(cx, cy - radius + 4);
+        ctx.closePath();
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fill();
+      }
+
+      draw();
+
+      function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+      function spin() {
+        if (spinning) return;
+        spinning = true;
+        document.getElementById('spinBtn').disabled = true;
+        var start = performance.now();
+        var duration = 3000;
+        var totalRotation = (Math.random() * 4 + 6) * 2 * Math.PI; // 6-10 full rotations
+        var startAngle = angle;
+
+        function frame(now) {
+          var elapsed = now - start;
+          var t = Math.min(elapsed / duration, 1);
+          angle = startAngle + totalRotation * easeOutCubic(t);
+          draw();
+          if (t < 1) {
+            requestAnimationFrame(frame);
+          } else {
+            spinning = false;
+            document.getElementById('spinBtn').disabled = false;
+            UB.toast('Entry submitted!', 'success');
+          }
+        }
+        requestAnimationFrame(frame);
+      }
+
+      document.getElementById('spinBtn').addEventListener('click', spin);
+      canvas.addEventListener('click', spin);
+    }
+
+  })();
+  </script>
+</body>
+</html>

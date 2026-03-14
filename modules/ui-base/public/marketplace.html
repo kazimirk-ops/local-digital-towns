@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marketplace - Digital Towns</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+  <style>
+    /* ── Filter Bar ── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .filter-bar select,
+    .filter-bar input {
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0a0e14;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    .filter-bar select:focus,
+    .filter-bar input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .filter-bar input {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .filter-bar .btn {
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    /* ── Listing Card ── */
+    .listing-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color 0.15s;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .listing-card:hover {
+      border-color: var(--accent);
+    }
+
+    .listing-photo {
+      height: 200px;
+      background: var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 14px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .listing-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .listing-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .listing-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .listing-price {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 8px;
+    }
+
+    .listing-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .listing-seller {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .listing-time {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .listing-footer {
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ── Load More ── */
+    .load-more-wrap {
+      text-align: center;
+      margin-top: 24px;
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 640px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 22px;
+      cursor: pointer;
+      padding: 4px 8px;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      color: var(--text);
+    }
+
+    .modal h2 {
+      font-size: 20px;
+      margin-bottom: 20px;
+      padding-right: 32px;
+    }
+
+    /* ── Detail Modal ── */
+    .detail-photos {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+      padding-bottom: 4px;
+    }
+
+    .detail-photos img {
+      height: 220px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .detail-photo-placeholder {
+      height: 220px;
+      background: var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .detail-price {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 12px;
+    }
+
+    .detail-description {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.6;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+
+    .detail-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .detail-info-item {
+      font-size: 13px;
+    }
+
+    .detail-info-item .label {
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+
+    .detail-info-item .value {
+      font-weight: 600;
+    }
+
+    /* ── Form Modal ── */
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    /* ── Condition Badge Colors ── */
+    .condition-new { background: rgba(16, 185, 129, 0.15); color: var(--green); }
+    .condition-like-new { background: rgba(6, 182, 212, 0.15); color: var(--accent); }
+    .condition-good { background: rgba(245, 158, 11, 0.15); color: var(--gold); }
+    .condition-fair { background: rgba(100, 116, 139, 0.15); color: var(--muted); }
+    .condition-used { background: rgba(100, 116, 139, 0.15); color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+        <div id="marketplaceRoot">
+          <!-- Filter bar -->
+          <div class="filter-bar" id="filterBar">
+            <select id="filterCategory">
+              <option value="">All Categories</option>
+              <option value="electronics">Electronics</option>
+              <option value="clothing">Clothing</option>
+              <option value="home">Home</option>
+              <option value="plants">Plants</option>
+              <option value="food">Food</option>
+              <option value="other">Other</option>
+            </select>
+            <input type="text" id="filterSearch" placeholder="Search listings...">
+            <select id="filterSort">
+              <option value="newest">Newest</option>
+              <option value="price_low">Price: Low to High</option>
+              <option value="price_high">Price: High to Low</option>
+            </select>
+            <button class="btn btn-primary" id="btnPostListing" style="display:none;" onclick="openPostModal()">Post Listing</button>
+          </div>
+
+          <!-- Loading spinner -->
+          <div id="listingsLoading"><div class="spinner"></div></div>
+
+          <!-- Listings grid -->
+          <div class="grid grid-3" id="listingsGrid" style="display:none;"></div>
+
+          <!-- Empty state -->
+          <div class="empty-state" id="listingsEmpty" style="display:none;">
+            <div class="empty-icon">🛒</div>
+            <p>No listings found</p>
+          </div>
+
+          <!-- Load more -->
+          <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
+            <button class="btn btn-secondary" id="btnLoadMore" onclick="loadMore()">Load More</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+  (function() {
+    var LIMIT = 20;
+    var offset = 0;
+    var total = 0;
+    var allListings = [];
+    var loading = false;
+
+    // ── Condition label helper ──
+    function conditionLabel(c) {
+      if (!c) return 'Used';
+      var map = { 'new': 'New', 'like_new': 'Like New', 'like-new': 'Like New', 'good': 'Good', 'fair': 'Fair', 'used': 'Used' };
+      return map[c] || c.charAt(0).toUpperCase() + c.slice(1);
+    }
+
+    function conditionClass(c) {
+      if (!c) return 'condition-used';
+      var normalized = c.replace(/_/g, '-');
+      var valid = ['new', 'like-new', 'good', 'fair', 'used'];
+      return 'condition-' + (valid.indexOf(normalized) >= 0 ? normalized : 'used');
+    }
+
+    function categoryLabel(c) {
+      if (!c) return '';
+      var map = { 'electronics': 'Electronics', 'clothing': 'Clothing', 'home': 'Home', 'plants': 'Plants', 'food': 'Food', 'other': 'Other', 'general': 'General' };
+      return map[c] || c.charAt(0).toUpperCase() + c.slice(1);
+    }
+
+    // ── Build a single listing card ──
+    function renderCard(listing) {
+      var photos = listing.photos || [];
+      var firstPhoto = Array.isArray(photos) && photos.length > 0 ? photos[0] : null;
+      var photoHtml;
+      if (firstPhoto) {
+        photoHtml = '<div class="listing-photo"><img src="' + UB.esc(firstPhoto) + '" alt="' + UB.esc(listing.title) + '"></div>';
+      } else {
+        photoHtml = '<div class="listing-photo">No photo</div>';
+      }
+
+      var card = document.createElement('div');
+      card.className = 'listing-card';
+      card.innerHTML = photoHtml
+        + '<div class="listing-body">'
+        + '<div class="listing-title">' + UB.esc(listing.title) + '</div>'
+        + '<div class="listing-price">' + UB.formatPrice(listing.price_cents) + '</div>'
+        + '<div class="listing-meta">'
+        + '<span class="badge ' + conditionClass(listing.condition) + '">' + conditionLabel(listing.condition) + '</span>'
+        + (listing.category ? '<span class="badge badge-accent">' + UB.esc(categoryLabel(listing.category)) + '</span>' : '')
+        + '</div>'
+        + '<div class="listing-seller">' + UB.esc(listing.seller_name || 'Unknown seller') + '</div>'
+        + '<div class="listing-time">' + UB.timeAgo(listing.created_at) + '</div>'
+        + '<div class="listing-footer">'
+        + '<button class="btn btn-secondary btn-sm" data-id="' + listing.id + '">View</button>'
+        + '</div>'
+        + '</div>';
+
+      card.querySelector('button[data-id]').addEventListener('click', function() {
+        openDetailModal(listing.id);
+      });
+
+      return card;
+    }
+
+    // ── Load listings from API ──
+    async function loadListings(reset) {
+      if (loading) return;
+      loading = true;
+
+      if (reset) {
+        offset = 0;
+        allListings = [];
+        document.getElementById('listingsGrid').innerHTML = '';
+      }
+
+      var category = document.getElementById('filterCategory').value;
+      var search = document.getElementById('filterSearch').value.trim();
+      var sort = document.getElementById('filterSort').value;
+
+      var params = 'limit=' + LIMIT + '&offset=' + offset;
+      if (category) params += '&category=' + encodeURIComponent(category);
+      if (search) params += '&search=' + encodeURIComponent(search);
+      if (sort) params += '&sort=' + encodeURIComponent(sort);
+
+      document.getElementById('listingsLoading').style.display = reset ? '' : 'none';
+      document.getElementById('listingsEmpty').style.display = 'none';
+
+      var data = await UB.api('/api/listings?' + params);
+      loading = false;
+      document.getElementById('listingsLoading').style.display = 'none';
+
+      if (data.error) {
+        UB.toast(data.error, 'error');
+        document.getElementById('listingsGrid').style.display = 'none';
+        document.getElementById('listingsEmpty').style.display = '';
+        return;
+      }
+
+      var listings = data.listings || [];
+      total = data.total || 0;
+      allListings = allListings.concat(listings);
+      offset += listings.length;
+
+      var grid = document.getElementById('listingsGrid');
+      listings.forEach(function(listing) {
+        grid.appendChild(renderCard(listing));
+      });
+
+      if (allListings.length === 0) {
+        grid.style.display = 'none';
+        document.getElementById('listingsEmpty').style.display = '';
+      } else {
+        grid.style.display = '';
+        document.getElementById('listingsEmpty').style.display = 'none';
+      }
+
+      // Show/hide load more
+      if (offset < total) {
+        document.getElementById('loadMoreWrap').style.display = '';
+      } else {
+        document.getElementById('loadMoreWrap').style.display = 'none';
+      }
+    }
+
+    window.loadMore = function() {
+      loadListings(false);
+    };
+
+    // ── Detail Modal ──
+    window.openDetailModal = async function(id) {
+      var data = await UB.api('/api/listings/' + id);
+      if (data.error) {
+        UB.toast(data.error, 'error');
+        return;
+      }
+
+      var photos = data.photos || [];
+      var photosHtml;
+      if (Array.isArray(photos) && photos.length > 0) {
+        photosHtml = '<div class="detail-photos">';
+        photos.forEach(function(url) {
+          photosHtml += '<img src="' + UB.esc(url) + '" alt="' + UB.esc(data.title) + '">';
+        });
+        photosHtml += '</div>';
+      } else {
+        photosHtml = '<div class="detail-photo-placeholder">No photos</div>';
+      }
+
+      var html = '<div class="modal-overlay" id="detailModal">'
+        + '<div class="modal">'
+        + '<button class="modal-close" onclick="closeModal(\'detailModal\')">&times;</button>'
+        + '<h2>' + UB.esc(data.title) + '</h2>'
+        + photosHtml
+        + '<div class="detail-price">' + UB.formatPrice(data.price_cents) + '</div>'
+        + '<div class="detail-description">' + UB.esc(data.description || 'No description provided.') + '</div>'
+        + '<div class="detail-info">'
+        + '<div class="detail-info-item"><div class="label">Condition</div><div class="value"><span class="badge ' + conditionClass(data.condition) + '">' + conditionLabel(data.condition) + '</span></div></div>'
+        + '<div class="detail-info-item"><div class="label">Category</div><div class="value">' + UB.esc(categoryLabel(data.category)) + '</div></div>'
+        + '<div class="detail-info-item"><div class="label">Seller</div><div class="value">' + UB.esc(data.seller_name || 'Unknown') + '</div></div>'
+        + '<div class="detail-info-item"><div class="label">Listed</div><div class="value">' + (data.created_at ? new Date(data.created_at).toLocaleDateString() : '') + '</div></div>'
+        + '</div>'
+        + '</div></div>';
+
+      document.body.insertAdjacentHTML('beforeend', html);
+      document.getElementById('detailModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal('detailModal');
+      });
+    };
+
+    // ── Post Listing Modal ──
+    window.openPostModal = function() {
+      if (!UB.currentUser) {
+        window.location.href = '/town/login';
+        return;
+      }
+
+      var html = '<div class="modal-overlay" id="postModal">'
+        + '<div class="modal">'
+        + '<button class="modal-close" onclick="closeModal(\'postModal\')">&times;</button>'
+        + '<h2>Post a Listing</h2>'
+        + '<div class="field"><label>Title</label><input type="text" id="postTitle" placeholder="What are you selling?"></div>'
+        + '<div class="field"><label>Description</label><textarea id="postDescription" rows="4" placeholder="Describe your item..." style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:#0a0e14;color:var(--text);font-family:inherit;font-size:14px;resize:vertical;"></textarea></div>'
+        + '<div class="field"><label>Price ($)</label><input type="number" id="postPrice" placeholder="0.00" min="0" step="0.01"></div>'
+        + '<div class="field"><label>Condition</label><select id="postCondition">'
+        + '<option value="new">New</option>'
+        + '<option value="like_new">Like New</option>'
+        + '<option value="good">Good</option>'
+        + '<option value="fair">Fair</option>'
+        + '<option value="used" selected>Used</option>'
+        + '</select></div>'
+        + '<div class="field"><label>Category</label><select id="postCategory">'
+        + '<option value="electronics">Electronics</option>'
+        + '<option value="clothing">Clothing</option>'
+        + '<option value="home">Home</option>'
+        + '<option value="plants">Plants</option>'
+        + '<option value="food">Food</option>'
+        + '<option value="other" selected>Other</option>'
+        + '</select></div>'
+        + '<div class="form-actions">'
+        + '<button class="btn btn-secondary" onclick="closeModal(\'postModal\')">Cancel</button>'
+        + '<button class="btn btn-primary" id="btnSubmitListing" onclick="submitListing()">Post Listing</button>'
+        + '</div>'
+        + '</div></div>';
+
+      document.body.insertAdjacentHTML('beforeend', html);
+      document.getElementById('postModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal('postModal');
+      });
+    };
+
+    // ── Submit listing ──
+    window.submitListing = async function() {
+      var title = document.getElementById('postTitle').value.trim();
+      var description = document.getElementById('postDescription').value.trim();
+      var priceStr = document.getElementById('postPrice').value;
+      var condition = document.getElementById('postCondition').value;
+      var category = document.getElementById('postCategory').value;
+
+      if (!title) { UB.toast('Title is required', 'error'); return; }
+
+      var priceDollars = parseFloat(priceStr);
+      if (isNaN(priceDollars) || priceDollars < 0) { UB.toast('Enter a valid price', 'error'); return; }
+      var priceCents = Math.round(priceDollars * 100);
+
+      var btn = document.getElementById('btnSubmitListing');
+      btn.disabled = true;
+      btn.textContent = 'Posting...';
+
+      var data = await UB.api('/api/listings', {
+        method: 'POST',
+        body: {
+          title: title,
+          description: description,
+          price_cents: priceCents,
+          condition: condition,
+          category: category
+        }
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Post Listing';
+
+      if (data.error) {
+        UB.toast(data.error, 'error');
+        return;
+      }
+
+      UB.toast('Listing posted!', 'success');
+      closeModal('postModal');
+      loadListings(true);
+    };
+
+    // ── Close modal ──
+    window.closeModal = function(id) {
+      var el = document.getElementById(id);
+      if (el) el.remove();
+    };
+
+    // ── Keyboard: Escape closes modals ──
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        var modal = document.querySelector('.modal-overlay');
+        if (modal) modal.remove();
+      }
+    });
+
+    // ── Filter event listeners ──
+    var debounceTimer;
+    document.getElementById('filterSearch').addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function() { loadListings(true); }, 400);
+    });
+    document.getElementById('filterCategory').addEventListener('change', function() { loadListings(true); });
+    document.getElementById('filterSort').addEventListener('change', function() { loadListings(true); });
+
+    // ── Init ──
+    async function init() {
+      var flags = await UB.init('/town/marketplace', 'Marketplace');
+
+      if (!UB.hasFlag(flags, 'ui-base.marketplace')) {
+        UB.showDisabled('Marketplace');
+        return;
+      }
+
+      // Show post button if logged in
+      if (UB.currentUser) {
+        document.getElementById('btnPostListing').style.display = '';
+      }
+
+      loadListings(true);
+    }
+
+    init();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BST Groups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/town/assets/ui-base.css">
+<style>
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.group-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.group-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.group-card-desc {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 12px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.group-card-meta {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.group-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.detail-header {
+  margin-bottom: 24px;
+}
+
+.detail-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.detail-header p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.detail-stats {
+  display: flex;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.detail-stat {
+  font-size: 14px;
+}
+
+.detail-stat strong {
+  color: var(--accent);
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 20px;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.members-section {
+  margin-top: 24px;
+}
+
+.members-section h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.member-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.member-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.member-role {
+  font-size: 12px;
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <div class="main">
+    <div class="topbar" id="topbar"></div>
+
+    <div id="moduleDisabled" class="module-disabled" style="display:none;">
+      <h2>BST Groups Not Available</h2>
+      <p>This feature has not been enabled for this community.</p>
+    </div>
+
+    <div id="pageContent" class="content" style="display:none;">
+
+      <!-- Groups List View -->
+      <div id="listView">
+        <div class="page-header">
+          <h1>BST Groups</h1>
+        </div>
+        <div id="groupsLoading" class="spinner"></div>
+        <div id="groupsGrid" class="grid grid-3" style="display:none;"></div>
+        <div id="groupsEmpty" class="empty-state" style="display:none;">
+          <div class="empty-icon">&#128722;</div>
+          <p>No BST groups available yet.</p>
+        </div>
+      </div>
+
+      <!-- Group Detail View -->
+      <div id="detailView" style="display:none;">
+        <button class="back-btn" onclick="showListView()">&#8592; Back to Groups</button>
+        <div id="detailLoading" class="spinner" style="display:none;"></div>
+        <div id="detailContent" style="display:none;">
+          <div class="detail-header">
+            <h1 id="detailName"></h1>
+            <p id="detailDesc"></p>
+            <div class="detail-stats">
+              <div class="detail-stat"><strong id="detailMemberCount">0</strong> members</div>
+            </div>
+          </div>
+          <div class="members-section">
+            <h2>Members</h2>
+            <div id="membersList"></div>
+            <div id="membersEmpty" class="empty-state" style="display:none;">
+              <p>No members yet.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="/town/assets/ui-base.js"></script>
+<script>
+/* ── Groups List ── */
+async function loadGroups() {
+  document.getElementById('groupsLoading').style.display = 'block';
+  document.getElementById('groupsGrid').style.display = 'none';
+  document.getElementById('groupsEmpty').style.display = 'none';
+
+  var data = await UB.api('/api/bst-groups');
+  document.getElementById('groupsLoading').style.display = 'none';
+
+  if (data.error) {
+    document.getElementById('groupsGrid').innerHTML = '<div class="empty-state"><p>Failed to load groups.</p></div>';
+    document.getElementById('groupsGrid').style.display = 'grid';
+    return;
+  }
+
+  var groups = data.groups || data || [];
+  renderGroups(groups);
+}
+
+function renderGroups(groups) {
+  if (!groups.length) {
+    document.getElementById('groupsEmpty').style.display = 'block';
+    return;
+  }
+
+  var grid = document.getElementById('groupsGrid');
+  var html = '';
+  groups.forEach(function(g) {
+    var slug = g.slug || g.id;
+    var desc = g.description || '';
+    var memberCount = g.member_count || 0;
+
+    html += '<div class="card group-card">'
+      + '<div>'
+      + '<h3>' + UB.esc(g.name) + '</h3>'
+      + '<div class="group-card-desc">' + UB.esc(desc) + '</div>'
+      + '<div class="group-card-meta">' + memberCount + ' member' + (memberCount !== 1 ? 's' : '') + '</div>'
+      + '</div>'
+      + '<div class="group-card-actions">'
+      + '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();viewGroup(\'' + UB.esc(slug) + '\')">View</button>'
+      + '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();joinGroup(\'' + UB.esc(slug) + '\', this)">Join</button>'
+      + '</div>'
+      + '</div>';
+  });
+  grid.innerHTML = html;
+  grid.style.display = 'grid';
+}
+
+/* ── Join Group ── */
+async function joinGroup(slug, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Joining...';
+
+  var data = await UB.api('/api/bst-groups/' + slug + '/join', {
+    method: 'POST'
+  });
+
+  if (!data.error) {
+    btn.textContent = 'Joined';
+    btn.className = 'btn btn-success btn-sm';
+    UB.toast('Joined group successfully', 'success');
+  } else {
+    UB.toast(data.error || 'Failed to join group', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Join';
+  }
+}
+
+/* ── Group Detail ── */
+function showListView() {
+  document.getElementById('listView').style.display = 'block';
+  document.getElementById('detailView').style.display = 'none';
+}
+
+async function viewGroup(slug) {
+  document.getElementById('listView').style.display = 'none';
+  document.getElementById('detailView').style.display = 'block';
+  document.getElementById('detailLoading').style.display = 'block';
+  document.getElementById('detailContent').style.display = 'none';
+
+  var data = await UB.api('/api/bst-groups/' + slug);
+
+  if (data.error) {
+    document.getElementById('detailLoading').style.display = 'none';
+    document.getElementById('detailContent').innerHTML = '<div class="empty-state"><p>Failed to load group details.</p></div>';
+    document.getElementById('detailContent').style.display = 'block';
+    return;
+  }
+
+  var group = data.group || data;
+
+  document.getElementById('detailName').textContent = group.name || '';
+  document.getElementById('detailDesc').textContent = group.description || '';
+  document.getElementById('detailMemberCount').textContent = group.member_count || 0;
+
+  document.getElementById('detailLoading').style.display = 'none';
+  document.getElementById('detailContent').style.display = 'block';
+
+  loadMembers(slug);
+}
+
+async function loadMembers(slug) {
+  var list = document.getElementById('membersList');
+  var empty = document.getElementById('membersEmpty');
+  list.innerHTML = '<div class="spinner"></div>';
+  empty.style.display = 'none';
+
+  var data = await UB.api('/api/bst-groups/' + slug + '/members');
+
+  if (data.error) {
+    list.innerHTML = '<div class="empty-state"><p>Failed to load members.</p></div>';
+    return;
+  }
+
+  var members = data.members || data || [];
+
+  if (!members.length) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  var html = '';
+  members.forEach(function(m) {
+    var name = m.name || m.display_name || 'User';
+    var initial = name[0].toUpperCase();
+    var role = m.role || '';
+    html += '<div class="member-item">'
+      + '<div class="member-avatar">' + initial + '</div>'
+      + '<div>'
+      + '<div class="member-name">' + UB.esc(name) + '</div>'
+      + (role ? '<div class="member-role">' + UB.esc(role) + '</div>' : '')
+      + '</div></div>';
+  });
+  list.innerHTML = html;
+}
+
+/* ── Init ── */
+(async function() {
+  var flags = await UB.init('/town/bst', 'BST Groups');
+
+  if (!UB.hasFlag(flags, 'ui-base.bst')) {
+    document.getElementById('moduleDisabled').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('pageContent').style.display = 'block';
+  loadGroups();
+})();
+</script>
+</body>
+</html>

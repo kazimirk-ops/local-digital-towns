@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital Towns</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+        <h2 style="margin-bottom:16px;">Welcome to your Digital Town</h2>
+        <div class="grid grid-3" id="moduleGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+    (async function() {
+      var flags = await UB.init('/town', 'Home');
+
+      var modules = [
+        { flag: 'ui-base.marketplace', icon: '\u{1F6D2}', label: 'Marketplace', href: '/town/marketplace', desc: 'Buy & sell locally' },
+        { flag: 'ui-base.auctions', icon: '\u{1F528}', label: 'Auctions', href: '/town/auctions', desc: 'Bid on items' },
+        { flag: 'ui-base.channels', icon: '\u{1F4AC}', label: 'Channels', href: '/town/channels', desc: 'Community discussions' },
+        { flag: 'ui-base.bst', icon: '\u{1F3EA}', label: 'BST Groups', href: '/town/bst', desc: 'Buy, sell & trade groups' },
+        { flag: 'ui-base.sweep', icon: '\u{1F3B0}', label: 'Sweepstakes', href: '/town/sweep', desc: 'Enter to win prizes' },
+        { flag: 'ui-base.pulse', icon: '\u{1F4E1}', label: 'Pulse', href: '/town/pulse', desc: 'Local news & updates' },
+        { flag: 'ui-base.businesses', icon: '\u{1F4CD}', label: 'Businesses', href: '/town/businesses', desc: 'Local business directory' },
+        { flag: 'ui-base.gigs', icon: '\u{1F527}', label: 'Gigs', href: '/town/gigs', desc: 'Find local work' },
+        { flag: 'ui-base.leaderboard', icon: '\u{1F3C6}', label: 'Leaderboard', href: '/town/leaderboard', desc: 'Top contributors' },
+        { flag: 'ui-base.live', icon: '\u{1F4FA}', label: 'Live Shows', href: '/town/live', desc: 'Watch live streams' }
+      ];
+
+      var grid = document.getElementById('moduleGrid');
+      var html = '';
+      var count = 0;
+
+      modules.forEach(function(mod) {
+        if (!UB.hasFlag(flags, mod.flag)) return;
+        count++;
+        html += '<a href="' + mod.href + '" class="card" style="text-decoration:none;color:var(--text);transition:border-color 0.15s;"'
+          + ' onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">'
+          + '<div style="font-size:32px;margin-bottom:8px;">' + mod.icon + '</div>'
+          + '<div style="font-size:15px;font-weight:600;margin-bottom:4px;">' + UB.esc(mod.label) + '</div>'
+          + '<div style="font-size:13px;color:var(--muted);">' + UB.esc(mod.desc) + '</div>'
+          + '</a>';
+      });
+
+      if (count === 0) {
+        html = '<div class="empty-state" style="grid-column:1/-1;">'
+          + '<div class="empty-icon">\u{1F3D8}\u{FE0F}</div>'
+          + '<p>No modules are enabled yet.</p>'
+          + '<p style="font-size:13px;">Contact your admin to enable features for this community.</p>'
+          + '</div>';
+      }
+
+      grid.innerHTML = html;
+    })();
+  </script>
+</body>
+</html>

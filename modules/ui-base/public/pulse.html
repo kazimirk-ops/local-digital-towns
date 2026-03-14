@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Community Pulse | Digital Towns</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+  <style>
+    .stat-card {
+      text-align: center;
+      padding: 24px 16px;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .post-card {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .post-card:last-child {
+      border-bottom: none;
+    }
+    .post-author {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .post-time {
+      font-size: 12px;
+      color: var(--muted);
+      margin-left: 8px;
+    }
+    .post-content {
+      font-size: 14px;
+      color: var(--text);
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .post-footer {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .like-count {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .post-form textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0a0e14;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+    }
+    .post-form textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+        <div class="spinner" id="loader"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+    (async function() {
+      var flags = await UB.init('/town/pulse', 'Pulse');
+
+      if (!UB.hasFlag(flags, 'ui-base.pulse')) {
+        UB.showDisabled('Pulse');
+        return;
+      }
+
+      document.getElementById('loader').remove();
+      var page = document.getElementById('pageContent');
+
+      // Build page structure
+      page.innerHTML =
+        '<h2 class="section-title">Today\'s Pulse</h2>'
+        + '<div class="grid grid-4 mb-lg" id="statsGrid">'
+        +   '<div class="card stat-card"><div class="stat-value">--</div><div class="stat-label">Loading...</div></div>'
+        + '</div>'
+        + '<div class="flex-between mb-md">'
+        +   '<h2 class="section-title" style="margin-bottom:0;">Community Posts</h2>'
+        + '</div>'
+        + '<div id="postFormWrap"></div>'
+        + '<div class="card" id="postsList" style="padding:0;overflow:hidden;">'
+        +   '<div class="spinner"></div>'
+        + '</div>';
+
+      // Load stats
+      loadStats();
+      // Build post form if logged in
+      buildPostForm();
+      // Load posts
+      loadPosts();
+
+      async function loadStats() {
+        var data = await UB.api('/api/pulse');
+        var grid = document.getElementById('statsGrid');
+        if (data.error) {
+          grid.innerHTML = '<div class="card stat-card" style="grid-column:1/-1;"><div class="stat-label">Could not load stats</div></div>';
+          return;
+        }
+        var stats = [
+          { value: data.members_active || data.active_members || 0, label: 'Members Active' },
+          { value: data.posts || data.post_count || 0, label: 'Posts' },
+          { value: data.transactions || data.transaction_count || 0, label: 'Transactions' },
+          { value: data.new_members || data.signups || 0, label: 'New Members' }
+        ];
+        var html = '';
+        stats.forEach(function(s) {
+          html += '<div class="card stat-card">'
+            + '<div class="stat-value">' + UB.esc(String(s.value)) + '</div>'
+            + '<div class="stat-label">' + UB.esc(s.label) + '</div>'
+            + '</div>';
+        });
+        grid.innerHTML = html;
+      }
+
+      function buildPostForm() {
+        var wrap = document.getElementById('postFormWrap');
+        if (!UB.currentUser) {
+          wrap.innerHTML = '';
+          return;
+        }
+        wrap.innerHTML =
+          '<div class="card mb-md post-form">'
+          + '<textarea id="postInput" placeholder="Share something with the community..."></textarea>'
+          + '<div style="margin-top:10px;text-align:right;">'
+          +   '<button class="btn btn-primary" id="postBtn">Post</button>'
+          + '</div>'
+          + '</div>';
+
+        document.getElementById('postBtn').addEventListener('click', submitPost);
+      }
+
+      async function submitPost() {
+        var input = document.getElementById('postInput');
+        var btn = document.getElementById('postBtn');
+        var text = input.value.trim();
+        if (!text) return;
+
+        btn.disabled = true;
+        btn.textContent = 'Posting...';
+
+        var res = await UB.api('/api/pulse/posts', {
+          method: 'POST',
+          body: { content: text }
+        });
+
+        btn.disabled = false;
+        btn.textContent = 'Post';
+
+        if (res.error) {
+          UB.toast(res.error, 'error');
+          return;
+        }
+
+        input.value = '';
+        UB.toast('Post published!', 'success');
+        loadPosts();
+      }
+
+      async function loadPosts() {
+        var list = document.getElementById('postsList');
+        var data = await UB.api('/api/pulse/posts');
+        if (data.error) {
+          list.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128225;</div><p>Could not load posts</p></div>';
+          return;
+        }
+
+        var posts = Array.isArray(data) ? data : (data.posts || []);
+        if (posts.length === 0) {
+          list.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128225;</div><p>No posts yet. Be the first to share!</p></div>';
+          return;
+        }
+
+        var html = '';
+        posts.forEach(function(p) {
+          var author = p.author_name || p.display_name || 'Anonymous';
+          var likes = p.like_count || p.likes || 0;
+          html += '<div class="post-card">'
+            + '<div>'
+            +   '<span class="post-author">' + UB.esc(author) + '</span>'
+            +   '<span class="post-time">' + UB.timeAgo(p.created_at) + '</span>'
+            + '</div>'
+            + '<div class="post-content">' + UB.esc(p.content) + '</div>'
+            + '<div class="post-footer">'
+            +   '<span class="like-count">&#10084;&#65039; ' + likes + '</span>'
+            + '</div>'
+            + '</div>';
+        });
+        list.innerHTML = html;
+      }
+    })();
+  </script>
+</body>
+</html>

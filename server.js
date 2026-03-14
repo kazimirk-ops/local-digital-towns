@@ -222,9 +222,8 @@ app.get("/test", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "test.html"));
 });
 
-// ─── /town — TC frontend served without staging gate ───
-var townPublicDir = path.join(__dirname, "modules/ui-treasurecoast/public");
-app.use("/town", express.static(townPublicDir, { index: "index.html" }));
+// ─── /town — ui-base town shell served without staging gate ───
+try { require('./modules/ui-base/routes')(app, db); } catch(e) { console.error('ui-base:', e.message); }
 
 // Staging password gate — only protects admin routes, not the public town UI
 const ADMIN_GATE_PATHS = ["/admin", "/admin-modules", "/admin-towns", "/communities", "/users", "/docs", "/genesis"];
