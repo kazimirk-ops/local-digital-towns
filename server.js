@@ -2153,7 +2153,9 @@ app.get("/api/modules", async (req, res) => {
 // POST /api/admin/modules/:id/install — enable module + all sub-module flags
 app.post("/api/admin/modules/:id/install", async (req, res) => {
   const cookies = parseCookies(req);
-  if (cookies.staging_access !== "true") { const admin = await requireAdmin(req, res); if (!admin) return; }
+  if (cookies.staging_access !== "true") {
+    return res.status(403).json({ error: "Access denied", detail: "No staging access cookie found" });
+  }
   try {
     const moduleId = req.params.id;
     const slug = (req.body && req.body.community_slug) || "digitaltowns";
@@ -2182,7 +2184,9 @@ app.post("/api/admin/modules/:id/install", async (req, res) => {
 // POST /api/admin/modules/:id/uninstall — disable module + all sub-module flags
 app.post("/api/admin/modules/:id/uninstall", async (req, res) => {
   const cookies = parseCookies(req);
-  if (cookies.staging_access !== "true") { const admin = await requireAdmin(req, res); if (!admin) return; }
+  if (cookies.staging_access !== "true") {
+    return res.status(403).json({ error: "Access denied", detail: "No staging access cookie found" });
+  }
   try {
     const moduleId = req.params.id;
     const slug = (req.body && req.body.community_slug) || "digitaltowns";
