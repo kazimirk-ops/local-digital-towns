@@ -9,6 +9,8 @@
     { "id": "listings.digital", "name": "Digital Items", "default": false },
     { "id": "listings.delivery", "name": "Local Delivery", "default": true },
     { "id": "listings.moderation", "name": "Moderation Queue", "default": true },
-    { "id": "listings.variants", "name": "Variants & Options", "default": false }
+    { "id": "listings.variants", "name": "Variants & Options", "default": false },
+    { "id": "ui-base.marketplace", "name": "Marketplace UI", "description": "Town marketplace page", "default": true, "frontend": true },
+    { "id": "ui-base.auctions", "name": "Auctions UI", "description": "Town auctions page", "default": true, "frontend": true }
   ]
 }

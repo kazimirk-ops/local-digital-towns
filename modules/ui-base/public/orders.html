@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orders - Digital Towns</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+  <style>
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .tab {
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      font-family: inherit;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Order Card ── */
+    .order-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .order-card:hover { border-color: var(--accent); }
+    .order-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .order-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .order-price {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 4px;
+    }
+    .order-time {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ── Status Badges ── */
+    .status-pending { background: rgba(245,158,11,0.15); color: var(--gold); }
+    .status-confirmed { background: rgba(6,182,212,0.15); color: var(--accent); }
+    .status-paid { background: rgba(16,185,129,0.15); color: var(--green); }
+    .status-shipped { background: rgba(34,211,238,0.15); color: #22d3ee; }
+    .status-delivered { background: rgba(52,211,153,0.15); color: #34d399; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%; max-width: 640px;
+      max-height: 85vh; overflow-y: auto;
+      padding: 24px; position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 12px; right: 16px;
+      background: none; border: none;
+      color: var(--muted); font-size: 22px;
+      cursor: pointer; padding: 4px 8px; line-height: 1;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal h2 {
+      font-size: 20px; margin-bottom: 20px;
+      padding-right: 32px;
+    }
+    .detail-row {
+      display: flex; justify-content: space-between;
+      align-items: center; padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .detail-label { color: var(--muted); }
+
+    /* ── Invoice Table ── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table tr:hover td {
+      background: rgba(255,255,255,0.02);
+    }
+
+    /* ── Tracking Input ── */
+    .tracking-form {
+      display: flex; gap: 8px; align-items: center;
+      margin-top: 10px;
+    }
+    .tracking-form input {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0a0e14;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+    }
+    .form-actions {
+      display: flex; gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab active" data-tab="orders">My Orders</button>
+          <button class="tab" data-tab="sales">My Sales</button>
+          <button class="tab" data-tab="invoices">Invoices</button>
+        </div>
+
+        <!-- My Orders -->
+        <div class="tab-panel active" id="panel-orders">
+          <div id="ordersLoading"><div class="spinner"></div></div>
+          <div class="grid grid-3" id="ordersGrid" style="display:none;"></div>
+          <div class="empty-state" id="ordersEmpty" style="display:none;">
+            <div class="empty-icon">&#128230;</div>
+            <p>No orders yet</p>
+          </div>
+        </div>
+
+        <!-- My Sales -->
+        <div class="tab-panel" id="panel-sales">
+          <div id="salesLoading"><div class="spinner"></div></div>
+          <div class="grid grid-3" id="salesGrid" style="display:none;"></div>
+          <div class="empty-state" id="salesEmpty" style="display:none;">
+            <div class="empty-icon">&#128176;</div>
+            <p>No sales yet</p>
+          </div>
+        </div>
+
+        <!-- Invoices -->
+        <div class="tab-panel" id="panel-invoices">
+          <div id="invoicesLoading"><div class="spinner"></div></div>
+          <div id="invoicesTable" style="display:none;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Invoice #</th>
+                  <th>Buyer</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="invoicesBody"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="invoicesEmpty" style="display:none;">
+            <div class="empty-icon">&#128196;</div>
+            <p>No invoices yet</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+  (function() {
+    // ── Status badge helper ──
+    function statusBadge(status) {
+      var cls = 'badge status-' + (status || 'pending');
+      var label = (status || 'pending').replace(/_/g, ' ');
+      label = label.charAt(0).toUpperCase() + label.slice(1);
+      return '<span class="badge ' + cls + '">' + label + '</span>';
+    }
+
+    // ── Tabs ──
+    var tabs = document.querySelectorAll('.tab');
+    tabs.forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        tabs.forEach(function(t) { t.classList.remove('active'); });
+        tab.classList.add('active');
+        document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+        document.getElementById('panel-' + tab.getAttribute('data-tab')).classList.add('active');
+      });
+    });
+
+    // ── Render Order Card ──
+    function renderOrderCard(order, isSeller) {
+      var card = document.createElement('div');
+      card.className = 'order-card';
+      card.innerHTML =
+        '<div class="order-title">' + UB.esc(order.listing_title || order.title || 'Order #' + order.id) + '</div>'
+        + '<div class="order-price">' + UB.formatPrice(order.total_cents || order.total) + '</div>'
+        + '<div class="order-meta">'
+        + statusBadge(order.status)
+        + '<span>' + UB.esc(isSeller ? ('Buyer: ' + (order.buyer_name || 'Unknown')) : ('Seller: ' + (order.seller_name || 'Unknown'))) + '</span>'
+        + '</div>'
+        + '<div class="order-time">' + UB.timeAgo(order.created_at) + '</div>';
+
+      if (isSeller && (order.status === 'confirmed' || order.status === 'paid')) {
+        var trackDiv = document.createElement('div');
+        trackDiv.className = 'tracking-form';
+        trackDiv.innerHTML =
+          '<input type="text" placeholder="Tracking number" id="track-' + order.id + '">'
+          + '<button class="btn btn-primary btn-sm">Mark Shipped</button>';
+        trackDiv.querySelector('button').addEventListener('click', function(e) {
+          e.stopPropagation();
+          var trackNum = document.getElementById('track-' + order.id).value.trim();
+          markShipped(order.id, trackNum);
+        });
+        trackDiv.querySelector('input').addEventListener('click', function(e) {
+          e.stopPropagation();
+        });
+        card.appendChild(trackDiv);
+      }
+
+      card.addEventListener('click', function() {
+        openOrderModal(order);
+      });
+      return card;
+    }
+
+    // ── Mark Shipped ──
+    async function markShipped(orderId, trackingNumber) {
+      var body = { status: 'shipped' };
+      if (trackingNumber) body.tracking_number = trackingNumber;
+      var data = await UB.api('/api/orders/' + orderId + '/status', {
+        method: 'PUT',
+        body: body
+      });
+      if (data.error) {
+        UB.toast(data.error, 'error');
+        return;
+      }
+      UB.toast('Order marked as shipped', 'success');
+      loadSales();
+    }
+
+    // ── Order Detail Modal ──
+    function openOrderModal(order) {
+      var html = '<div class="modal-overlay" id="orderModal">'
+        + '<div class="modal">'
+        + '<button class="modal-close" onclick="closeModal(\'orderModal\')">&times;</button>'
+        + '<h2>' + UB.esc(order.listing_title || order.title || 'Order Details') + '</h2>'
+        + '<div class="detail-row"><span class="detail-label">Order ID</span><span>' + UB.esc(order.id) + '</span></div>'
+        + '<div class="detail-row"><span class="detail-label">Status</span>' + statusBadge(order.status) + '</div>'
+        + '<div class="detail-row"><span class="detail-label">Total</span><span style="font-weight:700;color:var(--green);">' + UB.formatPrice(order.total_cents || order.total) + '</span></div>'
+        + '<div class="detail-row"><span class="detail-label">Seller</span><span>' + UB.esc(order.seller_name || 'Unknown') + '</span></div>'
+        + '<div class="detail-row"><span class="detail-label">Buyer</span><span>' + UB.esc(order.buyer_name || 'Unknown') + '</span></div>'
+        + (order.tracking_number ? '<div class="detail-row"><span class="detail-label">Tracking</span><span>' + UB.esc(order.tracking_number) + '</span></div>' : '')
+        + '<div class="detail-row"><span class="detail-label">Created</span><span>' + UB.timeAgo(order.created_at) + '</span></div>'
+        + (order.shipping_address ? '<div class="detail-row"><span class="detail-label">Shipping Address</span><span>' + UB.esc(order.shipping_address) + '</span></div>' : '')
+        + '</div></div>';
+
+      document.body.insertAdjacentHTML('beforeend', html);
+      document.getElementById('orderModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal('orderModal');
+      });
+    }
+
+    // ── Invoice Detail Modal ──
+    function openInvoiceModal(invoice) {
+      var itemsHtml = '';
+      if (invoice.line_items && invoice.line_items.length) {
+        itemsHtml = '<table class="data-table" style="margin-bottom:16px;">'
+          + '<thead><tr><th>Item</th><th>Qty</th><th>Amount</th></tr></thead><tbody>';
+        invoice.line_items.forEach(function(item) {
+          itemsHtml += '<tr><td>' + UB.esc(item.description || item.title) + '</td>'
+            + '<td>' + (item.quantity || 1) + '</td>'
+            + '<td>' + UB.formatPrice(item.amount_cents || item.amount) + '</td></tr>';
+        });
+        itemsHtml += '</tbody></table>';
+      }
+
+      var html = '<div class="modal-overlay" id="invoiceModal">'
+        + '<div class="modal">'
+        + '<button class="modal-close" onclick="closeModal(\'invoiceModal\')">&times;</button>'
+        + '<h2>Invoice ' + UB.esc(invoice.invoice_number || invoice.id) + '</h2>'
+        + itemsHtml
+        + '<div class="detail-row"><span class="detail-label">Subtotal</span><span>' + UB.formatPrice(invoice.subtotal_cents || invoice.subtotal) + '</span></div>'
+        + '<div class="detail-row"><span class="detail-label">Total</span><span style="font-weight:700;color:var(--green);">' + UB.formatPrice(invoice.total_cents || invoice.total) + '</span></div>'
+        + '<div class="detail-row"><span class="detail-label">Payment Status</span>' + statusBadge(invoice.payment_status || invoice.status) + '</div>'
+        + '</div></div>';
+
+      document.body.insertAdjacentHTML('beforeend', html);
+      document.getElementById('invoiceModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal('invoiceModal');
+      });
+    }
+
+    // ── Close modal ──
+    window.closeModal = function(id) {
+      var el = document.getElementById(id);
+      if (el) el.remove();
+    };
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        var modal = document.querySelector('.modal-overlay');
+        if (modal) modal.remove();
+      }
+    });
+
+    // ── Load My Orders ──
+    async function loadOrders() {
+      var data = await UB.api('/api/orders');
+      document.getElementById('ordersLoading').style.display = 'none';
+      var orders = data.orders || data || [];
+      if (!Array.isArray(orders)) orders = [];
+      var grid = document.getElementById('ordersGrid');
+      if (orders.length === 0) {
+        document.getElementById('ordersEmpty').style.display = '';
+        return;
+      }
+      grid.style.display = '';
+      grid.innerHTML = '';
+      orders.forEach(function(order) {
+        grid.appendChild(renderOrderCard(order, false));
+      });
+    }
+
+    // ── Load My Sales ──
+    async function loadSales() {
+      var data = await UB.api('/api/orders/selling');
+      document.getElementById('salesLoading').style.display = 'none';
+      var orders = data.orders || data || [];
+      if (!Array.isArray(orders)) orders = [];
+      var grid = document.getElementById('salesGrid');
+      if (orders.length === 0) {
+        document.getElementById('salesEmpty').style.display = '';
+        grid.style.display = 'none';
+        return;
+      }
+      grid.style.display = '';
+      grid.innerHTML = '';
+      orders.forEach(function(order) {
+        grid.appendChild(renderOrderCard(order, true));
+      });
+    }
+    window.loadSales = loadSales;
+
+    // ── Load Invoices ──
+    async function loadInvoices() {
+      var data = await UB.api('/api/invoices');
+      document.getElementById('invoicesLoading').style.display = 'none';
+      var invoices = data.invoices || data || [];
+      if (!Array.isArray(invoices)) invoices = [];
+      if (invoices.length === 0) {
+        document.getElementById('invoicesEmpty').style.display = '';
+        return;
+      }
+      document.getElementById('invoicesTable').style.display = '';
+      var tbody = document.getElementById('invoicesBody');
+      tbody.innerHTML = '';
+      invoices.forEach(function(inv) {
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + UB.esc(inv.invoice_number || inv.id) + '</td>'
+          + '<td>' + UB.esc(inv.buyer_name || 'Unknown') + '</td>'
+          + '<td>' + UB.formatPrice(inv.total_cents || inv.total) + '</td>'
+          + '<td>' + statusBadge(inv.status) + '</td>'
+          + '<td><button class="btn btn-secondary btn-sm">View</button></td>';
+        tr.querySelector('button').addEventListener('click', function() {
+          openInvoiceModal(inv);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ── Init ──
+    async function init() {
+      var flags = await UB.init('/town/orders', 'Orders');
+      if (!UB.hasFlag(flags, 'ui-base.orders')) {
+        return UB.showDisabled('Orders');
+      }
+      loadOrders();
+      loadSales();
+      loadInvoices();
+    }
+    init();
+  })();
+  </script>
+</body>
+</html>

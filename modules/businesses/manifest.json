@@ -29,6 +29,13 @@
       "name": "Business Applications",
       "description": "Apply to list business",
       "default": true
+    },
+    {
+      "id": "ui-base.businesses",
+      "name": "Businesses UI",
+      "description": "Business map page",
+      "default": true,
+      "frontend": true
     }
   ]
 }

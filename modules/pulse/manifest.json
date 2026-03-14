@@ -41,6 +41,13 @@
       "name": "Events Feed",
       "description": "Upcoming events feed",
       "default": false
+    },
+    {
+      "id": "ui-base.pulse",
+      "name": "Pulse UI",
+      "description": "Community pulse page",
+      "default": true,
+      "frontend": true
     }
   ]
 }

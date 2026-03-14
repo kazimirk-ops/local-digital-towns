@@ -9,6 +9,7 @@
     "trust.identity",
     "trust.resident",
     "trust.business",
-    "trust.gates"
+    "trust.gates",
+    { "id": "ui-base.trust", "name": "Trust UI", "description": "Verification flow page", "default": true, "frontend": true }
   ]
 }

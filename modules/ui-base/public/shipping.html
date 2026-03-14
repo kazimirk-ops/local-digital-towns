@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shipping - Digital Towns</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+  <style>
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    /* ── Shipment Card ── */
+    .shipment-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .shipment-info {
+      flex: 1;
+      min-width: 200px;
+    }
+    .shipment-carrier {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .shipment-tracking {
+      font-size: 13px;
+      color: var(--muted);
+      font-family: monospace;
+      margin-bottom: 4px;
+    }
+    .shipment-delivery {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .shipment-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    /* ── Status Badges ── */
+    .status-label_created { background: rgba(100,116,139,0.15); color: var(--muted); }
+    .status-in_transit { background: rgba(6,182,212,0.15); color: var(--accent); }
+    .status-delivered { background: rgba(16,185,129,0.15); color: var(--green); }
+
+    /* ── Rate Form ── */
+    .rate-form-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    /* ── Rate Options ── */
+    .rate-options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .rate-option {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .rate-option:hover {
+      border-color: var(--accent);
+    }
+    .rate-carrier {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 2px;
+    }
+    .rate-service {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .rate-price {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--green);
+    }
+    .rate-days {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .rate-right {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    /* ── Label result ── */
+    .label-result {
+      background: var(--panel);
+      border: 1px solid var(--green);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-top: 20px;
+      text-align: center;
+    }
+    .label-result a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .label-result a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+
+        <div id="shipLoading"><div class="spinner"></div></div>
+
+        <div id="shipRoot" style="display:none;">
+          <!-- My Shipments -->
+          <h3 class="section-title">My Shipments</h3>
+          <div id="shipmentsLoading"><div class="spinner"></div></div>
+          <div class="shipment-list" id="shipmentList" style="display:none;"></div>
+          <div class="empty-state" id="shipmentsEmpty" style="display:none;">
+            <div class="empty-icon">&#128230;</div>
+            <p>No shipments yet</p>
+          </div>
+
+          <!-- Get Shipping Rates -->
+          <h3 class="section-title">Get Shipping Rates</h3>
+          <div class="rate-form-card">
+            <div class="form-grid">
+              <div class="field"><label>From ZIP</label><input type="text" id="fromZip" placeholder="90210"></div>
+              <div class="field"><label>To ZIP</label><input type="text" id="toZip" placeholder="10001"></div>
+              <div class="field"><label>Weight (oz)</label><input type="number" id="weightOz" placeholder="16" min="1"></div>
+              <div class="field"><label>Length (in)</label><input type="number" id="lengthIn" placeholder="12" min="1"></div>
+              <div class="field"><label>Width (in)</label><input type="number" id="widthIn" placeholder="8" min="1"></div>
+              <div class="field"><label>Height (in)</label><input type="number" id="heightIn" placeholder="4" min="1"></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" id="btnGetRates">Get Rates</button>
+            </div>
+          </div>
+
+          <!-- Rate Results -->
+          <div id="rateResults" style="display:none;">
+            <h3 class="section-title">Available Rates</h3>
+            <div class="rate-options" id="rateOptions"></div>
+          </div>
+
+          <!-- Label Result -->
+          <div id="labelResult" style="display:none;"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+  (function() {
+    var selectedShipmentId = null;
+
+    function statusBadge(status) {
+      var cls = 'badge status-' + (status || 'label_created');
+      var label = (status || 'label_created').replace(/_/g, ' ');
+      label = label.charAt(0).toUpperCase() + label.slice(1);
+      return '<span class="badge ' + cls + '">' + label + '</span>';
+    }
+
+    // ── Load Shipments ──
+    async function loadShipments() {
+      var data = await UB.api('/api/shipments');
+      document.getElementById('shipmentsLoading').style.display = 'none';
+      var shipments = data.shipments || data || [];
+      if (!Array.isArray(shipments)) shipments = [];
+
+      if (shipments.length === 0) {
+        document.getElementById('shipmentsEmpty').style.display = '';
+        return;
+      }
+
+      var list = document.getElementById('shipmentList');
+      list.style.display = '';
+      list.innerHTML = '';
+
+      shipments.forEach(function(s) {
+        var card = document.createElement('div');
+        card.className = 'shipment-card';
+        card.innerHTML =
+          '<div class="shipment-info">'
+          + '<div class="shipment-carrier">' + UB.esc(s.carrier || 'Unknown Carrier') + '</div>'
+          + '<div class="shipment-tracking">' + UB.esc(s.tracking_number || 'N/A') + '</div>'
+          + '<div class="shipment-delivery">' + (s.estimated_delivery ? 'Est. delivery: ' + UB.esc(s.estimated_delivery) : '') + '</div>'
+          + '</div>'
+          + statusBadge(s.status)
+          + (s.tracking_url ? '<a class="btn btn-secondary btn-sm" href="' + UB.esc(s.tracking_url) + '" target="_blank" rel="noopener">Track</a>' : '');
+        list.appendChild(card);
+      });
+    }
+
+    // ── Get Rates ──
+    document.getElementById('btnGetRates').addEventListener('click', async function() {
+      var btn = this;
+      var fromZip = document.getElementById('fromZip').value.trim();
+      var toZip = document.getElementById('toZip').value.trim();
+      var weightOz = document.getElementById('weightOz').value;
+      var lengthIn = document.getElementById('lengthIn').value;
+      var widthIn = document.getElementById('widthIn').value;
+      var heightIn = document.getElementById('heightIn').value;
+
+      if (!fromZip || !toZip || !weightOz) {
+        UB.toast('From ZIP, To ZIP, and Weight are required', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Getting rates...';
+
+      var data = await UB.api('/api/shipping/rates', {
+        method: 'POST',
+        body: {
+          from_zip: fromZip,
+          to_zip: toZip,
+          weight_oz: parseFloat(weightOz),
+          length_in: parseFloat(lengthIn) || undefined,
+          width_in: parseFloat(widthIn) || undefined,
+          height_in: parseFloat(heightIn) || undefined
+        }
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Get Rates';
+
+      if (data.error) {
+        UB.toast(data.error, 'error');
+        return;
+      }
+
+      var rates = data.rates || data || [];
+      if (!Array.isArray(rates)) rates = [];
+
+      selectedShipmentId = data.shipment_id || null;
+
+      var container = document.getElementById('rateOptions');
+      container.innerHTML = '';
+
+      if (rates.length === 0) {
+        container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No rates available for this route.</p>';
+      } else {
+        rates.forEach(function(rate) {
+          var el = document.createElement('div');
+          el.className = 'rate-option';
+          el.innerHTML =
+            '<div>'
+            + '<div class="rate-carrier">' + UB.esc(rate.carrier || '') + '</div>'
+            + '<div class="rate-service">' + UB.esc(rate.service || '') + '</div>'
+            + '</div>'
+            + '<div class="rate-right">'
+            + '<div class="rate-price">' + UB.formatPrice(rate.price_cents || rate.price) + '</div>'
+            + '<div class="rate-days">' + (rate.estimated_days ? rate.estimated_days + ' day' + (rate.estimated_days === 1 ? '' : 's') : '') + '</div>'
+            + '<button class="btn btn-primary btn-sm">Select</button>'
+            + '</div>';
+
+          el.querySelector('button').addEventListener('click', function() {
+            createLabel(rate.id || rate.rate_id);
+          });
+          container.appendChild(el);
+        });
+      }
+
+      document.getElementById('rateResults').style.display = '';
+      document.getElementById('labelResult').style.display = 'none';
+    });
+
+    // ── Create Label ──
+    async function createLabel(rateId) {
+      var data = await UB.api('/api/shipping/labels', {
+        method: 'POST',
+        body: {
+          shipment_id: selectedShipmentId,
+          rate_id: rateId
+        }
+      });
+
+      if (data.error) {
+        UB.toast(data.error, 'error');
+        return;
+      }
+
+      var labelUrl = data.label_url || data.url || '#';
+      var resultEl = document.getElementById('labelResult');
+      resultEl.style.display = '';
+      resultEl.innerHTML =
+        '<div class="label-result">'
+        + '<p style="margin-bottom:12px;font-weight:600;color:var(--green);">Label created successfully!</p>'
+        + '<a href="' + UB.esc(labelUrl) + '" target="_blank" rel="noopener">Download Shipping Label</a>'
+        + '</div>';
+
+      UB.toast('Shipping label created!', 'success');
+      loadShipments();
+    }
+
+    // ── Init ──
+    async function init() {
+      var flags = await UB.init('/town/shipping', 'Shipping');
+      if (!UB.hasFlag(flags, 'ui-base.shipping')) {
+        return UB.showDisabled('Shipping');
+      }
+      document.getElementById('shipLoading').style.display = 'none';
+      document.getElementById('shipRoot').style.display = '';
+      loadShipments();
+    }
+    init();
+  })();
+  </script>
+</body>
+</html>

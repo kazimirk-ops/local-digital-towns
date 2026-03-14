@@ -8,6 +8,7 @@
     { "id": "orders.deposits", "name": "Deposits", "default": true },
     { "id": "orders.buyer-profiles", "name": "Buyer Profiles", "default": true },
     { "id": "orders.auction-orders", "name": "Auction Orders", "default": true },
-    { "id": "orders.refunds", "name": "Refunds", "default": true }
+    { "id": "orders.refunds", "name": "Refunds", "default": true },
+    { "id": "ui-base.orders", "name": "Orders UI", "description": "Order history + invoices page", "default": true, "frontend": true }
   ]
 }

@@ -8,6 +8,7 @@
     { "id": "shipping.rates", "name": "Rate Quotes", "default": true },
     { "id": "shipping.labels", "name": "Label Generation", "default": true },
     { "id": "shipping.tracking", "name": "Tracking", "default": true },
-    { "id": "shipping.local-delivery", "name": "Local Delivery", "default": false }
+    { "id": "shipping.local-delivery", "name": "Local Delivery", "default": false },
+    { "id": "ui-base.shipping", "name": "Shipping UI", "description": "Shipment tracking page", "default": true, "frontend": true }
   ]
 }

@@ -7,6 +7,7 @@
     { "id": "notifications.in-app", "name": "In-App Notifications", "default": true },
     { "id": "notifications.email", "name": "Email Notifications", "default": true },
     { "id": "notifications.order-updates", "name": "Order Updates", "default": true },
-    { "id": "notifications.messages", "name": "Message Notifications", "default": true }
+    { "id": "notifications.messages", "name": "Message Notifications", "default": true },
+    { "id": "ui-base.notifications", "name": "Notifications UI", "description": "Notification center page", "default": true, "frontend": true }
   ]
 }

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trust &amp; Verification - Digital Towns</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+  <style>
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    /* ── Tier Card ── */
+    .tier-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .tier-badge {
+      display: inline-block;
+      font-size: 24px;
+      font-weight: 700;
+      padding: 12px 32px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+    .tier-visitor { background: rgba(100,116,139,0.15); color: var(--muted); }
+    .tier-verified { background: rgba(6,182,212,0.15); color: var(--accent); }
+    .tier-moderator { background: rgba(168,85,247,0.15); color: #a855f7; }
+    .tier-business { background: rgba(16,185,129,0.15); color: var(--green); }
+    .tier-admin { background: rgba(245,158,11,0.15); color: var(--gold); }
+    .tier-label {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* ── Steps ── */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .step-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .step-num {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .step-num.done {
+      background: rgba(16,185,129,0.15);
+      color: var(--green);
+    }
+    .step-title {
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .step-status {
+      margin-left: auto;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .step-status.complete {
+      color: var(--green);
+    }
+    .step-body {
+      padding-left: 44px;
+    }
+
+    /* ── Progress ── */
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--green);
+      border-radius: 4px;
+      transition: width 0.3s;
+    }
+    .progress-label {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+
+        <div id="trustLoading"><div class="spinner"></div></div>
+
+        <div id="trustRoot" style="display:none;">
+          <!-- Tier Card -->
+          <div class="tier-card" id="tierCard"></div>
+
+          <!-- Progress -->
+          <div class="progress-label" id="progressLabel">0 of 4 steps complete</div>
+          <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+          <!-- Steps -->
+          <h3 class="section-title">Verification Steps</h3>
+          <div class="steps" id="stepsContainer">
+
+            <!-- Step 1: Email -->
+            <div class="step-card">
+              <div class="step-header">
+                <div class="step-num done">&#10003;</div>
+                <div class="step-title">Email Verified</div>
+                <div class="step-status complete">Complete</div>
+              </div>
+              <div class="step-body">
+                <p style="font-size:13px;color:var(--muted);">Your email address has been verified.</p>
+              </div>
+            </div>
+
+            <!-- Step 2: Location -->
+            <div class="step-card">
+              <div class="step-header">
+                <div class="step-num" id="step2Num">2</div>
+                <div class="step-title">Location Verification</div>
+                <div class="step-status" id="step2Status">Pending</div>
+              </div>
+              <div class="step-body" id="step2Body">
+                <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Verify your location using your device's GPS.</p>
+                <button class="btn btn-primary btn-sm" id="btnVerifyLocation">Verify Location</button>
+                <div id="locationResult" style="margin-top:10px;font-size:13px;"></div>
+              </div>
+            </div>
+
+            <!-- Step 3: Resident -->
+            <div class="step-card">
+              <div class="step-header">
+                <div class="step-num" id="step3Num">3</div>
+                <div class="step-title">Resident Verification</div>
+                <div class="step-status" id="step3Status">Pending</div>
+              </div>
+              <div class="step-body" id="step3Body">
+                <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Confirm your residential address.</p>
+                <div class="field"><label>Address</label><input type="text" id="resAddress" placeholder="Street address"></div>
+                <div class="form-row">
+                  <div class="field"><label>City</label><input type="text" id="resCity" placeholder="City"></div>
+                  <div class="field"><label>State</label><input type="text" id="resState" placeholder="State"></div>
+                </div>
+                <div class="field"><label>ZIP Code</label><input type="text" id="resZip" placeholder="ZIP code"></div>
+                <div class="form-actions">
+                  <button class="btn btn-primary btn-sm" id="btnVerifyResident">Submit</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 4: Business -->
+            <div class="step-card">
+              <div class="step-header">
+                <div class="step-num" id="step4Num">4</div>
+                <div class="step-title">Business Verification</div>
+                <div class="step-status" id="step4Status">Pending</div>
+              </div>
+              <div class="step-body" id="step4Body">
+                <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Apply for business verification.</p>
+                <div class="field"><label>Business Name</label><input type="text" id="bizName" placeholder="Your business name"></div>
+                <div class="field"><label>Description</label><textarea id="bizDescription" rows="3" placeholder="Tell us about your business" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:#0a0e14;color:var(--text);font-family:inherit;font-size:14px;resize:vertical;"></textarea></div>
+                <div class="form-actions">
+                  <button class="btn btn-primary btn-sm" id="btnApplyBusiness">Apply</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+  (function() {
+    var TIERS = {
+      visitor: { label: 'Visitor', cls: 'tier-visitor' },
+      verified: { label: 'Verified', cls: 'tier-verified' },
+      moderator: { label: 'Moderator', cls: 'tier-moderator' },
+      business: { label: 'Business', cls: 'tier-business' },
+      admin: { label: 'Admin', cls: 'tier-admin' }
+    };
+
+    function updateProgress(completed) {
+      var total = 4;
+      var pct = Math.round((completed / total) * 100);
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressLabel').textContent = completed + ' of ' + total + ' steps complete';
+    }
+
+    function markStepComplete(stepNum) {
+      var numEl = document.getElementById('step' + stepNum + 'Num');
+      var statusEl = document.getElementById('step' + stepNum + 'Status');
+      if (numEl) { numEl.classList.add('done'); numEl.innerHTML = '&#10003;'; }
+      if (statusEl) { statusEl.classList.add('complete'); statusEl.textContent = 'Complete'; }
+    }
+
+    // ── Load Trust Status ──
+    async function loadTrustStatus() {
+      var data = await UB.api('/api/trust/status');
+      document.getElementById('trustLoading').style.display = 'none';
+      document.getElementById('trustRoot').style.display = '';
+
+      var tierName = (data.tier || 'visitor').toLowerCase();
+      var tier = TIERS[tierName] || TIERS.visitor;
+      document.getElementById('tierCard').innerHTML =
+        '<div class="tier-badge ' + tier.cls + '">' + UB.esc(tier.label) + '</div>'
+        + '<div class="tier-label">Current Trust Tier</div>';
+
+      // Count completed steps (email always done = 1)
+      var completed = 1;
+      if (data.location_verified) { markStepComplete(2); completed++; }
+      if (data.resident_verified) { markStepComplete(3); completed++; }
+      if (data.business_verified) { markStepComplete(4); completed++; }
+      updateProgress(completed);
+    }
+
+    // ── Verify Location ──
+    document.getElementById('btnVerifyLocation').addEventListener('click', function() {
+      var btn = this;
+      var resultEl = document.getElementById('locationResult');
+      btn.disabled = true;
+      btn.textContent = 'Detecting...';
+      resultEl.textContent = '';
+
+      if (!navigator.geolocation) {
+        resultEl.innerHTML = '<span style="color:var(--danger);">Geolocation not supported by your browser.</span>';
+        btn.disabled = false;
+        btn.textContent = 'Verify Location';
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async function(pos) {
+          var body = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy
+          };
+          var data = await UB.api('/api/trust/verify/location', {
+            method: 'POST',
+            body: body
+          });
+          btn.disabled = false;
+          btn.textContent = 'Verify Location';
+
+          if (data.error) {
+            resultEl.innerHTML = '<span style="color:var(--danger);">' + UB.esc(data.error) + '</span>';
+            return;
+          }
+          resultEl.innerHTML = '<span style="color:var(--green);">Location verified successfully!</span>';
+          markStepComplete(2);
+          UB.toast('Location verified!', 'success');
+          loadTrustStatus();
+        },
+        function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Verify Location';
+          resultEl.innerHTML = '<span style="color:var(--danger);">Location access denied: ' + UB.esc(err.message) + '</span>';
+        }
+      );
+    });
+
+    // ── Verify Resident ──
+    document.getElementById('btnVerifyResident').addEventListener('click', async function() {
+      var btn = this;
+      var address = document.getElementById('resAddress').value.trim();
+      var city = document.getElementById('resCity').value.trim();
+      var state = document.getElementById('resState').value.trim();
+      var zip = document.getElementById('resZip').value.trim();
+
+      if (!address || !city || !state || !zip) {
+        UB.toast('All address fields are required', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      var data = await UB.api('/api/trust/verify/resident', {
+        method: 'POST',
+        body: { address: address, city: city, state: state, zip: zip }
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Submit';
+
+      if (data.error) {
+        UB.toast(data.error, 'error');
+        return;
+      }
+      UB.toast('Resident verification submitted!', 'success');
+      markStepComplete(3);
+      loadTrustStatus();
+    });
+
+    // ── Apply Business ──
+    document.getElementById('btnApplyBusiness').addEventListener('click', async function() {
+      var btn = this;
+      var businessName = document.getElementById('bizName').value.trim();
+      var description = document.getElementById('bizDescription').value.trim();
+
+      if (!businessName) {
+        UB.toast('Business name is required', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Applying...';
+
+      var data = await UB.api('/api/trust/apply', {
+        method: 'POST',
+        body: { business_name: businessName, description: description }
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Apply';
+
+      if (data.error) {
+        UB.toast(data.error, 'error');
+        return;
+      }
+      UB.toast('Business verification application submitted!', 'success');
+      markStepComplete(4);
+      loadTrustStatus();
+    });
+
+    // ── Init ──
+    async function init() {
+      var flags = await UB.init('/town/trust', 'Trust & Verification');
+      if (!UB.hasFlag(flags, 'ui-base.trust')) {
+        return UB.showDisabled('Trust & Verification');
+      }
+      loadTrustStatus();
+    }
+    init();
+  })();
+  </script>
+</body>
+</html>

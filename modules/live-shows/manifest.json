@@ -8,6 +8,7 @@
     { "id": "live-shows.schedule", "name": "Show Schedule", "default": true },
     { "id": "live-shows.chat", "name": "Live Chat", "default": true },
     { "id": "live-shows.bookmarks", "name": "Bookmarks", "default": true },
-    { "id": "live-shows.in-stream-buy", "name": "In-Stream Purchases", "default": false }
+    { "id": "live-shows.in-stream-buy", "name": "In-Stream Purchases", "default": false },
+    { "id": "ui-base.live", "name": "Live Shows UI", "description": "Live shows + schedule page", "default": true, "frontend": true }
   ]
 }

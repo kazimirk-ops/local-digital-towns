@@ -17,7 +17,8 @@ module.exports = function mountUIBase(app, db) {
   var pages = [
     "login", "marketplace", "auctions", "channels", "bst",
     "sweep", "pulse", "businesses", "gigs", "leaderboard",
-    "live", "profile"
+    "live", "orders", "payments", "trust", "notifications",
+    "referrals", "shipping", "disputes", "profile"
   ];
 
   app.get("/town", function(req, res) {
@@ -41,5 +42,5 @@ module.exports = function mountUIBase(app, db) {
     }
   });
 
-  console.log("[ui-base] L5 module mounted — town shell + 12 sub-module pages");
+  console.log("[ui-base] L5 module mounted — town shell + 19 sub-module pages");
 };

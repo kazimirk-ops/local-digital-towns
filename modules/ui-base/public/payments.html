@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payments - Digital Towns</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+  <style>
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .connect-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .connect-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .connect-status .badge-connected {
+      background: rgba(16,185,129,0.15);
+      color: var(--green);
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .connect-status .badge-not-connected {
+      background: rgba(245,158,11,0.15);
+      color: var(--gold);
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .connect-detail {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .connect-detail .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-green { background: var(--green); }
+    .dot-red { background: var(--danger); }
+
+    .fee-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-top: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .fee-card strong {
+      color: var(--text);
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table tr:hover td {
+      background: rgba(255,255,255,0.02);
+    }
+
+    .status-succeeded { background: rgba(16,185,129,0.15); color: var(--green); }
+    .status-pending { background: rgba(245,158,11,0.15); color: var(--gold); }
+    .status-failed { background: rgba(239,68,68,0.15); color: var(--danger); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+
+        <div id="paymentsLoading"><div class="spinner"></div></div>
+
+        <div id="paymentsRoot" style="display:none;">
+          <!-- Connect Status -->
+          <div class="connect-card" id="connectCard"></div>
+
+          <!-- Recent Transactions -->
+          <h3 class="section-title">Recent Transactions</h3>
+          <div id="transactionsLoading"><div class="spinner"></div></div>
+          <div id="transactionsTable" style="display:none;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="transactionsBody"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="transactionsEmpty" style="display:none;">
+            <div class="empty-icon">&#128179;</div>
+            <p>No transactions yet</p>
+          </div>
+
+          <!-- Platform Fee Info -->
+          <div class="fee-card">
+            <strong>10% platform fee</strong> on all transactions
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+  (function() {
+
+    // ── Load Connect Status ──
+    async function loadConnectStatus() {
+      var data = await UB.api('/api/payments/connect/status');
+      var card = document.getElementById('connectCard');
+
+      if (data.error) {
+        card.innerHTML = '<p style="color:var(--muted);">Unable to load payment status.</p>';
+        return;
+      }
+
+      if (data.connected) {
+        card.innerHTML =
+          '<div class="connect-status">'
+          + '<span class="section-title" style="margin-bottom:0;">Stripe Connect</span>'
+          + '<span class="badge-connected">Connected</span>'
+          + '</div>'
+          + '<div class="connect-detail"><span class="dot ' + (data.charges_enabled ? 'dot-green' : 'dot-red') + '"></span> Charges ' + (data.charges_enabled ? 'Enabled' : 'Disabled') + '</div>'
+          + '<div class="connect-detail"><span class="dot ' + (data.payouts_enabled ? 'dot-green' : 'dot-red') + '"></span> Payouts ' + (data.payouts_enabled ? 'Enabled' : 'Disabled') + '</div>'
+          + '<div class="connect-detail" style="margin-top:8px;">Account ID: <span style="color:var(--text);font-family:monospace;">' + UB.esc(data.account_id) + '</span></div>';
+      } else {
+        card.innerHTML =
+          '<div class="connect-status">'
+          + '<span class="section-title" style="margin-bottom:0;">Stripe Connect</span>'
+          + '<span class="badge-not-connected">Not Connected</span>'
+          + '</div>'
+          + '<p style="color:var(--muted);font-size:14px;margin-bottom:16px;">Connect your Stripe account to start accepting payments.</p>'
+          + '<button class="btn btn-primary" id="btnConnectStripe">Connect Stripe</button>';
+
+        document.getElementById('btnConnectStripe').addEventListener('click', async function() {
+          var btn = this;
+          btn.disabled = true;
+          btn.textContent = 'Connecting...';
+          var result = await UB.api('/api/payments/connect/start', { method: 'POST' });
+          if (result.error) {
+            UB.toast(result.error, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Connect Stripe';
+            return;
+          }
+          if (result.url) {
+            window.location.href = result.url;
+          }
+        });
+      }
+    }
+
+    // ── Load Transactions ──
+    async function loadTransactions() {
+      var data = await UB.api('/api/payments/transactions');
+      document.getElementById('transactionsLoading').style.display = 'none';
+      var transactions = data.transactions || data || [];
+      if (!Array.isArray(transactions)) transactions = [];
+
+      if (transactions.length === 0) {
+        document.getElementById('transactionsEmpty').style.display = '';
+        return;
+      }
+
+      document.getElementById('transactionsTable').style.display = '';
+      var tbody = document.getElementById('transactionsBody');
+      tbody.innerHTML = '';
+      transactions.forEach(function(tx) {
+        var statusCls = 'badge status-' + (tx.status || 'pending');
+        var statusLabel = (tx.status || 'pending').charAt(0).toUpperCase() + (tx.status || 'pending').slice(1);
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + UB.timeAgo(tx.created_at || tx.date) + '</td>'
+          + '<td>' + UB.esc(tx.description || '') + '</td>'
+          + '<td>' + UB.formatPrice(tx.amount_cents || tx.amount) + '</td>'
+          + '<td><span class="badge ' + statusCls + '">' + statusLabel + '</span></td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ── Init ──
+    async function init() {
+      var flags = await UB.init('/town/payments', 'Payments');
+      if (!UB.hasFlag(flags, 'ui-base.payments')) {
+        return UB.showDisabled('Payments');
+      }
+      document.getElementById('paymentsLoading').style.display = 'none';
+      document.getElementById('paymentsRoot').style.display = '';
+      loadConnectStatus();
+      loadTransactions();
+    }
+    init();
+  })();
+  </script>
+</body>
+</html>

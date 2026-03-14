@@ -35,6 +35,13 @@
       "name": "Service Inquiries",
       "description": "Custom inquiry forms (Sebastian pattern)",
       "default": true
+    },
+    {
+      "id": "ui-base.gigs",
+      "name": "Gigs UI",
+      "description": "Gigs + services page",
+      "default": true,
+      "frontend": true
     }
   ]
 }

@@ -8,6 +8,7 @@
     { "id": "achievements.badges", "name": "Badges", "default": true },
     { "id": "achievements.shares", "name": "Share Tracking", "default": true },
     { "id": "achievements.nightly-cron", "name": "Nightly Score Job", "default": true },
-    { "id": "achievements.monthly-champion", "name": "Monthly Champion", "default": true }
+    { "id": "achievements.monthly-champion", "name": "Monthly Champion", "default": true },
+    { "id": "ui-base.leaderboard", "name": "Leaderboard UI", "description": "Leaderboard + badges page", "default": true, "frontend": true }
   ]
 }

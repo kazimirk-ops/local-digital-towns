@@ -8,6 +8,7 @@
     { "id": "sweepstakes.prize-offers", "name": "Prize Offers", "default": true },
     { "id": "sweepstakes.daily-cap", "name": "Daily Point Cap", "default": true },
     { "id": "sweepstakes.social-bonus", "name": "Social Sharing Bonus", "default": true },
-    { "id": "sweepstakes.admin-draw", "name": "Admin Draw Tool", "default": true }
+    { "id": "sweepstakes.admin-draw", "name": "Admin Draw Tool", "default": true },
+    { "id": "ui-base.sweep", "name": "Sweepstakes UI", "description": "Sweep wheel + balance page", "default": true, "frontend": true }
   ]
 }

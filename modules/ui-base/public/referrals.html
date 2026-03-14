@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Referrals - Digital Towns</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+  <style>
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    /* ── Referral Code Card ── */
+    .ref-code-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .ref-code {
+      font-family: 'Space Grotesk', monospace;
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 4px;
+      margin-bottom: 12px;
+    }
+    .ref-link {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      word-break: break-all;
+    }
+    .ref-link a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .ref-link a:hover {
+      text-decoration: underline;
+    }
+
+    /* ── Stats Cards ── */
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── Data Table ── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table tr:hover td {
+      background: rgba(255,255,255,0.02);
+    }
+
+    .status-completed { background: rgba(16,185,129,0.15); color: var(--green); }
+    .status-pending { background: rgba(245,158,11,0.15); color: var(--gold); }
+    .status-credited { background: rgba(6,182,212,0.15); color: var(--accent); }
+
+    /* ── Apply Form ── */
+    .apply-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-top: 24px;
+    }
+    .apply-form {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .apply-form .field {
+      flex: 1;
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+
+        <div id="refLoading"><div class="spinner"></div></div>
+
+        <div id="refRoot" style="display:none;">
+          <!-- My Referral Code -->
+          <div class="ref-code-card" id="refCodeCard">
+            <div class="ref-code" id="refCode">---</div>
+            <div class="ref-link" id="refLink"></div>
+            <button class="btn btn-primary btn-sm" id="btnCopyCode">Copy Code</button>
+          </div>
+
+          <!-- Stats -->
+          <div class="grid grid-3 mb-lg" id="statsGrid">
+            <div class="stat-card">
+              <div class="stat-value text-accent" id="statTotal">0</div>
+              <div class="stat-label">Total Referrals</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value text-green" id="statEarnings">$0.00</div>
+              <div class="stat-label">Total Earnings</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value text-gold" id="statPending">0</div>
+              <div class="stat-label">Pending Credits</div>
+            </div>
+          </div>
+
+          <!-- Transactions -->
+          <h3 class="section-title">Referral Transactions</h3>
+          <div id="txLoading"><div class="spinner"></div></div>
+          <div id="txTable" style="display:none;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="txBody"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="txEmpty" style="display:none;">
+            <div class="empty-icon">&#128184;</div>
+            <p>No referral transactions yet</p>
+          </div>
+
+          <!-- Apply Referral Code -->
+          <div class="apply-card">
+            <h3 class="section-title">Apply a Referral Code</h3>
+            <div class="apply-form">
+              <div class="field">
+                <label>Referral Code</label>
+                <input type="text" id="applyCodeInput" placeholder="Enter referral code">
+              </div>
+              <button class="btn btn-primary" id="btnApplyCode">Apply</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+  (function() {
+
+    // ── Load Referral Code ──
+    async function loadCode() {
+      var data = await UB.api('/api/referrals/code');
+      var code = data.code || data.referral_code || '---';
+      document.getElementById('refCode').textContent = code;
+      var shareUrl = 'digitaltowns.app/join?ref=' + encodeURIComponent(code);
+      document.getElementById('refLink').innerHTML =
+        'Share link: <a href="https://' + UB.esc(shareUrl) + '" target="_blank">' + UB.esc(shareUrl) + '</a>';
+
+      document.getElementById('btnCopyCode').addEventListener('click', function() {
+        navigator.clipboard.writeText(code).then(function() {
+          UB.toast('Code copied to clipboard!', 'success');
+        }).catch(function() {
+          UB.toast('Failed to copy', 'error');
+        });
+      });
+    }
+
+    // ── Load Stats ──
+    async function loadStats() {
+      var data = await UB.api('/api/referrals/stats');
+      document.getElementById('statTotal').textContent = data.total_referrals || 0;
+      document.getElementById('statEarnings').textContent = UB.formatPrice(data.total_earnings_cents || data.total_earnings || 0);
+      document.getElementById('statPending').textContent = data.pending_credits || 0;
+    }
+
+    // ── Load Transactions ──
+    async function loadTransactions() {
+      var data = await UB.api('/api/referrals/transactions');
+      document.getElementById('txLoading').style.display = 'none';
+      var txs = data.transactions || data || [];
+      if (!Array.isArray(txs)) txs = [];
+
+      if (txs.length === 0) {
+        document.getElementById('txEmpty').style.display = '';
+        return;
+      }
+
+      document.getElementById('txTable').style.display = '';
+      var tbody = document.getElementById('txBody');
+      tbody.innerHTML = '';
+      txs.forEach(function(tx) {
+        var statusCls = 'badge status-' + (tx.status || 'pending');
+        var statusLabel = (tx.status || 'pending').charAt(0).toUpperCase() + (tx.status || 'pending').slice(1);
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + UB.timeAgo(tx.created_at || tx.date) + '</td>'
+          + '<td>' + UB.esc(tx.type || '') + '</td>'
+          + '<td>' + UB.formatPrice(tx.amount_cents || tx.amount) + '</td>'
+          + '<td><span class="badge ' + statusCls + '">' + statusLabel + '</span></td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ── Apply Referral Code ──
+    document.getElementById('btnApplyCode').addEventListener('click', async function() {
+      var btn = this;
+      var input = document.getElementById('applyCodeInput');
+      var code = input.value.trim();
+      if (!code) {
+        UB.toast('Please enter a referral code', 'error');
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Applying...';
+      var data = await UB.api('/api/referrals/apply', {
+        method: 'POST',
+        body: { code: code }
+      });
+      btn.disabled = false;
+      btn.textContent = 'Apply';
+      if (data.error) {
+        UB.toast(data.error, 'error');
+        return;
+      }
+      UB.toast('Referral code applied!', 'success');
+      input.value = '';
+      loadStats();
+      loadTransactions();
+    });
+
+    // ── Init ──
+    async function init() {
+      var flags = await UB.init('/town/referrals', 'Referrals');
+      if (!UB.hasFlag(flags, 'ui-base.referrals')) {
+        return UB.showDisabled('Referrals');
+      }
+      document.getElementById('refLoading').style.display = 'none';
+      document.getElementById('refRoot').style.display = '';
+      loadCode();
+      loadStats();
+      loadTransactions();
+    }
+    init();
+  })();
+  </script>
+</body>
+</html>

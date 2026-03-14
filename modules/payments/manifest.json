@@ -8,6 +8,7 @@
     { "id": "payments.wallet", "name": "Wallet & Credits", "default": false },
     { "id": "payments.deposits", "name": "Deposit Payments", "default": true },
     { "id": "payments.cash", "name": "Cash/Venmo/PayPal", "default": true },
-    { "id": "payments.refunds", "name": "Refunds", "default": true }
+    { "id": "payments.refunds", "name": "Refunds", "default": true },
+    { "id": "ui-base.payments", "name": "Payments UI", "description": "Stripe Connect onboarding", "default": true, "frontend": true }
   ]
 }

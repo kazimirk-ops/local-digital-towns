@@ -9,6 +9,7 @@
     "disputes.ghost",
     "disputes.bidding",
     "disputes.admin",
-    "disputes.events"
+    "disputes.events",
+    { "id": "ui-base.disputes", "name": "Disputes UI", "description": "Disputes + ghost reports page", "default": true, "frontend": true }
   ]
 }

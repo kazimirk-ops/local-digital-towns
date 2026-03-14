@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Disputes - Digital Towns</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+  <style>
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    /* ── Dispute Card ── */
+    .dispute-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .dispute-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .dispute-card:hover {
+      border-color: var(--accent);
+    }
+    .dispute-info {
+      flex: 1;
+      min-width: 200px;
+    }
+    .dispute-order {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .dispute-reason {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .dispute-time {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ── Status Badges ── */
+    .status-open { background: rgba(245,158,11,0.15); color: var(--gold); }
+    .status-under_review { background: rgba(6,182,212,0.15); color: var(--accent); }
+    .status-resolved { background: rgba(16,185,129,0.15); color: var(--green); }
+    .status-closed { background: rgba(100,116,139,0.15); color: var(--muted); }
+
+    /* ── Form Cards ── */
+    .form-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    /* ── Ghost Report ── */
+    .ghost-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .ghost-score {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .ghost-label {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .ghost-form {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+    .ghost-form .field {
+      flex: 1;
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+
+        <div id="disputeLoading"><div class="spinner"></div></div>
+
+        <div id="disputeRoot" style="display:none;">
+          <!-- My Disputes -->
+          <h3 class="section-title">My Disputes</h3>
+          <div id="disputesListLoading"><div class="spinner"></div></div>
+          <div class="dispute-list" id="disputeList" style="display:none;"></div>
+          <div class="empty-state" id="disputesEmpty" style="display:none;">
+            <div class="empty-icon">&#9878;</div>
+            <p>No disputes</p>
+          </div>
+
+          <!-- Open Dispute Form -->
+          <div class="form-card">
+            <h3 class="section-title">Open a Dispute</h3>
+            <div class="field">
+              <label>Order ID</label>
+              <input type="text" id="disputeOrderId" placeholder="Enter order ID">
+            </div>
+            <div class="field">
+              <label>Reason</label>
+              <select id="disputeReason">
+                <option value="item_not_received">Item Not Received</option>
+                <option value="item_not_as_described">Item Not As Described</option>
+                <option value="seller_unresponsive">Seller Unresponsive</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Description</label>
+              <textarea id="disputeDescription" rows="4" placeholder="Describe the issue..." style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:#0a0e14;color:var(--text);font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" id="btnOpenDispute">Open Dispute</button>
+            </div>
+          </div>
+
+          <!-- Ghost Reports -->
+          <h3 class="section-title">Ghost Reports</h3>
+          <div class="ghost-card" id="ghostCard">
+            <div id="ghostLoading"><div class="spinner"></div></div>
+            <div id="ghostContent" style="display:none;">
+              <div class="ghost-score" id="ghostScore">0%</div>
+              <div class="ghost-label">Your ghosting score</div>
+              <div class="ghost-form">
+                <div class="field">
+                  <label>Order ID</label>
+                  <input type="text" id="ghostOrderId" placeholder="Order ID to report">
+                </div>
+                <button class="btn btn-danger btn-sm" id="btnReportGhost">Report Ghost</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+  (function() {
+
+    function statusBadge(status) {
+      var cls = 'badge status-' + (status || 'open');
+      var label = (status || 'open').replace(/_/g, ' ');
+      label = label.charAt(0).toUpperCase() + label.slice(1);
+      return '<span class="badge ' + cls + '">' + label + '</span>';
+    }
+
+    function reasonLabel(reason) {
+      var map = {
+        'item_not_received': 'Item Not Received',
+        'item_not_as_described': 'Item Not As Described',
+        'seller_unresponsive': 'Seller Unresponsive',
+        'other': 'Other'
+      };
+      return map[reason] || reason || 'Unknown';
+    }
+
+    // ── Load Disputes ──
+    async function loadDisputes() {
+      var data = await UB.api('/api/disputes');
+      document.getElementById('disputesListLoading').style.display = 'none';
+      var disputes = data.disputes || data || [];
+      if (!Array.isArray(disputes)) disputes = [];
+
+      if (disputes.length === 0) {
+        document.getElementById('disputesEmpty').style.display = '';
+        return;
+      }
+
+      var list = document.getElementById('disputeList');
+      list.style.display = '';
+      list.innerHTML = '';
+
+      disputes.forEach(function(d) {
+        var card = document.createElement('div');
+        card.className = 'dispute-card';
+        card.innerHTML =
+          '<div class="dispute-info">'
+          + '<div class="dispute-order">Order: ' + UB.esc(d.order_id || d.order_reference || 'N/A') + '</div>'
+          + '<div class="dispute-reason">' + UB.esc(reasonLabel(d.reason)) + '</div>'
+          + '<div class="dispute-time">Opened ' + UB.timeAgo(d.created_at || d.opened_at) + '</div>'
+          + '</div>'
+          + statusBadge(d.status);
+        list.appendChild(card);
+      });
+    }
+
+    // ── Open Dispute ──
+    document.getElementById('btnOpenDispute').addEventListener('click', async function() {
+      var btn = this;
+      var orderId = document.getElementById('disputeOrderId').value.trim();
+      var reason = document.getElementById('disputeReason').value;
+      var description = document.getElementById('disputeDescription').value.trim();
+
+      if (!orderId) {
+        UB.toast('Order ID is required', 'error');
+        return;
+      }
+      if (!description) {
+        UB.toast('Please describe the issue', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      var data = await UB.api('/api/orders/' + encodeURIComponent(orderId) + '/dispute', {
+        method: 'POST',
+        body: { reason: reason, description: description }
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Open Dispute';
+
+      if (data.error) {
+        UB.toast(data.error, 'error');
+        return;
+      }
+
+      UB.toast('Dispute opened successfully', 'success');
+      document.getElementById('disputeOrderId').value = '';
+      document.getElementById('disputeDescription').value = '';
+      loadDisputes();
+    });
+
+    // ── Load Ghost Score ──
+    async function loadGhostScore() {
+      var data = await UB.api('/api/users/me/ghosting');
+      document.getElementById('ghostLoading').style.display = 'none';
+      document.getElementById('ghostContent').style.display = '';
+
+      var score = data.ghosting_score || data.score || data.percentage || 0;
+      if (typeof score === 'number' && score <= 1) {
+        score = Math.round(score * 100);
+      }
+      document.getElementById('ghostScore').textContent = score + '%';
+    }
+
+    // ── Report Ghost ──
+    document.getElementById('btnReportGhost').addEventListener('click', async function() {
+      var btn = this;
+      var orderId = document.getElementById('ghostOrderId').value.trim();
+      if (!orderId) {
+        UB.toast('Order ID is required', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Reporting...';
+
+      var data = await UB.api('/api/orders/' + encodeURIComponent(orderId) + '/report-ghost', {
+        method: 'POST'
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Report Ghost';
+
+      if (data.error) {
+        UB.toast(data.error, 'error');
+        return;
+      }
+
+      UB.toast('Ghost report submitted', 'success');
+      document.getElementById('ghostOrderId').value = '';
+      loadGhostScore();
+    });
+
+    // ── Init ──
+    async function init() {
+      var flags = await UB.init('/town/disputes', 'Disputes');
+      if (!UB.hasFlag(flags, 'ui-base.disputes')) {
+        return UB.showDisabled('Disputes');
+      }
+      document.getElementById('disputeLoading').style.display = 'none';
+      document.getElementById('disputeRoot').style.display = '';
+      loadDisputes();
+      loadGhostScore();
+    }
+    init();
+  })();
+  </script>
+</body>
+</html>

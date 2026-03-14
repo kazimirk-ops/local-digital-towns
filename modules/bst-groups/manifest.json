@@ -35,6 +35,13 @@
       "name": "Group Applications",
       "description": "Apply to create group",
       "default": true
+    },
+    {
+      "id": "ui-base.bst",
+      "name": "BST Groups UI",
+      "description": "BST groups page",
+      "default": true,
+      "frontend": true
     }
   ]
 }

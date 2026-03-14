@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications - Digital Towns</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/town/assets/ui-base.css">
+  <style>
+    /* ── Header Bar ── */
+    .notif-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .unread-badge {
+      background: rgba(6,182,212,0.15);
+      color: var(--accent);
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    /* ── Filter Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+      background: none;
+      border-top: none; border-left: none; border-right: none;
+      font-family: inherit;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* ── Notification Item ── */
+    .notif-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .notif-item {
+      display: flex;
+      gap: 14px;
+      padding: 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: border-color 0.15s;
+      align-items: flex-start;
+    }
+    .notif-item:hover {
+      border-color: var(--accent);
+    }
+    .notif-item.unread {
+      background: #111927;
+      border-color: rgba(6,182,212,0.25);
+    }
+    .notif-icon {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .notif-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .notif-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .notif-body {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .notif-time {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .notif-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <div class="topbar" id="topbar"></div>
+      <div class="content" id="pageContent">
+
+        <div id="notifLoading"><div class="spinner"></div></div>
+
+        <div id="notifRoot" style="display:none;">
+          <!-- Header -->
+          <div class="notif-header">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span class="unread-badge" id="unreadBadge">0 unread</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btnMarkAllRead">Mark All Read</button>
+          </div>
+
+          <!-- Filter Tabs -->
+          <div class="tabs" id="filterTabs">
+            <button class="tab active" data-type="all">All</button>
+            <button class="tab" data-type="orders">Orders</button>
+            <button class="tab" data-type="messages">Messages</button>
+            <button class="tab" data-type="system">System</button>
+            <button class="tab" data-type="auctions">Auctions</button>
+          </div>
+
+          <!-- Notification List -->
+          <div class="notif-list" id="notifList"></div>
+
+          <div class="empty-state" id="notifEmpty" style="display:none;">
+            <div class="empty-icon">&#128276;</div>
+            <p>No notifications</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/town/assets/ui-base.js"></script>
+  <script>
+  (function() {
+    var allNotifications = [];
+    var currentFilter = 'all';
+
+    var TYPE_ICONS = {
+      orders: '&#128230;',
+      messages: '&#128172;',
+      system: '&#9881;',
+      auctions: '&#128296;',
+      default: '&#128276;'
+    };
+
+    function getIcon(type) {
+      return TYPE_ICONS[type] || TYPE_ICONS['default'];
+    }
+
+    // ── Load Unread Count ──
+    async function loadUnreadCount() {
+      var data = await UB.api('/api/notifications/unread-count');
+      var count = data.count || data.unread_count || 0;
+      document.getElementById('unreadBadge').textContent = count + ' unread';
+    }
+
+    // ── Load Notifications ──
+    async function loadNotifications() {
+      var data = await UB.api('/api/notifications');
+      allNotifications = data.notifications || data || [];
+      if (!Array.isArray(allNotifications)) allNotifications = [];
+      renderNotifications();
+    }
+
+    // ── Render filtered list ──
+    function renderNotifications() {
+      var list = document.getElementById('notifList');
+      var empty = document.getElementById('notifEmpty');
+      list.innerHTML = '';
+
+      var filtered = allNotifications;
+      if (currentFilter !== 'all') {
+        filtered = allNotifications.filter(function(n) {
+          return n.type === currentFilter;
+        });
+      }
+
+      if (filtered.length === 0) {
+        empty.style.display = '';
+        return;
+      }
+      empty.style.display = 'none';
+
+      filtered.forEach(function(notif) {
+        var item = document.createElement('div');
+        item.className = 'notif-item' + (notif.read ? '' : ' unread');
+        item.innerHTML =
+          '<div class="notif-icon">' + getIcon(notif.type) + '</div>'
+          + '<div class="notif-content">'
+          + '<div class="notif-title">' + UB.esc(notif.title) + '</div>'
+          + '<div class="notif-body">' + UB.esc(notif.body || notif.message || '') + '</div>'
+          + '<div class="notif-time">' + UB.timeAgo(notif.created_at) + '</div>'
+          + '</div>'
+          + (!notif.read ? '<div class="notif-dot"></div>' : '');
+
+        item.addEventListener('click', function() {
+          markRead(notif, item);
+        });
+        list.appendChild(item);
+      });
+    }
+
+    // ── Mark single notification as read ──
+    async function markRead(notif, el) {
+      if (notif.read) return;
+      await UB.api('/api/notifications/' + notif.id + '/read', { method: 'POST' });
+      notif.read = true;
+      el.classList.remove('unread');
+      var dot = el.querySelector('.notif-dot');
+      if (dot) dot.remove();
+      loadUnreadCount();
+    }
+
+    // ── Mark All Read ──
+    document.getElementById('btnMarkAllRead').addEventListener('click', async function() {
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Marking...';
+      await UB.api('/api/notifications/read-all', { method: 'POST' });
+      btn.disabled = false;
+      btn.textContent = 'Mark All Read';
+      allNotifications.forEach(function(n) { n.read = true; });
+      renderNotifications();
+      loadUnreadCount();
+      UB.toast('All notifications marked as read', 'success');
+    });
+
+    // ── Filter Tabs ──
+    var tabs = document.querySelectorAll('#filterTabs .tab');
+    tabs.forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        tabs.forEach(function(t) { t.classList.remove('active'); });
+        tab.classList.add('active');
+        currentFilter = tab.getAttribute('data-type');
+        renderNotifications();
+      });
+    });
+
+    // ── Init ──
+    async function init() {
+      var flags = await UB.init('/town/notifications', 'Notifications');
+      if (!UB.hasFlag(flags, 'ui-base.notifications')) {
+        return UB.showDisabled('Notifications');
+      }
+      document.getElementById('notifLoading').style.display = 'none';
+      document.getElementById('notifRoot').style.display = '';
+      loadUnreadCount();
+      loadNotifications();
+    }
+    init();
+  })();
+  </script>
+</body>
+</html>

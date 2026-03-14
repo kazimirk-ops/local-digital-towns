@@ -186,10 +186,24 @@
         +   '<button class="tab-btn active" data-tab="listings">My Listings</button>'
         +   '<button class="tab-btn" data-tab="sweep">Sweep Balance</button>'
         +   '<button class="tab-btn" data-tab="settings">Settings</button>'
+        +   '<button class="tab-btn" data-tab="trust">Trust Status</button>'
+        +   '<button class="tab-btn" data-tab="referral">Referral Code</button>'
         + '</div>'
         + '<div class="tab-panel active" id="panel-listings"><div class="spinner"></div></div>'
         + '<div class="tab-panel" id="panel-sweep"><div class="spinner"></div></div>'
-        + '<div class="tab-panel" id="panel-settings"></div>';
+        + '<div class="tab-panel" id="panel-settings"></div>'
+        + '<div class="tab-panel" id="panel-trust">'
+        +   '<div class="card" style="max-width:480px;padding:24px;">'
+        +     '<h3 class="section-title">Trust Status</h3>'
+        +     '<p><a href="/town/trust" style="color:var(--accent);text-decoration:none;font-weight:600;">View your trust verification status</a></p>'
+        +   '</div>'
+        + '</div>'
+        + '<div class="tab-panel" id="panel-referral">'
+        +   '<div class="card" style="max-width:480px;padding:24px;">'
+        +     '<h3 class="section-title">Referral Code</h3>'
+        +     '<p><a href="/town/referrals" style="color:var(--accent);text-decoration:none;font-weight:600;">Manage your referral code and earnings</a></p>'
+        +   '</div>'
+        + '</div>';
 
       // Tab switching
       document.getElementById('tabBar').addEventListener('click', function(e) {

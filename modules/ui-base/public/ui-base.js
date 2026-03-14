@@ -79,6 +79,13 @@
     { flag: 'ui-base.gigs', icon: '\u{1F527}', label: 'Gigs', href: '/town/gigs' },
     { flag: 'ui-base.leaderboard', icon: '\u{1F3C6}', label: 'Leaderboard', href: '/town/leaderboard' },
     { flag: 'ui-base.live', icon: '\u{1F4FA}', label: 'Live Shows', href: '/town/live' },
+    { flag: 'ui-base.orders', icon: '\u{1F4E6}', label: 'Orders', href: '/town/orders' },
+    { flag: 'ui-base.payments', icon: '\u{1F4B3}', label: 'Payments', href: '/town/payments' },
+    { flag: 'ui-base.trust', icon: '\u{1F6E1}', label: 'Verify', href: '/town/trust' },
+    { flag: 'ui-base.notifications', icon: '\u{1F514}', label: 'Notifications', href: '/town/notifications' },
+    { flag: 'ui-base.referrals', icon: '\u{1F517}', label: 'Referrals', href: '/town/referrals' },
+    { flag: 'ui-base.shipping', icon: '\u{1F69A}', label: 'Shipping', href: '/town/shipping' },
+    { flag: 'ui-base.disputes', icon: '\u{2696}', label: 'Disputes', href: '/town/disputes' },
     { flag: null, icon: '\u{1F464}', label: 'Profile', href: '/town/profile' }
   ];
 

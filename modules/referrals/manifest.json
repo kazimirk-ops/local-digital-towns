@@ -7,6 +7,7 @@
     { "id": "referrals.codes", "name": "Referral Codes", "default": true },
     { "id": "referrals.commissions", "name": "Commissions", "default": true },
     { "id": "referrals.credits", "name": "Credits", "default": true },
-    { "id": "referrals.cashout", "name": "Cashout", "default": false }
+    { "id": "referrals.cashout", "name": "Cashout", "default": false },
+    { "id": "ui-base.referrals", "name": "Referrals UI", "description": "Referral code + earnings page", "default": true, "frontend": true }
   ]
 }

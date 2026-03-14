@@ -35,6 +35,13 @@
       "name": "Channel Requests",
       "description": "User channel creation requests",
       "default": true
+    },
+    {
+      "id": "ui-base.channels",
+      "name": "Channels UI",
+      "description": "Channels + DMs page",
+      "default": true,
+      "frontend": true
     }
   ]
 }
