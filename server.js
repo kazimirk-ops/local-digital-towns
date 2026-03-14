@@ -411,6 +411,11 @@ app.use(function(req, res, next) {
   if (req.path.startsWith('/api/admin/trust-events') || req.path.startsWith('/api/admin/moderation-actions')) return next();
   if (req.path.startsWith('/api/reports') || req.path.startsWith('/api/admin/reports')) return next();
   if (req.path.startsWith('/api/admin/word-filters') || req.path.startsWith('/api/admin/moderation-log')) return next();
+  // Allow module registry + email capture POST endpoints through
+  if (req.path.startsWith('/api/admin/modules')) return next();
+  if (req.path.startsWith('/api/communities/list')) return next();
+  if (req.path.startsWith('/api/email-capture')) return next();
+  if (req.path.startsWith('/api/admin/feature-flags')) return next();
   return res.status(403).json({ error: 'This site is in view-only mode.' });
 });
 
