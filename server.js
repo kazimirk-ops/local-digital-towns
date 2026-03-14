@@ -2112,21 +2112,18 @@ app.post("/api/admin/modules/:id/install", async (req, res) => {
     const nodeFs = require("fs");
     if (!nodeFs.existsSync(manifestPath)) return res.status(404).json({ error: "Module not found" });
     const manifest = JSON.parse(nodeFs.readFileSync(manifestPath, "utf8"));
-    // Load current flags
-    const comm = await db.one("SELECT feature_flags FROM communities WHERE slug = $1", [slug]);
-    if (!comm) return res.status(404).json({ error: "Community not found" });
-    const flags = typeof comm.feature_flags === "string" ? JSON.parse(comm.feature_flags || "{}") : (comm.feature_flags || {});
-    // Enable module + all sub-modules
-    var enabled = [moduleId];
+    // Build flags object — module + all sub-modules = true
+    const flags = {};
     flags[moduleId] = true;
     (manifest.submodules || []).forEach(function(sub) {
       var subId = typeof sub === "string" ? sub : sub.id;
-      if (subId) { flags[subId] = true; enabled.push(subId); }
+      if (subId) flags[subId] = true;
     });
+    // Merge into community flags (|| preserves existing flags)
     await db.query("UPDATE communities SET feature_flags = feature_flags || $1::jsonb WHERE slug = $2", [JSON.stringify(flags), slug]);
     // Record in migrations
     await db.query("INSERT INTO migrations (module_name, applied_at) VALUES ($1, now()) ON CONFLICT (module_name) DO NOTHING", [moduleId]);
-    res.json({ ok: true, flags_enabled: enabled });
+    res.json({ ok: true, flags_enabled: Object.keys(flags) });
   } catch (err) {
     res.status(500).json({ error: "Install failed", detail: err.message });
   }
@@ -2142,17 +2139,16 @@ app.post("/api/admin/modules/:id/uninstall", async (req, res) => {
     const nodeFs = require("fs");
     if (!nodeFs.existsSync(manifestPath)) return res.status(404).json({ error: "Module not found" });
     const manifest = JSON.parse(nodeFs.readFileSync(manifestPath, "utf8"));
-    const comm = await db.one("SELECT feature_flags FROM communities WHERE slug = $1", [slug]);
-    if (!comm) return res.status(404).json({ error: "Community not found" });
-    const flags = typeof comm.feature_flags === "string" ? JSON.parse(comm.feature_flags || "{}") : (comm.feature_flags || {});
-    var disabled = [moduleId];
+    // Build flags object — module + all sub-modules = false
+    const flags = {};
     flags[moduleId] = false;
     (manifest.submodules || []).forEach(function(sub) {
       var subId = typeof sub === "string" ? sub : sub.id;
-      if (subId) { flags[subId] = false; disabled.push(subId); }
+      if (subId) flags[subId] = false;
     });
+    // Merge false flags into community (|| preserves other flags)
     await db.query("UPDATE communities SET feature_flags = feature_flags || $1::jsonb WHERE slug = $2", [JSON.stringify(flags), slug]);
-    res.json({ ok: true, flags_disabled: disabled });
+    res.json({ ok: true, flags_disabled: Object.keys(flags) });
   } catch (err) {
     res.status(500).json({ error: "Uninstall failed", detail: err.message });
   }
@@ -2212,7 +2208,7 @@ app.put("/api/admin/users/:id/suspend", async (req, res) => {
 // GET /api/communities/list — public community list (for admin-modules page behind staging gate)
 app.get("/api/communities/list", async (req, res) => {
   try {
-    const result = await db.query("SELECT slug, name, feature_flags FROM communities ORDER BY name");
+    const result = await db.query("SELECT id, slug, name, feature_flags FROM communities ORDER BY name");
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
