@@ -2092,6 +2092,63 @@ app.get("/api/modules", async (req, res) => {
   }
 });
 
+// POST /api/admin/modules/:id/install — enable module + all sub-module flags
+app.post("/api/admin/modules/:id/install", async (req, res) => {
+  const admin = await requireAdmin(req, res); if (!admin) return;
+  try {
+    const moduleId = req.params.id;
+    const slug = (req.body && req.body.community_slug) || "digitaltowns";
+    // Read manifest to get sub-module IDs
+    const manifestPath = path.join(__dirname, "modules", moduleId, "manifest.json");
+    const nodeFs = require("fs");
+    if (!nodeFs.existsSync(manifestPath)) return res.status(404).json({ error: "Module not found" });
+    const manifest = JSON.parse(nodeFs.readFileSync(manifestPath, "utf8"));
+    // Load current flags
+    const comm = await db.one("SELECT feature_flags FROM communities WHERE slug = $1", [slug]);
+    if (!comm) return res.status(404).json({ error: "Community not found" });
+    const flags = typeof comm.feature_flags === "string" ? JSON.parse(comm.feature_flags || "{}") : (comm.feature_flags || {});
+    // Enable module + all sub-modules
+    var enabled = [moduleId];
+    flags[moduleId] = true;
+    (manifest.submodules || []).forEach(function(sub) {
+      var subId = typeof sub === "string" ? sub : sub.id;
+      if (subId) { flags[subId] = true; enabled.push(subId); }
+    });
+    await db.query("UPDATE communities SET feature_flags = $1 WHERE slug = $2", [JSON.stringify(flags), slug]);
+    // Record in migrations
+    await db.query("INSERT INTO migrations (module_name, applied_at) VALUES ($1, now()) ON CONFLICT (module_name) DO NOTHING", [moduleId]);
+    res.json({ ok: true, flags_enabled: enabled });
+  } catch (err) {
+    res.status(500).json({ error: "Install failed", detail: err.message });
+  }
+});
+
+// POST /api/admin/modules/:id/uninstall — disable module + all sub-module flags
+app.post("/api/admin/modules/:id/uninstall", async (req, res) => {
+  const admin = await requireAdmin(req, res); if (!admin) return;
+  try {
+    const moduleId = req.params.id;
+    const slug = (req.body && req.body.community_slug) || "digitaltowns";
+    const manifestPath = path.join(__dirname, "modules", moduleId, "manifest.json");
+    const nodeFs = require("fs");
+    if (!nodeFs.existsSync(manifestPath)) return res.status(404).json({ error: "Module not found" });
+    const manifest = JSON.parse(nodeFs.readFileSync(manifestPath, "utf8"));
+    const comm = await db.one("SELECT feature_flags FROM communities WHERE slug = $1", [slug]);
+    if (!comm) return res.status(404).json({ error: "Community not found" });
+    const flags = typeof comm.feature_flags === "string" ? JSON.parse(comm.feature_flags || "{}") : (comm.feature_flags || {});
+    var disabled = [moduleId];
+    flags[moduleId] = false;
+    (manifest.submodules || []).forEach(function(sub) {
+      var subId = typeof sub === "string" ? sub : sub.id;
+      if (subId) { flags[subId] = false; disabled.push(subId); }
+    });
+    await db.query("UPDATE communities SET feature_flags = $1 WHERE slug = $2", [JSON.stringify(flags), slug]);
+    res.json({ ok: true, flags_disabled: disabled });
+  } catch (err) {
+    res.status(500).json({ error: "Uninstall failed", detail: err.message });
+  }
+});
+
 // ─── Consolidated Admin Shell ───
 app.get("/admin/console", async (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin", "index.html"));

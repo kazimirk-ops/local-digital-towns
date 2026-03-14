@@ -563,18 +563,11 @@
       var mod = modules.find(function(m) { return m.id === id; });
       if (!mod) return;
 
-      var flags = {};
-      flags[id] = true;
-      // Also enable frontend sub-modules
-      (mod.submodules || []).forEach(function(sub) {
-        if (sub.frontend) flags[sub.id] = true;
-      });
-
-      fetch('/api/admin/feature-flags', {
-        method: 'PUT',
+      fetch('/api/admin/modules/' + encodeURIComponent(id) + '/install', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ slug: selectedSlug, flags: flags })
+        body: JSON.stringify({ community_slug: selectedSlug })
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
@@ -582,7 +575,7 @@
           showToast(data.error, 'error');
           return;
         }
-        showToast(mod.name + ' installed', 'success');
+        showToast(mod.name + ' installed (' + (data.flags_enabled || []).length + ' flags enabled)', 'success');
         loadCommunities();
       })
       .catch(function() { showToast('Install failed', 'error'); });
@@ -594,18 +587,11 @@
       var mod = modules.find(function(m) { return m.id === id; });
       if (!mod) return;
 
-      var flags = {};
-      flags[id] = false;
-      // Also disable frontend sub-modules
-      (mod.submodules || []).forEach(function(sub) {
-        if (sub.frontend) flags[sub.id] = false;
-      });
-
-      fetch('/api/admin/feature-flags', {
-        method: 'PUT',
+      fetch('/api/admin/modules/' + encodeURIComponent(id) + '/uninstall', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ slug: selectedSlug, flags: flags })
+        body: JSON.stringify({ community_slug: selectedSlug })
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
