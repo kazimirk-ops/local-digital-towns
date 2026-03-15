@@ -66,43 +66,95 @@
     }
   };
 
-  // ── Nav Builder ──
-  var NAV_ITEMS = [
-    { flag: null, icon: '\u{1F3E0}', label: 'Home', href: '/town' },
-    { flag: 'ui-base.marketplace', icon: '\u{1F6D2}', label: 'Marketplace', href: '/town/marketplace' },
-    { flag: 'ui-base.auctions', icon: '\u{1F528}', label: 'Auctions', href: '/town/auctions' },
-    { flag: 'ui-base.channels', icon: '\u{1F4AC}', label: 'Channels', href: '/town/channels' },
-    { flag: 'ui-base.bst', icon: '\u{1F3EA}', label: 'BST Groups', href: '/town/bst' },
-    { flag: 'ui-base.sweep', icon: '\u{1F3B0}', label: 'Sweepstakes', href: '/town/sweep' },
-    { flag: 'ui-base.pulse', icon: '\u{1F4E1}', label: 'Pulse', href: '/town/pulse' },
-    { flag: 'ui-base.businesses', icon: '\u{1F4CD}', label: 'Businesses', href: '/town/businesses' },
-    { flag: 'ui-base.gigs', icon: '\u{1F527}', label: 'Gigs', href: '/town/gigs' },
-    { flag: 'ui-base.leaderboard', icon: '\u{1F3C6}', label: 'Leaderboard', href: '/town/leaderboard' },
-    { flag: 'ui-base.live', icon: '\u{1F4FA}', label: 'Live Shows', href: '/town/live' },
-    { flag: 'ui-base.orders', icon: '\u{1F4E6}', label: 'Orders', href: '/town/orders' },
-    { flag: 'ui-base.payments', icon: '\u{1F4B3}', label: 'Payments', href: '/town/payments' },
-    { flag: 'ui-base.trust', icon: '\u{1F6E1}', label: 'Verify', href: '/town/trust' },
-    { flag: 'ui-base.notifications', icon: '\u{1F514}', label: 'Notifications', href: '/town/notifications' },
-    { flag: 'ui-base.referrals', icon: '\u{1F517}', label: 'Referrals', href: '/town/referrals' },
-    { flag: 'ui-base.shipping', icon: '\u{1F69A}', label: 'Shipping', href: '/town/shipping' },
-    { flag: 'ui-base.disputes', icon: '\u{2696}', label: 'Disputes', href: '/town/disputes' },
-    { flag: null, icon: '\u{1F464}', label: 'Profile', href: '/town/profile' }
+  // ── Client-side tier check (mirrors lib/module-access.js) ──
+  function canAccess(flags, moduleId, userTier) {
+    if (!flags[moduleId]) return false;
+    var minTier = flags[moduleId + '.tier'];
+    if (minTier === undefined || minTier === null) minTier = 0;
+    return userTier >= minTier;
+  }
+
+  // ── Nav Categories ──
+  var NAV_CATEGORIES = [
+    { id: 'community', icon: '\u{1F3D8}', label: 'Community', items: [
+      { flag: 'pulse',      label: 'Pulse',           href: '/town/pulse' },
+      { flag: 'channels',   label: 'Channels',        href: '/town/channels' },
+      { flag: 'bst-groups', label: 'BST Groups',      href: '/town/bst' },
+      { flag: 'businesses', label: 'Businesses',      href: '/town/businesses' },
+      { flag: 'gigs',       label: 'Gigs & Services', href: '/town/gigs' }
+    ]},
+    { id: 'commerce', icon: '\u{1F6D2}', label: 'Commerce', items: [
+      { flag: 'listings',   label: 'Marketplace',  href: '/town/marketplace' },
+      { flag: 'listings',   label: 'Auctions',     href: '/town/auctions' },
+      { flag: 'orders',     label: 'Orders',       href: '/town/orders' },
+      { flag: 'payments',   label: 'Payments',     href: '/town/payments' },
+      { flag: 'shipping',   label: 'Shipping',     href: '/town/shipping' },
+      { flag: 'live-shows', label: 'Live Shows',   href: '/town/live' }
+    ]},
+    { id: 'earn', icon: '\u{26A1}', label: 'Earn & Play', items: [
+      { flag: 'sweepstakes',  label: 'Sweepstakes',  href: '/town/sweep' },
+      { flag: 'achievements', label: 'Leaderboard',  href: '/town/leaderboard' },
+      { flag: 'achievements', label: 'Achievements', href: '/town/achievements' },
+      { flag: 'referrals',    label: 'Referrals',    href: '/town/referrals' }
+    ]},
+    { id: 'account', icon: '\u{1F464}', label: 'Account', items: [
+      { flag: null,            label: 'Profile',       href: '/town/profile' },
+      { flag: 'trust',         label: 'Trust',         href: '/town/trust' },
+      { flag: 'notifications', label: 'Notifications', href: '/town/notifications' },
+      { flag: 'disputes',      label: 'Disputes',      href: '/town/disputes' }
+    ]}
   ];
 
   UB.buildNav = function(flags, currentPage) {
     var sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
-    var html = '<div class="sidebar-logo">Digital Towns</div><nav class="nav-section">';
-    NAV_ITEMS.forEach(function(item) {
-      if (item.flag && !UB.hasFlag(flags, item.flag)) return;
-      var active = currentPage === item.href ? ' active' : '';
-      html += '<a class="nav-item' + active + '" href="' + item.href + '">'
-        + '<span class="nav-icon">' + item.icon + '</span>'
-        + '<span>' + item.label + '</span></a>';
+    var userTier = (UB.currentUser && UB.currentUser.trust_tier) || 0;
+    var isLoggedIn = !!UB.currentUser;
+    var currentPath = currentPage || window.location.pathname;
+
+    var html = '<div class="sidebar-logo">Digital Towns</div>';
+    // Home link
+    var homeActive = currentPath === '/town' ? ' active' : '';
+    html += '<nav class="nav-section">';
+    html += '<a class="nav-item nav-home' + homeActive + '" href="/town">'
+      + '<span class="nav-icon">\u{1F3E0}</span><span>Home</span></a>';
+
+    NAV_CATEGORIES.forEach(function(cat) {
+      // Filter visible items
+      var visibleItems = cat.items.filter(function(item) {
+        if (item.flag === null) return isLoggedIn;
+        return canAccess(flags, item.flag, userTier);
+      });
+      if (!visibleItems.length) return;
+
+      // Check if any item in this category is active
+      var catHasActive = visibleItems.some(function(item) {
+        return currentPath === item.href;
+      });
+
+      var collapsed = catHasActive ? '' : '';
+      var catId = 'cat-' + cat.id;
+
+      html += '<div class="nav-category" id="' + catId + '">';
+      html += '<div class="nav-category-header" onclick="UB.toggleCat(\'' + catId + '\')">';
+      html += '<span class="cat-icon">' + cat.icon + '</span>';
+      html += '<span>' + cat.label + '</span>';
+      html += '<span class="cat-chevron">\u25BE</span>';
+      html += '</div>';
+      html += '<div class="nav-category-items">';
+
+      visibleItems.forEach(function(item) {
+        var active = currentPath === item.href ? ' active' : '';
+        html += '<a class="nav-item' + active + '" href="' + item.href + '">'
+          + '<span>' + item.label + '</span></a>';
+      });
+
+      html += '</div></div>';
     });
-    // Logout at bottom
+
+    // Logout / Login at bottom
     html += '</nav><div style="margin-top:auto;padding:12px 0;border-top:1px solid var(--border);">';
-    if (UB.currentUser) {
+    if (isLoggedIn) {
       html += '<a class="nav-item" href="#" onclick="UB.logout();return false;">'
         + '<span class="nav-icon">\u{1F6AA}</span><span>Logout</span></a>';
     } else {
@@ -111,6 +163,17 @@
     }
     html += '</div>';
     sidebar.innerHTML = html;
+  };
+
+  UB.toggleCat = function(catId) {
+    var cat = document.getElementById(catId);
+    if (!cat) return;
+    // Don't collapse if category has active item
+    var items = cat.querySelector('.nav-category-items');
+    if (items && items.querySelector('.nav-item.active')) return;
+    var header = cat.querySelector('.nav-category-header');
+    if (header) header.classList.toggle('collapsed');
+    if (items) items.classList.toggle('collapsed');
   };
 
   // ── Topbar ──
