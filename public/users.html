@@ -20,31 +20,41 @@
     .main { margin-left: 220px; flex: 1; padding: 40px; }
     .page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 6px; }
     .page-title { font-size: 36px; font-weight: 700; color: #06b6d4; letter-spacing: -1px; }
+    .count-badge { font-size: 14px; background: rgba(6,182,212,0.15); color: #06b6d4; padding: 4px 12px; border-radius: 12px; font-weight: 700; margin-left: 12px; }
     .page-subtitle { font-size: 16px; color: #64748b; margin-bottom: 36px; }
-    .search-input { padding: 10px 14px; background: #0f1623; border: 1px solid #1e293b; border-radius: 8px; color: #e2e8f0; font-size: 14px; font-family: inherit; width: 260px; }
+    .search-input { padding: 10px 14px; background: #0f1623; border: 1px solid #1e293b; border-radius: 8px; color: #e2e8f0; font-size: 14px; font-family: inherit; width: 280px; }
     .search-input:focus { outline: none; border-color: #06b6d4; }
 
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 36px; }
-    .stat-card { background: #0f1623; border: 1px solid #1e293b; border-radius: 12px; padding: 24px 20px; text-align: center; }
-    .stat-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
-    .stat-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 36px; }
+    .stat-card { background: #0f1623; border: 1px solid #1e293b; border-radius: 12px; padding: 20px 16px; text-align: center; }
+    .stat-value { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+    .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
     .stat-value.c1 { color: #06b6d4; }
     .stat-value.c2 { color: #10b981; }
     .stat-value.c3 { color: #a855f7; }
     .stat-value.c4 { color: #f59e0b; }
+    .stat-value.c5 { color: #f43f5e; }
 
     .filters-row { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
     .filter-select { padding: 8px 12px; background: #0f1623; border: 1px solid #1e293b; border-radius: 6px; color: #e2e8f0; font-size: 13px; font-family: inherit; cursor: pointer; }
     .filter-select:focus { outline: none; border-color: #06b6d4; }
     .filter-label { font-size: 12px; color: #64748b; font-weight: 600; }
+    .filter-btn { padding: 6px 14px; border: 1px solid #1e293b; background: #0f1623; border-radius: 6px; color: #94a3b8; font-size: 13px; font-family: inherit; cursor: pointer; transition: all 0.15s; }
+    .filter-btn:hover { border-color: #06b6d4; color: #e2e8f0; }
+    .filter-btn.active { background: rgba(6,182,212,0.15); border-color: #06b6d4; color: #06b6d4; }
 
     .table-wrap { background: #0f1623; border: 1px solid #1e293b; border-radius: 12px; overflow: hidden; }
     table { width: 100%; border-collapse: collapse; }
     th { text-align: left; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 14px; border-bottom: 1px solid #1e293b; background: #0c1219; }
     td { padding: 10px 14px; border-bottom: 1px solid #0f172a; font-size: 13px; vertical-align: middle; }
-    tr:hover td { background: rgba(30,41,59,0.4); }
-    .user-email { color: #cbd5e1; }
-    .user-name { color: #94a3b8; }
+    tr.user-row { cursor: pointer; transition: background 0.1s; }
+    tr.user-row:hover td { background: rgba(30,41,59,0.4); }
+
+    .avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #06b6d4; background: #1e293b; flex-shrink: 0; overflow: hidden; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .user-cell { display: flex; align-items: center; gap: 10px; }
+    .user-name { font-weight: 600; color: #e2e8f0; font-size: 13px; }
+    .user-email { color: #64748b; font-size: 12px; }
 
     .tier-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
     .tier-0 { background: #1e293b; color: #64748b; }
@@ -52,33 +62,55 @@
     .tier-2 { background: #2e1065; color: #c084fc; }
     .tier-3 { background: #431407; color: #fb923c; }
     .tier-4 { background: #064e3b; color: #34d399; }
-    .tier-5 { background: #422006; color: #fbbf24; }
 
-    .action-select { padding: 4px 8px; background: #070b10; border: 1px solid #1e293b; border-radius: 4px; color: #e2e8f0; font-size: 11px; font-family: inherit; cursor: pointer; }
-    .action-select:focus { outline: none; border-color: #06b6d4; }
-    .btn-sm { padding: 4px 10px; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.15s; }
-    .btn-sm:hover { opacity: 0.85; }
-    .btn-sm:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-red { background: rgba(239,68,68,0.15); color: #ef4444; }
-    .btn-green { background: rgba(16,185,129,0.15); color: #10b981; }
+    .tag-pill { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; margin: 1px 2px; background: rgba(6,182,212,0.12); color: #67e8f9; }
+    .tag-pill.behavioral { background: rgba(168,85,247,0.12); color: #c084fc; }
+    .tag-pill.interest { background: rgba(245,158,11,0.12); color: #fbbf24; }
+    .tag-pill.more { background: #1e293b; color: #94a3b8; cursor: default; }
+
+    .platform-badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin: 1px 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .platform-badge.plant-purge { background: rgba(16,185,129,0.15); color: #10b981; }
+    .platform-badge.treasurecoast { background: rgba(6,182,212,0.15); color: #06b6d4; }
+    .platform-badge.digitaltowns { background: rgba(168,85,247,0.15); color: #a855f7; }
+    .platform-badge.default { background: rgba(100,116,139,0.15); color: #94a3b8; }
+    .stripe-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; margin-left: 4px; vertical-align: middle; }
+
+    /* Detail panel */
+    .detail-row td { padding: 0; background: #0a0e14; }
+    .detail-panel { padding: 20px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .detail-section { background: #0f1623; border: 1px solid #1e293b; border-radius: 8px; padding: 16px; }
+    .detail-section h4 { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .detail-row-item { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; border-bottom: 1px solid #0f172a; }
+    .detail-row-item:last-child { border-bottom: none; }
+    .detail-label { color: #64748b; }
+    .detail-value { color: #e2e8f0; font-weight: 500; text-align: right; max-width: 60%; word-break: break-all; }
+    .detail-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+    .detail-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(6,182,212,0.12); color: #67e8f9; }
+    .detail-tag.behavioral { background: rgba(168,85,247,0.12); color: #c084fc; }
+    .detail-tag.interest { background: rgba(245,158,11,0.12); color: #fbbf24; }
+    .detail-tag .remove-tag { cursor: pointer; opacity: 0.6; margin-left: 2px; font-size: 13px; }
+    .detail-tag .remove-tag:hover { opacity: 1; }
+    .add-tag-row { display: flex; gap: 8px; margin-top: 8px; }
+    .add-tag-select { flex: 1; padding: 6px 10px; background: #070b10; border: 1px solid #1e293b; border-radius: 6px; color: #e2e8f0; font-size: 12px; font-family: inherit; }
+    .btn-add { padding: 6px 14px; border: none; border-radius: 6px; background: rgba(6,182,212,0.15); color: #06b6d4; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .btn-add:hover { background: rgba(6,182,212,0.25); }
+    .tier-select-detail { padding: 6px 10px; background: #070b10; border: 1px solid #1e293b; border-radius: 6px; color: #e2e8f0; font-size: 12px; font-family: inherit; }
+    .platform-detail { padding: 8px; border: 1px solid #1e293b; border-radius: 6px; margin-bottom: 6px; background: #070b10; }
+    .platform-detail-name { font-weight: 700; font-size: 12px; margin-bottom: 4px; }
 
     .pagination { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 20px; }
     .page-btn { padding: 8px 16px; background: #0f1623; border: 1px solid #1e293b; border-radius: 6px; color: #94a3b8; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background 0.15s; }
     .page-btn:hover { background: #1e293b; color: #e2e8f0; }
     .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
     .page-info { font-size: 13px; color: #64748b; }
-
-    .msg { font-size: 13px; margin-top: 10px; text-align: center; }
-    .msg.ok { color: #10b981; }
-    .msg.err { color: #ef4444; }
     .loading-text { color: #475569; font-size: 13px; padding: 20px; text-align: center; }
-    .suspended-row td { opacity: 0.5; }
 
-    @media (max-width: 768px) {
+    @media (max-width: 900px) {
       .sidebar { display: none; }
       .main { margin-left: 0; padding: 20px; }
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
       .search-input { width: 100%; }
+      .detail-panel { grid-template-columns: 1fr; }
       .hide-mobile { display: none; }
     }
   </style>
@@ -97,30 +129,48 @@
 
   <div class="main">
     <div class="page-header">
-      <div class="page-title">Users</div>
+      <div style="display:flex;align-items:center;">
+        <div class="page-title">Users</div>
+        <span class="count-badge" id="totalBadge">-</span>
+      </div>
       <input type="text" class="search-input" id="searchInput" placeholder="Search by email or name..." oninput="applyFilters()">
     </div>
-    <div class="page-subtitle">User management and trust tiers</div>
+    <div class="page-subtitle">User management, tags, trust tiers, and platform connections</div>
 
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-value c1" id="statTotal">-</div><div class="stat-label">Total Users</div></div>
-      <div class="stat-card"><div class="stat-value c2" id="statActive">-</div><div class="stat-label">Active (7d)</div></div>
-      <div class="stat-card"><div class="stat-value c3" id="statVerified">-</div><div class="stat-label">Verified (Tier 1+)</div></div>
-      <div class="stat-card"><div class="stat-value c4" id="statAdmins">-</div><div class="stat-label">Admins</div></div>
+      <div class="stat-card"><div class="stat-value c2" id="statPlatforms">-</div><div class="stat-label">Platform Linked</div></div>
+      <div class="stat-card"><div class="stat-value c3" id="statTagged">-</div><div class="stat-label">Has Tags</div></div>
+      <div class="stat-card"><div class="stat-value c4" id="statStripe">-</div><div class="stat-label">Stripe Connected</div></div>
+      <div class="stat-card"><div class="stat-value c5" id="statAdmins">-</div><div class="stat-label">Admins</div></div>
     </div>
 
     <div class="filters-row">
-      <span class="filter-label">Trust Tier:</span>
+      <span class="filter-label">Platform:</span>
+      <button class="filter-btn active" onclick="setPlatformFilter('all', this)">All</button>
+      <button class="filter-btn" onclick="setPlatformFilter('plant-purge', this)">Plant Purge</button>
+      <button class="filter-btn" onclick="setPlatformFilter('treasurecoast', this)">TreasureCoast</button>
+      <button class="filter-btn" onclick="setPlatformFilter('digitaltowns', this)">DT Only</button>
+
+      <span class="filter-label" style="margin-left:16px;">Trust:</span>
       <select class="filter-select" id="filterTier" onchange="applyFilters()">
-        <option value="all">All</option>
-        <option value="0">0 — Visitor</option>
-        <option value="1">1 — Verified</option>
-        <option value="2">2 — Phone</option>
-        <option value="3">3 — Identity</option>
-        <option value="4">4 — Local</option>
-        <option value="5">5 — Admin</option>
+        <option value="all">All Tiers</option>
+        <option value="0">T0 — Guest</option>
+        <option value="1">T1 — Basic</option>
+        <option value="2">T2 — Engaged</option>
+        <option value="3">T3 — Verified</option>
+        <option value="4">T4 — Admin</option>
       </select>
-      <span class="filter-label">Sort:</span>
+
+      <span class="filter-label" style="margin-left:16px;">More:</span>
+      <select class="filter-select" id="filterMore" onchange="applyFilters()">
+        <option value="all">No filter</option>
+        <option value="has-tags">Has Tags</option>
+        <option value="stripe">Stripe Connected</option>
+        <option value="no-platform">DT Only (no platform)</option>
+      </select>
+
+      <span class="filter-label" style="margin-left:16px;">Sort:</span>
       <select class="filter-select" id="filterSort" onchange="applyFilters()">
         <option value="newest">Newest</option>
         <option value="active">Last Active</option>
@@ -131,7 +181,15 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>#</th><th>Email</th><th>Display Name</th><th>Trust Tier</th><th class="hide-mobile">Joined</th><th class="hide-mobile">Last Active</th><th>Actions</th></tr>
+          <tr>
+            <th style="width:40px;"></th>
+            <th>User</th>
+            <th>Trust</th>
+            <th class="hide-mobile">Tags</th>
+            <th class="hide-mobile">Platforms</th>
+            <th class="hide-mobile">Joined</th>
+            <th>Actions</th>
+          </tr>
         </thead>
         <tbody id="userRows"></tbody>
       </table>
@@ -148,14 +206,16 @@
 <script>
 (function() {
   var allUsers = [];
+  var allTags = [];
   var filteredUsers = [];
   var page = 0;
   var perPage = 25;
+  var expandedUserId = null;
+  var platformFilter = 'all';
 
-  var TIER_LABELS = { 0: 'Visitor', 1: 'Verified', 2: 'Phone', 3: 'Identity', 4: 'Local', 5: 'Admin' };
+  var TIER_NAMES = { 0: 'Guest', 1: 'Basic', 2: 'Engaged', 3: 'Verified', 4: 'Admin' };
 
   function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
   function fmtDate(d) {
     if (!d) return '-';
     var dt = new Date(d);
@@ -166,38 +226,63 @@
   function api(url, opts) {
     opts = opts || {};
     opts.credentials = 'include';
-    if (opts.body) opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+    if (opts.body && typeof opts.body === 'string') {
+      opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+    }
     return fetch(url, opts).then(function(r) { return r.json(); });
   }
 
-  // Load users
-  api('/api/admin/users').then(function(data) {
-    allUsers = Array.isArray(data) ? data : (data.users || []);
+  function getTier(u) {
+    var t = u.trust_tier_num;
+    if (t === undefined || t === null) t = u.trust_tier;
+    if (typeof t === 'string') t = parseInt(t, 10) || 0;
+    if (typeof t !== 'number' || isNaN(t)) t = 0;
+    return t;
+  }
+
+  function hasStripe(u) {
+    var platforms = u.platforms || [];
+    return platforms.some(function(p) { return p.stripe_connected; });
+  }
+
+  // Load data
+  Promise.all([
+    api('/api/admin/users-full'),
+    api('/api/admin/tags')
+  ]).then(function(results) {
+    allUsers = (results[0] && results[0].users) || [];
+    allTags = (results[1] && results[1].tags) || [];
     updateStats();
     applyFilters();
     document.getElementById('userMsg').textContent = '';
   }).catch(function(e) {
-    document.getElementById('userMsg').textContent = 'Failed to load users. Admin login required.';
-    document.getElementById('userMsg').className = 'loading-text';
+    document.getElementById('userMsg').textContent = 'Failed to load users. Ensure staging cookie is set.';
   });
 
   function updateStats() {
-    var now = Date.now();
-    var sevenDays = 7 * 24 * 60 * 60 * 1000;
     document.getElementById('statTotal').textContent = allUsers.length;
-    document.getElementById('statActive').textContent = allUsers.filter(function(u) {
-      return u.last_active_at && (now - new Date(u.last_active_at).getTime()) < sevenDays;
+    document.getElementById('totalBadge').textContent = allUsers.length;
+    document.getElementById('statPlatforms').textContent = allUsers.filter(function(u) {
+      return (u.platforms || []).length > 0;
     }).length;
-    document.getElementById('statVerified').textContent = allUsers.filter(function(u) {
-      var t = u.trust_tier_num || u.trust_tier || 0;
-      return (typeof t === 'number' ? t : parseInt(t, 10) || 0) >= 1;
+    document.getElementById('statTagged').textContent = allUsers.filter(function(u) {
+      return (u.tags || []).length > 0;
     }).length;
+    document.getElementById('statStripe').textContent = allUsers.filter(hasStripe).length;
     document.getElementById('statAdmins').textContent = allUsers.filter(function(u) { return u.is_admin; }).length;
   }
+
+  window.setPlatformFilter = function(val, btn) {
+    platformFilter = val;
+    document.querySelectorAll('.filters-row .filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    applyFilters();
+  };
 
   window.applyFilters = function() {
     var search = (document.getElementById('searchInput').value || '').toLowerCase();
     var tierFilter = document.getElementById('filterTier').value;
+    var moreFilter = document.getElementById('filterMore').value;
     var sort = document.getElementById('filterSort').value;
 
     filteredUsers = allUsers.filter(function(u) {
@@ -207,27 +292,39 @@
         if (email.indexOf(search) === -1 && name.indexOf(search) === -1) return false;
       }
       if (tierFilter !== 'all') {
-        var t = u.trust_tier_num || u.trust_tier || 0;
-        if (typeof t !== 'number') t = parseInt(t, 10) || 0;
-        if (t !== parseInt(tierFilter, 10)) return false;
+        if (getTier(u) !== parseInt(tierFilter, 10)) return false;
       }
+      if (platformFilter !== 'all') {
+        var platforms = u.platforms || [];
+        if (platformFilter === 'digitaltowns') {
+          if (platforms.length > 0) return false;
+        } else {
+          if (!platforms.some(function(p) { return p.platform_slug === platformFilter; })) return false;
+        }
+      }
+      if (moreFilter === 'has-tags' && (u.tags || []).length === 0) return false;
+      if (moreFilter === 'stripe' && !hasStripe(u)) return false;
+      if (moreFilter === 'no-platform' && (u.platforms || []).length > 0) return false;
       return true;
     });
 
     filteredUsers.sort(function(a, b) {
       if (sort === 'newest') return (new Date(b.created_at || 0)) - (new Date(a.created_at || 0));
       if (sort === 'active') return (new Date(b.last_active_at || 0)) - (new Date(a.last_active_at || 0));
-      if (sort === 'trust') {
-        var ta = a.trust_tier_num || a.trust_tier || 0;
-        var tb = b.trust_tier_num || b.trust_tier || 0;
-        return (typeof tb === 'number' ? tb : 0) - (typeof ta === 'number' ? ta : 0);
-      }
+      if (sort === 'trust') return getTier(b) - getTier(a);
       return 0;
     });
 
     page = 0;
     renderTable();
   };
+
+  function platformBadgeClass(slug) {
+    if (slug === 'plant-purge') return 'plant-purge';
+    if (slug === 'treasurecoast') return 'treasurecoast';
+    if (slug === 'digitaltowns') return 'digitaltowns';
+    return 'default';
+  }
 
   function renderTable() {
     var start = page * perPage;
@@ -239,28 +336,52 @@
     if (!slice.length) {
       body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:24px;">No users found</td></tr>';
     } else {
-      body.innerHTML = slice.map(function(u, i) {
-        var tier = u.trust_tier_num || u.trust_tier || 0;
-        if (typeof tier !== 'number') tier = parseInt(tier, 10) || 0;
-        var tierLabel = TIER_LABELS[tier] || 'Tier ' + tier;
-        var isSuspended = !!u.suspended;
-        var rowClass = isSuspended ? ' class="suspended-row"' : '';
+      var html = '';
+      slice.forEach(function(u) {
+        var tier = getTier(u);
+        var tierLabel = TIER_NAMES[tier] || 'T' + tier;
+        var tags = u.tags || [];
+        var platforms = u.platforms || [];
+        var initial = ((u.display_name || u.email || 'U')[0] || 'U').toUpperCase();
+        var avatarHtml = u.avatar_url
+          ? '<div class="avatar"><img src="' + esc(u.avatar_url) + '" alt=""></div>'
+          : '<div class="avatar">' + initial + '</div>';
 
-        return '<tr' + rowClass + '>'
-          + '<td>' + (start + i + 1) + '</td>'
-          + '<td class="user-email">' + esc(u.email) + '</td>'
-          + '<td class="user-name">' + esc(u.display_name || '-') + '</td>'
-          + '<td><span class="tier-badge tier-' + tier + '">' + tierLabel + '</span></td>'
+        // Tags display (max 3)
+        var tagsHtml = '';
+        tags.slice(0, 3).forEach(function(t) {
+          var cls = t.type === 'behavioral' ? ' behavioral' : (t.type === 'interest' ? ' interest' : '');
+          tagsHtml += '<span class="tag-pill' + cls + '">' + esc(t.name) + '</span>';
+        });
+        if (tags.length > 3) tagsHtml += '<span class="tag-pill more">+' + (tags.length - 3) + '</span>';
+        if (!tags.length) tagsHtml = '<span style="color:#334155;font-size:11px;">none</span>';
+
+        // Platforms display
+        var platHtml = '';
+        platforms.forEach(function(p) {
+          var label = p.platform_slug === 'plant-purge' ? 'PP' : (p.platform_slug === 'treasurecoast' ? 'TC' : p.platform_slug);
+          platHtml += '<span class="platform-badge ' + platformBadgeClass(p.platform_slug) + '">' + esc(label) + '</span>';
+          if (p.stripe_connected) platHtml += '<span class="stripe-dot" title="Stripe connected"></span>';
+        });
+        if (!platforms.length) platHtml = '<span style="color:#334155;font-size:11px;">DT only</span>';
+
+        var isExpanded = expandedUserId === u.id;
+
+        html += '<tr class="user-row" onclick="toggleDetail(' + u.id + ')">'
+          + '<td>' + avatarHtml + '</td>'
+          + '<td><div class="user-cell"><div><div class="user-name">' + esc(u.display_name || '-') + '</div><div class="user-email">' + esc(u.email) + '</div></div></div></td>'
+          + '<td><span class="tier-badge tier-' + tier + '">T' + tier + ' ' + tierLabel + '</span></td>'
+          + '<td class="hide-mobile">' + tagsHtml + '</td>'
+          + '<td class="hide-mobile">' + platHtml + '</td>'
           + '<td class="hide-mobile">' + fmtDate(u.created_at) + '</td>'
-          + '<td class="hide-mobile">' + fmtDate(u.last_active_at) + '</td>'
-          + '<td style="white-space:nowrap;">'
-          + '<select class="action-select" onchange="setTier(' + u.id + ', this.value, this)" style="margin-right:4px;">'
-          + [0,1,2,3,4,5].map(function(t) { return '<option value="' + t + '"' + (t === tier ? ' selected' : '') + '>' + t + '</option>'; }).join('')
-          + '</select>'
-          + '<button class="btn-sm ' + (isSuspended ? 'btn-green' : 'btn-red') + '" onclick="toggleSuspend(' + u.id + ',' + !isSuspended + ',this)">'
-          + (isSuspended ? 'Unsuspend' : 'Suspend') + '</button>'
-          + '</td></tr>';
-      }).join('');
+          + '<td><button class="filter-btn" onclick="event.stopPropagation();toggleDetail(' + u.id + ')" style="font-size:11px;">' + (isExpanded ? 'Close' : 'View') + '</button></td>'
+          + '</tr>';
+
+        if (isExpanded) {
+          html += '<tr class="detail-row"><td colspan="7">' + renderDetailPanel(u) + '</td></tr>';
+        }
+      });
+      body.innerHTML = html;
     }
 
     document.getElementById('pageInfo').textContent = 'Page ' + (page + 1) + ' of ' + totalPages + ' (' + filteredUsers.length + ' users)';
@@ -268,39 +389,164 @@
     document.getElementById('nextBtn').disabled = end >= filteredUsers.length;
   }
 
-  window.prevPage = function() { if (page > 0) { page--; renderTable(); } };
-  window.nextPage = function() { if ((page + 1) * perPage < filteredUsers.length) { page++; renderTable(); } };
+  function renderDetailPanel(u) {
+    var tier = getTier(u);
+    var tags = u.tags || [];
+    var platforms = u.platforms || [];
 
-  window.setTier = function(userId, tier, el) {
+    // Profile section
+    var profileRows = [
+      ['ID', u.id],
+      ['Email', u.email],
+      ['Display Name', u.display_name || '-'],
+      ['Avatar URL', u.avatar_url || '-'],
+      ['Admin', u.is_admin ? 'Yes' : 'No'],
+      ['Suspended', u.suspended ? 'Yes' : 'No'],
+      ['Buyer Verified', u.is_buyer_verified ? 'Yes' : 'No'],
+      ['Seller Verified', u.is_seller_verified ? 'Yes' : 'No'],
+      ['Location Verified', u.location_verified ? 'Yes' : 'No'],
+      ['Resident Verified', u.resident_verified ? 'Yes' : 'No'],
+      ['Ghost %', u.ghosting_percent || '0'],
+      ['Ghost Reports', u.ghost_report_count || '0'],
+      ['Orders as Buyer', u.total_orders_as_buyer || '0'],
+      ['Created', fmtDate(u.created_at)],
+      ['Last Active', fmtDate(u.last_active_at)]
+    ];
+    var profileHtml = profileRows.map(function(r) {
+      return '<div class="detail-row-item"><span class="detail-label">' + esc(String(r[0])) + '</span><span class="detail-value">' + esc(String(r[1])) + '</span></div>';
+    }).join('');
+
+    // Tags section
+    var tagsHtml = '<div class="detail-tags">';
+    tags.forEach(function(t) {
+      var cls = t.type === 'behavioral' ? ' behavioral' : (t.type === 'interest' ? ' interest' : '');
+      tagsHtml += '<span class="detail-tag' + cls + '">' + esc(t.name)
+        + '<span class="remove-tag" onclick="event.stopPropagation();removeTag(' + u.id + ',' + t.tag_id + ')">&times;</span></span>';
+    });
+    if (!tags.length) tagsHtml += '<span style="color:#475569;font-size:12px;">No tags assigned</span>';
+    tagsHtml += '</div>';
+
+    // Add tag dropdown
+    var existingTagIds = tags.map(function(t) { return t.tag_id; });
+    var availableTags = allTags.filter(function(t) { return existingTagIds.indexOf(t.id) === -1; });
+    tagsHtml += '<div class="add-tag-row">';
+    tagsHtml += '<select class="add-tag-select" id="addTagSelect_' + u.id + '">';
+    tagsHtml += '<option value="">Add tag...</option>';
+    availableTags.forEach(function(t) {
+      tagsHtml += '<option value="' + t.id + '">[' + esc(t.type) + '] ' + esc(t.name) + '</option>';
+    });
+    tagsHtml += '</select>';
+    tagsHtml += '<button class="btn-add" onclick="event.stopPropagation();addTag(' + u.id + ')">Add</button>';
+    tagsHtml += '</div>';
+
+    // Trust tier section
+    var trustHtml = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">';
+    trustHtml += '<span class="filter-label">Trust Tier:</span>';
+    trustHtml += '<select class="tier-select-detail" id="tierSelect_' + u.id + '" onchange="event.stopPropagation();changeTier(' + u.id + ', this.value)">';
+    for (var i = 0; i <= 4; i++) {
+      trustHtml += '<option value="' + i + '"' + (i === tier ? ' selected' : '') + '>T' + i + ' — ' + (TIER_NAMES[i] || '') + '</option>';
+    }
+    trustHtml += '</select>';
+    trustHtml += '<span id="tierMsg_' + u.id + '" style="font-size:11px;"></span>';
+    trustHtml += '</div>';
+
+    // Platforms section
+    var platHtml = '';
+    if (platforms.length) {
+      platforms.forEach(function(p) {
+        platHtml += '<div class="platform-detail">';
+        platHtml += '<div class="platform-detail-name"><span class="platform-badge ' + platformBadgeClass(p.platform_slug) + '">' + esc(p.platform_slug) + '</span>';
+        if (p.stripe_connected) platHtml += ' <span class="stripe-dot" title="Stripe connected"></span>';
+        platHtml += '</div>';
+        var rows = [
+          ['User Type', p.platform_user_type || '-'],
+          ['Platform ID', p.platform_user_id || '-'],
+          ['Display Name', p.platform_display_name || '-'],
+          ['First Seen', fmtDate(p.first_seen_at)],
+          ['Last Seen', fmtDate(p.last_seen_at)]
+        ];
+        rows.forEach(function(r) {
+          platHtml += '<div class="detail-row-item"><span class="detail-label">' + esc(r[0]) + '</span><span class="detail-value">' + esc(String(r[1])) + '</span></div>';
+        });
+        platHtml += '</div>';
+      });
+    } else {
+      platHtml = '<span style="color:#475569;font-size:12px;">No platform connections</span>';
+    }
+
+    return '<div class="detail-panel">'
+      + '<div>'
+      + '<div class="detail-section"><h4>Profile</h4>' + profileHtml + '</div>'
+      + '</div>'
+      + '<div>'
+      + '<div class="detail-section"><h4>Trust Tier</h4>' + trustHtml + '</div>'
+      + '<div class="detail-section" style="margin-top:16px;"><h4>Tags</h4>' + tagsHtml + '</div>'
+      + '<div class="detail-section" style="margin-top:16px;"><h4>Platform Connections</h4>' + platHtml + '</div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  window.toggleDetail = function(userId) {
+    expandedUserId = (expandedUserId === userId) ? null : userId;
+    renderTable();
+  };
+
+  window.changeTier = function(userId, tier) {
+    var msg = document.getElementById('tierMsg_' + userId);
+    if (msg) msg.textContent = 'Saving...';
     api('/api/admin/users/' + userId + '/trust-tier', {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify({ trust_tier: parseInt(tier, 10) })
     }).then(function(d) {
-      if (d.ok) {
+      if (d.success) {
         var u = allUsers.find(function(u) { return u.id === userId; });
         if (u) { u.trust_tier = parseInt(tier, 10); u.trust_tier_num = parseInt(tier, 10); }
-        renderTable();
+        if (msg) { msg.style.color = '#10b981'; msg.textContent = 'Saved'; }
+        updateStats();
+        setTimeout(function() { renderTable(); }, 500);
       } else {
-        alert(d.error || 'Failed');
-        el.value = (allUsers.find(function(u) { return u.id === userId; }) || {}).trust_tier_num || 0;
+        if (msg) { msg.style.color = '#ef4444'; msg.textContent = d.error || 'Failed'; }
       }
-    }).catch(function() { alert('Network error'); });
+    }).catch(function() {
+      if (msg) { msg.style.color = '#ef4444'; msg.textContent = 'Network error'; }
+    });
   };
 
-  window.toggleSuspend = function(userId, suspended, btn) {
-    btn.disabled = true;
-    api('/api/admin/users/' + userId + '/suspend', {
-      method: 'PUT',
-      body: JSON.stringify({ suspended: suspended })
+  window.addTag = function(userId) {
+    var select = document.getElementById('addTagSelect_' + userId);
+    var tagId = parseInt(select.value, 10);
+    if (!tagId) return;
+    api('/api/admin/users/' + userId + '/tags', {
+      method: 'POST',
+      body: JSON.stringify({ tag_id: tagId })
     }).then(function(d) {
-      btn.disabled = false;
-      if (d.ok) {
+      if (d.success) {
+        // Add tag to local data
         var u = allUsers.find(function(u) { return u.id === userId; });
-        if (u) u.suspended = suspended;
+        var tag = allTags.find(function(t) { return t.id === tagId; });
+        if (u && tag) {
+          u.tags = u.tags || [];
+          u.tags.push({ tag_id: tag.id, name: tag.name, type: tag.type, description: tag.description });
+        }
+        updateStats();
         renderTable();
-      } else { alert(d.error || 'Failed'); }
-    }).catch(function() { btn.disabled = false; alert('Network error'); });
+      }
+    });
   };
+
+  window.removeTag = function(userId, tagId) {
+    api('/api/admin/users/' + userId + '/tags/' + tagId, { method: 'DELETE' }).then(function(d) {
+      if (d.success) {
+        var u = allUsers.find(function(u) { return u.id === userId; });
+        if (u) u.tags = (u.tags || []).filter(function(t) { return t.tag_id !== tagId; });
+        updateStats();
+        renderTable();
+      }
+    });
+  };
+
+  window.prevPage = function() { if (page > 0) { page--; renderTable(); } };
+  window.nextPage = function() { if ((page + 1) * perPage < filteredUsers.length) { page++; renderTable(); } };
 })();
 </script>
 </body>

@@ -35,6 +35,30 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Platform users identity bridge
+CREATE TABLE IF NOT EXISTS platform_users (
+  id SERIAL PRIMARY KEY,
+  dt_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  email TEXT NOT NULL,
+  platform_slug TEXT NOT NULL,
+  platform_user_id TEXT,
+  platform_user_type TEXT,
+  platform_display_name TEXT,
+  platform_avatar_url TEXT,
+  platform_stripe_connected BOOLEAN DEFAULT FALSE,
+  first_seen_at TIMESTAMPTZ DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ DEFAULT NOW(),
+  metadata JSONB DEFAULT '{}',
+  UNIQUE(email, platform_slug)
+);
+
+CREATE INDEX IF NOT EXISTS idx_platform_users_email
+  ON platform_users(email);
+CREATE INDEX IF NOT EXISTS idx_platform_users_dt_user_id
+  ON platform_users(dt_user_id);
+CREATE INDEX IF NOT EXISTS idx_platform_users_platform_slug
+  ON platform_users(platform_slug);
+
 -- Seed staging community
 INSERT INTO communities (slug, name, domain, status, feature_flags)
 VALUES ('digitaltowns', 'Digital Towns Staging',

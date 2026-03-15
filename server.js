@@ -2342,6 +2342,163 @@ app.put("/api/admin/users/:id/suspend", async (req, res) => {
   }
 });
 
+// GET /api/admin/users-full — all users with tags and platform connections
+app.get("/api/admin/users-full", async (req, res) => {
+  const cookies = parseCookies(req);
+  if (cookies.staging_access !== "true") {
+    const admin = await requireAdmin(req, res); if (!admin) return;
+  }
+  try {
+    const result = await db.query(`
+      SELECT
+        u.*,
+        COALESCE(
+          json_agg(DISTINCT jsonb_build_object(
+            'tag_id', t.id,
+            'name', t.name,
+            'type', t.type,
+            'description', t.description
+          )) FILTER (WHERE t.id IS NOT NULL), '[]'
+        ) as tags,
+        COALESCE(
+          json_agg(DISTINCT jsonb_build_object(
+            'platform_slug', pu.platform_slug,
+            'platform_user_id', pu.platform_user_id,
+            'platform_user_type', pu.platform_user_type,
+            'platform_display_name', pu.platform_display_name,
+            'stripe_connected', pu.platform_stripe_connected,
+            'first_seen_at', pu.first_seen_at,
+            'last_seen_at', pu.last_seen_at
+          )) FILTER (WHERE pu.id IS NOT NULL), '[]'
+        ) as platforms
+      FROM users u
+      LEFT JOIN user_tags ut ON ut.user_id = u.id
+      LEFT JOIN tags t ON t.id = ut.tag_id
+      LEFT JOIN platform_users pu ON pu.dt_user_id = u.id
+      GROUP BY u.id
+      ORDER BY u.created_at DESC
+    `);
+    res.json({ users: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load users", detail: err.message });
+  }
+});
+
+// GET /api/admin/tags — list all available tags
+app.get("/api/admin/tags", async (req, res) => {
+  const cookies = parseCookies(req);
+  if (cookies.staging_access !== "true") {
+    const admin = await requireAdmin(req, res); if (!admin) return;
+  }
+  try {
+    const result = await db.query("SELECT id, name, type, description FROM tags ORDER BY type, name");
+    res.json({ tags: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/users/:id/tags — add tag to user
+app.post("/api/admin/users/:id/tags", async (req, res) => {
+  const cookies = parseCookies(req);
+  if (cookies.staging_access !== "true") {
+    const admin = await requireAdmin(req, res); if (!admin) return;
+  }
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const tagId = parseInt((req.body || {}).tag_id, 10);
+    if (!tagId) return res.status(400).json({ error: "tag_id required" });
+    await db.query(
+      "INSERT INTO user_tags (user_id, tag_id, source) VALUES ($1, $2, 'admin') ON CONFLICT (user_id, tag_id) DO NOTHING",
+      [userId, tagId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/users/:id/tags/:tagId — remove tag from user
+app.delete("/api/admin/users/:id/tags/:tagId", async (req, res) => {
+  const cookies = parseCookies(req);
+  if (cookies.staging_access !== "true") {
+    const admin = await requireAdmin(req, res); if (!admin) return;
+  }
+  try {
+    await db.query(
+      "DELETE FROM user_tags WHERE user_id = $1 AND tag_id = $2",
+      [parseInt(req.params.id, 10), parseInt(req.params.tagId, 10)]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/admin/users/:id/trust-tier — update trust tier
+app.patch("/api/admin/users/:id/trust-tier", async (req, res) => {
+  const cookies = parseCookies(req);
+  if (cookies.staging_access !== "true") {
+    const admin = await requireAdmin(req, res); if (!admin) return;
+  }
+  try {
+    const tier = parseInt((req.body || {}).trust_tier, 10);
+    if (isNaN(tier) || tier < 0 || tier > 4) return res.status(400).json({ error: "trust_tier must be 0-4" });
+    const result = await db.query(
+      "UPDATE users SET trust_tier = $1, trust_tier_num = $1 WHERE id = $2 RETURNING id, email, display_name, trust_tier",
+      [tier, parseInt(req.params.id, 10)]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: "User not found" });
+    res.json({ success: true, user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/backfill-platform-users — one-time backfill from existing niche events
+app.get("/api/admin/backfill-platform-users", async (req, res) => {
+  if (req.query.secret !== "dt-backfill-2026") {
+    return res.status(403).json({ error: "Invalid secret" });
+  }
+  const { linkPlatformUser } = require("./lib/identity-bridge");
+  var processed = 0;
+  var errors = [];
+  try {
+    // Backfill from niche_signup_events
+    var signups = await db.query("SELECT * FROM niche_signup_events WHERE user_email IS NOT NULL");
+    for (var i = 0; i < signups.rows.length; i++) {
+      var s = signups.rows[i];
+      try {
+        await linkPlatformUser(db, {
+          email: s.user_email,
+          platformSlug: s.platform_slug || "plant-purge",
+          platformDisplayName: s.user_name || null,
+          metadata: { source: "backfill-signup", event_id: s.id }
+        });
+        processed++;
+      } catch (e) { errors.push("signup#" + s.id + ": " + e.message); }
+    }
+    // Backfill from niche_sale_events
+    var sales = await db.query("SELECT * FROM niche_sale_events WHERE buyer_email IS NOT NULL");
+    for (var j = 0; j < sales.rows.length; j++) {
+      var e = sales.rows[j];
+      try {
+        await linkPlatformUser(db, {
+          email: e.buyer_email,
+          platformSlug: e.platform_slug || "plant-purge",
+          platformUserType: "buyer",
+          platformDisplayName: e.buyer_name || null,
+          metadata: { source: "backfill-sale", event_id: e.id }
+        });
+        processed++;
+      } catch (err2) { errors.push("sale#" + e.id + ": " + err2.message); }
+    }
+    res.json({ processed: processed, errors: errors });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/communities/list — public community list (for admin-modules page behind staging gate)
 app.get("/api/communities/list", async (req, res) => {
   try {

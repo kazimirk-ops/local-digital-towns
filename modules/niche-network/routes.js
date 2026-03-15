@@ -4,6 +4,7 @@
  * Adapted from TC auction-win webhook pattern + DT module conventions.
  */
 var crypto = require("crypto");
+var { linkPlatformUser } = require("../../lib/identity-bridge");
 
 module.exports = function mountNicheNetwork(app, db) {
 
@@ -136,6 +137,22 @@ module.exports = function mountNicheNetwork(app, db) {
         [b.platform]
       );
 
+      // Link buyer to DT user via identity bridge
+      if (b.buyer_email) {
+        try {
+          await linkPlatformUser(db, {
+            email: b.buyer_email,
+            platformSlug: b.platform || "plant-purge",
+            platformUserId: b.buyer_id || null,
+            platformUserType: "buyer",
+            platformDisplayName: b.buyer_name || null,
+            metadata: { source: "niche-sale", event_id: eventId }
+          });
+        } catch (linkErr) {
+          console.error("[niche-network] identity-bridge error:", linkErr.message);
+        }
+      }
+
       res.json({ ok: true, event_id: eventId, place_id: placeId, place_matched: !!placeId });
     } catch (err) {
       console.error("[niche-network] webhook error:", err.message);
@@ -231,6 +248,24 @@ module.exports = function mountNicheNetwork(app, db) {
         "UPDATE niche_platforms SET buyer_count = buyer_count + 1, last_event_at = NOW() WHERE slug=$1",
         [b.platform]
       );
+
+      // Link user to DT user via identity bridge
+      if (b.user_email) {
+        try {
+          await linkPlatformUser(db, {
+            email: b.user_email,
+            platformSlug: b.platform || "plant-purge",
+            platformUserId: b.user_id || null,
+            platformUserType: b.user_type || null,
+            platformDisplayName: b.user_name || null,
+            platformAvatarUrl: b.avatar_url || null,
+            platformStripeConnected: b.stripe_connected || false,
+            metadata: { source: "niche-signup", event_id: eventId }
+          });
+        } catch (linkErr) {
+          console.error("[niche-network] identity-bridge error:", linkErr.message);
+        }
+      }
 
       res.json({ ok: true, event_id: eventId, place_id: placeId, place_matched: !!placeId });
     } catch (err) {
