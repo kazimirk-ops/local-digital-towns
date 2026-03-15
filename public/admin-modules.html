@@ -118,6 +118,20 @@
     .tier-3 { background:#422006; color:#f59e0b; }
     .tier-4 { background:#450a0a; color:#ef4444; }
 
+    /* Submodule toggles */
+    .submodules-section { margin-top:12px; border-top:1px solid #1e293b; padding-top:10px; }
+    .submodules-label { font-size:10px; color:#475569; text-transform:uppercase; letter-spacing:0.6px; font-weight:700; margin-bottom:8px; }
+    .submodule-row { display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid #0f172a; }
+    .submodule-row:last-child { border-bottom:none; }
+    .submodule-id { font-size:11px; color:#94a3b8; font-family:monospace; }
+    .toggle-switch { position:relative; width:36px; height:20px; }
+    .toggle-switch input { opacity:0; width:0; height:0; }
+    .toggle-slider { position:absolute; cursor:pointer; inset:0; background:#1e293b; border-radius:20px; transition:0.2s; }
+    .toggle-slider:before { position:absolute; content:''; height:14px; width:14px; left:3px; bottom:3px; background:#64748b; border-radius:50%; transition:0.2s; }
+    .toggle-switch input:checked + .toggle-slider { background:#0ea5e9; }
+    .toggle-switch input:checked + .toggle-slider:before { transform:translateX(16px); background:#fff; }
+    .toggle-switch input:disabled + .toggle-slider { opacity:0.4; cursor:not-allowed; }
+
     .toast { position:fixed; bottom:24px; right:24px; padding:12px 20px; border-radius:8px; font-size:13px; font-weight:600; z-index:9999; animation:slideIn 0.3s ease; }
     .toast-success { background:#064e3b; color:#10b981; border:1px solid #10b981; }
     .toast-error { background:#450a0a; color:#ef4444; border:1px solid #ef4444; }
@@ -410,6 +424,33 @@
       .catch(function() { showToast('Set tier failed', 'error'); });
     }
 
+    function toggleSubmodule(moduleId, subId, enabled) {
+      event.stopPropagation();
+      fetch('/api/admin/modules/' + encodeURIComponent(moduleId) +
+        '/submodules/' + encodeURIComponent(subId) + '/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ enabled: enabled, community_slug: selectedSlug })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) {
+          showToast('Toggle failed: ' + (data.detail || data.error), 'error');
+          var cb = document.querySelector('[data-sub-id="' + subId + '"]');
+          if (cb) cb.checked = !enabled;
+          return;
+        }
+        featureFlags[subId] = enabled;
+        showToast(subId + (enabled ? ' enabled' : ' disabled'), 'success');
+      })
+      .catch(function() {
+        showToast('Toggle failed', 'error');
+        var cb = document.querySelector('[data-sub-id="' + subId + '"]');
+        if (cb) cb.checked = !enabled;
+      });
+    }
+
     // ===== Rendering =====
     function renderModules() {
       var content = document.getElementById('moduleContent');
@@ -548,6 +589,28 @@
             }
             html += '</select>';
             html += '<span class="tier-badge tier-' + currentTier + '">T' + currentTier + '</span>';
+            html += '</div>';
+          }
+
+          // Submodule toggles
+          if (m.submodules && m.submodules.length > 0) {
+            var isDisabled = status !== 'active';
+            html += '<div class="submodules-section" onclick="event.stopPropagation();">';
+            html += '<div class="submodules-label">Submodules</div>';
+            m.submodules.forEach(function(sub) {
+              var checked = sub.enabled ? 'checked' : '';
+              var disabled = isDisabled ? 'disabled' : '';
+              html += '<div class="submodule-row">';
+              html += '<span class="submodule-id">' + escHtml(sub.id) + '</span>';
+              html += '<label class="toggle-switch">';
+              html += '<input type="checkbox" ' + checked + ' ' + disabled +
+                ' data-sub-id="' + escHtml(sub.id) + '"' +
+                ' onchange="toggleSubmodule(\'' + escHtml(m.id) + '\', \'' +
+                escHtml(sub.id) + '\', this.checked)">';
+              html += '<span class="toggle-slider"></span>';
+              html += '</label>';
+              html += '</div>';
+            });
             html += '</div>';
           }
 

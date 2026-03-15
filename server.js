@@ -2259,6 +2259,38 @@ app.post("/api/admin/modules/:id/set-tier", async (req, res) => {
   }
 });
 
+// POST /api/admin/modules/:id/submodules/:subId/toggle — enable/disable a single submodule
+app.post("/api/admin/modules/:id/submodules/:subId/toggle", async (req, res) => {
+  const cookies = parseCookies(req);
+  if (cookies.staging_access !== "true") {
+    return res.status(403).json({ error: "Access denied", detail: "No staging access cookie found" });
+  }
+  try {
+    const moduleId = req.params.id;
+    const subId = req.params.subId;
+    const enabled = !!(req.body && req.body.enabled);
+    const slug = (req.body && req.body.community_slug) || "digitaltowns";
+    // Validate subId belongs to moduleId
+    const manifestPath = path.join(__dirname, "modules", moduleId, "manifest.json");
+    const nodeFs = require("fs");
+    if (!nodeFs.existsSync(manifestPath)) return res.status(404).json({ error: "Module not found" });
+    const manifest = JSON.parse(nodeFs.readFileSync(manifestPath, "utf8"));
+    const validSub = (manifest.submodules || []).some(function(sub) {
+      var id = typeof sub === "string" ? sub : sub.id;
+      return id === subId;
+    });
+    if (!validSub) return res.status(400).json({ error: "Invalid submodule" });
+    // JSONB merge
+    const flags = {};
+    flags[subId] = enabled;
+    await db.query("UPDATE communities SET feature_flags = feature_flags || $1::jsonb WHERE slug = $2", [JSON.stringify(flags), slug]);
+    res.json({ success: true, subId, enabled });
+  } catch (err) {
+    console.error("SUBMODULE_TOGGLE_ERROR", req.params.id, req.params.subId, err.message, err.stack);
+    res.status(500).json({ error: "Toggle failed", detail: err.message });
+  }
+});
+
 // ─── Consolidated Admin Shell ───
 app.get("/admin/console", async (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin", "index.html"));
