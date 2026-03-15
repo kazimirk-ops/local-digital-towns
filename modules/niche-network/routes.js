@@ -37,6 +37,18 @@ module.exports = function mountNicheNetwork(app, db) {
   }
   function denyIfDisabled(res) { res.status(404).json({ error: "Module not enabled" }); }
 
+  // ── Per-platform webhook secret lookup ──
+  function getExpectedSecret(platform) {
+    if (platform === 'plant-purge') {
+      return process.env.PP_WEBHOOK_SECRET || 'pp-webhook-secret-change-me';
+    }
+    if (platform === 'treasurecoast') {
+      return process.env.TC_WEBHOOK_SECRET || 'tc-webhook-secret-change-me';
+    }
+    // fallback for any future platforms
+    return process.env.DT_WEBHOOK_SECRET || null;
+  }
+
   // ══════════════════════════════════════
   // Inbound Webhook — THE KEY ENDPOINT
   // ══════════════════════════════════════
@@ -53,9 +65,16 @@ module.exports = function mountNicheNetwork(app, db) {
         return res.status(400).json({ error: "platform and secret required" });
       }
 
-      // Validate platform slug exists, secret matches, and platform is active
+      // Validate secret per-platform via env vars
+      var expectedSecret = getExpectedSecret(b.platform);
+      if (!expectedSecret || b.secret !== expectedSecret) {
+        console.warn('[niche-network] invalid secret for platform:', b.platform);
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Validate platform slug exists and is active
       var platR = await db.query(
-        "SELECT id, slug, webhook_secret, active FROM niche_platforms WHERE slug=$1",
+        "SELECT id, slug, active FROM niche_platforms WHERE slug=$1",
         [b.platform]
       );
       if (!platR.rows.length) {
@@ -64,9 +83,6 @@ module.exports = function mountNicheNetwork(app, db) {
       var plat = platR.rows[0];
       if (!plat.active) {
         return res.status(403).json({ error: "Platform is inactive" });
-      }
-      if (plat.webhook_secret !== b.secret) {
-        return res.status(401).json({ error: "Invalid secret" });
       }
 
       // Deduplicate via UNIQUE(platform_slug, external_ref)
@@ -172,9 +188,16 @@ module.exports = function mountNicheNetwork(app, db) {
         return res.status(400).json({ error: "platform and secret required" });
       }
 
-      // Validate platform slug exists, secret matches, and platform is active
+      // Validate secret per-platform via env vars
+      var expectedSecret = getExpectedSecret(b.platform);
+      if (!expectedSecret || b.secret !== expectedSecret) {
+        console.warn('[niche-network] invalid secret for platform:', b.platform);
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Validate platform slug exists and is active
       var platR = await db.query(
-        "SELECT id, slug, webhook_secret, active FROM niche_platforms WHERE slug=$1",
+        "SELECT id, slug, active FROM niche_platforms WHERE slug=$1",
         [b.platform]
       );
       if (!platR.rows.length) {
@@ -183,9 +206,6 @@ module.exports = function mountNicheNetwork(app, db) {
       var plat = platR.rows[0];
       if (!plat.active) {
         return res.status(403).json({ error: "Platform is inactive" });
-      }
-      if (plat.webhook_secret !== b.secret) {
-        return res.status(401).json({ error: "Invalid secret" });
       }
 
       // Deduplicate via UNIQUE(platform_slug, external_ref)

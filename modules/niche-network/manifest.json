@@ -9,5 +9,10 @@
     {"id":"niche-network.platform-registry","name":"Platform Registry","default":true},
     {"id":"niche-network.buyer-linkage","name":"Buyer Linkage","default":true},
     {"id":"niche-network.sale-events","name":"Sale Events","default":true}
-  ]
+  ],
+  "env": {
+    "PP_WEBHOOK_SECRET": {"required": true, "description": "PlantPurges webhook secret for niche-signup and niche-sale validation"},
+    "TC_WEBHOOK_SECRET": {"required": true, "description": "TreasureCoast webhook secret for niche-signup and niche-sale validation"},
+    "DT_WEBHOOK_SECRET": {"required": false, "description": "Fallback webhook secret for future platforms"}
+  }
 }
