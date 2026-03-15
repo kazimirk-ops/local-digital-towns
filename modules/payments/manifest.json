@@ -1,6 +1,7 @@
 {
   "id": "payments",
   "name": "Payments",
+  "default_tier": 3,
   "layer": 1,
   "dependencies": ["core", "orders", "auth"],
   "submodules": [

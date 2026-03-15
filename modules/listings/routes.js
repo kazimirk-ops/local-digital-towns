@@ -4,6 +4,8 @@
  * Extracted from DT routes/listings.js + server.js auctions.
  */
 
+const { canAccessModule } = require('../../lib/module-access');
+
 module.exports = function mountListings(app, db) {
 
   // ── Auth helpers (same pattern as L0 modules) ──
@@ -34,8 +36,8 @@ module.exports = function mountListings(app, db) {
   async function checkFlag(req, flag) {
     var community = req.community || { slug: "digitaltowns", feature_flags: {} };
     var flags = community.feature_flags || {};
-    if (flags[flag] !== undefined) return !!flags[flag];
-    return true; // default enabled
+    var userTier = (req.user && req.user.trust_tier) || 0;
+    return canAccessModule(flags, flag, userTier);
   }
   function denyIfDisabled(res) {
     res.status(404).json({ error: "Module not enabled" });

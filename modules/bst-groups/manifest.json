@@ -1,6 +1,7 @@
 {
   "id": "bst-groups",
   "name": "BST Groups",
+  "default_tier": 1,
   "version": "1.0.0",
   "layer": 0,
   "dependencies": ["core", "places", "auth"],

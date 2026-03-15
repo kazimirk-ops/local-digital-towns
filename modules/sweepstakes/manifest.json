@@ -1,6 +1,7 @@
 {
   "id": "sweepstakes",
   "name": "Sweepstakes",
+  "default_tier": 1,
   "layer": 2,
   "dependencies": ["core", "auth", "notifications"],
   "submodules": [

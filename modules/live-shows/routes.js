@@ -4,6 +4,8 @@
  * Extracted from Sebastian server.js live endpoints.
  */
 
+const { canAccessModule } = require('../../lib/module-access');
+
 module.exports = function mountLiveShows(app, db) {
 
   // ── Auth helpers ──
@@ -29,9 +31,10 @@ module.exports = function mountLiveShows(app, db) {
 
   // ── Feature flag enforcement ──
   async function checkFlag(req, flag) {
-    var flags = (req.community && req.community.feature_flags) || {};
-    if (flags[flag] !== undefined) return !!flags[flag];
-    return true;
+    var community = req.community || { slug: "digitaltowns", feature_flags: {} };
+    var flags = community.feature_flags || {};
+    var userTier = (req.user && req.user.trust_tier) || 0;
+    return canAccessModule(flags, flag, userTier);
   }
   function denyIfDisabled(res) { res.status(404).json({ error: "Module not enabled" }); }
 

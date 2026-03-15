@@ -1,6 +1,7 @@
 {
   "id": "auth",
   "name": "Authentication & Trust",
+  "default_tier": 0,
   "version": "1.0.0",
   "layer": 1,
   "dependencies": ["core"],

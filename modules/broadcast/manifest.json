@@ -1,6 +1,7 @@
 {
   "id": "broadcast",
   "name": "Broadcast",
+  "default_tier": 4,
   "layer": 3,
   "dependencies": ["core","auth","notifications"],
   "submodules": [

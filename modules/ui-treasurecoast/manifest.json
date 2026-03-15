@@ -1,6 +1,7 @@
 {
   "id": "ui-treasurecoast",
   "name": "Treasure Coast UI",
+  "default_tier": 0,
   "layer": 5,
   "dependencies": ["core", "auth"],
   "description": "Treasure Coast town-facing frontend",

@@ -1,5 +1,6 @@
 {
   "name": "moderation",
+  "default_tier": 4,
   "version": "1.0.0",
   "layer": "L4",
   "description": "Content reports, moderation queue, word filters, audit log, appeals",

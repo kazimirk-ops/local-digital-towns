@@ -1,6 +1,7 @@
 {
   "id": "places",
   "name": "Places & Geographic Hierarchy",
+  "default_tier": 0,
   "version": "1.0.0",
   "layer": 0,
   "dependencies": ["core"],

@@ -1,6 +1,7 @@
 {
   "id": "live-shows",
   "name": "Live Shows",
+  "default_tier": 4,
   "layer": 2,
   "dependencies": ["core", "auth", "listings"],
   "submodules": [

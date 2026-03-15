@@ -1,6 +1,7 @@
 {
   "id": "shipping",
   "name": "Shipping",
+  "default_tier": 3,
   "layer": 1,
   "dependencies": ["core", "orders", "auth"],
   "submodules": [

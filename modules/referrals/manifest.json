@@ -1,6 +1,7 @@
 {
   "id": "referrals",
   "name": "Referrals",
+  "default_tier": 2,
   "layer": 2,
   "dependencies": ["core", "auth"],
   "submodules": [

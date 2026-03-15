@@ -1,6 +1,7 @@
 {
   "id": "orders",
   "name": "Orders & Invoices",
+  "default_tier": 2,
   "layer": 1,
   "dependencies": ["core", "listings", "auth"],
   "submodules": [

@@ -1,6 +1,7 @@
 {
   "id": "listings",
   "name": "Listings",
+  "default_tier": 2,
   "layer": 1,
   "dependencies": ["core", "places", "auth", "tags"],
   "submodules": [

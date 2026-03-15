@@ -1,6 +1,7 @@
 {
   "id": "town-genesis",
   "name": "Town Genesis",
+  "default_tier": 0,
   "layer": 3,
   "dependencies": ["core","places","location-graph"],
   "submodules": [

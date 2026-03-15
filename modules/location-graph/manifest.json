@@ -1,6 +1,7 @@
 {
   "id": "location-graph",
   "name": "Location Graph",
+  "default_tier": 0,
   "layer": 3,
   "dependencies": ["core","places","niche-network"],
   "submodules": [

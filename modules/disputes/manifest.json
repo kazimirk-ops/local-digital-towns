@@ -1,5 +1,6 @@
 {
   "name": "disputes",
+  "default_tier": 1,
   "version": "1.0.0",
   "layer": "L4",
   "description": "Order disputes, ghost reports, bidding suspension, trust events, admin resolution",

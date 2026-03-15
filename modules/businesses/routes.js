@@ -4,6 +4,7 @@
  * Extracted from DT routes/businesses.js + routes/seeded.js + Sebastian localbiz.
  */
 var crypto = require("crypto");
+const { canAccessModule } = require('../../lib/module-access');
 
 module.exports = function mountBusinesses(app, db) {
 
@@ -26,6 +27,15 @@ module.exports = function mountBusinesses(app, db) {
     if (!r.rows.length || !r.rows[0].is_admin) { res.status(403).json({ error: "Admin required" }); return null; }
     return r.rows[0];
   }
+
+  // ── Feature flag enforcement ──
+  async function checkFlag(req, flag) {
+    var community = req.community || { slug: "digitaltowns", feature_flags: {} };
+    var flags = community.feature_flags || {};
+    var userTier = (req.user && req.user.trust_tier) || 0;
+    return canAccessModule(flags, flag, userTier);
+  }
+  function denyIfDisabled(res) { res.status(404).json({ error: "Module not enabled" }); }
 
   // Resolve place for geo context
   async function resolvePlace(slugOrQuery) {

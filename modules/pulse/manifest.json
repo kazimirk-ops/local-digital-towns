@@ -1,6 +1,7 @@
 {
   "id": "pulse",
   "name": "Town Pulse",
+  "default_tier": 0,
   "version": "1.0.0",
   "layer": 0,
   "dependencies": ["core", "places", "auth"],

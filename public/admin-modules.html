@@ -106,6 +106,18 @@
     .btn-uninstall { padding:8px 20px; border:none; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; background:#ef4444; color:#fff; transition:background 0.15s; }
     .btn-uninstall:hover { background:#dc2626; }
 
+    /* Tier controls */
+    .tier-row { display:flex; align-items:center; gap:10px; margin-top:10px; }
+    .tier-label { font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; }
+    .tier-select { padding:5px 10px; border-radius:6px; border:1px solid #1e293b; background:#0a0f1a; color:#e2e8f0; font-size:12px; font-family:inherit; cursor:pointer; outline:none; }
+    .tier-select:focus { border-color:#0ea5e9; }
+    .tier-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:700; margin-left:6px; }
+    .tier-0 { background:#064e3b; color:#10b981; }
+    .tier-1 { background:#1e3a5f; color:#3b82f6; }
+    .tier-2 { background:#2d1b69; color:#8b5cf6; }
+    .tier-3 { background:#422006; color:#f59e0b; }
+    .tier-4 { background:#450a0a; color:#ef4444; }
+
     .toast { position:fixed; bottom:24px; right:24px; padding:12px 20px; border-radius:8px; font-size:13px; font-weight:600; z-index:9999; animation:slideIn 0.3s ease; }
     .toast-success { background:#064e3b; color:#10b981; border:1px solid #10b981; }
     .toast-error { background:#450a0a; color:#ef4444; border:1px solid #ef4444; }
@@ -178,6 +190,14 @@
       5: 'Frontend'
     };
     var layerColors = { 0:'#ef4444', 1:'#3b82f6', 2:'#8b5cf6', 3:'#10b981', 4:'#f59e0b', 5:'#06b6d4' };
+
+    var tierNames = {
+      0: 'Guest / Anyone',
+      1: 'Basic Member',
+      2: 'Engaged Member',
+      3: 'Verified Seller',
+      4: 'Admin Only'
+    };
 
     // ===== Module Registry (loaded dynamically from /api/modules) =====
     var modules = [];
@@ -356,6 +376,27 @@
       .catch(function() { showToast('Uninstall failed', 'error'); });
     }
 
+    function setTier(id, tier) {
+      event.stopPropagation();
+      var mod = modules.find(function(m) { return m.id === id; });
+      fetch('/api/admin/modules/' + encodeURIComponent(id) + '/set-tier', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ tier: parseInt(tier), community_slug: selectedSlug })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) {
+          showToast('Set tier failed: ' + (data.detail || data.error), 'error');
+          return;
+        }
+        showToast((mod ? mod.name : id) + ' tier set to ' + tier + ' — ' + (tierNames[tier] || ''), 'success');
+        loadCommunities();
+      })
+      .catch(function() { showToast('Set tier failed', 'error'); });
+    }
+
     // ===== Rendering =====
     function renderModules() {
       var content = document.getElementById('moduleContent');
@@ -429,6 +470,10 @@
           html += '<div class="module-info"><div class="module-name">' + escHtml(m.name) + '</div>';
           html += '<div class="module-desc-short">' + escHtml(m.description) + '</div></div>';
           html += statusBadgeHtml(status);
+          if (status === 'active') {
+            var hdrTier = featureFlags[m.id + '.tier'] ?? 0;
+            html += '<span class="tier-badge tier-' + hdrTier + '" style="margin-left:6px;">T' + hdrTier + '</span>';
+          }
           html += '</div>';
 
           // Expanded content
@@ -477,6 +522,20 @@
               html += '</li>';
             });
             html += '</ul></div>';
+          }
+
+          // Tier controls (only for active modules)
+          if (status === 'active') {
+            var currentTier = featureFlags[m.id + '.tier'] ?? 0;
+            html += '<div class="tier-row" onclick="event.stopPropagation();">';
+            html += '<span class="tier-label">Min Tier:</span>';
+            html += '<select class="tier-select" onchange="setTier(\'' + escHtml(m.id) + '\', this.value)">';
+            for (var t = 0; t <= 4; t++) {
+              html += '<option value="' + t + '"' + (t === currentTier ? ' selected' : '') + '>' + t + ' \u2014 ' + tierNames[t] + '</option>';
+            }
+            html += '</select>';
+            html += '<span class="tier-badge tier-' + currentTier + '">T' + currentTier + '</span>';
+            html += '</div>';
           }
 
           // Actions

@@ -1,6 +1,7 @@
 {
   "id": "ui-base",
   "name": "Base Town UI",
+  "default_tier": 0,
   "layer": 5,
   "dependencies": ["core", "auth"],
   "description": "Clean base town frontend. Install sub-modules to add features.",

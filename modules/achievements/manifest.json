@@ -1,6 +1,7 @@
 {
   "id": "achievements",
   "name": "Achievements & Leaderboard",
+  "default_tier": 1,
   "layer": 2,
   "dependencies": ["core", "auth"],
   "submodules": [

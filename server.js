@@ -2173,12 +2173,17 @@ app.post("/api/admin/modules/:id/install", async (req, res) => {
     const nodeFs = require("fs");
     if (!nodeFs.existsSync(manifestPath)) return res.status(404).json({ error: "Module not found" });
     const manifest = JSON.parse(nodeFs.readFileSync(manifestPath, "utf8"));
-    // Build flags object — module + all sub-modules = true
+    const defaultTier = manifest.default_tier ?? 0;
+    // Build flags object — module + all sub-modules = true, plus tier keys
     const flags = {};
     flags[moduleId] = true;
+    flags[`${moduleId}.tier`] = defaultTier;
     (manifest.submodules || []).forEach(function(sub) {
       var subId = typeof sub === "string" ? sub : sub.id;
-      if (subId) flags[subId] = true;
+      if (subId) {
+        flags[subId] = true;
+        flags[`${subId}.tier`] = defaultTier;
+      }
     });
     // Merge into community flags (|| preserves existing flags)
     await db.query("UPDATE communities SET feature_flags = feature_flags || $1::jsonb WHERE slug = $2", [JSON.stringify(flags), slug]);
@@ -2218,6 +2223,39 @@ app.post("/api/admin/modules/:id/uninstall", async (req, res) => {
   } catch (err) {
     console.error("MODULE_UNINSTALL_ERROR", req.params.id, err.message, err.stack);
     res.status(500).json({ error: "Uninstall failed", detail: err.message });
+  }
+});
+
+// POST /api/admin/modules/:id/set-tier — update a module's minimum trust tier
+app.post("/api/admin/modules/:id/set-tier", async (req, res) => {
+  const cookies = parseCookies(req);
+  if (cookies.staging_access !== "true") {
+    return res.status(403).json({ error: "Access denied", detail: "No staging access cookie found" });
+  }
+  try {
+    const moduleId = req.params.id;
+    const tier = parseInt((req.body || {}).tier);
+    if (isNaN(tier) || tier < 0 || tier > 4) {
+      return res.status(400).json({ error: "tier must be an integer 0-4" });
+    }
+    const slug = (req.body && req.body.community_slug) || "digitaltowns";
+    // Read manifest to get sub-module IDs
+    const manifestPath = path.join(__dirname, "modules", moduleId, "manifest.json");
+    const nodeFs = require("fs");
+    if (!nodeFs.existsSync(manifestPath)) return res.status(404).json({ error: "Module not found" });
+    const manifest = JSON.parse(nodeFs.readFileSync(manifestPath, "utf8"));
+    // Build tier flags for module + all sub-modules
+    const tierFlags = {};
+    tierFlags[`${moduleId}.tier`] = tier;
+    (manifest.submodules || []).forEach(function(sub) {
+      var subId = typeof sub === "string" ? sub : sub.id;
+      if (subId) tierFlags[`${subId}.tier`] = tier;
+    });
+    await db.query("UPDATE communities SET feature_flags = feature_flags || $1::jsonb WHERE slug = $2", [JSON.stringify(tierFlags), slug]);
+    res.json({ success: true, moduleId, tier });
+  } catch (err) {
+    console.error("MODULE_SET_TIER_ERROR", req.params.id, err.message, err.stack);
+    res.status(500).json({ error: "Set tier failed", detail: err.message });
   }
 });
 

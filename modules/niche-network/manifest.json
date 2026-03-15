@@ -1,6 +1,7 @@
 {
   "id": "niche-network",
   "name": "Niche Network",
+  "default_tier": 0,
   "layer": 3,
   "dependencies": ["core","places","tags"],
   "submodules": [

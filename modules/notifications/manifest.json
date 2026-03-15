@@ -1,6 +1,7 @@
 {
   "id": "notifications",
   "name": "Notifications",
+  "default_tier": 1,
   "layer": 1,
   "dependencies": ["core", "auth"],
   "submodules": [
