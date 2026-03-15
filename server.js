@@ -485,12 +485,8 @@ app.use("/admin", async (req, res, next) =>{
   return res.status(403).json({ error: "Admin access required" });
 });
 app.use("/api/admin", async (req, res, next) =>{
-  if(req.path === "/test-email") return next();
-  // Bypass for module registry — staging cookie is checked in the route handler
-  if(req.path.startsWith("/modules")){
-    const cookies = parseCookies(req);
-    if(cookies.staging_access === "true") return next();
-  }
+  const cookies = parseCookies(req);
+  if (cookies.staging_access === "true") return next();
   try {
     const userId = await getUserId(req);
     const user = userId ? await data.getUserById(userId) : null;
