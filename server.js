@@ -2346,7 +2346,7 @@ app.put("/api/admin/users/:id/suspend", async (req, res) => {
 app.get("/api/admin/users-full", async (req, res) => {
   const cookies = parseCookies(req);
   if (cookies.staging_access !== "true") {
-    const admin = await requireAdmin(req, res); if (!admin) return;
+    return res.status(403).json({ error: "Access denied" });
   }
   try {
     const result = await db.query(`
@@ -2388,7 +2388,7 @@ app.get("/api/admin/users-full", async (req, res) => {
 app.get("/api/admin/tags", async (req, res) => {
   const cookies = parseCookies(req);
   if (cookies.staging_access !== "true") {
-    const admin = await requireAdmin(req, res); if (!admin) return;
+    return res.status(403).json({ error: "Access denied" });
   }
   try {
     const result = await db.query("SELECT id, name, type, description FROM tags ORDER BY type, name");
@@ -2402,7 +2402,7 @@ app.get("/api/admin/tags", async (req, res) => {
 app.post("/api/admin/users/:id/tags", async (req, res) => {
   const cookies = parseCookies(req);
   if (cookies.staging_access !== "true") {
-    const admin = await requireAdmin(req, res); if (!admin) return;
+    return res.status(403).json({ error: "Access denied" });
   }
   try {
     const userId = parseInt(req.params.id, 10);
@@ -2422,7 +2422,7 @@ app.post("/api/admin/users/:id/tags", async (req, res) => {
 app.delete("/api/admin/users/:id/tags/:tagId", async (req, res) => {
   const cookies = parseCookies(req);
   if (cookies.staging_access !== "true") {
-    const admin = await requireAdmin(req, res); if (!admin) return;
+    return res.status(403).json({ error: "Access denied" });
   }
   try {
     await db.query(
@@ -2439,7 +2439,7 @@ app.delete("/api/admin/users/:id/tags/:tagId", async (req, res) => {
 app.patch("/api/admin/users/:id/trust-tier", async (req, res) => {
   const cookies = parseCookies(req);
   if (cookies.staging_access !== "true") {
-    const admin = await requireAdmin(req, res); if (!admin) return;
+    return res.status(403).json({ error: "Access denied" });
   }
   try {
     const tier = parseInt((req.body || {}).trust_tier, 10);
