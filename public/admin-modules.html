@@ -379,11 +379,12 @@
     function setTier(id, tier) {
       event.stopPropagation();
       var mod = modules.find(function(m) { return m.id === id; });
+      var t = parseInt(tier);
       fetch('/api/admin/modules/' + encodeURIComponent(id) + '/set-tier', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ tier: parseInt(tier), community_slug: selectedSlug })
+        body: JSON.stringify({ tier: t, community_slug: selectedSlug })
       })
       .then(function(r) { return r.json(); })
       .then(function(data) {
@@ -391,8 +392,20 @@
           showToast('Set tier failed: ' + (data.detail || data.error), 'error');
           return;
         }
-        showToast((mod ? mod.name : id) + ' tier set to ' + tier + ' — ' + (tierNames[tier] || ''), 'success');
-        loadCommunities();
+        // Update featureFlags in memory
+        featureFlags[id + '.tier'] = t;
+        // Update DOM in place
+        var card = document.querySelector('[data-module-id="' + id + '"]');
+        if (card) {
+          var badges = card.querySelectorAll('.tier-badge');
+          badges.forEach(function(b) {
+            b.className = 'tier-badge tier-' + t;
+            b.textContent = 'T' + t;
+          });
+          var sel = card.querySelector('.tier-select');
+          if (sel) sel.value = String(t);
+        }
+        showToast((mod ? mod.name : id) + ' tier set to ' + t + ' — ' + (tierNames[t] || ''), 'success');
       })
       .catch(function() { showToast('Set tier failed', 'error'); });
     }
@@ -464,7 +477,7 @@
         section.modules.forEach(function(m) {
           var status = getModuleStatus(m);
           var isExpanded = expandedId === m.id;
-          html += '<div class="module-card' + (isExpanded ? ' expanded' : '') + '" onclick="toggleExpand(\'' + escHtml(m.id) + '\')">';
+          html += '<div class="module-card' + (isExpanded ? ' expanded' : '') + '" data-module-id="' + escHtml(m.id) + '" onclick="toggleExpand(\'' + escHtml(m.id) + '\')">';
           html += '<div class="module-card-header">';
           html += '<div class="module-icon">' + (m.icon || '') + '</div>';
           html += '<div class="module-info"><div class="module-name">' + escHtml(m.name) + '</div>';

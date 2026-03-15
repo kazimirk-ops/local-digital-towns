@@ -38,7 +38,7 @@ module.exports = function mountBstGroups(app, db) {
     var userTier = (req.user && req.user.trust_tier) || 0;
     return canAccessModule(flags, flag, userTier);
   }
-  function denyIfDisabled(res) { res.status(404).json({ error: "Module not enabled" }); }
+  function denyIfDisabled(res) { res.status(404).json({ error: "Not found" }); }
 
   // Extracted from PP ppBstRequireMod — checks mod_user_id, member role, or admin
   async function requireGroupMod(req, res, slug) {

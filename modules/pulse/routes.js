@@ -35,7 +35,7 @@ module.exports = function mountPulse(app, db) {
     var userTier = (req.user && req.user.trust_tier) || 0;
     return canAccessModule(flags, flag, userTier);
   }
-  function denyIfDisabled(res) { res.status(404).json({ error: "Module not enabled" }); }
+  function denyIfDisabled(res) { res.status(404).json({ error: "Not found" }); }
 
   async function resolvePlaceId(slug) {
     if (!slug) return null;

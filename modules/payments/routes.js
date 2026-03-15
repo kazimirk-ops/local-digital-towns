@@ -40,7 +40,7 @@ module.exports = function mountPayments(app, db) {
     return canAccessModule(flags, flag, userTier);
   }
   function denyIfDisabled(res) {
-    res.status(404).json({ error: "Module not enabled" });
+    res.status(404).json({ error: "Not found" });
   }
 
   // ── Stripe init (lazy — only if STRIPE_SECRET_KEY set) ──

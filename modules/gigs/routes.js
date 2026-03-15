@@ -38,7 +38,7 @@ module.exports = function mountGigs(app, db) {
     var userTier = (req.user && req.user.trust_tier) || 0;
     return canAccessModule(flags, flag, userTier);
   }
-  function denyIfDisabled(res) { res.status(404).json({ error: "Module not enabled" }); }
+  function denyIfDisabled(res) { res.status(404).json({ error: "Not found" }); }
 
   // ── GET /api/gigs/categories ───────────────────────────────
   // Extracted from DT GET /api/gigs/categories

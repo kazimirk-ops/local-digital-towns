@@ -36,7 +36,7 @@ module.exports = function mountLiveShows(app, db) {
     var userTier = (req.user && req.user.trust_tier) || 0;
     return canAccessModule(flags, flag, userTier);
   }
-  function denyIfDisabled(res) { res.status(404).json({ error: "Module not enabled" }); }
+  function denyIfDisabled(res) { res.status(404).json({ error: "Not found" }); }
 
   // ── CloudFlare Calls helper (from Sebastian) ──
   var CF_CALLS_APP_ID = process.env.CF_CALLS_APP_ID || "";

@@ -40,7 +40,7 @@ module.exports = function mountListings(app, db) {
     return canAccessModule(flags, flag, userTier);
   }
   function denyIfDisabled(res) {
-    res.status(404).json({ error: "Module not enabled" });
+    res.status(404).json({ error: "Not found" });
   }
 
   // ── GET /api/listings ──
