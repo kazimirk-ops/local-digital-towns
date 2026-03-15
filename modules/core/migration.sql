@@ -59,6 +59,21 @@ CREATE INDEX IF NOT EXISTS idx_platform_users_dt_user_id
 CREATE INDEX IF NOT EXISTS idx_platform_users_platform_slug
   ON platform_users(platform_slug);
 
+-- SSO token exchange (DT as auth hub for PP and TC)
+CREATE TABLE IF NOT EXISTS sso_tokens (
+  id SERIAL PRIMARY KEY,
+  token TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL,
+  platform_slug TEXT NOT NULL,
+  platform_user_id TEXT,
+  redirect_to TEXT,
+  used BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '5 minutes'
+);
+
+CREATE INDEX IF NOT EXISTS idx_sso_tokens_token ON sso_tokens(token);
+
 -- Seed staging community
 INSERT INTO communities (slug, name, domain, status, feature_flags)
 VALUES ('digitaltowns', 'Digital Towns Staging',

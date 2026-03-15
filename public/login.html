@@ -176,6 +176,18 @@
         Don't have an account? <a href="/verify">Create free account</a> or <a href="/subscribe">Subscribe</a>
       </div>
     </div>
+    <script>
+      (function() {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('error') === 'sso_expired') {
+          var el = document.getElementById('errorMsg');
+          if (el) {
+            el.textContent = 'Your login link expired. Please try again from Plant Purge or Treasure Coast, or log in directly below.';
+            el.style.display = 'block';
+          }
+        }
+      })();
+    </script>
     <script src="/login.js?v=1"></script>
   </body>
 </html>

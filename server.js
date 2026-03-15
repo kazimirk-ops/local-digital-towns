@@ -370,6 +370,90 @@ try {
   console.error("Auth module failed to load:", err?.message);
 }
 
+// ─── SSO token exchange — DT as auth hub for PP and TC ───
+try {
+  var { linkPlatformUser } = require("./lib/identity-bridge");
+
+  function getExpectedSecret(platform) {
+    if (platform === 'plant-purge') return process.env.PP_WEBHOOK_SECRET || 'pp-webhook-secret-change-me';
+    if (platform === 'treasurecoast') return process.env.TC_WEBHOOK_SECRET || 'tc-webhook-secret-change-me';
+    return process.env.DT_WEBHOOK_SECRET || null;
+  }
+
+  // POST /api/sso/issue-token — server-to-server from PP or TC
+  app.post("/api/sso/issue-token", async function(req, res) {
+    try {
+      var b = req.body || {};
+      if (!b.platform || !b.secret || !b.email) {
+        return res.status(400).json({ error: "platform, secret, and email required" });
+      }
+      var expected = getExpectedSecret(b.platform);
+      if (!expected || b.secret !== expected) {
+        console.warn("[sso] invalid secret for platform:", b.platform);
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      var token = crypto.randomBytes(32).toString("hex");
+      await db.query(
+        "INSERT INTO sso_tokens (token, email, platform_slug, platform_user_id, redirect_to, expires_at) " +
+        "VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '5 minutes')",
+        [token, b.email.toLowerCase().trim(), b.platform, b.platform_user_id || null, b.redirect_to || null]
+      );
+      var baseUrl = process.env.BASE_URL || "https://digitaltowns.app";
+      res.json({ token: token, sso_url: baseUrl + "/sso?token=" + token });
+    } catch (err) {
+      console.error("[sso] issue-token error:", err.message);
+      res.status(500).json({ error: "Internal error" });
+    }
+  });
+
+  // GET /sso?token=xxx — browser redirect lands here
+  app.get("/sso", async function(req, res) {
+    try {
+      var token = req.query.token;
+      if (!token) return res.redirect("/login.html?error=sso_expired");
+
+      var result = await db.query(
+        "SELECT * FROM sso_tokens WHERE token = $1 AND used = FALSE AND expires_at > NOW()",
+        [token]
+      );
+      if (result.rows.length === 0) {
+        return res.redirect("/login.html?error=sso_expired");
+      }
+      var ssoRow = result.rows[0];
+
+      // Mark token as used
+      await db.query("UPDATE sso_tokens SET used = TRUE WHERE id = $1", [ssoRow.id]);
+
+      // Ensure DT user exists via identity bridge
+      await linkPlatformUser(db, {
+        email: ssoRow.email,
+        platformSlug: ssoRow.platform_slug,
+        platformUserId: ssoRow.platform_user_id || null,
+        metadata: { source: "sso" }
+      });
+
+      // Find DT user
+      var userRow = await db.query("SELECT id FROM users WHERE email = $1", [ssoRow.email.toLowerCase().trim()]);
+      if (!userRow.rows.length) {
+        return res.redirect("/login.html?error=sso_expired");
+      }
+
+      // Create session using auth module helpers
+      var auth = app._auth;
+      var s = await auth.createSession(userRow.rows[0].id);
+      auth.setCookie(res, "sid", s.sid, { httpOnly: true, maxAge: 60 * 60 * 24 * 30, secure: auth.isHttpsRequest(req) });
+      res.redirect(ssoRow.redirect_to || "/town");
+    } catch (err) {
+      console.error("[sso] redeem error:", err.message);
+      res.redirect("/login.html?error=sso_expired");
+    }
+  });
+
+  console.log("[sso] SSO token exchange routes mounted");
+} catch (err) {
+  console.error("SSO routes failed to load:", err.message);
+}
+
 // ─── Mount places module (before view-only lockdown so POST/PUT/DELETE endpoints work) ───
 try {
   const mountPlaces = require("./modules/places/routes");
